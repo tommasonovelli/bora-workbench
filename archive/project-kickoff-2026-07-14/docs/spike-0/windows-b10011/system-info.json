@@ -1,0 +1,14 @@
+{
+    "CapturedAt":  "2026-07-14T21:40:37.0810254+02:00",
+    "OS":  "Microsoft Windows 11 Pro",
+    "Version":  "10.0.26200",
+    "Build":  "26200",
+    "Architecture":  "64-bit",
+    "CPU":  "Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz",
+    "PhysicalCores":  6,
+    "LogicalProcessors":  12,
+    "RAMTotalBytes":  34269773824,
+    "RAMAvailableKiB":  21683528,
+    "GPU":  "NVIDIA GeForce RTX 2060 SUPER",
+    "DriverVersion":  "32.0.16.1047"
+}

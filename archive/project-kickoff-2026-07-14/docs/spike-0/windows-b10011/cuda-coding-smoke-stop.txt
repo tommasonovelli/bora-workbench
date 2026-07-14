@@ -1,0 +1,3 @@
+SUCCESS: The process with PID 9840 (child process of PID 16484) has been terminated.
+verified_stopped=true
+health_after_stop_curl_exit=28

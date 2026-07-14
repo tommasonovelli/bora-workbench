@@ -1,0 +1,42 @@
+[build-system]
+requires = ["uv_build>=0.11.28,<0.12"]
+build-backend = "uv_build"
+
+[project]
+name = "qwen-launcher"
+version = "0.1.0.dev0"
+description = "Local, reproducible launcher for a calibrated Qwen model and llama.cpp"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { file = "LICENSE" }
+authors = [{ name = "Tommaso Novelli" }]
+dependencies = [
+    "httpx",
+    "jsonschema",
+    "psutil",
+    "rich",
+    "typer",
+]
+
+[project.scripts]
+qwen-launcher = "qwen_launcher.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "ruff",
+]
+
+[tool.uv]
+required-version = "==0.11.28"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]

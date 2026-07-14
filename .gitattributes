@@ -1,0 +1,4 @@
+# Preserve archived raw command output byte-for-byte and keep it out of textual diffs.
+/archive/project-kickoff-2026-07-14/docs/** -text -diff
+# The original plan uses Markdown hard line breaks intentionally.
+/archive/project-kickoff-2026-07-14/PIANO_IMPLEMENTAZIONE_v3.md whitespace=-blank-at-eol
