@@ -1,6 +1,6 @@
 # qwen-launcher — Specifica centrale di implementazione (v3.2)
 
-## 0. Tracker di avanzamento — aggiornato al 15 luglio 2026
+## 0. Tracker di avanzamento — aggiornato al 16 luglio 2026
 
 > Questo blocco registra lo stato reale del repository. Questo è il documento normativo
 > `IMPLEMENTATION_SPEC.md` alla radice, unica copia normativa nel repository come previsto dallo
@@ -19,8 +19,7 @@
   matrice CI GitHub verde su Ubuntu/Windows e branch protection attiva con CI e revisione code owner
   obbligatorie per i contributori.
 - [x] **Step 2A — Contratti dichiarativi e modi.**
-- [~] **Step 2B — Validazione, modelli runtime e hardware:** implementazione e gate locali
-  completi; matrice CI remota ancora da eseguire.
+- [x] **Step 2B — Validazione, modelli runtime e hardware.**
 - [ ] **Step 3 — Vertical slice `coding`, stato, stop e status.**
 - [ ] **Step 4 — Asset lock e attivazione atomica del motore.**
 - [ ] **Step 5 — `studio` e `vstudio`.**
@@ -94,12 +93,13 @@
   nessuna mutazione dell'ambiente padre.
 - [x] Comandi `validate` e `doctor`, exit code contrattuali e diagnostica «nessun profilo calibrato».
 - [x] Suite locale, build e `validate` dalla wheel isolata verdi.
-- [ ] Commit/push e matrice CI Ubuntu/Windows verdi sullo Step 2B.
+- [x] Commit `e137916` pubblicato; matrice CI Ubuntu/Windows verde, incluso `validate` dalla sorgente
+  e dalla wheel isolata.
 
 ### Prossima azione obbligatoria
 
-Lo Step 2B resta aperto esclusivamente per commit, push autorizzato e verifica della matrice CI
-Ubuntu/Windows. Non iniziare lo Step 3 o gli step successivi prima della chiusura di questo gate.
+Lo Step 2B è concluso. La prossima sessione di implementazione può iniziare esclusivamente lo Step 3,
+senza anticipare lo Step 4 o gli step successivi.
 
 ---
 

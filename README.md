@@ -21,10 +21,10 @@ Ubuntu/Windows CPU/CUDA e il protocollo `benchmark/v1` sono verificati. Il contr
 incluso nella wheel come `engine.lock`; gli asset restano intenzionalmente marcati incompleti fino
 allo Step 4. Non esistono ancora profili di produzione né comandi di avvio.
 
-Gli Step 1 e 2A sono completi. Per lo Step 2B, implementazione e verifiche locali sono complete; resta
-il gate della nuova matrice CI Ubuntu/Windows dopo commit e push. Il catalogo profili vuoto è valido:
-i benchmark dello spike provano fattibilità, non profili ottimizzati. Il piano normativo e il tracker
-sono in [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
+Gli Step 1, 2A e 2B sono completi, inclusa la matrice CI Ubuntu/Windows con validazione dalla sorgente
+e dalla wheel isolata. Il catalogo profili vuoto è valido: i benchmark dello spike provano
+fattibilità, non profili ottimizzati. Il piano normativo e il tracker sono in
+[`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
 [`docs/spike-0/`](docs/spike-0/).
 
 ## Sviluppo
