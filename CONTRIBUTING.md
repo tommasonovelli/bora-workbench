@@ -1,6 +1,6 @@
 # Contribuire
 
-Il progetto segue il piano archiviato in `archive/project-kickoff-2026-07-14/` e procede uno step
+Il progetto segue il piano normativo `IMPLEMENTATION_SPEC.md` e procede uno step
 alla volta. Prima di una modifica:
 
 1. leggere l'intero piano e il tracker iniziale;

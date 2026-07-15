@@ -19,8 +19,9 @@ Windows con `llama.cpp b10011`, ma non includono il contratto strutturato comple
 integrale, la matrice Ubuntu/Windows, i benchmark dei tre modi e la decisione `GO`. Per questo non
 sono stati inventati `engine.lock`, profili, schemi o comandi di avvio.
 
-Il piano con il tracker aggiornato e tutti gli output originali sono conservati in
-[`archive/project-kickoff-2026-07-14/`](archive/project-kickoff-2026-07-14/).
+Il piano normativo con il tracker aggiornato è alla radice in
+[`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); tutti gli output originali dello spike sono
+conservati in [`archive/project-kickoff-2026-07-14/`](archive/project-kickoff-2026-07-14/).
 
 ## Sviluppo
 

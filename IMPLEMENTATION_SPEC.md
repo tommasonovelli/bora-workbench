@@ -2,10 +2,11 @@
 
 ## 0. Tracker di avanzamento — aggiornato al 14 luglio 2026
 
-> Questo blocco registra lo stato reale del repository al commit iniziale. Il documento e gli
-> output originali sono stati archiviati in `archive/project-kickoff-2026-07-14/` su richiesta del
-> manutentore. `[x]` significa completato e verificato; `[~]` parziale; `[ ]` ancora da eseguire.
-> Una voce parziale **non** soddisfa il gate dello step.
+> Questo blocco registra lo stato reale del repository al commit iniziale. Questo è il documento
+> normativo `IMPLEMENTATION_SPEC.md` alla radice, unica copia normativa nel repository come previsto
+> dallo Step 1; gli output grezzi originali dello spike restano archiviati in
+> `archive/project-kickoff-2026-07-14/docs/`. `[x]` significa completato e verificato; `[~]` parziale;
+> `[ ]` ancora da eseguire. Una voce parziale **non** soddisfa il gate dello step.
 
 ### Stato sintetico
 
