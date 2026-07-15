@@ -37,6 +37,11 @@ apply here.
 
 ## Code quality
 
+Code here is written to be read. Optimize for the maintainer who opens a file months from now with no
+memory of why it exists: prefer the obvious construction over the clever one, make intent explicit
+instead of implied, and keep a reader from having to reconstruct a rule that a sentence could state.
+Readability and maintainability outrank brevity, micro-optimizations, and personal style.
+
 ### Size and complexity
 
 For hand-written Python in `src/`, `tests/`, and `scripts/`:
@@ -76,8 +81,13 @@ limits and must retain their required format.
 
 ### Comments and documentation
 
-Comments explain **why**, constraints, or trade-offs—not what the next line does. Public behavior and
-non-obvious safety invariants need concise docstrings. Do not leave dead code or commented-out code.
+Every module, class, and function—including private helpers—carries a concise docstring stating what
+it does. State the reason as well whenever the behavior follows a normative rule or a platform
+constraint rather than an obvious implementation choice, and name the `IMPLEMENTATION_SPEC.md`
+section so the next reader can check the source instead of guessing.
+
+Comments explain **why**, constraints, or trade-offs—not what the next line does. A comment that
+restates the code is noise and must be removed. Do not leave dead code or commented-out code.
 A TODO must include date and context, for example:
 
 ```python
@@ -157,6 +167,15 @@ report that limitation explicitly; do not claim the check passed.
 ## Git and change discipline
 
 - Use Conventional Commits and keep one implementation step per commit.
+- Write an explicit subject in the form `<type>(<optional-scope>): <concrete outcome>`. Describe the
+  behavior or repository state produced by the commit; avoid vague subjects such as `update files`,
+  `fix issues`, `changes`, or a bare step number.
+- For any non-trivial commit, add a body after a blank line. Explain what changed and why, note the
+  important constraints or trade-offs, and list the relevant checks performed. A one-line message is
+  acceptable only when the subject fully explains a small, self-contained change, such as a typo.
+- Treat commit subjects suggested by `IMPLEMENTATION_SPEC.md` as starting points, not as complete
+  messages when the change needs context. Keep the subject concise and put supporting detail in the
+  body instead of compressing substantial work into one line.
 - A pull request changes declarative content or core code, never both.
 - Do not rename, move, generalize, or reformat unrelated files.
 - Do not commit debug `print()` calls, temporary artifacts, caches, virtual environments, or build

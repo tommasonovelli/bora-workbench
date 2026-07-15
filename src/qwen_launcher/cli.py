@@ -1,4 +1,9 @@
-"""Command-line interface for the initial qwen-launcher scaffold."""
+"""Command-line interface for the initial qwen-launcher scaffold.
+
+This module only reads input, calls services, presents results, and maps errors to exit codes. All
+platform logic lives elsewhere, so nothing here branches on the operating system (specification
+section 4.1).
+"""
 
 from __future__ import annotations
 
@@ -21,7 +26,11 @@ _stderr = Console(stderr=True)
 
 
 def package_version() -> str:
-    """Read the installed distribution version."""
+    """Read the installed distribution version.
+
+    The literal fallback covers running straight from a source checkout, where no distribution
+    metadata is installed; it must stay equal to the version in `pyproject.toml`.
+    """
     try:
         return version("qwen-launcher")
     except PackageNotFoundError:
@@ -29,6 +38,10 @@ def package_version() -> str:
 
 
 def _version_callback(value: bool) -> None:
+    """Print the version and exit before any command runs.
+
+    Eager so that `--version` answers even when a subcommand is missing or invalid.
+    """
     if value:
         typer.echo(package_version())
         raise typer.Exit()
@@ -45,15 +58,22 @@ def main(
     ),
 ) -> None:
     """qwen-launcher command group."""
+    # The eager callback above already handled the flag; the parameter exists only to declare it.
     del version_requested
 
 
 @app.command()
 def doctor() -> None:
-    """Check the configuration and show paths without modifying the machine."""
+    """Check the configuration and show paths without modifying the machine.
+
+    Read-only by contract: it reports the directories it would use without creating them, so it is
+    safe to run on a machine that has never been set up.
+    """
     try:
         config = load_config()
     except ConfigError as error:
+        # Invalid configuration is exit code 2, printed to stderr without a traceback: an expected
+        # user mistake is not a crash (specification section 5.10).
         _stderr.print(f"[red]Configuration error:[/red] {error}")
         raise typer.Exit(code=2) from error
 

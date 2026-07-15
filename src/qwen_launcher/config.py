@@ -1,4 +1,10 @@
-"""Strict TOML and environment configuration for qwen-launcher 0.1."""
+"""Strict TOML and environment configuration for qwen-launcher 0.1.
+
+Strict means that an unknown key or a malformed value is an error, never a silent fallback: a typo
+must be reported instead of quietly launching the engine with a default the user never chose.
+The whole contract — keys, variables, constraints, and the environment > file > code-default
+precedence — is fixed by specification section 5.2, with the no-fallback rule in section 5.11.
+"""
 
 from __future__ import annotations
 
@@ -27,11 +33,17 @@ _FALSE_VALUES = {"false", "0", "no", "off"}
 
 
 class ConfigError(ValueError):
-    """Raised for expected, actionable configuration errors."""
+    """Raised for expected, actionable configuration errors.
+
+    The CLI maps this to exit code 2 and prints it without a traceback, so every message must name
+    both the offending source and the constraint it broke (specification section 5.10).
+    """
 
 
 @dataclass(frozen=True, slots=True)
 class Config:
+    """The resolved configuration, frozen once precedence and validation have been applied."""
+
     model: str = DEFAULT_MODEL
     llama_port: int = DEFAULT_LLAMA_PORT
     engine_path: Path | None = None
@@ -39,18 +51,29 @@ class Config:
 
 
 def _validate_model(value: Any, *, source: str) -> str:
+    """Return the model identifier, rejecting anything that is not a non-empty string."""
     if not isinstance(value, str) or not value.strip():
         raise ConfigError(f"{source}: 'model' must be a non-empty string")
     return value.strip()
 
 
 def _validate_port(value: Any, *, source: str) -> int:
+    """Return a port in the 1-65535 range, rejecting any other value."""
+    # `bool` subclasses `int` in Python, so `llama_port = true` would otherwise be accepted and
+    # silently bind the engine to port 1.
     if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 65535:
         raise ConfigError(f"{source}: 'llama_port' must be an integer between 1 and 65535")
     return value
 
 
 def _validate_engine_path(value: Any, *, source: str, allow_empty: bool = False) -> Path | None:
+    """Return the optional engine path with `~` expanded, or None when unset.
+
+    `allow_empty` exists because the two sources disagree by contract: an empty
+    QWEN_LAUNCHER_ENGINE_PATH means "unset", while an empty key in `config.toml` is a mistake worth
+    reporting (specification section 5.2). The path is not checked for existence here; that belongs
+    to the engine step that uses it.
+    """
     if value is None:
         return None
     if not isinstance(value, str):
@@ -63,12 +86,18 @@ def _validate_engine_path(value: Any, *, source: str, allow_empty: bool = False)
 
 
 def _validate_boolean(value: Any, *, source: str) -> bool:
+    """Return a real TOML boolean, rejecting strings such as `"yes"`."""
     if not isinstance(value, bool):
         raise ConfigError(f"{source}: 'open_browser' must be a boolean")
     return value
 
 
 def _validate_file_values(values: Mapping[str, Any], *, source: str) -> dict[str, Any]:
+    """Validate every key of a parsed TOML file and return the accepted values.
+
+    Unknown keys are rejected rather than ignored, which turns a typo or a key belonging to a later
+    milestone into an actionable error instead of a setting that only appears to work.
+    """
     unknown = sorted(set(values) - _ALLOWED_KEYS)
     if unknown:
         names = ", ".join(repr(name) for name in unknown)
@@ -87,12 +116,16 @@ def _validate_file_values(values: Mapping[str, Any], *, source: str) -> dict[str
 
 
 def _parse_environment_port(value: str, *, variable: str) -> int:
+    """Parse a port from an environment string, which carries no TOML type information."""
+    # `int()` also accepts a sign, digit separators such as "8_080", and non-ASCII digits, so the
+    # string is screened down to plain decimal digits before it is converted.
     if not value or not value.isascii() or not value.isdecimal():
         raise ConfigError(f"environment variable {variable} must be an integer between 1 and 65535")
     return _validate_port(int(value), source=f"environment variable {variable}")
 
 
 def _parse_environment_boolean(value: str, *, variable: str) -> bool:
+    """Parse the case-insensitive boolean spellings allowed for environment variables."""
     normalized = value.casefold()
     if normalized in _TRUE_VALUES:
         return True
@@ -103,6 +136,7 @@ def _parse_environment_boolean(value: str, *, variable: str) -> bool:
 
 
 def _environment_overrides(environ: Mapping[str, str]) -> dict[str, Any]:
+    """Collect and validate the overrides supplied through the environment."""
     overrides: dict[str, Any] = {}
     for key, variable in _ENVIRONMENT_KEYS.items():
         if variable not in environ:
@@ -122,6 +156,7 @@ def _environment_overrides(environ: Mapping[str, str]) -> dict[str, Any]:
 
 
 def _read_toml(path: Path) -> dict[str, Any]:
+    """Read and validate the configuration file, treating an absent file as first-run defaults."""
     if not path.exists():
         return {}
     try:
@@ -137,7 +172,12 @@ def load_config(
     *,
     environ: Mapping[str, str] | None = None,
 ) -> Config:
-    """Load config using environment > TOML file > code defaults precedence."""
+    """Load config using environment > TOML file > code defaults precedence.
+
+    The file is validated in full before any override is applied, so an invalid `config.toml` is
+    reported even when an environment variable would have replaced the offending key: the error must
+    stay reproducible once that variable is gone.
+    """
     config_path = config_dir() / "config.toml" if path is None else path
     environment = os.environ if environ is None else environ
 
@@ -147,6 +187,7 @@ def load_config(
         "engine_path": None,
         "open_browser": DEFAULT_OPEN_BROWSER,
     }
+    # Each layer overwrites the previous one, so the update order is the precedence rule itself.
     values.update(_read_toml(config_path))
     values.update(_environment_overrides(environment))
     return Config(**values)
