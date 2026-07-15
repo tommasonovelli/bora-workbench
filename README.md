@@ -14,14 +14,16 @@ Il repository contiene per ora il fondamento indipendente dal motore:
 - accesso alle risorse compatibile con wheel/zip;
 - test, lint e CI Linux/Windows.
 
-Lo **Spike 0 non è ancora completo**: i dati disponibili dimostrano una prova CUDA parziale su
-Windows con `llama.cpp b10011`, ma non includono il contratto strutturato completo, il commit sorgente
-integrale, la matrice Ubuntu/Windows, i benchmark dei tre modi e la decisione `GO`. Per questo non
-sono stati inventati `engine.lock`, profili, schemi o comandi di avvio.
+Lo **Spike 0 è completo** con decisione `GO`: `llama.cpp b10011`, il contratto macchina, la matrice
+Ubuntu/Windows CPU/CUDA e il protocollo `benchmark/v1` sono verificati. Il contratto iniziale è
+incluso nella wheel come `engine.lock`; gli asset restano intenzionalmente marcati incompleti fino
+allo Step 4. Schemi, profili e comandi di avvio entrano soltanto negli step successivi.
 
-Il piano normativo con il tracker aggiornato è alla radice in
-[`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); tutti gli output originali dello spike sono
-conservati in [`archive/project-kickoff-2026-07-14/`](archive/project-kickoff-2026-07-14/).
+L'implementazione dello Step 1 e la matrice CI Ubuntu/Windows sono complete. La chiusura formale
+attende che il repository diventi pubblico per abilitare branch protection e revisione code owner.
+Il piano normativo e il tracker aggiornato sono in
+[`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
+[`docs/spike-0/`](docs/spike-0/).
 
 ## Sviluppo
 

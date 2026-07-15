@@ -174,9 +174,7 @@
     "windows": "docs/spike-0/windows-b10011",
     "windows_checksums": "docs/spike-0/windows-b10011/SHA256SUMS",
     "ubuntu": "docs/spike-0/ubuntu-b10011",
-    "ubuntu_and_research_checksums": "docs/spike-0/SHA256SUMS",
-    "windows_archived_preliminary": "archive/project-kickoff-2026-07-14/docs/spike-0/windows-b10011",
-    "windows_archived_preliminary_checksums": "archive/project-kickoff-2026-07-14/SHA256SUMS"
+    "ubuntu_and_research_checksums": "docs/spike-0/SHA256SUMS"
   },
   "command_contract_status": {
     "ubuntu_cpu": "verified",

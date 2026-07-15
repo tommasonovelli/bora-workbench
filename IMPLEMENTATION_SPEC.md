@@ -2,11 +2,11 @@
 
 ## 0. Tracker di avanzamento — aggiornato al 15 luglio 2026
 
-> Questo blocco registra lo stato reale del repository al commit iniziale. Questo è il documento
-> normativo `IMPLEMENTATION_SPEC.md` alla radice, unica copia normativa nel repository come previsto
-> dallo Step 1; gli output grezzi originali dello spike restano archiviati in
-> `archive/project-kickoff-2026-07-14/docs/`. `[x]` significa completato e verificato; `[~]` parziale;
-> `[ ]` ancora da eseguire. Una voce parziale **non** soddisfa il gate dello step.
+> Questo blocco registra lo stato reale del repository. Questo è il documento normativo
+> `IMPLEMENTATION_SPEC.md` alla radice, unica copia normativa nel repository come previsto dallo
+> Step 1. Gli output grezzi verificati dello spike sono conservati sotto `docs/spike-0/`. `[x]`
+> significa completato e verificato; `[~]` parziale; `[ ]` ancora da eseguire. Una voce parziale
+> **non** soddisfa il gate dello step.
 
 ### Stato sintetico
 
@@ -15,9 +15,9 @@
   CPU/CUDA dei tre modi. Salute, API, metriche, UI esplicita, vision, MTP, sampling, stop/log e
   `benchmark/v1` con warm-up più cinque misure sono verificati. La coppia Windows CUDA 13.3 e i
   termini MIT/NVIDIA sono registrati. `docs/spike-0.md/json` dichiarano `GO`.
-- [~] **Step 1 — Scaffold:** implementazione locale completa, incluso `engine.lock`; suite frozen,
-  build e wheel isolata sono verdi su Windows. Restano la CI GitHub Ubuntu/Windows, che richiede un
-  push non autorizzato implicitamente, e le successive attività umane sul branch.
+- [~] **Step 1 — Scaffold:** implementazione completa, incluso `engine.lock`; commit pubblicato e
+  matrice CI GitHub verde su Ubuntu/Windows con suite frozen, build e wheel isolata. Resta la branch
+  protection con revisione code owner, rinviata finché il repository privato non sarà reso pubblico.
 - [ ] **Step 2 — Schemi, contenuti, validazione e hardware.**
 - [ ] **Step 3 — Vertical slice `coding`, stato, stop e status.**
 - [ ] **Step 4 — Asset lock e attivazione atomica del motore.**
@@ -42,7 +42,7 @@
 - [x] `CUDA_VISIBLE_DEVICES=0` e ambiente padre verificati sulle macchine a GPU singola. La selezione
   fra GPU fisiche multiple non è dimostrabile su questo hardware: la 0.1 dovrà bloccare CUDA su host
   multi-GPU finché il caso non sarà collaudato.
-- [x] Evidenza attiva sotto `docs/spike-0/` coperta da SHA-256; archivio iniziale immutato e verificato.
+- [x] Evidenza sotto `docs/spike-0/` coperta dai manifest SHA-256 verificati.
 - [x] Decisione finale esplicita: `GO`, senza derivare profili o assetti da RAM, VRAM o tok/s.
 
 ### Step 1 — dettaglio
@@ -63,20 +63,19 @@
 - [x] Suite locale Windows: sync frozen, lint, format e 41 test superati con CPython 3.12.13.
 - [x] Wheel e sdist costruite su Windows; import, risorse, `engine.lock` e `--version` verificati in
   un ambiente Windows isolato.
-- [x] Suite locale Linux precedente: lint, format e 39 test superati; wheel precedente verificata in
-  ambiente Linux isolato prima dell'aggiunta di `engine.lock`.
-- [ ] Eseguire la matrice CI GitHub Ubuntu/Windows e ricontrollare su Ubuntu gli artefatti aggiornati;
-  richiede pubblicare i commit e non è autorizzato implicitamente.
+- [x] Matrice CI GitHub sul commit `db21e26`: lint, format, 41 test, build e wheel isolata verdi su
+  Ubuntu 22.04 e Windows Server 2022.
 - [x] Preparare il commit locale iniziale Conventional Commits.
 - [x] Remote `origin` GitHub configurato.
-- [ ] Pubblicare i commit con push (attività umana; non autorizzata implicitamente).
-- [ ] Abilitare branch protection e code-owner review (attività umana dopo CI verde).
+- [x] Commit dello Step 1 pubblicato su `origin/main`.
+- [ ] Rendere pubblico il repository e abilitare branch protection con CI e revisione code owner
+  obbligatorie.
 
 ### Prossima azione obbligatoria
 
-Non iniziare lo Step 2. Per chiudere formalmente lo Step 1, Tommaso deve autorizzare il push, far
-eseguire la matrice CI GitHub Ubuntu/Windows e, a CI verde, abilitare branch protection e revisione
-code owner. Se la CI rileva differenze, le sole correzioni ammesse restano nel perimetro Step 1.
+Non iniziare lo Step 2. Per chiudere formalmente lo Step 1, Tommaso deve rendere pubblico il
+repository e abilitare branch protection con CI e revisione code owner obbligatorie. Fino ad allora,
+le sole correzioni ammesse restano nel perimetro Step 1.
 
 ---
 

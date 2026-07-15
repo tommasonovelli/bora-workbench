@@ -1,2 +1,0 @@
-version: 10011 (bf2c86ddc)
-built with Clang 20.1.8 for Windows x86_64

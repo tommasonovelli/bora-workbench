@@ -180,7 +180,6 @@ layer, RAM o VRAM.
 
 - `docs/spike-0/SHA256SUMS`: manifest globale dell'evidenza attiva;
 - `docs/spike-0/windows-b10011/SHA256SUMS`: tutti i 229 output Windows grezzi;
-- `archive/project-kickoff-2026-07-14/SHA256SUMS`: evidenza Windows preliminare immutata e verificata;
 - `docs/spike-0/research/`: metadati release/modello e testi di licenza acquisiti.
 
 ## Decisione

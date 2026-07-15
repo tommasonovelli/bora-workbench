@@ -1,5 +1,4 @@
 # Preserve raw command output byte-for-byte and keep it out of textual diffs.
-/archive/project-kickoff-2026-07-14/docs/** -text -diff
 /docs/spike-0/research/** -text -diff
 /docs/spike-0/ubuntu-b10011/** -text -diff
 /docs/spike-0/windows-b10011/** -text -diff

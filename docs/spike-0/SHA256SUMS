@@ -1,6 +1,6 @@
-123f249f1526d6dde853228d03a5f838dedbecf402d9c5c4a79f9951792d0e20  ./benchmark-v1-prompt.txt
-4890e1a8fa6f512b7bf480dd894a02648710e9a066939abae982d520d22f54b1  ./benchmark-v1-request.json
-09a98b3fc3eeeabe8629ade63e548f2faeba92f1fdd275d9d140c4e17ef1f28f  ./benchmark-v1-sha256.txt
+1c7182235411da2d4fe6fca130e3effb0b0d965569c52abd8fd45327103ddb2e  ./benchmark-v1-prompt.txt
+025dc91aeb61a790d5fd36c27f127e04761ae7f1c3d6b542d0cfd9d37bc5c19f  ./benchmark-v1-request.json
+22b246c12c94af8280daa1e879853b5e6ff7527224999695e205e55ba0fb2642  ./benchmark-v1-sha256.txt
 b437059902f8bedd783767b75e94f7cf5c94951226251acfb3ecb2f00b460fb6  ./research/github-release-b10011.json
 4ae5a36bdbbda6d6694fece10e261b1d8883cbc8c3dc5770ca24f1a5f1820f5c  ./research/github-tag-b10011.json
 50cbab8a892c5f2993b8c7351a99182507472def3b1374558308605d99b86b32  ./research/huggingface-base-model-LICENSE
@@ -190,7 +190,7 @@ f4092ba2ba159dcc930ad2ca53738927da23f734ce60eb8f61bab5928b00aec5  ./ubuntu-b1001
 9b9f55980eb7b6942b7f1de769598e6212354fdf4be4a6241db6d9b09d0e0e13  ./ubuntu-b10011/model-assets.txt
 2344438bb784e4580f1e8fbbffdfddfd404b4d9628a13d67d8bfdb240c5be4b0  ./ubuntu-b10011/source-archive-sha256.txt
 110554f0530f93ed6b4100726a1280f10f84743d39b61ce96a570a7891ef1dd3  ./ubuntu-b10011/system-info.txt
-53eadb661c659592fe4c07d003508233a91c84481ae93843f3d31f39eb99ea75  ./vision-test-sha256.txt
+1b7794ddf9f42a9c2d526dfa8bae92a74bd10dc3973f37aa264c019800a1b502  ./vision-test-sha256.txt
 becf0cf30d6978325d9ccdea315923e2dbbf7e591c2857b92b5f82e41957bb98  ./vision-test.png
 55dc123b047d57c05c041080c691d3f25084b73cce6bc3b2da5031de70ffb5b7  ./windows-b10011/benchmark-summaries.json
 88ad9c19c4a4778d8661ac6533f99a6df1a9d29445c5811162ac209a7cb70925  ./windows-b10011/cpu-coding/benchmark-response-1-headers.json

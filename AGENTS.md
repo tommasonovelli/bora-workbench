@@ -19,11 +19,10 @@ apply here.
 - This is a Python 3.12 launcher for a local, calibrated Qwen model served by an exact, verified
   `llama.cpp` release. It is not a generic model manager or plugin framework.
 - Work one implementation step at a time and do not anticipate later milestones.
-- The current mandatory next action is to complete **Spike 0**. Do not begin Step 2 until the spike
-  records a real `GO` and Step 1's missing contracts are complete.
+- The current mandatory next action is to complete **Step 1** governance. Do not begin Step 2 until
+  branch protection and code-owner review are enabled.
 - Never invent engine flags, checksums, source commits, benchmark results, hardware support, profiles,
   health responses, or compatibility claims.
-- Raw evidence under `archive/` is immutable. Verify it with its `SHA256SUMS`; do not reformat it.
 
 ## Stack and repository layout
 
@@ -48,7 +47,7 @@ For hand-written Python in `src/`, `tests/`, and `scripts/`:
 - nesting: maximum 3 levels; prefer guard clauses and early returns.
 
 Split code by responsibility before exceeding a limit. Test fixtures may require additional injected
-parameters when grouping them would reduce clarity. Normative documentation, archived evidence,
+parameters when grouping them would reduce clarity. Normative documentation, measured evidence,
 lockfiles, generated artifacts, JSON schemas, and declarative content are exempt from code-size
 limits and must retain their required format.
 

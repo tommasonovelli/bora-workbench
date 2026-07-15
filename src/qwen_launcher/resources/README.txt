@@ -1,1 +1,1 @@
-Package resources live here. Schemas, content and engine.lock will be added only after Spike 0 reaches GO.
+Package resources live here. Spike 0 reached GO, and engine.lock contains its verified machine contract. Schemas and content are added in Step 2.
