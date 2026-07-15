@@ -19,8 +19,8 @@ apply here.
 - This is a Python 3.12 launcher for a local, calibrated Qwen model served by an exact, verified
   `llama.cpp` release. It is not a generic model manager or plugin framework.
 - Work one implementation step at a time and do not anticipate later milestones.
-- The current mandatory next action is to complete **Step 1** governance. Do not begin Step 2 until
-  branch protection and code-owner review are enabled.
+- **Step 1 is complete.** The current mandatory next action is **Step 2**. Do not begin Step 3 or
+  anticipate later milestones.
 - Never invent engine flags, checksums, source commits, benchmark results, hardware support, profiles,
   health responses, or compatibility claims.
 

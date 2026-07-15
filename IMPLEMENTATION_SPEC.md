@@ -15,9 +15,9 @@
   CPU/CUDA dei tre modi. Salute, API, metriche, UI esplicita, vision, MTP, sampling, stop/log e
   `benchmark/v1` con warm-up più cinque misure sono verificati. La coppia Windows CUDA 13.3 e i
   termini MIT/NVIDIA sono registrati. `docs/spike-0.md/json` dichiarano `GO`.
-- [~] **Step 1 — Scaffold:** implementazione completa, incluso `engine.lock`; commit pubblicato e
-  matrice CI GitHub verde su Ubuntu/Windows con suite frozen, build e wheel isolata. Resta la branch
-  protection con revisione code owner, rinviata finché il repository privato non sarà reso pubblico.
+- [x] **Step 1 — Scaffold:** implementazione completa, incluso `engine.lock`; commit pubblicati,
+  matrice CI GitHub verde su Ubuntu/Windows e branch protection attiva con CI e revisione code owner
+  obbligatorie per i contributori.
 - [ ] **Step 2 — Schemi, contenuti, validazione e hardware.**
 - [ ] **Step 3 — Vertical slice `coding`, stato, stop e status.**
 - [ ] **Step 4 — Asset lock e attivazione atomica del motore.**
@@ -68,14 +68,13 @@
 - [x] Preparare il commit locale iniziale Conventional Commits.
 - [x] Remote `origin` GitHub configurato.
 - [x] Commit dello Step 1 pubblicato su `origin/main`.
-- [ ] Rendere pubblico il repository e abilitare branch protection con CI e revisione code owner
-  obbligatorie.
+- [x] Repository pubblico e branch protection attiva: CI Ubuntu/Windows e revisione code owner
+  obbligatorie per i contributori; bypass amministratore mantenuto per l'unico maintainer.
 
 ### Prossima azione obbligatoria
 
-Non iniziare lo Step 2. Per chiudere formalmente lo Step 1, Tommaso deve rendere pubblico il
-repository e abilitare branch protection con CI e revisione code owner obbligatorie. Fino ad allora,
-le sole correzioni ammesse restano nel perimetro Step 1.
+Lo Step 1 è concluso. La prossima sessione di implementazione può iniziare esclusivamente lo Step 2,
+senza anticipare gli step successivi.
 
 ---
 
@@ -207,6 +206,7 @@ Regole conseguenti:
 | D-020 | anche la 0.2 usa preparazione locale, cancello umano e finalizzazione | nessuna milestone pubblicabile resta senza procedura di release e autorizzazione esplicita |
 | D-021 | percorsi OS e variabili ambiente pubbliche sono fissati prima dello scaffold | evita migrazioni successive di config, dati, cache e stato |
 | D-022 | Open WebUI usa ambienti versionati e un manifest di attivazione atomico | applica anche al secondo servizio gestito la portabilità richiesta su Windows |
+| D-023 | `main` richiede CI e revisione code owner per i contributori; il bypass amministratore resta attivo finché esiste un solo maintainer | evita di bloccare l'unico code owner sulle proprie modifiche senza indebolire il flusso dei contributori |
 
 Le sole decisioni lasciate allo spike sono: release esatta di `llama.cpp`, nomi esatti dei flag per
 quella release, forma reale della salute, asset ufficiali disponibili, compatibilità della UI e

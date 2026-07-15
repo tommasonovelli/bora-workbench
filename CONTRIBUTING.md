@@ -10,8 +10,24 @@ alla volta. Prima di una modifica:
 5. non modificare configurazione utente o cache Hugging Face.
 
 Una pull request modifica **contenuto dichiarativo oppure core, mai entrambi**. I profili devono
-contenere misure reali raccolte con il protocollo e la release del lock. Ogni PR richiede
-l'approvazione del code owner.
+contenere misure reali raccolte con il protocollo e la release del lock.
+
+## Revisione delle pull request
+
+Il branch `main` è protetto. Prima del merge di una PR di un contributore:
+
+- la CI Ubuntu e Windows deve essere verde e il branch deve essere aggiornato;
+- l'unico maintainer esegue personalmente la revisione come code owner;
+- è richiesta almeno un'approvazione del code owner;
+- nuovi commit annullano l'approvazione precedente e richiedono una nuova revisione.
+
+CI verde e approvazione sono necessarie, ma non garantiscono il merge. Una PR può richiedere
+correzioni o essere rifiutata se esce dal perimetro dello step, manca di evidenze o contraddice la
+specifica. Essendoci un solo maintainer, non è garantito un tempo preciso di revisione.
+
+Il bypass amministratore resta attivo per evitare che l'unico code owner rimanga bloccato sulle
+proprie modifiche. Non cambia il flusso dei contributori e le modifiche del maintainer vengono
+comunque verificate dalla CI.
 
 ## Verifiche
 

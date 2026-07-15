@@ -19,11 +19,10 @@ Ubuntu/Windows CPU/CUDA e il protocollo `benchmark/v1` sono verificati. Il contr
 incluso nella wheel come `engine.lock`; gli asset restano intenzionalmente marcati incompleti fino
 allo Step 4. Schemi, profili e comandi di avvio entrano soltanto negli step successivi.
 
-L'implementazione dello Step 1 e la matrice CI Ubuntu/Windows sono complete. La chiusura formale
-attende che il repository diventi pubblico per abilitare branch protection e revisione code owner.
-Il piano normativo e il tracker aggiornato sono in
-[`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
-[`docs/spike-0/`](docs/spike-0/).
+Lo Step 1 è completo: implementazione, matrice CI Ubuntu/Windows e branch protection con revisione
+code owner sono attive. Lo Step 2 è il prossimo passo e non è ancora iniziato. Il piano normativo e
+il tracker aggiornato sono in [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza
+verificata dello spike è sotto [`docs/spike-0/`](docs/spike-0/).
 
 ## Sviluppo
 
