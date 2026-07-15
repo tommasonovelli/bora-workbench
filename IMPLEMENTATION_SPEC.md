@@ -20,8 +20,7 @@
   obbligatorie per i contributori.
 - [x] **Step 2A — Contratti dichiarativi e modi.**
 - [x] **Step 2B — Validazione, modelli runtime e hardware.**
-- [~] **Step 2C — Contratto artefatto modello:** correzione implementata e verificata localmente;
-  pubblicazione dei commit e matrice CI remota ancora da eseguire.
+- [x] **Step 2C — Contratto artefatto modello.**
 - [ ] **Step 3 — Vertical slice `coding`, stato, stop e status.**
 - [ ] **Step 4 — Asset lock e attivazione atomica del motore.**
 - [ ] **Step 5 — `studio` e `vstudio`.**
@@ -105,12 +104,13 @@
 - [x] Corretto il template macchina da `{model}` a `{model_path}` senza aggiungere flag.
 - [x] Validati artefatti, placeholder e copertura completa tramite `verified_flags`.
 - [x] Suite locale, build e `validate` dalla wheel isolata verdi.
-- [ ] Commit pubblicati e matrice CI Ubuntu/Windows verdi sullo Step 2C.
+- [x] Commit `1b89a27` e `5cdfec2` pubblicati; matrice CI Ubuntu/Windows verde, inclusi
+  `validate`, build e verifica wheel isolata.
 
 ### Prossima azione obbligatoria
 
-Lo Step 2C resta aperto esclusivamente per push autorizzato e verifica della matrice CI
-Ubuntu/Windows. Non iniziare lo Step 3 o gli step successivi prima della chiusura di questo gate.
+Lo Step 2C è concluso. La prossima sessione di implementazione può iniziare esclusivamente lo Step 3,
+senza anticipare lo Step 4 o gli step successivi.
 
 ---
 
