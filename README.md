@@ -20,8 +20,9 @@ incluso nella wheel come `engine.lock`; gli asset restano intenzionalmente marca
 allo Step 4. Schemi, profili e comandi di avvio entrano soltanto negli step successivi.
 
 Lo Step 1 è completo: implementazione, matrice CI Ubuntu/Windows e branch protection con revisione
-code owner sono attive. Lo Step 2 è il prossimo passo e non è ancora iniziato. Il piano normativo e
-il tracker aggiornato sono in [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza
+code owner sono attive. Lo Step 2A, dedicato ai contratti dichiarativi e ai modi, è il prossimo passo
+e non è ancora iniziato. I benchmark dello spike provano fattibilità, non profili ottimizzati. Il
+piano normativo e il tracker aggiornato sono in [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza
 verificata dello spike è sotto [`docs/spike-0/`](docs/spike-0/).
 
 ## Sviluppo

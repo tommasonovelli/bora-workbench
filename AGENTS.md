@@ -19,8 +19,8 @@ apply here.
 - This is a Python 3.12 launcher for a local, calibrated Qwen model served by an exact, verified
   `llama.cpp` release. It is not a generic model manager or plugin framework.
 - Work one implementation step at a time and do not anticipate later milestones.
-- **Step 1 is complete.** The current mandatory next action is **Step 2**. Do not begin Step 3 or
-  anticipate later milestones.
+- **Step 1 is complete.** The current mandatory next action is **Step 2A**. Do not begin Step 2B,
+  Step 3, or anticipate later milestones.
 - Never invent engine flags, checksums, source commits, benchmark results, hardware support, profiles,
   health responses, or compatibility claims.
 
@@ -97,7 +97,7 @@ A TODO must include date and context, for example:
 ## Errors and configuration
 
 - Expected failures must be actionable, go to stderr, and use the exit codes in specification
-  section 5.10 without tracebacks.
+  section 5.11 without tracebacks.
 - Do not catch and ignore operational exceptions. Add context or map them at the correct boundary.
 - Configuration precedence is environment > TOML > code defaults. Validate the entire TOML file
   before applying environment overrides.
