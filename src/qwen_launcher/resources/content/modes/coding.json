@@ -1,0 +1,14 @@
+{
+  "schema": "mode/v1",
+  "id": "coding",
+  "description": "API-first text mode for coding workflows without an integrated web interface.",
+  "services": {
+    "ui": false,
+    "vision": false
+  },
+  "sampling": {
+    "temp": 0.6,
+    "top_p": 0.95,
+    "top_k": 20
+  }
+}

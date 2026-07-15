@@ -18,7 +18,8 @@
 - [x] **Step 1 — Scaffold:** implementazione completa, incluso `engine.lock`; commit pubblicati,
   matrice CI GitHub verde su Ubuntu/Windows e branch protection attiva con CI e revisione code owner
   obbligatorie per i contributori.
-- [ ] **Step 2A / 2B — Contratti e modi, poi validazione e hardware.**
+- [x] **Step 2A — Contratti dichiarativi e modi.**
+- [ ] **Step 2B — Validazione, modelli runtime e hardware.**
 - [ ] **Step 3 — Vertical slice `coding`, stato, stop e status.**
 - [ ] **Step 4 — Asset lock e attivazione atomica del motore.**
 - [ ] **Step 5 — `studio` e `vstudio`.**
@@ -74,10 +75,19 @@
 - [x] Repository pubblico e branch protection attiva: CI Ubuntu/Windows e revisione code owner
   obbligatorie per i contributori; bypass amministratore mantenuto per l'unico maintainer.
 
+### Step 2A — dettaglio
+
+- [x] Schemi JSON Schema 2020-12 `mode/v1`, `profile/v1`, `calibration-policy/v1` e
+  `calibration-report/v1` creati secondo i contratti della sezione 5.3.
+- [x] Modi `coding`, `studio` e `vstudio` creati con servizi e sampling verificati nello Spike 0.
+- [x] Nessun profilo, policy o report di produzione derivato impropriamente dalle misure di
+  fattibilità dello spike.
+- [x] Schemi e modi validati come JSON UTF-8 e verificati nella wheel e nella sdist.
+
 ### Prossima azione obbligatoria
 
-Lo Step 1 è concluso. La prossima sessione di implementazione può iniziare esclusivamente lo Step
-2A, senza anticipare lo Step 2B o gli step successivi.
+Lo Step 2A è concluso. La prossima sessione di implementazione può iniziare esclusivamente lo Step
+2B, senza anticipare lo Step 3 o gli step successivi.
 
 ---
 

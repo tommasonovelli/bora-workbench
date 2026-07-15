@@ -1,0 +1,678 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-launcher.dev/schemas/calibration-report.v1.json",
+  "title": "qwen-launcher calibration-report/v1",
+  "description": "Privacy-reviewed evidence and candidate selection produced by calibration/v1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "created_at",
+    "decision",
+    "launcher_version",
+    "model",
+    "engine",
+    "engine_source_commit",
+    "calibration_protocol",
+    "benchmark_protocol",
+    "policy",
+    "hardware",
+    "hardware_class",
+    "modes",
+    "selection_rule",
+    "privacy_reviewed",
+    "evidence_manifest"
+  ],
+  "properties": {
+    "schema": {
+      "description": "Versioned schema identifier for this calibration report.",
+      "const": "calibration-report/v1"
+    },
+    "id": {
+      "description": "Stable report identifier, equal to the file name without its extension.",
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "created_at": {
+      "description": "UTC date and time when the report bundle was generated.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "decision": {
+      "description": "Human review decision for this report.",
+      "enum": [
+        "draft",
+        "accepted",
+        "rejected"
+      ]
+    },
+    "launcher_version": {
+      "description": "Exact qwen-launcher version that generated the report.",
+      "type": "string",
+      "minLength": 1
+    },
+    "model": {
+      "description": "Complete model identifier used for calibration.",
+      "type": "string",
+      "minLength": 1
+    },
+    "engine": {
+      "description": "Exact llama.cpp release used for calibration.",
+      "type": "string",
+      "minLength": 1
+    },
+    "engine_source_commit": {
+      "description": "Full source commit of the calibrated llama.cpp release.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "calibration_protocol": {
+      "description": "Calibration protocol used to compare candidates.",
+      "const": "calibration/v1"
+    },
+    "benchmark_protocol": {
+      "description": "Benchmark protocol used for every valid candidate.",
+      "const": "benchmark/v1"
+    },
+    "policy": {
+      "description": "Policy values and ordered candidates actually used for this run.",
+      "$ref": "#/$defs/policy_snapshot"
+    },
+    "hardware": {
+      "description": "Privacy-safe hardware facts captured during calibration.",
+      "$ref": "#/$defs/hardware"
+    },
+    "hardware_class": {
+      "description": "Approved hardware-class identifier, or null for a newly proposed class.",
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "modes": {
+      "description": "Candidate results and selection keyed by calibrated mode identifier.",
+      "type": "object",
+      "minProperties": 1,
+      "patternProperties": {
+        "^[a-z0-9-]+$": {
+          "description": "Calibration results for one existing launcher mode.",
+          "$ref": "#/$defs/mode_result"
+        }
+      },
+      "additionalProperties": false
+    },
+    "selection_rule": {
+      "description": "Fixed calibration/v1 rule: maximize median tok/s, then free VRAM, then envelope prudence.",
+      "const": "max-median-tok-s-then-free-vram-then-prudent-envelope/v1"
+    },
+    "privacy_reviewed": {
+      "description": "Whether a human confirmed that the shared evidence contains no private data.",
+      "type": "boolean"
+    },
+    "evidence_manifest": {
+      "description": "Relative path to the SHA-256 manifest for the evidence bundle.",
+      "$ref": "#/$defs/relative_path"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "decision": {
+            "description": "Constraint selecting the accepted-report branch.",
+            "const": "accepted"
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "then": {
+        "properties": {
+          "privacy_reviewed": {
+            "description": "Accepted reports require completed human privacy review.",
+            "const": true
+          },
+          "modes": {
+            "description": "Accepted reports require a selected candidate for every mode.",
+            "patternProperties": {
+              "^[a-z0-9-]+$": {
+                "properties": {
+                  "selected_candidate_id": {
+                    "description": "Accepted candidate identifier required by the accepted-report branch.",
+                    "type": "string",
+                    "pattern": "^[a-z0-9-]+$"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "modes": {
+            "description": "Draft and rejected reports cannot claim a selected candidate.",
+            "patternProperties": {
+              "^[a-z0-9-]+$": {
+                "properties": {
+                  "selected_candidate_id": {
+                    "description": "Unaccepted modes retain a null candidate selection.",
+                    "type": "null"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "relative_path": {
+      "description": "Non-empty bundle-relative path checked semantically for traversal and absoluteness.",
+      "type": "string",
+      "minLength": 1
+    },
+    "candidate": {
+      "description": "Candidate parameters recorded in the policy snapshot.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "mode",
+        "id",
+        "ctx"
+      ],
+      "properties": {
+        "mode": {
+          "description": "Mode for which the candidate was tested.",
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "id": {
+          "description": "Candidate identifier unique within its mode.",
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "ctx": {
+          "description": "Context size tested by this candidate.",
+          "type": "integer",
+          "minimum": 1024
+        },
+        "n_cpu_moe": {
+          "description": "Experts assigned to CPU on CUDA; required on CUDA and forbidden on CPU by semantic validation.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "policy_snapshot": {
+      "description": "Exact calibration policy inputs used to produce this report.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "gpu_poll_interval_ms",
+        "stable_start_runs",
+        "minimum_free_vram_gib",
+        "candidates"
+      ],
+      "properties": {
+        "id": {
+          "description": "Approved policy identifier, or null before a policy is approved.",
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z0-9-]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gpu_poll_interval_ms": {
+          "description": "GPU memory polling interval used for the run.",
+          "const": 250
+        },
+        "stable_start_runs": {
+          "description": "Required number of successful fresh starts per valid candidate.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "minimum_free_vram_gib": {
+          "description": "Required free-VRAM reserve, or null for a CPU calibration.",
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "candidates": {
+          "description": "Candidates in the exact order in which calibration tested them.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "description": "Candidate parameters used by the run.",
+            "$ref": "#/$defs/candidate"
+          }
+        }
+      }
+    },
+    "hardware": {
+      "description": "Hardware snapshot without hostname, username, or private paths.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "os_name",
+        "os_version",
+        "cpu_name",
+        "cpu_cores",
+        "ram_total_gib",
+        "ram_available_gib",
+        "backend",
+        "gpu_index",
+        "gpu_name",
+        "gpu_driver",
+        "vram_total_gib",
+        "vram_free_gib"
+      ],
+      "properties": {
+        "os_name": {
+          "description": "Normalized operating system name.",
+          "enum": [
+            "linux",
+            "windows"
+          ]
+        },
+        "os_version": {
+          "description": "Operating system version observed during calibration.",
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu_name": {
+          "description": "CPU model reported by the operating system.",
+          "type": "string",
+          "minLength": 1
+        },
+        "cpu_cores": {
+          "description": "Number of logical CPU cores available to the launcher.",
+          "type": "integer",
+          "minimum": 1
+        },
+        "ram_total_gib": {
+          "description": "Total system RAM in exact GiB.",
+          "type": "number",
+          "minimum": 0
+        },
+        "ram_available_gib": {
+          "description": "Available system RAM in exact GiB before calibration.",
+          "type": "number",
+          "minimum": 0
+        },
+        "backend": {
+          "description": "Execution backend used for calibration.",
+          "enum": [
+            "cuda",
+            "cpu"
+          ]
+        },
+        "gpu_index": {
+          "description": "Selected physical GPU index, or null for CPU calibration.",
+          "anyOf": [
+            {
+              "type": "integer",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gpu_name": {
+          "description": "Selected GPU model, or null for CPU calibration.",
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gpu_driver": {
+          "description": "GPU driver version, or null for CPU calibration.",
+          "anyOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vram_total_gib": {
+          "description": "Selected GPU total VRAM in exact GiB, or null for CPU calibration.",
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vram_free_gib": {
+          "description": "Selected GPU free VRAM before calibration, or null for CPU calibration.",
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "tok_s": {
+      "description": "Token-per-second summary for five valid benchmark/v1 measurements.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min",
+        "median",
+        "max"
+      ],
+      "properties": {
+        "min": {
+          "description": "Minimum valid measured token rate.",
+          "type": "number",
+          "minimum": 0
+        },
+        "median": {
+          "description": "Median valid measured token rate.",
+          "type": "number",
+          "minimum": 0
+        },
+        "max": {
+          "description": "Maximum valid measured token rate.",
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "log_digest": {
+      "description": "Digest of one relative calibration log included in the evidence bundle.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256"
+      ],
+      "properties": {
+        "path": {
+          "description": "Bundle-relative path of the calibration log.",
+          "$ref": "#/$defs/relative_path"
+        },
+        "sha256": {
+          "description": "SHA-256 of the exact log bytes.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "candidate_result": {
+      "description": "Observed outcome and evidence for one calibration candidate.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "ctx",
+        "outcome",
+        "successful_start_runs",
+        "vram_baseline_gib",
+        "vram_peak_gib",
+        "vram_min_free_gib",
+        "warmup_tok_s",
+        "measured_tok_s",
+        "tok_s",
+        "log_digests"
+      ],
+      "properties": {
+        "id": {
+          "description": "Candidate identifier matching the policy snapshot.",
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "ctx": {
+          "description": "Context size tested by this candidate.",
+          "type": "integer",
+          "minimum": 1024
+        },
+        "n_cpu_moe": {
+          "description": "Experts assigned to CPU on CUDA; required on CUDA and forbidden on CPU by semantic validation.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "outcome": {
+          "description": "Whether the candidate completed calibration or was discarded.",
+          "enum": [
+            "valid",
+            "discarded"
+          ]
+        },
+        "discard_reason": {
+          "description": "Actionable reason a discarded candidate failed the protocol.",
+          "type": "string",
+          "minLength": 1
+        },
+        "successful_start_runs": {
+          "description": "Number of successful fresh process starts completed by the candidate.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "vram_baseline_gib": {
+          "description": "Total GPU memory use before the candidate, or null on CPU.",
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vram_peak_gib": {
+          "description": "Peak total GPU memory use during the candidate, or null on CPU.",
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vram_min_free_gib": {
+          "description": "Minimum free GPU memory during the candidate, or null on CPU.",
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "warmup_tok_s": {
+          "description": "Excluded benchmark warm-up token rate, or null if it did not complete.",
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "measured_tok_s": {
+          "description": "Five valid benchmark rates, or partial/null evidence for a discarded candidate.",
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "description": "One valid measured token rate.",
+                "type": "number",
+                "minimum": 0
+              },
+              "maxItems": 5
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tok_s": {
+          "description": "Summary of the five valid measurements, or null when discarded.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/tok_s"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "log_digests": {
+          "description": "Digests of all relative logs supporting this candidate outcome.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "description": "One candidate log and its digest.",
+            "$ref": "#/$defs/log_digest"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "outcome": {
+                "description": "Constraint selecting the valid-candidate branch.",
+                "const": "valid"
+              }
+            },
+            "required": [
+              "outcome"
+            ]
+          },
+          "then": {
+            "not": {
+              "required": [
+                "discard_reason"
+              ]
+            },
+            "properties": {
+              "warmup_tok_s": {
+                "description": "Completed warm-up required for a valid candidate.",
+                "type": "number",
+                "minimum": 0
+              },
+              "measured_tok_s": {
+                "description": "Exactly five measurements required for a valid candidate.",
+                "type": "array",
+                "minItems": 5,
+                "maxItems": 5,
+                "items": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              },
+              "tok_s": {
+                "description": "Token-rate summary required for a valid candidate.",
+                "$ref": "#/$defs/tok_s"
+              }
+            }
+          },
+          "else": {
+            "required": [
+              "discard_reason"
+            ],
+            "properties": {
+              "measured_tok_s": {
+                "description": "Discarded candidates may retain partial but never complete benchmark evidence.",
+                "anyOf": [
+                  {
+                    "type": "array",
+                    "maxItems": 4,
+                    "items": {
+                      "type": "number",
+                      "minimum": 0
+                    }
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "tok_s": {
+                "description": "Discarded candidates cannot claim a benchmark summary.",
+                "type": "null"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "mode_result": {
+      "description": "Candidate evidence and final selection for one calibrated mode.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "candidates",
+        "selected_candidate_id"
+      ],
+      "properties": {
+        "candidates": {
+          "description": "Candidate results in the same order as the policy snapshot.",
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "description": "Observed result for one candidate.",
+            "$ref": "#/$defs/candidate_result"
+          }
+        },
+        "selected_candidate_id": {
+          "description": "Selected valid candidate identifier, or null until the mode is accepted.",
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[a-z0-9-]+$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

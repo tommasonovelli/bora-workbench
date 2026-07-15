@@ -1,0 +1,14 @@
+{
+  "schema": "mode/v1",
+  "id": "studio",
+  "description": "Text chat mode with the integrated llama.cpp web interface enabled.",
+  "services": {
+    "ui": true,
+    "vision": false
+  },
+  "sampling": {
+    "temp": 0.7,
+    "top_p": 0.8,
+    "top_k": 20
+  }
+}

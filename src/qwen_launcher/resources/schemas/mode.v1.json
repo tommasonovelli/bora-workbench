@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-launcher.dev/schemas/mode.v1.json",
+  "title": "qwen-launcher mode/v1",
+  "description": "Declarative behavior contract for one launcher mode.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "description",
+    "services",
+    "sampling"
+  ],
+  "properties": {
+    "schema": {
+      "description": "Versioned schema identifier for this mode.",
+      "const": "mode/v1"
+    },
+    "id": {
+      "description": "Stable mode identifier, equal to the file name without its extension.",
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "description": {
+      "description": "Human-readable explanation of the mode behavior.",
+      "type": "string",
+      "minLength": 1
+    },
+    "services": {
+      "description": "Services explicitly enabled or disabled by the mode.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ui",
+        "vision"
+      ],
+      "properties": {
+        "ui": {
+          "description": "Whether the integrated llama.cpp web interface is enabled.",
+          "type": "boolean"
+        },
+        "vision": {
+          "description": "Whether multimodal projection and image input are enabled.",
+          "type": "boolean"
+        }
+      }
+    },
+    "sampling": {
+      "description": "Sampling behavior verified for the mode during Spike 0.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "temp",
+        "top_p",
+        "top_k"
+      ],
+      "properties": {
+        "temp": {
+          "description": "Sampling temperature passed to the model server.",
+          "type": "number",
+          "minimum": 0
+        },
+        "top_p": {
+          "description": "Cumulative probability threshold used for nucleus sampling.",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "top_k": {
+          "description": "Maximum number of highest-probability tokens retained for sampling.",
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}
