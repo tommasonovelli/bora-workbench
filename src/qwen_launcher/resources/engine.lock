@@ -4,6 +4,18 @@
   "release": "b10011",
   "source_commit": "bf2c86ddc0685f580595954056c2e77ebabfab4f",
   "default_model": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M",
+  "default_model_artifact": {
+    "repository": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF",
+    "revision": "5bc3e238d916f48a861bac2f8a1990a0e9b7e98d",
+    "filename": "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+    "size_bytes": 22663387424,
+    "sha256": "0b21525e972670ed59e1812e170b27c26355381f0656ecc4e25617ece7dac58b",
+    "mmproj": {
+      "filename": "mmproj-BF16.gguf",
+      "size_bytes": 902822528,
+      "sha256": "da63cb47a76763c712393f8a017070188a304fa39f8aeea6edc629ed7b975cfa"
+    }
+  },
   "verified_flags": [
     "-c",
     "-fa",
@@ -52,7 +64,7 @@
   "command_contract": {
     "model_args": [
       "-m",
-      "{model}"
+      "{model_path}"
     ],
     "context_args": [
       "-c",
