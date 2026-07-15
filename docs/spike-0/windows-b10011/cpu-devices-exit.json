@@ -1,0 +1,7 @@
+{
+  "exit_code": 0,
+  "argv": [
+    "C:\\Users\\Tommaso\\Desktop\\qwen-launcher\\.spike-work\\windows-b10011\\cpu\\llama-server.exe",
+    "--list-devices"
+  ]
+}

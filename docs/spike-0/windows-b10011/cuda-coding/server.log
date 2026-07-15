@@ -1,0 +1,106 @@
+0.00.143.234 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.266.193 I srv          init: The UI is disabled
+0.00.266.201 I srv          init: Use --ui/--no-ui (or deprecated --webui/--no-webui) to enable/disable
+0.00.277.158 I srv    load_model: loading model 'C:\Users\Tommaso\.cache\huggingface\hub\models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF\snapshots\5bc3e238d916f48a861bac2f8a1990a0e9b7e98d\Qwen3.6-35B-A3B-UD-Q4_K_M.gguf'
+0.00.431.663 W srv    operator(): (CORS) skip non-localhost origin: 
+0.00.875.533 W llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --no-mmap for better performance
+0.01.446.253 W srv    operator(): (CORS) skip non-localhost origin: 
+0.02.447.601 W srv    operator(): (CORS) skip non-localhost origin: 
+0.03.449.018 W srv    operator(): (CORS) skip non-localhost origin: 
+0.04.450.412 W srv    operator(): (CORS) skip non-localhost origin: 
+0.05.451.805 W srv    operator(): (CORS) skip non-localhost origin: 
+0.06.453.858 W srv    operator(): (CORS) skip non-localhost origin: 
+0.07.028.745 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 8192, kv_unified = 'false'
+0.07.172.521 I srv          init: chat template supports preserving reasoning, consider enabling it via --reasoning-preserve
+0.07.172.759 I srv  llama_server: model loaded
+0.07.172.771 I srv  llama_server: listening on http://127.0.0.1:18103
+0.07.455.554 W srv    operator(): (CORS) skip non-localhost origin: 
+0.07.458.264 W srv    operator(): (CORS) skip non-localhost origin: 
+0.07.460.920 W srv    operator(): (CORS) skip non-localhost origin: 
+0.07.463.851 W srv    operator(): (CORS) skip non-localhost origin: 
+0.07.469.112 W srv    operator(): (CORS) skip non-localhost origin: 
+0.07.474.030 W srv    operator(): (CORS) skip non-localhost origin: 
+0.07.539.518 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
+0.07.539.828 I slot launch_slot_: id  0 | task 1 | processing task, is_child = 0
+0.09.992.393 I slot print_timing: id  0 | task 1 | prompt eval time =    1869.83 ms /    20 tokens (   93.49 ms per token,    10.70 tokens per second)
+0.09.992.403 I slot print_timing: id  0 | task 1 |        eval time =     582.65 ms /     5 tokens (  116.53 ms per token,     8.58 tokens per second)
+0.09.992.404 I slot print_timing: id  0 | task 1 |       total time =    2452.49 ms /    25 tokens
+0.09.992.406 I slot print_timing: id  0 | task 1 |    graphs reused =          2
+0.09.992.412 I slot print_timing: id  0 | task 1 | draft acceptance = 1.00000 (    4 accepted /     4 generated), mean len =  3.00
+0.09.992.475 I slot      release: id  0 | task 1 | stop processing: n_tokens = 26, truncated = 0
+0.10.088.550 W srv    operator(): (CORS) skip non-localhost origin: 
+0.10.136.173 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 9853888
+0.10.173.695 I slot launch_slot_: id  0 | task 6 | processing task, is_child = 0
+0.45.052.767 I slot print_timing: id  0 | task 6 | prompt processing, n_tokens =    124, progress = 0.97, t =  34.88 s / 3.56 tokens per second
+0.50.755.453 I slot print_timing: id  0 | task 6 | n_decoded =    102, tg =  18.47 t/s, tg_3s =  18.47 t/s
+0.53.867.485 I slot print_timing: id  0 | task 6 | n_decoded =    160, tg =  18.53 t/s, tg_3s =  18.64 t/s
+0.56.934.935 I slot print_timing: id  0 | task 6 | n_decoded =    207, tg =  17.69 t/s, tg_3s =  15.32 t/s
+0.59.984.791 I slot print_timing: id  0 | task 6 | n_decoded =    249, tg =  16.88 t/s, tg_3s =  13.77 t/s
+1.00.729.280 I slot print_timing: id  0 | task 6 | prompt eval time =   35059.13 ms /   128 tokens (  273.90 ms per token,     3.65 tokens per second)
+1.00.729.291 I slot print_timing: id  0 | task 6 |        eval time =   15496.42 ms /   256 tokens (   60.53 ms per token,    16.52 tokens per second)
+1.00.729.292 I slot print_timing: id  0 | task 6 |       total time =   50555.55 ms /   384 tokens
+1.00.729.294 I slot print_timing: id  0 | task 6 |    graphs reused =        107
+1.00.729.301 I slot print_timing: id  0 | task 6 | draft acceptance = 0.68692 (  147 accepted /   214 generated), mean len =  2.37
+1.00.729.416 I slot      release: id  0 | task 6 | stop processing: n_tokens = 383, truncated = 0
+1.00.733.312 W srv    operator(): (CORS) skip non-localhost origin: 
+1.00.762.258 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.334
+1.00.803.708 I slot launch_slot_: id  0 | task 117 | processing task, is_child = 0
+1.07.233.092 I slot print_timing: id  0 | task 117 | n_decoded =    102, tg =  16.37 t/s, tg_3s =  16.37 t/s
+1.10.306.381 I slot print_timing: id  0 | task 117 | n_decoded =    152, tg =  16.34 t/s, tg_3s =  16.27 t/s
+1.13.463.108 I slot print_timing: id  0 | task 117 | n_decoded =    200, tg =  16.05 t/s, tg_3s =  15.21 t/s
+1.16.486.582 I slot print_timing: id  0 | task 117 | n_decoded =    246, tg =  15.89 t/s, tg_3s =  15.21 t/s
+1.17.515.957 I slot print_timing: id  0 | task 117 | prompt eval time =     199.41 ms /     4 tokens (   49.85 ms per token,    20.06 tokens per second)
+1.17.515.966 I slot print_timing: id  0 | task 117 |        eval time =   16512.80 ms /   256 tokens (   64.50 ms per token,    15.50 tokens per second)
+1.17.515.968 I slot print_timing: id  0 | task 117 |       total time =   16712.21 ms /   260 tokens
+1.17.515.969 I slot print_timing: id  0 | task 117 |    graphs reused =        212
+1.17.515.976 I slot print_timing: id  0 | task 117 | draft acceptance = 0.68692 (  147 accepted /   214 generated), mean len =  2.37
+1.17.516.045 I slot      release: id  0 | task 117 | stop processing: n_tokens = 383, truncated = 0
+1.17.519.772 W srv    operator(): (CORS) skip non-localhost origin: 
+1.17.563.272 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.334
+1.17.563.519 I slot launch_slot_: id  0 | task 227 | processing task, is_child = 0
+1.23.033.434 I slot print_timing: id  0 | task 227 | n_decoded =    102, tg =  19.51 t/s, tg_3s =  19.51 t/s
+1.26.114.167 I slot print_timing: id  0 | task 227 | n_decoded =    165, tg =  19.86 t/s, tg_3s =  20.45 t/s
+1.29.157.223 I slot print_timing: id  0 | task 227 | n_decoded =    224, tg =  19.73 t/s, tg_3s =  19.39 t/s
+1.31.037.393 I slot print_timing: id  0 | task 227 | prompt eval time =     242.62 ms /     4 tokens (   60.65 ms per token,    16.49 tokens per second)
+1.31.037.403 I slot print_timing: id  0 | task 227 |        eval time =   13231.23 ms /   256 tokens (   51.68 ms per token,    19.35 tokens per second)
+1.31.037.404 I slot print_timing: id  0 | task 227 |       total time =   13473.85 ms /   260 tokens
+1.31.037.406 I slot print_timing: id  0 | task 227 |    graphs reused =        317
+1.31.037.411 I slot print_timing: id  0 | task 227 | draft acceptance = 0.68692 (  147 accepted /   214 generated), mean len =  2.37
+1.31.037.475 I slot      release: id  0 | task 227 | stop processing: n_tokens = 383, truncated = 0
+1.31.040.619 W srv    operator(): (CORS) skip non-localhost origin: 
+1.31.073.354 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.334
+1.31.073.631 I slot launch_slot_: id  0 | task 337 | processing task, is_child = 0
+1.36.066.920 I slot print_timing: id  0 | task 337 | n_decoded =    102, tg =  21.10 t/s, tg_3s =  21.10 t/s
+1.39.134.848 I slot print_timing: id  0 | task 337 | n_decoded =    163, tg =  20.63 t/s, tg_3s =  19.88 t/s
+1.42.154.504 I slot print_timing: id  0 | task 337 | n_decoded =    217, tg =  19.87 t/s, tg_3s =  17.88 t/s
+1.44.509.589 I slot print_timing: id  0 | task 337 | prompt eval time =     158.47 ms /     4 tokens (   39.62 ms per token,    25.24 tokens per second)
+1.44.509.597 I slot print_timing: id  0 | task 337 |        eval time =   13277.46 ms /   256 tokens (   51.87 ms per token,    19.28 tokens per second)
+1.44.509.598 I slot print_timing: id  0 | task 337 |       total time =   13435.93 ms /   260 tokens
+1.44.509.600 I slot print_timing: id  0 | task 337 |    graphs reused =        422
+1.44.509.605 I slot print_timing: id  0 | task 337 | draft acceptance = 0.68692 (  147 accepted /   214 generated), mean len =  2.37
+1.44.509.648 I slot      release: id  0 | task 337 | stop processing: n_tokens = 383, truncated = 0
+1.44.512.861 W srv    operator(): (CORS) skip non-localhost origin: 
+1.44.544.223 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.334
+1.44.544.502 I slot launch_slot_: id  0 | task 447 | processing task, is_child = 0
+1.49.536.114 I slot print_timing: id  0 | task 447 | n_decoded =    102, tg =  21.13 t/s, tg_3s =  21.13 t/s
+1.52.610.499 I slot print_timing: id  0 | task 447 | n_decoded =    163, tg =  20.63 t/s, tg_3s =  19.84 t/s
+1.55.645.172 I slot print_timing: id  0 | task 447 | n_decoded =    220, tg =  20.12 t/s, tg_3s =  18.78 t/s
+1.57.772.032 I slot print_timing: id  0 | task 447 | prompt eval time =     164.66 ms /     4 tokens (   41.16 ms per token,    24.29 tokens per second)
+1.57.772.041 I slot print_timing: id  0 | task 447 |        eval time =   13062.85 ms /   256 tokens (   51.03 ms per token,    19.60 tokens per second)
+1.57.772.042 I slot print_timing: id  0 | task 447 |       total time =   13227.51 ms /   260 tokens
+1.57.772.043 I slot print_timing: id  0 | task 447 |    graphs reused =        527
+1.57.772.048 I slot print_timing: id  0 | task 447 | draft acceptance = 0.68692 (  147 accepted /   214 generated), mean len =  2.37
+1.57.772.095 I slot      release: id  0 | task 447 | stop processing: n_tokens = 383, truncated = 0
+1.57.775.240 W srv    operator(): (CORS) skip non-localhost origin: 
+1.57.807.450 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.334
+1.57.807.701 I slot launch_slot_: id  0 | task 557 | processing task, is_child = 0
+2.02.836.237 I slot print_timing: id  0 | task 557 | n_decoded =    102, tg =  20.97 t/s, tg_3s =  20.97 t/s
+2.05.887.950 I slot print_timing: id  0 | task 557 | n_decoded =    162, tg =  20.47 t/s, tg_3s =  19.66 t/s
+2.08.958.233 I slot print_timing: id  0 | task 557 | n_decoded =    217, tg =  19.75 t/s, tg_3s =  17.91 t/s
+2.11.319.776 I slot print_timing: id  0 | task 557 | prompt eval time =     165.08 ms /     4 tokens (   41.27 ms per token,    24.23 tokens per second)
+2.11.319.787 I slot print_timing: id  0 | task 557 |        eval time =   13346.97 ms /   256 tokens (   52.14 ms per token,    19.18 tokens per second)
+2.11.319.788 I slot print_timing: id  0 | task 557 |       total time =   13512.05 ms /   260 tokens
+2.11.319.789 I slot print_timing: id  0 | task 557 |    graphs reused =        632
+2.11.319.796 I slot print_timing: id  0 | task 557 | draft acceptance = 0.68692 (  147 accepted /   214 generated), mean len =  2.37
+2.11.319.860 I slot      release: id  0 | task 557 | stop processing: n_tokens = 383, truncated = 0
+2.11.338.299 W srv    operator(): (CORS) skip non-localhost origin: 

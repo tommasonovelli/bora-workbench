@@ -1,0 +1,10 @@
+{
+  "status": 200,
+  "headers": {
+    "Server": "llama.cpp",
+    "Process-Start-Time-Unix": "6939278",
+    "Content-Type": "text/plain; version=0.0.4",
+    "Content-Length": "1652",
+    "Connection": "close"
+  }
+}

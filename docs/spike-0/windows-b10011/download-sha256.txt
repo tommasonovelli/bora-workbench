@@ -1,0 +1,4 @@
+5cb0676f1b6341aa1f3144c3d7fd00bd638a0ce676954712444aecd61f71ad36 *.spike-work/downloads/llama-b10011-bin-win-cpu-x64.zip
+2af4f3c1fb42afa85c76a782187444e44f33c08fa31b9000e6baeb18342c6ea2 *.spike-work/downloads/llama-b10011-bin-win-cuda-13.3-x64.zip
+1462a050eb4c684921ba51dcc4cc488a036674c3e73e9945ee705b854808d03e *.spike-work/downloads/cudart-llama-bin-win-cuda-13.3-x64.zip
+da63cb47a76763c712393f8a017070188a304fa39f8aeea6edc629ed7b975cfa *.spike-work/downloads/mmproj-BF16.gguf

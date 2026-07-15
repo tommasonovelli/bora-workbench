@@ -1,0 +1,28 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "type": "image_url",
+          "image_url": {
+            "url": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKElEQVR4nO3NsQ0AAAzCMP5/un0CNkuZ41wybXsHAAAAAAAAAAAAxR4yw/wuPL6QkAAAAABJRU5ErkJggg=="
+          }
+        },
+        {
+          "type": "text",
+          "text": "Qual è il colore dominante dell'immagine? Rispondi con una sola parola."
+        }
+      ]
+    }
+  ],
+  "temperature": 0.7,
+  "top_p": 0.8,
+  "top_k": 20,
+  "max_tokens": 64,
+  "seed": 42,
+  "stream": false,
+  "chat_template_kwargs": {
+    "enable_thinking": false
+  }
+}

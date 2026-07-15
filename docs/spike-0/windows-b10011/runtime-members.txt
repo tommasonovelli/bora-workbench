@@ -1,0 +1,8 @@
+Archive:  .spike-work/downloads/cudart-llama-bin-win-cuda-13.3-x64.zip
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+ 51870320  2026-05-09 03:27   cublas64_13.dll
+460301424  2026-05-09 03:27   cublasLt64_13.dll
+   551024  2026-04-18 03:19   cudart64_13.dll
+---------                     -------
+512722768                     3 files

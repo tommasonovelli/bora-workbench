@@ -2,5 +2,7 @@
 /archive/project-kickoff-2026-07-14/docs/** -text -diff
 /docs/spike-0/research/** -text -diff
 /docs/spike-0/ubuntu-b10011/** -text -diff
+/docs/spike-0/windows-b10011/** -text -diff
+/docs/spike-0/SHA256SUMS -text
 # The normative plan uses Markdown hard line breaks intentionally.
 /IMPLEMENTATION_SPEC.md whitespace=-blank-at-eol

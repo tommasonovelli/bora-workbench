@@ -1,0 +1,92 @@
+{
+  "protocol": "benchmark/v1",
+  "mode": "vstudio",
+  "backend": "cuda",
+  "warmup_runs": 1,
+  "measured_runs": 5,
+  "records": [
+    {
+      "run": "warmup",
+      "included": false,
+      "completion_tokens": 256,
+      "finish_reason": "length",
+      "predicted_n": 256,
+      "predicted_ms": 11010.259,
+      "tok_s_reported": 23.25104250499466,
+      "tok_s_recomputed": 23.25104250499466,
+      "wall_seconds": 13.865786200000002
+    },
+    {
+      "run": "1",
+      "included": true,
+      "completion_tokens": 256,
+      "finish_reason": "length",
+      "predicted_n": 256,
+      "predicted_ms": 10450.993,
+      "tok_s_reported": 24.495280017889208,
+      "tok_s_recomputed": 24.495280017889208,
+      "wall_seconds": 10.687613099999908
+    },
+    {
+      "run": "2",
+      "included": true,
+      "completion_tokens": 256,
+      "finish_reason": "length",
+      "predicted_n": 256,
+      "predicted_ms": 10507.066,
+      "tok_s_reported": 24.364556194850206,
+      "tok_s_recomputed": 24.36455619485021,
+      "wall_seconds": 10.708131600000115
+    },
+    {
+      "run": "3",
+      "included": true,
+      "completion_tokens": 256,
+      "finish_reason": "length",
+      "predicted_n": 256,
+      "predicted_ms": 10574.038,
+      "tok_s_reported": 24.210240212868538,
+      "tok_s_recomputed": 24.210240212868538,
+      "wall_seconds": 10.799708199999941
+    },
+    {
+      "run": "4",
+      "included": true,
+      "completion_tokens": 256,
+      "finish_reason": "length",
+      "predicted_n": 256,
+      "predicted_ms": 10475.521,
+      "tok_s_reported": 24.437925330873757,
+      "tok_s_recomputed": 24.437925330873757,
+      "wall_seconds": 10.691635399999996
+    },
+    {
+      "run": "5",
+      "included": true,
+      "completion_tokens": 256,
+      "finish_reason": "length",
+      "predicted_n": 256,
+      "predicted_ms": 10779.259,
+      "tok_s_reported": 23.74931338044665,
+      "tok_s_recomputed": 23.749313380446655,
+      "wall_seconds": 10.973485100000062
+    }
+  ],
+  "tok_s": {
+    "min": 23.74931338044665,
+    "median": 24.364556194850206,
+    "max": 24.495280017889208
+  },
+  "os": "windows-11-x86_64",
+  "hardware_id": "i5-10400f-32gib-rtx2060-super-8gib",
+  "model": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M",
+  "model_revision": "5bc3e238d916f48a861bac2f8a1990a0e9b7e98d",
+  "engine_release": "b10011",
+  "engine_commit": "bf2c86ddc0685f580595954056c2e77ebabfab4f",
+  "ctx": 8192,
+  "n_cpu_moe": 48,
+  "prompt_sha256": "1c7182235411da2d4fe6fca130e3effb0b0d965569c52abd8fd45327103ddb2e",
+  "request_sha256": "025dc91aeb61a790d5fd36c27f127e04761ae7f1c3d6b542d0cfd9d37bc5c19f",
+  "measurement_method": "response.timings.predicted_per_second, cross-checked as predicted_n / predicted_ms",
+  "concurrent_clients": 0
+}

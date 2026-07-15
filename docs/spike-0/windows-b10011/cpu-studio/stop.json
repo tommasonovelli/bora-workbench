@@ -1,0 +1,7 @@
+{
+  "method": "subprocess.Popen.terminate (Windows TerminateProcess)",
+  "forced_kill": false,
+  "exit_code": 1,
+  "elapsed_seconds": 4.380422599999974,
+  "port_closed": true
+}

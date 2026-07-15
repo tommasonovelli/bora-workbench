@@ -1,6 +1,6 @@
 {
   "schema": "spike-0/v1",
-  "decision": "PENDING_WINDOWS",
+  "decision": "GO",
   "ubuntu_result": "PASS",
   "project": "qwen-launcher",
   "engine": {
@@ -171,18 +171,18 @@
     "redistributed_by_launcher": false
   },
   "raw_evidence": {
-    "windows": "archive/project-kickoff-2026-07-14/docs/spike-0/windows-b10011",
-    "windows_checksums": "archive/project-kickoff-2026-07-14/SHA256SUMS",
+    "windows": "docs/spike-0/windows-b10011",
+    "windows_checksums": "docs/spike-0/windows-b10011/SHA256SUMS",
     "ubuntu": "docs/spike-0/ubuntu-b10011",
-    "ubuntu_and_research_checksums": "docs/spike-0/SHA256SUMS"
+    "ubuntu_and_research_checksums": "docs/spike-0/SHA256SUMS",
+    "windows_archived_preliminary": "archive/project-kickoff-2026-07-14/docs/spike-0/windows-b10011",
+    "windows_archived_preliminary_checksums": "archive/project-kickoff-2026-07-14/SHA256SUMS"
   },
   "command_contract_status": {
     "ubuntu_cpu": "verified",
     "ubuntu_cuda": "verified",
-    "windows_cuda_coding": "verified_partial",
-    "windows_cpu": "missing",
-    "windows_studio": "missing",
-    "windows_vstudio": "missing"
+    "windows_cpu": "verified",
+    "windows_cuda": "verified"
   },
   "assets_complete": false,
   "assets": [
@@ -217,7 +217,7 @@
       "sha256": "5cb0676f1b6341aa1f3144c3d7fd00bd638a0ce676954712444aecd61f71ad36",
       "archive": "zip",
       "executable": "llama-server.exe",
-      "tested": false
+      "tested": true
     },
     {
       "os": "windows",
@@ -228,7 +228,7 @@
       "sha256": "2af4f3c1fb42afa85c76a782187444e44f33c08fa31b9000e6baeb18342c6ea2",
       "archive": "zip",
       "executable": "llama-server.exe",
-      "tested": false
+      "tested": true
     },
     {
       "os": "windows",
@@ -239,7 +239,7 @@
       "sha256": "1462a050eb4c684921ba51dcc4cc488a036674c3e73e9945ee705b854808d03e",
       "archive": "zip",
       "executable": null,
-      "tested": false
+      "tested": true
     }
   ],
   "platforms": [
@@ -267,19 +267,25 @@
     },
     {
       "id": "windows-11-i5-10400f-rtx2060-super",
-      "os": "Windows 11 x86_64",
+      "os": "Windows 11 Pro 10.0.26200 x86_64",
       "backends": {
         "cuda": {
-          "coding": "partial-pass",
-          "studio": "missing",
-          "vstudio": "missing"
+          "coding": "pass",
+          "studio": "pass",
+          "vstudio": "pass"
         },
         "cpu": {
-          "coding": "missing",
-          "studio": "missing",
-          "vstudio": "missing"
+          "coding": "pass",
+          "studio": "pass",
+          "vstudio": "pass"
         }
-      }
+      },
+      "cpu": "Intel Core i5-10400F, 6 cores / 12 threads",
+      "ram_total_bytes": 34269773824,
+      "gpu": "NVIDIA GeForce RTX 2060 SUPER",
+      "vram_total_mib": 8192,
+      "driver": "610.47",
+      "cuda_umd": "13.3"
     }
   ],
   "benchmark_protocol": {
@@ -429,6 +435,138 @@
         "max": 35.2533510995534
       },
       "raw_summary": "docs/spike-0/ubuntu-b10011/benchmarks/cuda-vstudio/summary.json"
+    },
+    {
+      "os": "windows-11-x86_64",
+      "backend": "cpu",
+      "mode": "coding",
+      "hardware_id": "i5-10400f-32gib-rtx2060-super-8gib",
+      "ctx": 8192,
+      "n_cpu_moe": null,
+      "warmup_tok_s": 7.846554256194778,
+      "measured_tok_s": [
+        8.881938155480965,
+        8.709636110042442,
+        8.569350599548255,
+        8.437097270734158,
+        8.966579317239818
+      ],
+      "tok_s": {
+        "min": 8.437097270734158,
+        "median": 8.709636110042442,
+        "max": 8.966579317239818
+      },
+      "raw_summary": "docs/spike-0/windows-b10011/cpu-coding/benchmark-summary.json"
+    },
+    {
+      "os": "windows-11-x86_64",
+      "backend": "cpu",
+      "mode": "studio",
+      "hardware_id": "i5-10400f-32gib-rtx2060-super-8gib",
+      "ctx": 8192,
+      "n_cpu_moe": null,
+      "warmup_tok_s": 7.6184601360055835,
+      "measured_tok_s": [
+        9.086863565038534,
+        9.2666885640448,
+        9.196593825931398,
+        8.850465881955321,
+        8.161935868354096
+      ],
+      "tok_s": {
+        "min": 8.161935868354096,
+        "median": 9.086863565038534,
+        "max": 9.2666885640448
+      },
+      "raw_summary": "docs/spike-0/windows-b10011/cpu-studio/benchmark-summary.json"
+    },
+    {
+      "os": "windows-11-x86_64",
+      "backend": "cpu",
+      "mode": "vstudio",
+      "hardware_id": "i5-10400f-32gib-rtx2060-super-8gib",
+      "ctx": 8192,
+      "n_cpu_moe": null,
+      "warmup_tok_s": 7.278181359883835,
+      "measured_tok_s": [
+        8.49847993399337,
+        8.456935352642477,
+        8.390543071345181,
+        8.39381305155303,
+        8.377707639929397
+      ],
+      "tok_s": {
+        "min": 8.377707639929397,
+        "median": 8.39381305155303,
+        "max": 8.49847993399337
+      },
+      "raw_summary": "docs/spike-0/windows-b10011/cpu-vstudio/benchmark-summary.json"
+    },
+    {
+      "os": "windows-11-x86_64",
+      "backend": "cuda",
+      "mode": "coding",
+      "hardware_id": "i5-10400f-32gib-rtx2060-super-8gib",
+      "ctx": 8192,
+      "n_cpu_moe": 48,
+      "warmup_tok_s": 16.51994567260991,
+      "measured_tok_s": [
+        15.503126726312525,
+        19.34815754902377,
+        19.28079472423229,
+        19.597561022288396,
+        19.18038470007685
+      ],
+      "tok_s": {
+        "min": 15.503126726312525,
+        "median": 19.28079472423229,
+        "max": 19.597561022288396
+      },
+      "raw_summary": "docs/spike-0/windows-b10011/cuda-coding/benchmark-summary.json"
+    },
+    {
+      "os": "windows-11-x86_64",
+      "backend": "cuda",
+      "mode": "studio",
+      "hardware_id": "i5-10400f-32gib-rtx2060-super-8gib",
+      "ctx": 8192,
+      "n_cpu_moe": 48,
+      "warmup_tok_s": 22.4896025120886,
+      "measured_tok_s": [
+        24.0190425972091,
+        23.957854390711987,
+        24.39289095872732,
+        24.638030281871576,
+        24.786720437067338
+      ],
+      "tok_s": {
+        "min": 23.957854390711987,
+        "median": 24.39289095872732,
+        "max": 24.786720437067338
+      },
+      "raw_summary": "docs/spike-0/windows-b10011/cuda-studio/benchmark-summary.json"
+    },
+    {
+      "os": "windows-11-x86_64",
+      "backend": "cuda",
+      "mode": "vstudio",
+      "hardware_id": "i5-10400f-32gib-rtx2060-super-8gib",
+      "ctx": 8192,
+      "n_cpu_moe": 48,
+      "warmup_tok_s": 23.25104250499466,
+      "measured_tok_s": [
+        24.495280017889208,
+        24.364556194850206,
+        24.210240212868538,
+        24.437925330873757,
+        23.74931338044665
+      ],
+      "tok_s": {
+        "min": 23.74931338044665,
+        "median": 24.364556194850206,
+        "max": 24.495280017889208
+      },
+      "raw_summary": "docs/spike-0/windows-b10011/cuda-vstudio/benchmark-summary.json"
     }
   ],
   "observations": {
@@ -440,13 +578,48 @@
     "cors": "default * produced a security warning; verified --cors-origins localhost rejects an evil Origin and reflects a localhost Origin; added to the fixed contract",
     "cpu_cuda_arguments": "none; CPU commands omit -ngl and -ncmoe",
     "source_build_versioning": "source archives omit .git; LLAMA_BUILD_NUMBER=10011 and LLAMA_BUILD_COMMIT=<full commit> are required for a valid version probe",
-    "name_availability": "PyPI qwen-launcher returned 404; unauthenticated GitHub repository API returned 404 at capture time; indicative only"
+    "name_availability": "PyPI qwen-launcher returned 404; unauthenticated GitHub repository API returned 404 at capture time; indicative only",
+    "windows_matrix": "pass on CPU and CUDA for coding, studio and vstudio",
+    "windows_ui": "pass; explicit --webui returned HTTP 200 with gzip and explicit --no-webui returned HTTP 404",
+    "windows_vision": "pass on CPU and CUDA; red PNG answered Rosso",
+    "windows_mtp": "pass; draft_n and draft_n_accepted observed in all benchmark responses",
+    "windows_cpu_cuda_arguments": "none; CPU commands omit -ngl and -ncmoe and the CPU asset lists no CUDA devices",
+    "windows_cuda_assets": "b10011 CUDA 13.3 server and CUDA 13.3 runtime archives were downloaded separately, matched published SHA-256, overlaid, and tested together",
+    "windows_gpu_selection": "CUDA_VISIBLE_DEVICES=0 exposed CUDA0 and the child llama-server was observed on GPU 0; parent remained unset; host has one GPU, so selection among multiple physical GPUs was not demonstrated",
+    "windows_empty_cuda_visible_devices": "an empty value passed through Python CreateProcess did not hide the sole GPU; invalid index 99 did. The launcher contract only sets a concrete selected index and must block multi-GPU CUDA until selection among physical GPUs is verified",
+    "profile_use": "benchmark results document only the fixed spike envelope; no RAM/VRAM tiers or production mode envelopes were derived"
   },
-  "remaining": [
-    "complete Windows CPU tests for coding, studio and vstudio",
-    "complete Windows CUDA studio and vstudio, including image input",
-    "run benchmark/v1 for every declared Windows combination",
-    "identify and verify the exact Windows CUDA server/runtime asset pair used by the archived smoke test",
-    "record final maintainer GO or NO-GO"
+  "remaining": [],
+  "windows_result": "PASS",
+  "license_verification": {
+    "engine": {
+      "license": "MIT",
+      "evidence": "docs/spike-0/research/llama.cpp-bf2c86ddc-LICENSE",
+      "sha256": "94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d",
+      "asset_archives_include_license": false,
+      "redistribution_condition": "preserve the MIT copyright and permission notice"
+    },
+    "cuda_runtime": {
+      "license": "NVIDIA CUDA Toolkit EULA v13.3",
+      "last_updated": "2026-01-26",
+      "evidence": "docs/spike-0/research/nvidia-cuda-eula.html",
+      "sha256": "6180cc2a02db890cf87ba52f078b7a222b04dcb3c2650865763d4f32ad663a5c",
+      "asset_archive_members": [
+        "cublas64_13.dll",
+        "cublasLt64_13.dll",
+        "cudart64_13.dll"
+      ],
+      "attachment_a_result": "listed redistributable Windows CUDA Runtime and CUDA BLAS filename variants",
+      "asset_archive_includes_eula": false,
+      "redistribution_condition": "distribution must comply with SDK Agreement section 1.1.2 and CUDA Supplement Attachment A"
+    },
+    "model": {
+      "license": "apache-2.0",
+      "redistributed_by_launcher": false
+    }
+  },
+  "non_blocking_follow_up": [
+    "Step 3 must block CUDA startup on multi-GPU hosts because this one-GPU spike cannot prove physical multi-GPU selection",
+    "Step 4 must package or present required MIT and NVIDIA CUDA notices when implementing managed engine installation"
   ]
 }

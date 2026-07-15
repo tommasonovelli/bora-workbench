@@ -1,0 +1,41 @@
+Wed Jul 15 14:57:03 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 610.47                 KMD Version: 610.47        CUDA UMD Version: 13.3     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                  Driver-Model | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA GeForce RTX 2060 ...  WDDM  |   00000000:01:00.0  On |                  N/A |
+|  0%   61C    P0             46W /  175W |    1382MiB /   8192MiB |      4%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|    0   N/A  N/A            1700    C+G   C:\Windows\explorer.exe               N/A      |
+|    0   N/A  N/A            2888    C+G   ...s\Win64\EpicGamesLauncher.exe      N/A      |
+|    0   N/A  N/A            4320    C+G   ...indows\System32\ShellHost.exe      N/A      |
+|    0   N/A  N/A            4488    C+G   ...aries\Win64\EpicWebHelper.exe      N/A      |
+|    0   N/A  N/A            4680    C+G   ...em32\ApplicationFrameHost.exe      N/A      |
+|    0   N/A  N/A            5772    C+G   ...lpaper_engine\wallpaper64.exe      N/A      |
+|    0   N/A  N/A            7236    C+G   ...ms\Microsoft VS Code\Code.exe      N/A      |
+|    0   N/A  N/A            8112    C+G   ...2txyewy\CrossDeviceResume.exe      N/A      |
+|    0   N/A  N/A            9332    C+G   ..._cw5n1h2txyewy\SearchHost.exe      N/A      |
+|    0   N/A  N/A            9344    C+G   ...y\StartMenuExperienceHost.exe      N/A      |
+|    0   N/A  N/A            9440    C+G   ...yb3d8bbwe\WindowsTerminal.exe      N/A      |
+|    0   N/A  N/A            9496    C+G   ...cw5n1h2txyewy\WidgetBoard.exe      N/A      |
+|    0   N/A  N/A            9512    C+G   ...5n1h2txyewy\TextInputHost.exe      N/A      |
+|    0   N/A  N/A            9616    C+G   ...1g1gvanyjgm\WhatsApp.Root.exe      N/A      |
+|    0   N/A  N/A           11344    C+G   ....0.4078.65\msedgewebview2.exe      N/A      |
+|    0   N/A  N/A           12076    C+G   ...App_cw5n1h2txyewy\LockApp.exe      N/A      |
+|    0   N/A  N/A           12496    C+G   ...IA App\CEF\NVIDIA Overlay.exe      N/A      |
+|    0   N/A  N/A           13156    C+G   ....0.4078.65\msedgewebview2.exe      N/A      |
+|    0   N/A  N/A           13164    C+G   ...IA App\CEF\NVIDIA Overlay.exe      N/A      |
+|    0   N/A  N/A           15708    C+G   ...26wp6bftszj\TranslucentTB.exe      N/A      |
+|    0   N/A  N/A           16040    C+G   ...grams\Bitwarden\Bitwarden.exe      N/A      |
+|    0   N/A  N/A           19308    C+G   ...ntrolPanel\SystemSettings.exe      N/A      |
++-----------------------------------------------------------------------------------------+

@@ -1,0 +1,56 @@
+Archive:  .spike-work/downloads/llama-b10011-bin-win-cpu-x64.zip
+  Length      Date    Time    Name
+---------  ---------- -----   ----
+   768512  2026-07-14 20:33   ggml-base.dll
+  1169920  2026-07-14 20:33   ggml-cpu-alderlake.dll
+  1384960  2026-07-14 20:33   ggml-cpu-cannonlake.dll
+  1371136  2026-07-14 20:33   ggml-cpu-cascadelake.dll
+  1371648  2026-07-14 20:33   ggml-cpu-cooperlake.dll
+  1174016  2026-07-14 20:33   ggml-cpu-haswell.dll
+  1378304  2026-07-14 20:33   ggml-cpu-icelake.dll
+  1063424  2026-07-14 20:33   ggml-cpu-ivybridge.dll
+  1067008  2026-07-14 20:33   ggml-cpu-piledriver.dll
+  1043968  2026-07-14 20:33   ggml-cpu-sandybridge.dll
+  1649152  2026-07-14 20:33   ggml-cpu-sapphirerapids.dll
+  1378304  2026-07-14 20:33   ggml-cpu-skylakex.dll
+   867328  2026-07-14 20:33   ggml-cpu-sse42.dll
+   861696  2026-07-14 20:33   ggml-cpu-x64.dll
+  1378304  2026-07-14 20:33   ggml-cpu-zen4.dll
+   101376  2026-07-14 20:34   ggml-rpc-server.exe
+   136192  2026-07-14 20:33   ggml-rpc.dll
+    86016  2026-07-14 20:33   ggml.dll
+   661856  2026-06-28 22:50   libomp140.x86_64.dll
+    60928  2026-07-14 20:34   llama-batched-bench-impl.dll
+     9216  2026-07-14 20:34   llama-batched-bench.exe
+   393216  2026-07-14 20:34   llama-bench-impl.dll
+     9216  2026-07-14 20:34   llama-bench.exe
+  3703296  2026-07-14 20:36   llama-cli-impl.dll
+     9216  2026-07-14 20:36   llama-cli.exe
+  7968256  2026-07-14 20:34   llama-common.dll
+   132608  2026-07-14 20:34   llama-completion-impl.dll
+     9216  2026-07-14 20:34   llama-completion.exe
+    40448  2026-07-14 20:34   llama-fit-params-impl.dll
+     9216  2026-07-14 20:34   llama-fit-params.exe
+    27136  2026-07-14 20:34   llama-gemma3-cli.exe
+    59904  2026-07-14 20:34   llama-gguf-split.exe
+   249344  2026-07-14 20:34   llama-imatrix.exe
+    27136  2026-07-14 20:34   llama-llava-cli.exe
+    27136  2026-07-14 20:34   llama-minicpmv-cli.exe
+    83968  2026-07-14 20:34   llama-mtmd-cli.exe
+    54784  2026-07-14 20:34   llama-mtmd-debug.exe
+   193536  2026-07-14 20:34   llama-perplexity-impl.dll
+     9216  2026-07-14 20:34   llama-perplexity.exe
+   136704  2026-07-14 20:34   llama-quantize-impl.dll
+     9216  2026-07-14 20:34   llama-quantize.exe
+    27136  2026-07-14 20:34   llama-qwen2vl-cli.exe
+    45056  2026-07-14 20:34   llama-results.exe
+  9567744  2026-07-14 20:36   llama-server-impl.dll
+     9216  2026-07-14 20:36   llama-server.exe
+   270336  2026-07-14 20:34   llama-template-analysis.exe
+    57856  2026-07-14 20:34   llama-tokenize.exe
+   322048  2026-07-14 20:34   llama-tts.exe
+  2680320  2026-07-14 20:34   llama.dll
+    83456  2026-07-14 20:36   llama.exe
+  1250304  2026-07-14 20:34   mtmd.dll
+---------                     -------
+ 46449504                     51 files

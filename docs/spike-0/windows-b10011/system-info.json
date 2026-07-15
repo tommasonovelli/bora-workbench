@@ -1,0 +1,13 @@
+{
+    "CapturedAt":  "2026-07-15T14:57:02.8826431+02:00",
+    "OS":  "Microsoft Windows 11 Pro",
+    "Version":  "10.0.26200",
+    "Build":  "26200",
+    "Architecture":  "64-bit",
+    "CPU":  "Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz",
+    "PhysicalCores":  6,
+    "LogicalProcessors":  12,
+    "RAMTotalBytes":  34269773824,
+    "RAMAvailableKiB":  27436576,
+    "PowerShellVersion":  "5.1.26100.8655"
+}
