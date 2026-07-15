@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import os
 import platform
-from collections.abc import Mapping
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 _APP_NAME = "qwen-launcher"
@@ -39,13 +38,7 @@ def _is_absolute(value: str, *, windows: bool) -> bool:
     return PurePosixPath(value).is_absolute()
 
 
-def _environment_path(
-    variable: str,
-    fallback: Path,
-    *,
-    windows: bool,
-    environ: Mapping[str, str] | None = None,
-) -> Path:
+def _environment_path(variable: str, fallback: Path, *, windows: bool) -> Path:
     """Return the directory named by an environment variable, or the fallback.
 
     A variable that is absent, empty, or relative falls back instead of failing: the XDG Base
@@ -53,8 +46,7 @@ def _environment_path(
     extends the same treatment to APPDATA and LOCALAPPDATA. This is a deliberate exception to the
     project rule that an invalid value is an error.
     """
-    environment = os.environ if environ is None else environ
-    raw_value = environment.get(variable)
+    raw_value = os.environ.get(variable)
     if not raw_value or not _is_absolute(raw_value, windows=windows):
         return fallback
     return Path(raw_value)

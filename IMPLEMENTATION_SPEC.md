@@ -19,7 +19,8 @@
   matrice CI GitHub verde su Ubuntu/Windows e branch protection attiva con CI e revisione code owner
   obbligatorie per i contributori.
 - [x] **Step 2A — Contratti dichiarativi e modi.**
-- [ ] **Step 2B — Validazione, modelli runtime e hardware.**
+- [~] **Step 2B — Validazione, modelli runtime e hardware:** implementazione e gate locali
+  completi; matrice CI remota ancora da eseguire.
 - [ ] **Step 3 — Vertical slice `coding`, stato, stop e status.**
 - [ ] **Step 4 — Asset lock e attivazione atomica del motore.**
 - [ ] **Step 5 — `studio` e `vstudio`.**
@@ -84,10 +85,21 @@
   fattibilità dello spike.
 - [x] Schemi e modi validati come JSON UTF-8 e verificati nella wheel e nella sdist.
 
+### Step 2B — dettaglio
+
+- [x] Dataclass gelate e loader per modi e profili; catalogo profili assente o vuoto valido.
+- [x] Validazione schema e semantica di modi, profili, policy e report, inclusi riferimenti, digest,
+  candidati, hardware, intervalli e compatibilità col lock.
+- [x] Rilevamento CPU, RAM e NVIDIA con fallback CPU diagnosticato, selezione GPU deterministica e
+  nessuna mutazione dell'ambiente padre.
+- [x] Comandi `validate` e `doctor`, exit code contrattuali e diagnostica «nessun profilo calibrato».
+- [x] Suite locale, build e `validate` dalla wheel isolata verdi.
+- [ ] Commit/push e matrice CI Ubuntu/Windows verdi sullo Step 2B.
+
 ### Prossima azione obbligatoria
 
-Lo Step 2A è concluso. La prossima sessione di implementazione può iniziare esclusivamente lo Step
-2B, senza anticipare lo Step 3 o gli step successivi.
+Lo Step 2B resta aperto esclusivamente per commit, push autorizzato e verifica della matrice CI
+Ubuntu/Windows. Non iniziare lo Step 3 o gli step successivi prima della chiusura di questo gate.
 
 ---
 

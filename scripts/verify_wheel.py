@@ -36,8 +36,8 @@ def main() -> int:
             check=True,
         )
         python = environment / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
-        # Runs inside the isolated interpreter, so the checks travel as source text. Step 1 covers
-        # import, packaged resources, and --version; `validate` joins only at Step 2.
+        # Runs inside the isolated interpreter, so the checks travel as source text. Step 2B adds
+        # installed-content validation to the import, resource, and version checks.
         command = (
             "from importlib.metadata import version; "
             "from qwen_launcher.resources import read_json, read_text; "
@@ -47,6 +47,7 @@ def main() -> int:
         )
         subprocess.run([str(python), "-c", command], check=True)
         subprocess.run([str(python), "-m", "qwen_launcher.cli", "--version"], check=True)
+        subprocess.run([str(python), "-m", "qwen_launcher.cli", "validate"], check=True)
     return 0
 
 

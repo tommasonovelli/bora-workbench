@@ -1,6 +1,6 @@
 # qwen-launcher
 
-Scaffold iniziale di una distribuzione locale e riproducibile attorno a
+Distribuzione locale e riproducibile in sviluppo attorno a
 `unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M` e a una release verificata di `llama.cpp`.
 
 ## Stato
@@ -10,20 +10,22 @@ Il repository contiene per ora il fondamento indipendente dal motore:
 - package Python 3.12 con layout `src/` e build `uv_build`;
 - percorsi Linux/Windows senza side effect;
 - configurazione TOML e ambiente con validazione severa;
-- CLI minima con `--version` e `doctor`;
+- schemi e modi dichiarativi validati semanticamente;
+- rilevamento CPU, RAM e GPU NVIDIA senza modificare l'ambiente padre;
+- CLI con `--version`, `validate` e diagnostica hardware `doctor`;
 - accesso alle risorse compatibile con wheel/zip;
 - test, lint e CI Linux/Windows.
 
 Lo **Spike 0 è completo** con decisione `GO`: `llama.cpp b10011`, il contratto macchina, la matrice
 Ubuntu/Windows CPU/CUDA e il protocollo `benchmark/v1` sono verificati. Il contratto iniziale è
 incluso nella wheel come `engine.lock`; gli asset restano intenzionalmente marcati incompleti fino
-allo Step 4. Schemi, profili e comandi di avvio entrano soltanto negli step successivi.
+allo Step 4. Non esistono ancora profili di produzione né comandi di avvio.
 
-Lo Step 1 è completo: implementazione, matrice CI Ubuntu/Windows e branch protection con revisione
-code owner sono attive. Lo Step 2A, dedicato ai contratti dichiarativi e ai modi, è il prossimo passo
-e non è ancora iniziato. I benchmark dello spike provano fattibilità, non profili ottimizzati. Il
-piano normativo e il tracker aggiornato sono in [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza
-verificata dello spike è sotto [`docs/spike-0/`](docs/spike-0/).
+Gli Step 1 e 2A sono completi. Per lo Step 2B, implementazione e verifiche locali sono complete; resta
+il gate della nuova matrice CI Ubuntu/Windows dopo commit e push. Il catalogo profili vuoto è valido:
+i benchmark dello spike provano fattibilità, non profili ottimizzati. Il piano normativo e il tracker
+sono in [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
+[`docs/spike-0/`](docs/spike-0/).
 
 ## Sviluppo
 
@@ -35,6 +37,7 @@ uv run --frozen ruff check .
 uv run --frozen ruff format --check .
 uv run --frozen pytest
 uv run --frozen qwen-launcher --version
+uv run --frozen qwen-launcher validate
 uv run --frozen qwen-launcher doctor
 ```
 

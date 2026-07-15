@@ -41,6 +41,9 @@ jobs:
       - name: Test
         run: uv run --frozen pytest
 
+      - name: Validate packaged content
+        run: uv run --frozen qwen-launcher validate
+
       - name: Build distributions
         run: uv build
 
