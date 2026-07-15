@@ -77,19 +77,31 @@ def _candidate(backend: str) -> dict[str, object]:
     return candidate
 
 
+def _hardware(backend: str) -> dict[str, object]:
+    """Build the CPU or CUDA hardware snapshot shared by synthetic reports."""
+    is_cuda = backend == "cuda"
+    return {
+        "os_name": "linux",
+        "os_version": "test",
+        "cpu_name": "Test CPU",
+        "cpu_cores": 12,
+        "ram_total_gib": 32,
+        "ram_available_gib": 24,
+        "backend": backend,
+        "gpu_index": 0 if is_cuda else None,
+        "gpu_name": "Test GPU" if is_cuda else None,
+        "gpu_driver": "test" if is_cuda else None,
+        "vram_total_gib": 8 if is_cuda else None,
+        "vram_free_gib": 7 if is_cuda else None,
+    }
+
+
 def valid_report(backend: str = "cuda", engine: str = "b10011") -> dict[str, object]:
     """Build one accepted, internally coherent calibration report."""
     candidate = _candidate(backend)
     policy_candidate = {"mode": "coding", "id": "safe", "ctx": 8192}
     if backend == "cuda":
         policy_candidate["n_cpu_moe"] = 48
-    gpu_values = {
-        "gpu_index": 0 if backend == "cuda" else None,
-        "gpu_name": "Test GPU" if backend == "cuda" else None,
-        "gpu_driver": "test" if backend == "cuda" else None,
-        "vram_total_gib": 8 if backend == "cuda" else None,
-        "vram_free_gib": 7 if backend == "cuda" else None,
-    }
     return {
         "schema": "calibration-report/v1",
         "id": "synthetic-report",
@@ -108,16 +120,7 @@ def valid_report(backend: str = "cuda", engine: str = "b10011") -> dict[str, obj
             "minimum_free_vram_gib": 0.5 if backend == "cuda" else None,
             "candidates": [policy_candidate],
         },
-        "hardware": {
-            "os_name": "linux",
-            "os_version": "test",
-            "cpu_name": "Test CPU",
-            "cpu_cores": 12,
-            "ram_total_gib": 32,
-            "ram_available_gib": 24,
-            "backend": backend,
-            **gpu_values,
-        },
+        "hardware": _hardware(backend),
         "hardware_class": "ram-32-vram-8",
         "modes": {"coding": {"candidates": [candidate], "selected_candidate_id": "safe"}},
         "selection_rule": "max-median-tok-s-then-free-vram-then-prudent-envelope/v1",

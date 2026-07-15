@@ -20,6 +20,8 @@
   obbligatorie per i contributori.
 - [x] **Step 2A — Contratti dichiarativi e modi.**
 - [x] **Step 2B — Validazione, modelli runtime e hardware.**
+- [~] **Step 2C — Contratto artefatto modello:** correzione implementata e verificata localmente;
+  pubblicazione dei commit e matrice CI remota ancora da eseguire.
 - [ ] **Step 3 — Vertical slice `coding`, stato, stop e status.**
 - [ ] **Step 4 — Asset lock e attivazione atomica del motore.**
 - [ ] **Step 5 — `studio` e `vstudio`.**
@@ -96,10 +98,19 @@
 - [x] Commit `e137916` pubblicato; matrice CI Ubuntu/Windows verde, incluso `validate` dalla sorgente
   e dalla wheel isolata.
 
+### Step 2C — dettaglio
+
+- [x] Separata l'identità dichiarativa `model` dal percorso locale opzionale `model_path`.
+- [x] Copiati nel lock revisione, filename, dimensione e SHA-256 verificati di GGUF e mmproj.
+- [x] Corretto il template macchina da `{model}` a `{model_path}` senza aggiungere flag.
+- [x] Validati artefatti, placeholder e copertura completa tramite `verified_flags`.
+- [x] Suite locale, build e `validate` dalla wheel isolata verdi.
+- [ ] Commit pubblicati e matrice CI Ubuntu/Windows verdi sullo Step 2C.
+
 ### Prossima azione obbligatoria
 
-Lo Step 2B è concluso. La prossima sessione di implementazione può iniziare esclusivamente lo Step 3,
-senza anticipare lo Step 4 o gli step successivi.
+Lo Step 2C resta aperto esclusivamente per push autorizzato e verifica della matrice CI
+Ubuntu/Windows. Non iniziare lo Step 3 o gli step successivi prima della chiusura di questo gate.
 
 ---
 
@@ -242,6 +253,7 @@ Regole conseguenti:
 | D-027 | hardware sopra il gate ma senza profilo usa una baseline verificata con warning e può avviare volontariamente `calibrate` | mantiene il prodotto usabile e riduce l'attrito per contribuire nuove calibrazioni |
 | D-028 | `calibrate` è locale, esplicito, riproducibile e non pubblica né modifica il repository | prove pesanti e possibili fallimenti restano sotto controllo dell'utente |
 | D-029 | il primo uso guidato su 8 GiB VRAM e 32 GiB RAM precede l'approvazione della policy automatica | margine VRAM, candidati e criteri finali derivano da evidenza reale, non da stime ricordate |
+| D-030 | identità `model` e percorso eseguibile `model_path` sono distinti; il modello predefinito si risolve in sola lettura alla revisione e ai digest appuntati | `llama-server -m` accetta un percorso, mentre `--hf-repo` risolve un branch mobile e può modificare la cache Hugging Face |
 
 Le sole decisioni lasciate allo spike sono: release esatta di `llama.cpp`, nomi esatti dei flag per
 quella release, forma reale della salute, asset ufficiali disponibili, compatibilità della UI e
@@ -397,6 +409,7 @@ default nel codice. Le sole variabili pubbliche della 0.1 sono:
 | Chiave | Variabile ambiente |
 |---|---|
 | `model` | `QWEN_LAUNCHER_MODEL` |
+| `model_path` | `QWEN_LAUNCHER_MODEL_PATH` |
 | `llama_port` | `QWEN_LAUNCHER_LLAMA_PORT` |
 | `engine_path` | `QWEN_LAUNCHER_ENGINE_PATH` |
 | `open_browser` | `QWEN_LAUNCHER_OPEN_BROWSER` |
@@ -405,7 +418,8 @@ Configurazione 0.1:
 
 | Chiave | Default | Vincolo |
 |---|---|---|
-| `model` | modello predefinito | stringa non vuota |
+| `model` | modello predefinito | identità stringa non vuota usata da profili e stato |
+| `model_path` | `None` | percorso locale opzionale del GGUF; `~` espansa |
 | `llama_port` | `8080` | intero 1–65535 |
 | `engine_path` | `None` | percorso opzionale; `~` espansa |
 | `open_browser` | `true` | booleano |
@@ -418,7 +432,7 @@ Regole:
 - il file intero viene validato prima di creare `Config`;
 - booleani ambiente ammessi, senza distinzione maiuscole/minuscole: `true/false`, `1/0`, `yes/no`,
   `on/off`;
-- `QWEN_LAUNCHER_ENGINE_PATH` vuota = `None`;
+- `QWEN_LAUNCHER_MODEL_PATH` e `QWEN_LAUNCHER_ENGINE_PATH` vuote = `None`;
 - tutte le altre variabili presenti ma vuote o invalide = errore, non fallback;
 - file assente = default; TOML malformato = errore chiaro su stderr senza traceback;
 - il launcher non modifica mai automaticamente `config.toml`.
@@ -592,7 +606,9 @@ Il valore precedente `ctx=16384` non è usato come ripiego perché lo Spike 0 ha
 Il ripiego mantiene il prodotto usabile, ma non genera report, profilo o promessa di prestazioni.
 
 `LaunchPlan` è la fusione non ambigua di modo + busta + config + identità del profilo/fallback +
-backend/GPU. Un modo inesistente è input CLI invalido e mostra l'elenco dei modi validi.
+backend/GPU. Conserva separatamente l'identità `model`, usata per matching e stato, e il
+`model_path` fisico passato al motore. Un modo inesistente è input CLI invalido e mostra l'elenco dei
+modi validi.
 
 ### 5.6 Calibrazione assistita e contribuzione
 
@@ -653,7 +669,7 @@ placeholder dichiarati dal lock; non associa nel codice un significato a un flag
 
 Il costruttore di argomenti deve rappresentare esplicitamente:
 
-- modello/repository;
+- percorso fisico del modello risolto dall'identità configurata;
 - contesto;
 - sampling;
 - host `127.0.0.1` e porta;
@@ -685,6 +701,14 @@ Formato minimo del lock; i nomi reali dei flag e i valori fissi arrivano esclusi
   "release": "<scelta nello spike>",
   "source_commit": "<sha verificato>",
   "default_model": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M",
+  "default_model_artifact": {
+    "repository": "<repository verificato>",
+    "revision": "<commit modello verificato>",
+    "filename": "<GGUF verificato>",
+    "size_bytes": 1,
+    "sha256": "<64 hex>",
+    "mmproj": {"filename": "<mmproj>", "size_bytes": 1, "sha256": "<64 hex>"}
+  },
   "verified_flags": ["<flag esatti>"],
   "version_contract": {
     "args": ["<flag versione verificato>"],
@@ -697,7 +721,7 @@ Formato minimo del lock; i nomi reali dei flag e i valori fissi arrivano esclusi
     "must_list_verified_flags": true
   },
   "command_contract": {
-    "model_args": ["<flag>", "{model}"],
+    "model_args": ["<flag>", "{model_path}"],
     "context_args": ["<flag>", "{ctx}"],
     "sampling_args": {
       "temp": ["<flag>", "{temp}"],
@@ -745,6 +769,14 @@ Le sequenze mostrate fra parentesi angolari sono segnaposto della specifica e no
 un lock prodotto. `docs/spike-0.json` e `engine.lock` devono contenere dati reali; un comportamento
 non applicabile usa una sequenza vuota o `null` soltanto dove il contratto lo consente, con la
 motivazione nello spike.
+
+Il modello predefinito viene risolto senza rete e senza scritture alla directory snapshot della
+revisione appuntata, rispettando la precedenza delle directory cache osservata nel sorgente della
+release lock. Filename, dimensione e SHA-256 devono coincidere prima dell'avvio. `model_path`
+esplicito consente un artefatto locale per un'identità diversa, che resta non calibrata e riceve il
+warning rafforzato della sezione 5.5. Il launcher non usa `--hf-repo`: nella release lock quel
+percorso consulta il branch remoto corrente e può creare o modificare ref, blob, snapshot e symlink
+nella cache Hugging Face.
 
 Ruoli ammessi almeno: `server`, `cuda-runtime`, `source`. Asset e checksum possono essere vuoti nello
 Step 1 con `assets_complete=false`; dallo Step 2B `validate` emette un warning ed `engine install`
@@ -1125,27 +1157,60 @@ wheel, `doctor` descrive la macchina e nessun profilo di produzione è stato pre
 **Commit locale suggerito:**
 `feat(validation): applica contratti v1 e rileva hardware senza profili presunti`
 
+### Step 2C — Correzione del contratto artefatto modello
+
+**Obiettivo:** rimuovere l'ambiguità emersa fra l'identità Hugging Face configurata e il percorso
+fisico richiesto dal flag `-m`, senza introdurre flag non verificati o modificare la cache Hugging
+Face.
+
+**Perimetro:** estensione additiva di `engine.lock`, configurazione `model_path`, validazione del lock,
+test e documentazione normativa. Nessun matching, processo o comando di avvio dello Step 3.
+
+**Attività:**
+
+1. Copia da `docs/spike-0.json` revisione, filename, dimensioni e SHA-256 esatti di modello e mmproj.
+2. Correggi il placeholder del contratto macchina in `{model_path}`, mantenendo il flag `-m` già
+   verificato su entrambi gli OS/backend.
+3. Mantieni `model` come identità stabile e aggiungi il percorso opzionale `model_path` con la stessa
+   precedenza severa della configurazione 0.1.
+4. Valida struttura degli artefatti, digest, placeholder ammessi e copertura di ogni flag emesso.
+5. Verifica dalla wheel che il contratto corretto resti disponibile e valido.
+
+**Definition of Done:** configurazione e lock non confondono più identità e percorso; nessuna rete o
+scrittura nella cache Hugging Face; suite e matrice CI Ubuntu/Windows verdi.
+
+**Commit locali suggeriti:**
+`fix(content): appunta gli artefatti modello verificati nel lock` e
+`fix(config): separa identità modello e percorso eseguibile`
+
 ### Step 3 — Vertical slice `coding`, stato, stop e status
+
+**Precondizione:** Step 2C concluso e matrice CI verde.
 
 **Obiettivo:** usare un motore dello spike già presente e ottenere un prodotto funzionante end-to-end.
 
 **Attività:**
 
 1. Implementa matching e ripiego secondo 5.5, inclusi modello e modo.
-2. Implementa `LaunchPlan` e builder CPU/CUDA con flag esatti del lock.
-3. Aggiungi il test di coerenza: ogni flag emesso appartiene a `verified_flags`.
-4. Implementa `engine.locate()` con ordine e compatibilità di 5.8.
-5. Implementa stato, lock d'avvio, log, porta, salute, timeout, identità processo e stop secondo 5.9.
-6. L'ambiente figlio CUDA include la sola GPU scelta se lo spike ne ha confermato l'efficacia.
-7. Implementa `coding --force`: detect → gate memoria → resolve → locate → start → salute → endpoint
+2. Risolvi il modello predefinito dalla revisione appuntata in sola lettura e verificane filename,
+   dimensione e SHA-256; per un'identità diversa usa soltanto il `model_path` esplicito, richiede un
+   file GGUF leggibile e non attribuirgli un digest o una calibrazione non dichiarati.
+3. Implementa `LaunchPlan` e builder CPU/CUDA con flag esatti del lock, passando a `-m` soltanto il
+   percorso risolto.
+4. Aggiungi il test di coerenza: ogni flag emesso appartiene a `verified_flags`.
+5. Implementa `engine.locate()` con ordine e compatibilità di 5.8.
+6. Implementa stato, lock d'avvio, log, porta, salute, timeout, identità processo e stop secondo 5.9.
+7. L'ambiente figlio CUDA include la sola GPU scelta se lo spike ne ha confermato l'efficacia.
+8. Implementa `coding --force`: detect → gate memoria → resolve → locate → start → salute → endpoint
    API → foreground.
-8. `coding` applica esplicitamente UI off e vision off.
-9. Implementa `stop` e `status` idempotenti.
-10. Crea `tests/fakes/fake_server.py` con salute ritardata, 503, risposta incompatibile e crash.
+9. `coding` applica esplicitamente UI off e vision off.
+10. Implementa `stop` e `status` idempotenti.
+11. Crea `tests/fakes/fake_server.py` con salute ritardata, 503, risposta incompatibile e crash.
 
 **Test obbligatori:** matching CUDA/CPU con report valido; catalogo vuoto; nessun profilo più vicino;
-modello diverso; profilo senza modo; RAM totale o disponibile bassa; perimetro di `--force`; builder
-CPU/CUDA e UI/vision; flag-lock; ready; timeout; crash; porta occupata; doppio avvio; lock obsoleto;
+modello diverso; profilo senza modo; risoluzione snapshot appuntata, digest errato, artefatto assente e
+`model_path` esplicito; RAM totale o disponibile bassa; perimetro di `--force`; builder CPU/CUDA e
+UI/vision; flag-lock; ready; timeout; crash; porta occupata; doppio avvio; lock obsoleto;
 stato corrotto; PID riusato; stop/status senza servizi; Ctrl-C.
 
 **Verifica manuale:** su entrambe le macchine, `coding` col motore dello spike e catalogo reale ancora

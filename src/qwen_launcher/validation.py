@@ -145,14 +145,13 @@ def _validate_schema(document: Document, schemas: dict[str, JsonObject]) -> list
 
 
 def _load_engine(root: Traversable) -> tuple[JsonObject, list[ValidationIssue]]:
-    """Load the engine lock and emit the Step 2B incomplete-assets warning."""
+    """Load and validate the machine lock while retaining the Step 4 asset warning."""
+    from qwen_launcher._validation_engine import validate_engine_lock
+
     document, issues = _read_object(root.joinpath("engine.lock"), "engine.lock")
     if document is None:
         return {}, issues
-    release = document.data.get("release")
-    if not isinstance(release, str) or not release:
-        message = "must be a non-empty string"
-        issues.append(ValidationIssue("error", "engine.lock", "$.release", message))
+    issues.extend(validate_engine_lock(document.data))
     if document.data.get("assets_complete") is not True:
         message = "engine assets remain incomplete until Step 4"
         issues.append(ValidationIssue("warning", "engine.lock", "$.assets_complete", message))

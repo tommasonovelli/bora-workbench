@@ -15,15 +15,17 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from qwen_launcher._config_paths import ConfigError, validate_engine_path, validate_model_path
 from qwen_launcher.paths import config_dir
 
 DEFAULT_MODEL = "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M"
 DEFAULT_LLAMA_PORT = 8080
 DEFAULT_OPEN_BROWSER = True
 
-_ALLOWED_KEYS = {"model", "llama_port", "engine_path", "open_browser"}
+_ALLOWED_KEYS = {"model", "model_path", "llama_port", "engine_path", "open_browser"}
 _ENVIRONMENT_KEYS = {
     "model": "QWEN_LAUNCHER_MODEL",
+    "model_path": "QWEN_LAUNCHER_MODEL_PATH",
     "llama_port": "QWEN_LAUNCHER_LLAMA_PORT",
     "engine_path": "QWEN_LAUNCHER_ENGINE_PATH",
     "open_browser": "QWEN_LAUNCHER_OPEN_BROWSER",
@@ -32,19 +34,12 @@ _TRUE_VALUES = {"true", "1", "yes", "on"}
 _FALSE_VALUES = {"false", "0", "no", "off"}
 
 
-class ConfigError(ValueError):
-    """Raised for expected, actionable configuration errors.
-
-    The CLI maps this to exit code 2 and prints it without a traceback, so every message must name
-    both the offending source and the constraint it broke (specification section 5.10).
-    """
-
-
 @dataclass(frozen=True, slots=True)
 class Config:
     """The resolved configuration, frozen once precedence and validation have been applied."""
 
     model: str = DEFAULT_MODEL
+    model_path: Path | None = None
     llama_port: int = DEFAULT_LLAMA_PORT
     engine_path: Path | None = None
     open_browser: bool = DEFAULT_OPEN_BROWSER
@@ -64,25 +59,6 @@ def _validate_port(value: Any, *, source: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 65535:
         raise ConfigError(f"{source}: 'llama_port' must be an integer between 1 and 65535")
     return value
-
-
-def _validate_engine_path(value: Any, *, source: str, allow_empty: bool = False) -> Path | None:
-    """Return the optional engine path with `~` expanded, or None when unset.
-
-    `allow_empty` exists because the two sources disagree by contract: an empty
-    QWEN_LAUNCHER_ENGINE_PATH means "unset", while an empty key in `config.toml` is a mistake worth
-    reporting (specification section 5.2). The path is not checked for existence here; that belongs
-    to the engine step that uses it.
-    """
-    if value is None:
-        return None
-    if not isinstance(value, str):
-        raise ConfigError(f"{source}: 'engine_path' must be a string")
-    if not value.strip():
-        if allow_empty:
-            return None
-        raise ConfigError(f"{source}: 'engine_path' must not be empty")
-    return Path(value).expanduser()
 
 
 def _validate_boolean(value: Any, *, source: str) -> bool:
@@ -106,10 +82,12 @@ def _validate_file_values(values: Mapping[str, Any], *, source: str) -> dict[str
     validated: dict[str, Any] = {}
     if "model" in values:
         validated["model"] = _validate_model(values["model"], source=source)
+    if "model_path" in values:
+        validated["model_path"] = validate_model_path(values["model_path"], source=source)
     if "llama_port" in values:
         validated["llama_port"] = _validate_port(values["llama_port"], source=source)
     if "engine_path" in values:
-        validated["engine_path"] = _validate_engine_path(values["engine_path"], source=source)
+        validated["engine_path"] = validate_engine_path(values["engine_path"], source=source)
     if "open_browser" in values:
         validated["open_browser"] = _validate_boolean(values["open_browser"], source=source)
     return validated
@@ -144,10 +122,14 @@ def _environment_overrides(environ: Mapping[str, str]) -> dict[str, Any]:
         value = environ[variable]
         if key == "model":
             overrides[key] = _validate_model(value, source=f"environment variable {variable}")
+        elif key == "model_path":
+            overrides[key] = validate_model_path(
+                value, source=f"environment variable {variable}", allow_empty=True
+            )
         elif key == "llama_port":
             overrides[key] = _parse_environment_port(value, variable=variable)
         elif key == "engine_path":
-            overrides[key] = _validate_engine_path(
+            overrides[key] = validate_engine_path(
                 value, source=f"environment variable {variable}", allow_empty=True
             )
         else:
@@ -183,6 +165,7 @@ def load_config(
 
     values: dict[str, Any] = {
         "model": DEFAULT_MODEL,
+        "model_path": None,
         "llama_port": DEFAULT_LLAMA_PORT,
         "engine_path": None,
         "open_browser": DEFAULT_OPEN_BROWSER,

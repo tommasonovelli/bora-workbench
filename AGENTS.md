@@ -19,8 +19,8 @@ apply here.
 - This is a Python 3.12 launcher for a local, calibrated Qwen model served by an exact, verified
   `llama.cpp` release. It is not a generic model manager or plugin framework.
 - Work one implementation step at a time and do not anticipate later milestones.
-- **Step 2B is complete.** The current mandatory next action is **Step 3**. Do not begin Step 4 or
-  anticipate later milestones.
+- **Step 2C is active.** The model-artifact correction and local gates are complete; publication and
+  green Ubuntu/Windows CI remain. Do not begin Step 3 or anticipate later milestones.
 - Never invent engine flags, checksums, source commits, benchmark results, hardware support, profiles,
   health responses, or compatibility claims.
 
@@ -122,6 +122,8 @@ A TODO must include date and context, for example:
 - Bind managed services only to `127.0.0.1`, never `0.0.0.0`.
 - Keep TLS and checksum verification enabled. Downloads must use HTTPS and safe extraction rules.
 - Never delete outside managed data/cache/state roots, and never alter the Hugging Face cache.
+- Keep declarative model identity separate from the physical GGUF path; resolve the default model
+  only from the pinned revision and digest in `engine.lock`.
 - Set `CUDA_VISIBLE_DEVICES` only in the child environment; do not mutate the parent process.
 - Tests must not use real network, GPU, model, server, or administrative operations. Use fakes and
   mocks.

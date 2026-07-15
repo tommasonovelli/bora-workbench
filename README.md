@@ -21,9 +21,10 @@ Ubuntu/Windows CPU/CUDA e il protocollo `benchmark/v1` sono verificati. Il contr
 incluso nella wheel come `engine.lock`; gli asset restano intenzionalmente marcati incompleti fino
 allo Step 4. Non esistono ancora profili di produzione né comandi di avvio.
 
-Gli Step 1, 2A e 2B sono completi, inclusa la matrice CI Ubuntu/Windows con validazione dalla sorgente
-e dalla wheel isolata. Il catalogo profili vuoto è valido: i benchmark dello spike provano
-fattibilità, non profili ottimizzati. Il piano normativo e il tracker sono in
+Gli Step 1, 2A e 2B sono completi. La correzione Step 2C separa l'identità del modello dal percorso
+GGUF richiesto dal motore ed è verificata localmente; resta il gate CI Ubuntu/Windows prima dello
+Step 3. Il catalogo profili vuoto è valido: i benchmark dello spike provano fattibilità, non profili
+ottimizzati. Il piano normativo e il tracker sono in
 [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
 [`docs/spike-0/`](docs/spike-0/).
 
@@ -56,8 +57,12 @@ default nel codice.
 | Chiave | Variabile |
 |---|---|
 | `model` | `QWEN_LAUNCHER_MODEL` |
+| `model_path` | `QWEN_LAUNCHER_MODEL_PATH` |
 | `llama_port` | `QWEN_LAUNCHER_LLAMA_PORT` |
 | `engine_path` | `QWEN_LAUNCHER_ENGINE_PATH` |
 | `open_browser` | `QWEN_LAUNCHER_OPEN_BROWSER` |
 
-Il launcher non crea né modifica automaticamente il file di configurazione.
+`model` è l'identità stabile usata dai profili; `model_path` è un eventuale file GGUF locale. Per il
+modello predefinito il percorso viene risolto nello Step 3 dalla revisione snapshot appuntata nel
+lock, senza rete né modifiche alla cache Hugging Face. Il launcher non crea né modifica
+automaticamente il file di configurazione.
