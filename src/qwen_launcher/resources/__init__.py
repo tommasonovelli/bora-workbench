@@ -6,7 +6,7 @@ import json
 from contextlib import AbstractContextManager
 from importlib.resources import as_file, files
 from importlib.resources.abc import Traversable
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 
@@ -17,8 +17,18 @@ def resource_root() -> Traversable:
 
 def resource(relative_path: str) -> Traversable:
     """Return one resource while rejecting absolute and parent-relative paths."""
-    parts = Path(relative_path).parts
-    if not parts or Path(relative_path).is_absolute() or ".." in parts:
+    posix_path = PurePosixPath(relative_path)
+    windows_path = PureWindowsPath(relative_path)
+    parts = posix_path.parts
+    is_unsafe = (
+        not parts
+        or posix_path.is_absolute()
+        or windows_path.is_absolute()
+        or windows_path.drive
+        or ".." in parts
+        or ".." in windows_path.parts
+    )
+    if is_unsafe:
         raise ValueError("resource path must be relative and cannot contain '..'")
     return resource_root().joinpath(*parts)
 

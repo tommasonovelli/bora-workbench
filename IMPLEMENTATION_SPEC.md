@@ -10,15 +10,14 @@
 
 ### Stato sintetico
 
-- [~] **Step 0 — Spike tecnico:** `llama.cpp b10011` è identificato col commit completo
-  `bf2c86ddc0685f580595954056c2e77ebabfab4f`. La matrice Ubuntu 24.04 CPU/CUDA dei tre modi è
-  completa: salute, API, metriche, UI esplicita, vision, MTP, stop, selezione CUDA e benchmark/v1
-  con cinque misure valide per combinazione. `docs/spike-0.md/json` registrano il risultato Ubuntu
-  `PASS` e la decisione complessiva `PENDING_WINDOWS`. Restano Windows CPU, CUDA studio/vstudio,
-  benchmark Windows, identificazione dell'asset CUDA Windows usato, verifica finale della
-  redistribuibilità del runtime CUDA e decisione `GO`.
-- [~] **Step 1 — Scaffold:** completata la parte indipendente dallo Spike 0; dettagli sotto. Lo step
-  resta aperto perché la sua precondizione `GO` non è soddisfatta e manca `engine.lock`.
+- [x] **Step 0 — Spike tecnico:** `llama.cpp b10011`, commit
+  `bf2c86ddc0685f580595954056c2e77ebabfab4f`, ha completato la matrice Ubuntu 24.04 e Windows 11
+  CPU/CUDA dei tre modi. Salute, API, metriche, UI esplicita, vision, MTP, sampling, stop/log e
+  `benchmark/v1` con warm-up più cinque misure sono verificati. La coppia Windows CUDA 13.3 e i
+  termini MIT/NVIDIA sono registrati. `docs/spike-0.md/json` dichiarano `GO`.
+- [~] **Step 1 — Scaffold:** implementazione locale completa, incluso `engine.lock`; suite frozen,
+  build e wheel isolata sono verdi su Windows. Restano la CI GitHub Ubuntu/Windows, che richiede un
+  push non autorizzato implicitamente, e le successive attività umane sul branch.
 - [ ] **Step 2 — Schemi, contenuti, validazione e hardware.**
 - [ ] **Step 3 — Vertical slice `coding`, stato, stop e status.**
 - [ ] **Step 4 — Asset lock e attivazione atomica del motore.**
@@ -29,56 +28,55 @@
 - [ ] **Step 9 — Benchmark e doctor definitivo.**
 - [ ] **Step 10A / Human Gate / 10B — Release 0.2.**
 
-### Step 0 — dettaglio residuo
+### Step 0 — dettaglio
 
-- [x] Repository Git locale inizializzato sul branch `main`; remote `origin` rilevato, senza alcuna
-  operazione remota eseguita dall'agente.
-- [x] Output `--help`, `--version` e device CPU/CUDA Windows conservati integralmente.
-- [x] Smoke CUDA coding su RTX 2060 SUPER conservato con comando, ambiente, log e risposta.
-- [x] Salute pronta, `/v1/models`, `/v1/chat/completions`, metriche, UI off e stop osservati.
-- [x] Evidenza preliminare che `CUDA_VISIBLE_DEVICES=0` espone soltanto `CUDA0` al figlio.
-- [~] Release candidata `b10011` usata per le prove; tag e SHA sorgente completo registrati. La
-  selezione finale resta da confermare col gate complessivo.
-- [~] Modello e licenze MIT/Apache-2.0 verificati; asset e nomi censiti. Resta la verifica finale
-  della coppia asset/runtime CUDA Windows e dei relativi termini di redistribuzione.
-- [ ] Completare prove Windows CPU e modi `studio`/`vstudio`, inclusa vision.
-- [x] Eseguire l'intera matrice Ubuntu CPU/CUDA.
-- [~] Creare prompt e richiesta `benchmark/v1`; completati warm-up e cinque misure per tutte le
-  combinazioni Ubuntu, restano quelle Windows.
-- [~] Produrre `spike-0.md` e `spike-0.json` coerenti; creati con risultato Ubuntu `PASS`, restano da
-  completare con la matrice Windows e la decisione finale.
-- [~] Registrare asset/checksum e contratto macchina completo; parte Ubuntu completa, parte Windows
-  ancora parziale.
-- [ ] Dichiarare esplicitamente `GO` o `NO-GO`.
+- [x] Release `b10011`, commit completo, versione, help e contratto semantico verificati.
+- [x] Modello, mmproj, licenze MIT/Apache-2.0 e checksum verificati senza redistribuire i pesi.
+- [x] Asset Ubuntu CPU e sorgente CUDA verificati; matrice CPU/CUDA completa per i tre modi.
+- [x] Asset Windows CPU e coppia server/runtime CUDA 13.3 verificati coi digest pubblicati; matrice
+  completa per i tre modi, inclusa vision CPU/CUDA.
+- [x] Salute 503/200, `/v1/models`, `/v1/chat/completions`, metriche, UI on/off, MTP, sampling,
+  log e stop conservati come output grezzi.
+- [x] `benchmark/v1`: prompt/richiesta con SHA-256, un warm-up escluso e cinque misure esatte da 256
+  token per ciascuna delle dodici combinazioni OS/backend/modo.
+- [x] `CUDA_VISIBLE_DEVICES=0` e ambiente padre verificati sulle macchine a GPU singola. La selezione
+  fra GPU fisiche multiple non è dimostrabile su questo hardware: la 0.1 dovrà bloccare CUDA su host
+  multi-GPU finché il caso non sarà collaudato.
+- [x] Evidenza attiva sotto `docs/spike-0/` coperta da SHA-256; archivio iniziale immutato e verificato.
+- [x] Decisione finale esplicita: `GO`, senza derivare profili o assetti da RAM, VRAM o tok/s.
 
 ### Step 1 — dettaglio
 
 - [x] Scaffold `src/` senza moduli segnaposto degli step successivi.
 - [x] `pyproject.toml`, Python `>=3.12,<3.13`, `.python-version` `3.12.13`, `uv_build`, entry point,
   Ruff, pytest, versione `0.1.0.dev0` e `uv.lock` frozen.
-- [x] `paths.py` con directory Linux/Windows e nessuna creazione automatica.
+- [x] `paths.py` con directory Linux/Windows e nessuna creazione automatica; corretta la simulazione
+  XDG su host Windows.
 - [x] `config.py` con chiavi 0.1, precedenza ambiente > file > default e validazione severa.
-- [x] Helper `importlib.resources` basati su `Traversable` e context manager.
-- [ ] Creare `engine.lock`: bloccato finché lo Step 0 non fornisce contratto e SHA completi; nessun
-  valore è stato inventato dal materiale parziale.
-- [x] CLI minima con `--version` e `doctor` esplicitamente parziale.
+- [x] Helper `importlib.resources` basati su `Traversable`, context manager e controllo percorsi
+  assoluti indipendente dall'OS host.
+- [x] `engine.lock` creato copiando esclusivamente il contratto verificato dello Spike 0;
+  `assets_complete=false` resta intenzionalmente riservato allo Step 4.
+- [x] CLI minima con `--version` e `doctor` esplicitamente limitato allo Step 1.
 - [x] MIT, `.gitignore`, README, CONTRIBUTING, changelog, CODEOWNERS e template PR.
 - [x] Workflow CI Ubuntu/Windows scritto con action a SHA completo, uv/Python appuntati e lock frozen.
-- [ ] Eseguire la CI sul repository GitHub e correggere eventuali differenze Windows.
+- [x] Suite locale Windows: sync frozen, lint, format e 41 test superati con CPython 3.12.13.
+- [x] Wheel e sdist costruite su Windows; import, risorse, `engine.lock` e `--version` verificati in
+  un ambiente Windows isolato.
+- [x] Suite locale Linux precedente: lint, format e 39 test superati; wheel precedente verificata in
+  ambiente Linux isolato prima dell'aggiunta di `engine.lock`.
+- [ ] Eseguire la matrice CI GitHub Ubuntu/Windows e ricontrollare su Ubuntu gli artefatti aggiornati;
+  richiede pubblicare i commit e non è autorizzato implicitamente.
 - [x] Preparare il commit locale iniziale Conventional Commits.
 - [x] Remote `origin` GitHub configurato.
-- [ ] Pubblicare il commit iniziale con push (attività umana; non autorizzata implicitamente).
+- [ ] Pubblicare i commit con push (attività umana; non autorizzata implicitamente).
 - [ ] Abilitare branch protection e code-owner review (attività umana dopo CI verde).
-- [x] Suite locale Linux: lint, format e 39 test superati con CPython 3.12.13.
-- [x] Wheel e sdist costruite; wheel verificata in ambiente Linux isolato.
-- [ ] Verifica wheel Windows e Definition of Done multipiattaforma.
 
 ### Prossima azione obbligatoria
 
-Riprendere **Step 0**, non Step 2: completare su Windows CPU, `studio`, `vstudio`, vision e
-`benchmark/v1`, identificare la coppia asset CUDA realmente provata, poi aggiornare
-`spike-0.md/json` e ottenere il `GO`. Solo dopo si completa `engine.lock`, si verifica la CI
-multipiattaforma e si chiude Step 1.
+Non iniziare lo Step 2. Per chiudere formalmente lo Step 1, Tommaso deve autorizzare il push, far
+eseguire la matrice CI GitHub Ubuntu/Windows e, a CI verde, abilitare branch protection e revisione
+code owner. Se la CI rileva differenze, le sole correzioni ammesse restano nel perimetro Step 1.
 
 ---
 

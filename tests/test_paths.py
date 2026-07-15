@@ -5,6 +5,7 @@ import qwen_launcher.paths as paths
 
 def test_linux_xdg_paths(monkeypatch):
     monkeypatch.setattr(paths, "_system_name", lambda: "linux")
+    monkeypatch.setattr(paths.Path, "home", classmethod(lambda cls: Path("/home/tester")))
     monkeypatch.setenv("XDG_CONFIG_HOME", "/tmp/xdg/config")
     monkeypatch.setenv("XDG_DATA_HOME", "/tmp/xdg/data")
     monkeypatch.setenv("XDG_CACHE_HOME", "/tmp/xdg/cache")

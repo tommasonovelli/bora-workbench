@@ -8,7 +8,7 @@ from __future__ import annotations
 import os
 import platform
 from collections.abc import Mapping
-from pathlib import Path, PureWindowsPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 _APP_NAME = "qwen-launcher"
 
@@ -20,7 +20,7 @@ def _system_name() -> str:
 def _is_absolute(value: str, *, windows: bool) -> bool:
     if windows:
         return PureWindowsPath(value).is_absolute()
-    return Path(value).is_absolute()
+    return PurePosixPath(value).is_absolute()
 
 
 def _environment_path(

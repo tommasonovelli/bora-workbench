@@ -30,9 +30,10 @@ def main() -> int:
         python = environment / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
         command = (
             "from importlib.metadata import version; "
-            "from qwen_launcher.resources import read_text; "
+            "from qwen_launcher.resources import read_json, read_text; "
             "assert version('qwen-launcher') == '0.1.0.dev0'; "
-            "assert 'Spike 0' in read_text('README.txt')"
+            "assert 'Spike 0' in read_text('README.txt'); "
+            "assert read_json('engine.lock')['release'] == 'b10011'"
         )
         subprocess.run([str(python), "-c", command], check=True)
         subprocess.run([str(python), "-m", "qwen_launcher.cli", "--version"], check=True)

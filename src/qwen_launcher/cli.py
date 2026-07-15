@@ -68,9 +68,7 @@ def doctor() -> None:
     table.add_row("Cache directory", str(cache_dir()))
     table.add_row("State directory", str(state_dir()))
     _stdout.print(table)
-    _stdout.print(
-        "[yellow]Hardware and engine diagnostics are pending completion of Spike 0.[/yellow]"
-    )
+    _stdout.print("[yellow]Hardware and engine diagnostics are not implemented in Step 1.[/yellow]")
 
 
 if __name__ == "__main__":
