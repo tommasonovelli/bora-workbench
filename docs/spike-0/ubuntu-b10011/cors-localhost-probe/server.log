@@ -1,0 +1,13 @@
+0.00.106.741 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.223.111 I srv          init: The UI is disabled
+0.00.223.113 I srv          init: Use --ui/--no-ui (or deprecated --webui/--no-webui) to enable/disable
+0.00.224.459 I srv    load_model: loading model '/tmp/qwen-launcher-spike-0-b10011/model.gguf'
+0.00.648.213 W llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --no-mmap for better performance
+0.01.420.366 W srv    operator(): (CORS) skip non-localhost origin: 
+0.01.837.281 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 8192, kv_unified = 'false'
+0.01.876.726 I srv          init: chat template supports preserving reasoning, consider enabling it via --reasoning-preserve
+0.01.876.750 I srv  llama_server: model loaded
+0.01.876.752 I srv  llama_server: listening on http://127.0.0.1:18086
+0.02.431.345 W srv    operator(): (CORS) skip non-localhost origin: 
+0.02.436.793 W srv    operator(): (CORS) skip non-localhost origin: https://evil.example
+0.02.441.303 I srv    operator(): operator(): cleaning up before exit...

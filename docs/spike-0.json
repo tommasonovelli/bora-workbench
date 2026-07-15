@@ -1,0 +1,452 @@
+{
+  "schema": "spike-0/v1",
+  "decision": "PENDING_WINDOWS",
+  "ubuntu_result": "PASS",
+  "project": "qwen-launcher",
+  "engine": {
+    "project": "ggml-org/llama.cpp",
+    "release": "b10011",
+    "source_commit": "bf2c86ddc0685f580595954056c2e77ebabfab4f",
+    "release_url": "https://github.com/ggml-org/llama.cpp/releases/tag/b10011",
+    "license": "MIT",
+    "version_contract": {
+      "args": [
+        "--version"
+      ],
+      "exit_code": 0,
+      "output_contains": [
+        "version: 10011",
+        "bf2c86ddc"
+      ]
+    },
+    "help_contract": {
+      "args": [
+        "--help"
+      ],
+      "exit_code": 0,
+      "must_list_verified_flags": true
+    },
+    "verified_flags": [
+      "-c",
+      "-fa",
+      "-m",
+      "-ncmoe",
+      "-ngl",
+      "-np",
+      "--fit",
+      "--help",
+      "--cors-origins",
+      "--host",
+      "--jinja",
+      "--list-devices",
+      "--log-timestamps",
+      "--metrics",
+      "--mmap",
+      "--mmproj",
+      "--no-mmproj",
+      "--no-webui",
+      "--port",
+      "--spec-draft-n-max",
+      "--spec-type",
+      "--temp",
+      "--top-k",
+      "--top-p",
+      "--version",
+      "--webui"
+    ],
+    "command_contract": {
+      "model_args": [
+        "-m",
+        "{model}"
+      ],
+      "context_args": [
+        "-c",
+        "{ctx}"
+      ],
+      "sampling_args": {
+        "temp": [
+          "--temp",
+          "{temp}"
+        ],
+        "top_p": [
+          "--top-p",
+          "{top_p}"
+        ],
+        "top_k": [
+          "--top-k",
+          "{top_k}"
+        ]
+      },
+      "network_args": [
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "{port}"
+      ],
+      "metrics_args": [
+        "--metrics"
+      ],
+      "fixed_args": [
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--mmap",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps"
+      ],
+      "ui_args": {
+        "enabled": [
+          "--webui"
+        ],
+        "disabled": [
+          "--no-webui"
+        ]
+      },
+      "vision_args": {
+        "enabled": [
+          "--mmproj",
+          "{mmproj}"
+        ],
+        "disabled": [
+          "--no-mmproj"
+        ]
+      },
+      "backend_args": {
+        "cuda": [
+          "-ngl",
+          "99",
+          "-ncmoe",
+          "{n_cpu_moe}"
+        ],
+        "cpu": []
+      }
+    },
+    "api_contract": {
+      "base_path": "/v1",
+      "models_path": "/v1/models",
+      "chat_completions_path": "/v1/chat/completions",
+      "metrics_path": "/metrics",
+      "ui_path": "/"
+    },
+    "health_contract": {
+      "path": "/health",
+      "transient_statuses": [
+        503
+      ],
+      "transient_json": {
+        "error": {
+          "message": "Loading model",
+          "type": "unavailable_error",
+          "code": 503
+        }
+      },
+      "ready_status": 200,
+      "ready_json": {
+        "status": "ok"
+      }
+    }
+  },
+  "model": {
+    "identifier": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M",
+    "repository": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF",
+    "revision": "5bc3e238d916f48a861bac2f8a1990a0e9b7e98d",
+    "license": "apache-2.0",
+    "base_model": "Qwen/Qwen3.6-35B-A3B",
+    "base_model_revision_checked": "995ad96eacd98c81ed38be0c5b274b04031597b0",
+    "file": "Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+    "sha256": "0b21525e972670ed59e1812e170b27c26355381f0656ecc4e25617ece7dac58b",
+    "size_bytes": 22663387424,
+    "mmproj_file": "mmproj-BF16.gguf",
+    "mmproj_sha256": "da63cb47a76763c712393f8a017070188a304fa39f8aeea6edc629ed7b975cfa",
+    "mmproj_size_bytes": 902822528,
+    "redistributed_by_launcher": false
+  },
+  "raw_evidence": {
+    "windows": "archive/project-kickoff-2026-07-14/docs/spike-0/windows-b10011",
+    "windows_checksums": "archive/project-kickoff-2026-07-14/SHA256SUMS",
+    "ubuntu": "docs/spike-0/ubuntu-b10011",
+    "ubuntu_and_research_checksums": "docs/spike-0/SHA256SUMS"
+  },
+  "command_contract_status": {
+    "ubuntu_cpu": "verified",
+    "ubuntu_cuda": "verified",
+    "windows_cuda_coding": "verified_partial",
+    "windows_cpu": "missing",
+    "windows_studio": "missing",
+    "windows_vstudio": "missing"
+  },
+  "assets_complete": false,
+  "assets": [
+    {
+      "os": "ubuntu",
+      "backend": "cpu",
+      "role": "server",
+      "filename": "llama-b10011-bin-ubuntu-x64.tar.gz",
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b10011/llama-b10011-bin-ubuntu-x64.tar.gz",
+      "sha256": "3cae0a514d2e95062be5b1ca19474446080a1cc12ae5cb1a89d0534bcd013ec1",
+      "archive": "tar.gz",
+      "executable": "llama-b10011/llama-server",
+      "tested": true
+    },
+    {
+      "os": "ubuntu",
+      "backend": "cuda",
+      "role": "source",
+      "filename": "bf2c86ddc0685f580595954056c2e77ebabfab4f.tar.gz",
+      "url": "https://github.com/ggml-org/llama.cpp/archive/bf2c86ddc0685f580595954056c2e77ebabfab4f.tar.gz",
+      "sha256": "8a43d487370d775a4f6a6faa1f27085c51eae13d7d2b9dc403b551966114f397",
+      "archive": "tar.gz",
+      "executable": "build/bin/llama-server",
+      "tested": true
+    },
+    {
+      "os": "windows",
+      "backend": "cpu",
+      "role": "server",
+      "filename": "llama-b10011-bin-win-cpu-x64.zip",
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b10011/llama-b10011-bin-win-cpu-x64.zip",
+      "sha256": "5cb0676f1b6341aa1f3144c3d7fd00bd638a0ce676954712444aecd61f71ad36",
+      "archive": "zip",
+      "executable": "llama-server.exe",
+      "tested": false
+    },
+    {
+      "os": "windows",
+      "backend": "cuda",
+      "role": "server",
+      "filename": "llama-b10011-bin-win-cuda-13.3-x64.zip",
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b10011/llama-b10011-bin-win-cuda-13.3-x64.zip",
+      "sha256": "2af4f3c1fb42afa85c76a782187444e44f33c08fa31b9000e6baeb18342c6ea2",
+      "archive": "zip",
+      "executable": "llama-server.exe",
+      "tested": false
+    },
+    {
+      "os": "windows",
+      "backend": "cuda",
+      "role": "cuda-runtime",
+      "filename": "cudart-llama-bin-win-cuda-13.3-x64.zip",
+      "url": "https://github.com/ggml-org/llama.cpp/releases/download/b10011/cudart-llama-bin-win-cuda-13.3-x64.zip",
+      "sha256": "1462a050eb4c684921ba51dcc4cc488a036674c3e73e9945ee705b854808d03e",
+      "archive": "zip",
+      "executable": null,
+      "tested": false
+    }
+  ],
+  "platforms": [
+    {
+      "id": "ubuntu-24.04-i5-10400f-rtx2060-super",
+      "os": "Ubuntu 24.04 x86_64",
+      "cpu": "Intel Core i5-10400F, 6 cores / 12 threads",
+      "ram_total_kib": 32775508,
+      "gpu": "NVIDIA GeForce RTX 2060 SUPER",
+      "vram_total_mib": 8192,
+      "driver": "595.71.05",
+      "cuda_toolkit": "12.0.140",
+      "backends": {
+        "cuda": {
+          "coding": "pass",
+          "studio": "pass",
+          "vstudio": "pass"
+        },
+        "cpu": {
+          "coding": "pass",
+          "studio": "pass",
+          "vstudio": "pass"
+        }
+      }
+    },
+    {
+      "id": "windows-11-i5-10400f-rtx2060-super",
+      "os": "Windows 11 x86_64",
+      "backends": {
+        "cuda": {
+          "coding": "partial-pass",
+          "studio": "missing",
+          "vstudio": "missing"
+        },
+        "cpu": {
+          "coding": "missing",
+          "studio": "missing",
+          "vstudio": "missing"
+        }
+      }
+    }
+  ],
+  "benchmark_protocol": {
+    "id": "benchmark/v1",
+    "prompt": "docs/spike-0/benchmark-v1-prompt.txt",
+    "prompt_sha256": "1c7182235411da2d4fe6fca130e3effb0b0d965569c52abd8fd45327103ddb2e",
+    "request": "docs/spike-0/benchmark-v1-request.json",
+    "request_sha256": "025dc91aeb61a790d5fd36c27f127e04761ae7f1c3d6b542d0cfd9d37bc5c19f",
+    "completion_tokens": 256,
+    "exact_token_mechanism": "max_tokens=256 plus ignore_eos=true; require finish_reason=length, completion_tokens=256 and predicted_n=256",
+    "seed": 424242,
+    "warmup_runs": 1,
+    "measured_runs": 5,
+    "concurrent_clients": 0,
+    "prompt_cache": "server default; warm-up populates cache, measured runs observed cache_n=124 and prompt_n=4",
+    "measurement_method": "response.timings.predicted_per_second cross-checked against predicted_n / predicted_ms"
+  },
+  "measurements": [
+    {
+      "os": "ubuntu-24.04-x86_64",
+      "backend": "cpu",
+      "mode": "coding",
+      "hardware_id": "i5-10400f-32gib-rtx2060-super-8gib",
+      "ctx": 8192,
+      "n_cpu_moe": null,
+      "warmup_tok_s": 8.785164766794713,
+      "measured_tok_s": [
+        10.949620368962856,
+        10.865081157063235,
+        11.233961106973464,
+        11.200112631132647,
+        11.042477607602365
+      ],
+      "tok_s": {
+        "min": 10.865081157063235,
+        "median": 11.042477607602365,
+        "max": 11.233961106973464
+      },
+      "raw_summary": "docs/spike-0/ubuntu-b10011/benchmarks/cpu-coding/summary.json"
+    },
+    {
+      "os": "ubuntu-24.04-x86_64",
+      "backend": "cpu",
+      "mode": "studio",
+      "hardware_id": "i5-10400f-32gib-rtx2060-super-8gib",
+      "ctx": 8192,
+      "n_cpu_moe": null,
+      "warmup_tok_s": 8.32424251262838,
+      "measured_tok_s": [
+        11.097239561659038,
+        11.175028978683544,
+        11.473956561303623,
+        11.506972955916606,
+        11.2612835531813
+      ],
+      "tok_s": {
+        "min": 11.097239561659038,
+        "median": 11.2612835531813,
+        "max": 11.506972955916606
+      },
+      "raw_summary": "docs/spike-0/ubuntu-b10011/benchmarks/cpu-studio/summary.json"
+    },
+    {
+      "os": "ubuntu-24.04-x86_64",
+      "backend": "cpu",
+      "mode": "vstudio",
+      "hardware_id": "i5-10400f-32gib-rtx2060-super-8gib",
+      "ctx": 8192,
+      "n_cpu_moe": null,
+      "warmup_tok_s": 8.927093750455509,
+      "measured_tok_s": [
+        11.457451879709108,
+        11.490032329629638,
+        11.403867799949786,
+        11.460420653844754,
+        11.44932281504321
+      ],
+      "tok_s": {
+        "min": 11.403867799949786,
+        "median": 11.457451879709108,
+        "max": 11.490032329629638
+      },
+      "raw_summary": "docs/spike-0/ubuntu-b10011/benchmarks/cpu-vstudio/summary.json"
+    },
+    {
+      "os": "ubuntu-24.04-x86_64",
+      "backend": "cuda",
+      "mode": "coding",
+      "hardware_id": "i5-10400f-32gib-rtx2060-super-8gib",
+      "ctx": 8192,
+      "n_cpu_moe": 48,
+      "warmup_tok_s": 31.990394883936098,
+      "measured_tok_s": [
+        31.54728074763112,
+        31.546919203041025,
+        31.493439830368462,
+        31.51820484124551,
+        31.523719936868826
+      ],
+      "tok_s": {
+        "min": 31.493439830368462,
+        "median": 31.523719936868826,
+        "max": 31.54728074763112
+      },
+      "raw_summary": "docs/spike-0/ubuntu-b10011/benchmarks/cuda-coding/summary.json"
+    },
+    {
+      "os": "ubuntu-24.04-x86_64",
+      "backend": "cuda",
+      "mode": "studio",
+      "hardware_id": "i5-10400f-32gib-rtx2060-super-8gib",
+      "ctx": 8192,
+      "n_cpu_moe": 48,
+      "warmup_tok_s": 34.908445102856504,
+      "measured_tok_s": [
+        34.35667923369574,
+        34.278844744015366,
+        34.38803403878057,
+        34.2848495116083,
+        34.29393411304701
+      ],
+      "tok_s": {
+        "min": 34.278844744015366,
+        "median": 34.29393411304701,
+        "max": 34.38803403878057
+      },
+      "raw_summary": "docs/spike-0/ubuntu-b10011/benchmarks/cuda-studio/summary.json"
+    },
+    {
+      "os": "ubuntu-24.04-x86_64",
+      "backend": "cuda",
+      "mode": "vstudio",
+      "hardware_id": "i5-10400f-32gib-rtx2060-super-8gib",
+      "ctx": 8192,
+      "n_cpu_moe": 48,
+      "warmup_tok_s": 34.735932286642,
+      "measured_tok_s": [
+        35.203171805779704,
+        35.2533510995534,
+        35.213737759443404,
+        35.251763689802104,
+        35.036758486696705
+      ],
+      "tok_s": {
+        "min": 35.036758486696705,
+        "median": 35.213737759443404,
+        "max": 35.2533510995534
+      },
+      "raw_summary": "docs/spike-0/ubuntu-b10011/benchmarks/cuda-vstudio/summary.json"
+    }
+  ],
+  "observations": {
+    "ubuntu_ui": "pass; explicit --webui returns HTTP 200 when the client advertises gzip support",
+    "ubuntu_ui_disabled": "pass; explicit --no-webui returns HTTP 404 at /",
+    "ubuntu_vision": "pass on CPU and CUDA; red PNG answered Rosso",
+    "ubuntu_mtp": "pass; draft_n/draft_n_accepted observed in responses, including vision",
+    "ubuntu_gpu_selection": "CUDA_VISIBLE_DEVICES=0 exposes only CUDA0; empty value exposes no CUDA devices; host has one GPU",
+    "cors": "default * produced a security warning; verified --cors-origins localhost rejects an evil Origin and reflects a localhost Origin; added to the fixed contract",
+    "cpu_cuda_arguments": "none; CPU commands omit -ngl and -ncmoe",
+    "source_build_versioning": "source archives omit .git; LLAMA_BUILD_NUMBER=10011 and LLAMA_BUILD_COMMIT=<full commit> are required for a valid version probe",
+    "name_availability": "PyPI qwen-launcher returned 404; unauthenticated GitHub repository API returned 404 at capture time; indicative only"
+  },
+  "remaining": [
+    "complete Windows CPU tests for coding, studio and vstudio",
+    "complete Windows CUDA studio and vstudio, including image input",
+    "run benchmark/v1 for every declared Windows combination",
+    "identify and verify the exact Windows CUDA server/runtime asset pair used by the archived smoke test",
+    "record final maintainer GO or NO-GO"
+  ]
+}

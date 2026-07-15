@@ -1,0 +1,2 @@
+Available devices:
+  CUDA0: NVIDIA GeForce RTX 2060 SUPER (7777 MiB, 7233 MiB free)

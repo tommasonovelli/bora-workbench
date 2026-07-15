@@ -1,0 +1,10 @@
+{
+  "ref": "refs/tags/b10011",
+  "node_id": "REF_kwDOJH_K4LByZWZzL3RhZ3MvYjEwMDEx",
+  "url": "https://api.github.com/repos/ggml-org/llama.cpp/git/refs/tags/b10011",
+  "object": {
+    "sha": "bf2c86ddc0685f580595954056c2e77ebabfab4f",
+    "type": "commit",
+    "url": "https://api.github.com/repos/ggml-org/llama.cpp/git/commits/bf2c86ddc0685f580595954056c2e77ebabfab4f"
+  }
+}

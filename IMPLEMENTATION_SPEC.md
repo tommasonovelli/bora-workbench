@@ -1,6 +1,6 @@
 # qwen-launcher — Specifica centrale di implementazione (v3.1)
 
-## 0. Tracker di avanzamento — aggiornato al 14 luglio 2026
+## 0. Tracker di avanzamento — aggiornato al 15 luglio 2026
 
 > Questo blocco registra lo stato reale del repository al commit iniziale. Questo è il documento
 > normativo `IMPLEMENTATION_SPEC.md` alla radice, unica copia normativa nel repository come previsto
@@ -10,12 +10,13 @@
 
 ### Stato sintetico
 
-- [~] **Step 0 — Spike tecnico:** disponibili e letti output grezzi Windows per `llama.cpp b10011`
-  (`bf2c86ddc` abbreviato), help/versione CPU e CUDA, isolamento con
-  `CUDA_VISIBLE_DEVICES=0`, smoke CUDA coding, salute `200 {"status":"ok"}`, API, metriche, UI
-  disabilitata e stop. Mancano release approvata con commit sorgente completo, licenze e asset,
-  prove Ubuntu, matrice dei tre modi, CPU end-to-end, vision, benchmark/v1 completo,
-  `docs/spike-0.md`, `docs/spike-0.json` e decisione `GO`.
+- [~] **Step 0 — Spike tecnico:** `llama.cpp b10011` è identificato col commit completo
+  `bf2c86ddc0685f580595954056c2e77ebabfab4f`. La matrice Ubuntu 24.04 CPU/CUDA dei tre modi è
+  completa: salute, API, metriche, UI esplicita, vision, MTP, stop, selezione CUDA e benchmark/v1
+  con cinque misure valide per combinazione. `docs/spike-0.md/json` registrano il risultato Ubuntu
+  `PASS` e la decisione complessiva `PENDING_WINDOWS`. Restano Windows CPU, CUDA studio/vstudio,
+  benchmark Windows, identificazione dell'asset CUDA Windows usato, verifica finale della
+  redistribuibilità del runtime CUDA e decisione `GO`.
 - [~] **Step 1 — Scaffold:** completata la parte indipendente dallo Spike 0; dettagli sotto. Lo step
   resta aperto perché la sua precondizione `GO` non è soddisfatta e manca `engine.lock`.
 - [ ] **Step 2 — Schemi, contenuti, validazione e hardware.**
@@ -36,13 +37,18 @@
 - [x] Smoke CUDA coding su RTX 2060 SUPER conservato con comando, ambiente, log e risposta.
 - [x] Salute pronta, `/v1/models`, `/v1/chat/completions`, metriche, UI off e stop osservati.
 - [x] Evidenza preliminare che `CUDA_VISIBLE_DEVICES=0` espone soltanto `CUDA0` al figlio.
-- [ ] Approvare release precisa e registrare tag più SHA sorgente completo.
-- [ ] Verificare modello, licenze, redistribuibilità, asset e disponibilità nomi.
+- [~] Release candidata `b10011` usata per le prove; tag e SHA sorgente completo registrati. La
+  selezione finale resta da confermare col gate complessivo.
+- [~] Modello e licenze MIT/Apache-2.0 verificati; asset e nomi censiti. Resta la verifica finale
+  della coppia asset/runtime CUDA Windows e dei relativi termini di redistribuzione.
 - [ ] Completare prove Windows CPU e modi `studio`/`vstudio`, inclusa vision.
-- [ ] Eseguire l'intera matrice Ubuntu CPU/CUDA.
-- [ ] Creare prompt e richiesta `benchmark/v1`; warm-up e cinque misure per combinazione.
-- [ ] Produrre `spike-0.md` e `spike-0.json` completi e coerenti.
-- [ ] Registrare asset/checksum e contratto macchina completo.
+- [x] Eseguire l'intera matrice Ubuntu CPU/CUDA.
+- [~] Creare prompt e richiesta `benchmark/v1`; completati warm-up e cinque misure per tutte le
+  combinazioni Ubuntu, restano quelle Windows.
+- [~] Produrre `spike-0.md` e `spike-0.json` coerenti; creati con risultato Ubuntu `PASS`, restano da
+  completare con la matrice Windows e la decisione finale.
+- [~] Registrare asset/checksum e contratto macchina completo; parte Ubuntu completa, parte Windows
+  ancora parziale.
 - [ ] Dichiarare esplicitamente `GO` o `NO-GO`.
 
 ### Step 1 — dettaglio
@@ -69,9 +75,10 @@
 
 ### Prossima azione obbligatoria
 
-Riprendere **Step 0**, non Step 2: consolidare gli output in `spike-0.md/json`, completare Ubuntu,
-CPU, tre modi e benchmark, quindi ottenere il `GO`. Solo dopo si completa `engine.lock`, si verifica
-la CI multipiattaforma e si chiude Step 1.
+Riprendere **Step 0**, non Step 2: completare su Windows CPU, `studio`, `vstudio`, vision e
+`benchmark/v1`, identificare la coppia asset CUDA realmente provata, poi aggiornare
+`spike-0.md/json` e ottenere il `GO`. Solo dopo si completa `engine.lock`, si verifica la CI
+multipiattaforma e si chiude Step 1.
 
 ---
 

@@ -1,0 +1,8 @@
+timestamp_utc	http_status	body
+2026-07-15T11:56:12Z	000	
+2026-07-15T11:56:13Z	503	{"error":{"message":"Loading model","type":"unavailable_error","code":503}}
+2026-07-15T11:56:14Z	503	{"error":{"message":"Loading model","type":"unavailable_error","code":503}}
+2026-07-15T11:56:16Z	503	{"error":{"message":"Loading model","type":"unavailable_error","code":503}}
+2026-07-15T11:56:17Z	503	{"error":{"message":"Loading model","type":"unavailable_error","code":503}}
+2026-07-15T11:56:18Z	503	{"error":{"message":"Loading model","type":"unavailable_error","code":503}}
+2026-07-15T11:56:19Z	200	{"status":"ok"}

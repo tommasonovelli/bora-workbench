@@ -1,0 +1,18 @@
+0.00.110.310 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.224.994 W srv  llama_server: -----------------
+0.00.224.996 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+0.00.224.996 W srv  llama_server: this can be a security risk (cross-origin attacks)
+0.00.224.996 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+0.00.224.997 W srv  llama_server: -----------------
+0.00.226.201 I srv    load_model: loading model '/tmp/qwen-launcher-spike-0-b10011/model.gguf'
+0.00.641.397 W llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --no-mmap for better performance
+0.01.686.201 W load_hparams: Qwen-VL models require at minimum 1024 image tokens to function correctly on grounding tasks
+0.01.686.204 W load_hparams: if you encounter problems with accuracy, try adding --image-min-tokens 1024
+0.01.686.204 W load_hparams: more info: https://github.com/ggml-org/llama.cpp/issues/16842
+
+0.01.936.838 I srv    load_model: loaded multimodal model, '/tmp/qwen-launcher-spike-0-b10011/mmproj-BF16.gguf'
+0.01.990.433 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 8192, kv_unified = 'false'
+0.02.029.280 I srv          init: chat template supports preserving reasoning, consider enabling it via --reasoning-preserve
+0.02.029.288 I srv  llama_server: model loaded
+0.02.029.290 I srv  llama_server: listening on http://127.0.0.1:18082
+0.02.326.379 I srv    operator(): operator(): cleaning up before exit...

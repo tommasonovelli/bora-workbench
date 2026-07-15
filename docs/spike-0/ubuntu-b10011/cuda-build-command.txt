@@ -1,0 +1,2 @@
+cmake -S <source-at-bf2c86ddc0685f580595954056c2e77ebabfab4f> -B <build> -DBUILD_SHARED_LIBS=OFF -DGGML_CUDA=ON -DLLAMA_CURL=OFF -DCMAKE_BUILD_TYPE=Release -DLLAMA_BUILD_NUMBER=10011 -DLLAMA_BUILD_COMMIT=bf2c86ddc0685f580595954056c2e77ebabfab4f 
+cmake --build <build> --config Release --parallel 6 --target llama-server

@@ -1,0 +1,16 @@
+captured_at_utc=2026-07-15T12:16:06Z
+os_name=Ubuntu
+version_id=24.04
+architecture=x86_64
+kernel=6.17.0-40-generic
+CPU(s):                                  12
+Model name:                              Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz
+Thread(s) per core:                      2
+Core(s) per socket:                      6
+Socket(s):                               1
+MemTotal:       32775508 kB
+MemAvailable:   30083124 kB
+0, NVIDIA GeForce RTX 2060 SUPER, 8192 MiB, 7329 MiB, 595.71.05
+Build cuda_12.0.r12.0/compiler.32267302_0
+cmake version 3.28.3
+g++ (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0

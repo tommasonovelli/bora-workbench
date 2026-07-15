@@ -1,0 +1,3 @@
+0.00.008.997 E ggml_cuda_init: failed to initialize CUDA: no CUDA-capable device is detected
+Available devices:
+exit_code=0

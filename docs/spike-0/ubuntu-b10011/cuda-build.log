@@ -1,0 +1,732 @@
+[  1%] Building CXX object vendor/cpp-httplib/CMakeFiles/cpp-httplib.dir/httplib.cpp.o
+[  1%] Building C object ggml/src/CMakeFiles/ggml-base.dir/ggml-alloc.c.o
+[  1%] Building CXX object ggml/src/CMakeFiles/ggml-base.dir/ggml.cpp.o
+[  1%] Building CXX object common/CMakeFiles/llama-common-base.dir/build-info.cpp.o
+[  1%] Building C object ggml/src/CMakeFiles/ggml-base.dir/ggml.c.o
+[  1%] Building CXX object tools/ui/CMakeFiles/llama-ui-embed.dir/embed.cpp.o
+[  3%] Linking CXX static library libllama-common-base.a
+[  3%] Building CXX object ggml/src/CMakeFiles/ggml-base.dir/ggml-backend.cpp.o
+[  3%] Built target llama-common-base
+[  3%] Building CXX object ggml/src/CMakeFiles/ggml-base.dir/ggml-backend-meta.cpp.o
+[  3%] Building CXX object ggml/src/CMakeFiles/ggml-base.dir/ggml-opt.cpp.o
+[  3%] Building CXX object ggml/src/CMakeFiles/ggml-base.dir/ggml-threading.cpp.o
+[  3%] Linking CXX executable llama-ui-embed
+[  3%] Building C object ggml/src/CMakeFiles/ggml-base.dir/ggml-quants.c.o
+[  4%] Building CXX object ggml/src/CMakeFiles/ggml-base.dir/gguf.cpp.o
+[  4%] Built target llama-ui-embed
+[  4%] Provisioning UI assets
+-- UI: running npm install
+[  4%] Linking CXX static library libggml-base.a
+[  4%] Built target ggml-base
+[  4%] Building CXX object ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/ggml-cpu.cpp.o
+[  4%] Building C object ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/ggml-cpu.c.o
+[  4%] Building CXX object ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/repack.cpp.o
+[  4%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/acc.cu.o
+
+added 1044 packages, and audited 1045 packages in 7s
+
+353 packages are looking for funding
+  run `npm fund` for details
+
+1 low severity vulnerability
+
+To address all issues, run:
+  npm audit fix
+
+Run `npm audit` for details.
+-- UI: running npm run build, output -> /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/dist
+
+> llama-ui@1.0.0 build
+> npm run build-pwa-assets && vite build
+
+[  4%] Building CXX object ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/hbm.cpp.o
+[  4%] Building C object ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/quants.c.o
+
+> llama-ui@1.0.0 build-pwa-assets
+> npx @vite-pwa/assets-generator --root . --config pwa-assets.config.ts && npx @vite-pwa/assets-generator --root . --config pwa-assets-dark.config.ts && node scripts/make-icons-circular.js
+
+[  6%] Building CXX object ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/traits.cpp.o
+Zero Config PWA Assets Generator v1.0.2
+◐ Preparing to generate PWA assets...
+[  6%] Building CXX object ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/amx/amx.cpp.o
+◐ Resolving instructions...
+✔ PWA assets ready to be generated, instructions resolved
+◐ Generating PWA assets from static/favicon.svg image
+◐ Generating assets for static/favicon.svg...
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/pwa-64x64.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/pwa-192x192.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/pwa-512x512.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/maskable-icon-512x512.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-touch-icon-180x180.png
+✔ Generated ICO file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/favicon.ico
+[  6%] Building CXX object ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/amx/mmq.cpp.o
+[  6%] Building CXX object ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/binary-ops.cpp.o
+[  6%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/add-id.cu.o
+[  6%] Building CXX object ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/unary-ops.cpp.o
+[  6%] Building CXX object ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/vec.cpp.o
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-1284x2778.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-1170x2532.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-2532x1170.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-2778x1284.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-1179x2556.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-2556x1179.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-1290x2796.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-1206x2622.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-640x1136.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-2796x1290.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-1136x640.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-2622x1206.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-750x1334.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-1334x750.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-1320x2868.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-2868x1320.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-2360x1640.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-1640x2360.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-1668x2388.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-2048x2732.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-1488x2266.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-2388x1668.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-2732x2048.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-dark-1170x2532.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-2266x1488.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-dark-1284x2778.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-dark-2532x1170.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-dark-2778x1284.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-dark-1179x2556.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-dark-2556x1179.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-dark-1290x2796.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-dark-2796x1290.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-dark-1206x2622.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-dark-640x1136.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-dark-750x1334.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-dark-1136x640.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-dark-2622x1206.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-dark-1320x2868.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-dark-1334x750.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-dark-2868x1320.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-dark-1640x2360.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-dark-2360x1640.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-dark-2048x2732.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-dark-1668x2388.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-portrait-dark-1488x2266.png
+[  6%] Building CXX object ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/ops.cpp.o
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-dark-2732x2048.png
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-dark-2266x1488.png
+[  7%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/allreduce.cu.o
+✔ Generated PNG file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/apple-splash-landscape-dark-2388x1668.png
+✔ Assets generated for static/favicon.svg
+◐ Generating Html Head Links...
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" href="/favicon.svg" sizes="any" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/apple-touch-icon-180x180.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./apple-splash-portrait-1170x2532.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./apple-splash-landscape-2532x1170.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./apple-splash-portrait-dark-1170x2532.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./apple-splash-landscape-dark-2532x1170.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./apple-splash-portrait-1284x2778.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./apple-splash-landscape-2778x1284.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./apple-splash-portrait-dark-1284x2778.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./apple-splash-landscape-dark-2778x1284.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./apple-splash-portrait-1179x2556.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./apple-splash-landscape-2556x1179.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./apple-splash-portrait-dark-1179x2556.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./apple-splash-landscape-dark-2556x1179.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./apple-splash-portrait-1290x2796.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./apple-splash-landscape-2796x1290.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./apple-splash-portrait-dark-1290x2796.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./apple-splash-landscape-dark-2796x1290.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./apple-splash-portrait-1206x2622.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./apple-splash-landscape-2622x1206.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./apple-splash-portrait-dark-1206x2622.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./apple-splash-landscape-dark-2622x1206.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./apple-splash-portrait-1320x2868.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./apple-splash-landscape-2868x1320.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="./apple-splash-portrait-dark-1320x2868.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: landscape)" href="./apple-splash-landscape-dark-2868x1320.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./apple-splash-portrait-640x1136.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./apple-splash-landscape-1136x640.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./apple-splash-portrait-dark-640x1136.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./apple-splash-landscape-dark-1136x640.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./apple-splash-portrait-750x1334.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./apple-splash-landscape-1334x750.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./apple-splash-portrait-dark-750x1334.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./apple-splash-landscape-dark-1334x750.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./apple-splash-portrait-1640x2360.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./apple-splash-landscape-2360x1640.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./apple-splash-portrait-dark-1640x2360.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./apple-splash-landscape-dark-2360x1640.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./apple-splash-portrait-2048x2732.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./apple-splash-landscape-2732x2048.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./apple-splash-portrait-dark-2048x2732.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./apple-splash-landscape-dark-2732x2048.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./apple-splash-portrait-1668x2388.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./apple-splash-landscape-2388x1668.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./apple-splash-portrait-dark-1668x2388.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./apple-splash-landscape-dark-2388x1668.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./apple-splash-portrait-1488x2266.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./apple-splash-landscape-2266x1488.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="./apple-splash-portrait-dark-1488x2266.png">
+<link rel="apple-touch-startup-image" media="screen and (prefers-color-scheme: dark) and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="./apple-splash-landscape-dark-2266x1488.png">
+✔ Html Head Links generated
+◐ Generating PWA web manifest icons entry...
+{
+  "icons": [
+    {
+      "src": "pwa-64x64.png",
+      "sizes": "64x64",
+      "type": "image/png"
+    },
+    {
+      "src": "pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "maskable-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}
+✔ PWA web manifest icons entry generated
+✔ PWA assets generated
+[  9%] Building CXX object ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/llamafile/sgemm.cpp.o
+[  9%] Building C object ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/arch/x86/quants.c.o
+Zero Config PWA Assets Generator v1.0.2
+◐ Preparing to generate PWA assets...
+◐ Resolving instructions...
+✔ PWA assets ready to be generated, instructions resolved
+◐ Generating PWA assets from static/favicon-dark.svg image
+◐ Generating assets for static/favicon-dark.svg...
+✔ Generated ICO file: /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui-src/static/favicon-dark.ico
+✔ Assets generated for static/favicon-dark.svg
+◐ Generating Html Head Links...
+<link rel="icon" href="/favicon-dark.ico" sizes="48x48">
+<link rel="icon" href="/favicon-dark.svg" sizes="any" type="image/svg+xml">
+✔ Html Head Links generated
+◐ Generating PWA web manifest icons entry...
+{
+  "icons": []
+}
+✔ PWA web manifest icons entry generated
+✔ PWA assets generated
+Circular mask: 0% padding, 85% scale, source=maskable-icon-512x512.png
+
+✓ pwa-64x64.png → circle from maskable-icon-512x512.png, 0% padding (size=64, r=32, scale=85%, circleDiameter=64)
+✓ pwa-192x192.png → circle from maskable-icon-512x512.png, 0% padding (size=192, r=96, scale=85%, circleDiameter=192)
+✓ pwa-512x512.png → circle from maskable-icon-512x512.png, 0% padding (size=512, r=256, scale=85%, circleDiameter=512)
+
+Unchanged:
+  maskable-icon-512x512.png (1894 bytes)
+  apple-touch-icon-180x180.png (806 bytes)
+[  9%] Building CXX object ggml/src/CMakeFiles/ggml-cpu.dir/ggml-cpu/arch/x86/repack.cpp.o
+vite v7.3.5 building ssr environment for production...
+transforming...
+[  9%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/arange.cu.o
+[  9%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/argmax.cu.o
+[  9%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/argsort.cu.o
+[  9%] Linking CXX static library libcpp-httplib.a
+[  9%] Built target cpp-httplib
+[  9%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/binbcast.cu.o
+[  9%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/clamp.cu.o
+[  9%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/col2im-1d.cu.o
+[  9%] Linking CXX static library libggml-cpu.a
+[  9%] Built target ggml-cpu
+[ 10%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/concat.cu.o
+[ 10%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/conv-transpose-1d.cu.o
+[ 10%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/conv2d-dw.cu.o
+[ 10%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/conv2d-transpose.cu.o
+[ 10%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/conv2d.cu.o
+[ 10%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/convert.cu.o
+✓ 4870 modules transformed.
+[ 10%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/count-equal.cu.o
+rendering chunks...
+vite v7.3.5 building client environment for production...
+transforming...
+[ 12%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/cpy.cu.o
+[ 12%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/cross-entropy-loss.cu.o
+[ 12%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/cumsum.cu.o
+[ 12%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/diag.cu.o
+[ 12%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/diagmask.cu.o
+[ 12%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/fattn-tile.cu.o
+[ 12%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/fattn-wmma-f16.cu.o
+[ 14%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/fattn.cu.o
+[ 14%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/fill.cu.o
+[ 14%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/fwht.cu.o
+[ 14%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/gated_delta_net.cu.o
+[ 14%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/getrows.cu.o
+[ 14%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/ggml-cuda.cu.o
+[ 14%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/gla.cu.o
+[ 15%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/im2col.cu.o
+[ 15%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/mean.cu.o
+[ 15%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/mmf.cu.o
+✓ 7936 modules transformed.
+[ 15%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/mmid.cu.o
+[ 15%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/mmq.cu.o
+rendering chunks...
+[ 15%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/mmvf.cu.o
+computing gzip size...
+.svelte-kit/output/client/_app/version.json                              0.03 kB │ gzip:     0.05 kB
+.svelte-kit/output/client/.vite/manifest.json                            0.30 kB │ gzip:     0.18 kB
+.svelte-kit/output/client/manifest.webmanifest                           0.52 kB
+.svelte-kit/output/client/_app/immutable/assets/bundle.s-cfD-_7.css    512.78 kB │ gzip:   289.38 kB
+.svelte-kit/output/client/_app/immutable/bundle.CupKy2sV.js          8,215.80 kB │ gzip: 2,386.80 kB
+✓ built in 28.45s
+[ 17%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/mmvq.cu.o
+Relativized base refs in index.html and sw.js
+[ 17%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/norm.cu.o
+.svelte-kit/output/server/.vite/manifest.json                                                         15.54 kB
+.svelte-kit/output/server/_app/immutable/assets/_page.CV-KWLNP.css                                     0.29 kB
+.svelte-kit/output/server/_app/immutable/assets/DialogConfirmation.bHHIbcsu.css                        0.35 kB
+.svelte-kit/output/server/_app/immutable/assets/_layout.p5gUgRBu.css                                 126.88 kB
+.svelte-kit/output/server/_app/immutable/assets/SidebarNavigationConversationItem.BNj3E6bH.css       384.79 kB
+.svelte-kit/output/server/chunks/app.js                                                                0.07 kB
+.svelte-kit/output/server/chunks/environment.js                                                        0.07 kB
+.svelte-kit/output/server/chunks/html.js                                                               0.08 kB
+.svelte-kit/output/server/chunks/api-key-validation.js                                                 0.19 kB
+.svelte-kit/output/server/chunks/server.js                                                             0.20 kB
+.svelte-kit/output/server/chunks/device.svelte.js                                                      0.22 kB
+.svelte-kit/output/server/entries/pages/(chat)/_page.ts.js                                             0.29 kB
+.svelte-kit/output/server/entries/pages/(chat)/chat/_id_/_page.ts.js                                   0.31 kB
+.svelte-kit/output/server/chunks/arrow-right.js                                                        0.31 kB
+.svelte-kit/output/server/internal.js                                                                  0.37 kB
+.svelte-kit/output/server/chunks/refresh-cw.js                                                         0.44 kB
+.svelte-kit/output/server/chunks/card.js                                                               0.46 kB
+.svelte-kit/output/server/chunks/utils2.js                                                             0.60 kB
+.svelte-kit/output/server/entries/pages/settings/_layout.svelte.js                                     0.88 kB
+.svelte-kit/output/server/chunks/alert-dialog-action.js                                                0.93 kB
+.svelte-kit/output/server/entries/pages/(chat)/_page.svelte.js                                         1.13 kB
+.svelte-kit/output/server/chunks/formatters.js                                                         1.14 kB
+.svelte-kit/output/server/entries/pages/(chat)/chat/_id_/_page.svelte.js                               1.28 kB
+.svelte-kit/output/server/chunks/ActionIcon.js                                                         1.44 kB
+.svelte-kit/output/server/chunks/exports.js                                                            1.46 kB
+.svelte-kit/output/server/chunks/url.js                                                                1.60 kB
+.svelte-kit/output/server/chunks/input.js                                                              1.66 kB
+.svelte-kit/output/server/chunks/render-context.js                                                     1.81 kB
+.svelte-kit/output/server/chunks/label.js                                                              1.84 kB
+.svelte-kit/output/server/entries/pages/search/_page.svelte.js                                         2.03 kB
+.svelte-kit/output/server/chunks/SearchInput.js                                                        2.51 kB
+.svelte-kit/output/server/chunks/DialogModelNotAvailable.js                                            2.78 kB
+.svelte-kit/output/server/chunks/internal.js                                                           2.84 kB
+.svelte-kit/output/server/chunks/SidebarNavigationSearchResults.js                                     4.43 kB
+.svelte-kit/output/server/chunks/TruncatedText.js                                                      5.04 kB
+.svelte-kit/output/server/chunks/workbox-window.prod.es5.js                                            5.75 kB
+.svelte-kit/output/server/chunks/dialog-footer.js                                                      5.94 kB
+.svelte-kit/output/server/chunks/index2.js                                                             6.08 kB
+.svelte-kit/output/server/entries/pages/_error.svelte.js                                               8.31 kB
+.svelte-kit/output/server/remote-entry.js                                                             14.02 kB
+.svelte-kit/output/server/chunks/McpServerIdentity.js                                                 14.23 kB
+.svelte-kit/output/server/chunks/utils.js                                                             15.12 kB
+.svelte-kit/output/server/chunks/popper-layer-force-mount.js                                          15.45 kB
+.svelte-kit/output/server/chunks/conversations.svelte.js                                              17.29 kB
+.svelte-kit/output/server/chunks/models.svelte.js                                                     17.36 kB
+.svelte-kit/output/server/chunks/index.js                                                             21.71 kB
+.svelte-kit/output/server/entries/pages/mcp-servers/_page.svelte.js                                   29.90 kB
+.svelte-kit/output/server/entries/pages/_layout.svelte.js                                             33.47 kB
+.svelte-kit/output/server/chunks/DialogConfirmation.js                                                34.42 kB
+.svelte-kit/output/server/chunks/root.js                                                              40.18 kB
+.svelte-kit/output/server/chunks/url2.js                                                              46.90 kB
+.svelte-kit/output/server/index.js                                                                    57.10 kB
+.svelte-kit/output/server/entries/pages/settings/__section__/_page.svelte.js                          68.04 kB
+.svelte-kit/output/server/chunks/chat.svelte.js                                                       69.01 kB
+.svelte-kit/output/server/chunks/SidebarNavigationConversationItem.svelte_svelte_type_style_lang.js  142.08 kB
+.svelte-kit/output/server/entries/pages/(chat)/_layout.svelte.js                                     289.77 kB
+✓ built in 43.80s
+
+PWA v1.3.0
+mode      generateSW
+precache  62 entries (8739.27 KiB)
+files generated
+  .svelte-kit/output/server/sw.js
+  .svelte-kit/output/server/workbox-b3c04f83.js
+
+Run npm run preview to preview your production build locally.
+
+> Using @sveltejs/adapter-static
+Overwriting /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/dist/index.html with fallback page. Consider using a different name for the fallback.
+  Wrote site to "/tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/dist"
+  ✔ done
+Generated 48 apple-splash link tags
+Updated index.html
+Created build.json (version: 10011)
+Relativized base refs in index.html and sw.js
+-- UI: npm build succeeded
+-- UI: gzip compression applied (/tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/dist/_gzip)
+embed: write output file /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui.h
+embed: write output file /tmp/qwen-launcher-spike-0-b10011/cuda-build/tools/ui/ui.cpp
+[ 17%] Built target llama-ui-assets
+[ 17%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/opt-step-adamw.cu.o
+[ 17%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/opt-step-sgd.cu.o
+[ 17%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/out-prod.cu.o
+[ 17%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/pad.cu.o
+[ 17%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/pad_reflect_1d.cu.o
+[ 18%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/pool2d.cu.o
+[ 18%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/quantize.cu.o
+[ 18%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/roll.cu.o
+[ 18%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/rope.cu.o
+[ 18%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/scale.cu.o
+[ 20%] Building CXX object tools/ui/CMakeFiles/llama-ui.dir/ui.cpp.o
+[ 20%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/set-rows.cu.o
+[ 20%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/set.cu.o
+[ 20%] Linking CXX static library libllama-ui.a
+[ 20%] Built target llama-ui
+[ 21%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/snake.cu.o
+[ 21%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/softcap.cu.o
+[ 21%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/softmax.cu.o
+[ 21%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/solve_tri.cu.o
+[ 21%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/ssm-conv.cu.o
+[ 21%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/ssm-scan.cu.o
+[ 21%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/sum.cu.o
+[ 23%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/sumrows.cu.o
+[ 23%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/top-k.cu.o
+[ 23%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/topk-moe.cu.o
+[ 23%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/tri.cu.o
+[ 23%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/tsembd.cu.o
+[ 23%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/unary.cu.o
+[ 25%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/upscale.cu.o
+[ 25%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/wkv.cu.o
+[ 25%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq112-dv112.cu.o
+[ 25%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq128-dv128.cu.o
+[ 25%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq192-dv128.cu.o
+[ 25%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq256-dv256.cu.o
+[ 25%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq320-dv256.cu.o
+[ 26%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq40-dv40.cu.o
+[ 26%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq512-dv512.cu.o
+[ 26%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq576-dv512.cu.o
+[ 26%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq64-dv64.cu.o
+[ 26%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq72-dv72.cu.o
+[ 26%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq80-dv80.cu.o
+[ 26%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq96-dv96.cu.o
+[ 28%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_1-ncols2_16.cu.o
+[ 28%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_1-ncols2_32.cu.o
+[ 28%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_1-ncols2_8.cu.o
+[ 28%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_16-ncols2_1.cu.o
+[ 28%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_16-ncols2_2.cu.o
+[ 28%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_16-ncols2_4.cu.o
+[ 28%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_2-ncols2_16.cu.o
+[ 29%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_2-ncols2_32.cu.o
+[ 29%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_2-ncols2_4.cu.o
+[ 29%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_2-ncols2_8.cu.o
+[ 29%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_32-ncols2_1.cu.o
+[ 29%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_32-ncols2_2.cu.o
+[ 29%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_4-ncols2_16.cu.o
+[ 29%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_4-ncols2_2.cu.o
+[ 31%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_4-ncols2_4.cu.o
+[ 31%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_4-ncols2_8.cu.o
+[ 31%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_64-ncols2_1.cu.o
+[ 31%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_8-ncols2_1.cu.o
+[ 31%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_8-ncols2_2.cu.o
+[ 31%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_8-ncols2_4.cu.o
+[ 32%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_8-ncols2_8.cu.o
+[ 32%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-iq1_s.cu.o
+[ 32%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-iq2_s.cu.o
+[ 32%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-iq2_xs.cu.o
+[ 32%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-iq2_xxs.cu.o
+[ 32%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-iq3_s.cu.o
+[ 32%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-iq3_xxs.cu.o
+[ 34%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-iq4_nl.cu.o
+[ 34%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-iq4_xs.cu.o
+[ 34%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-mxfp4.cu.o
+[ 34%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-nvfp4.cu.o
+[ 34%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q1_0.cu.o
+[ 34%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q2_k.cu.o
+[ 34%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q3_k.cu.o
+[ 35%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q4_0.cu.o
+[ 35%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q4_1.cu.o
+[ 35%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q4_k.cu.o
+[ 35%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q5_0.cu.o
+[ 35%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q5_1.cu.o
+[ 35%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q5_k.cu.o
+[ 35%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q6_k.cu.o
+[ 37%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q8_0.cu.o
+[ 37%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_1.cu.o
+[ 37%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_10.cu.o
+[ 37%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_11.cu.o
+[ 37%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_12.cu.o
+[ 37%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_13.cu.o
+[ 39%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_14.cu.o
+[ 39%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_15.cu.o
+[ 39%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_16.cu.o
+[ 39%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_2.cu.o
+[ 39%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_3.cu.o
+[ 39%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_4.cu.o
+[ 39%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_5.cu.o
+[ 40%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_6.cu.o
+[ 40%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_7.cu.o
+[ 40%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_8.cu.o
+[ 40%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_9.cu.o
+[ 40%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-vec-instance-f16-f16.cu.o
+[ 40%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-vec-instance-q4_0-q4_0.cu.o
+[ 40%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-vec-instance-q8_0-q8_0.cu.o
+[ 42%] Building CUDA object ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-vec-instance-bf16-bf16.cu.o
+[ 42%] Linking CXX static library libggml-cuda.a
+[ 42%] Built target ggml-cuda
+[ 42%] Building CXX object ggml/src/CMakeFiles/ggml.dir/ggml-backend-reg.cpp.o
+[ 42%] Building CXX object ggml/src/CMakeFiles/ggml.dir/ggml-backend-dl.cpp.o
+[ 42%] Linking CXX static library libggml.a
+[ 42%] Built target ggml
+[ 43%] Building CXX object src/CMakeFiles/llama.dir/llama-batch.cpp.o
+[ 43%] Building CXX object src/CMakeFiles/llama.dir/llama-adapter.cpp.o
+[ 43%] Building CXX object src/CMakeFiles/llama.dir/llama.cpp.o
+[ 43%] Building CXX object src/CMakeFiles/llama.dir/llama-arch.cpp.o
+[ 43%] Building CXX object src/CMakeFiles/llama.dir/llama-chat.cpp.o
+[ 43%] Building CXX object src/CMakeFiles/llama.dir/llama-context.cpp.o
+[ 43%] Building CXX object src/CMakeFiles/llama.dir/llama-cparams.cpp.o
+[ 43%] Building CXX object src/CMakeFiles/llama.dir/llama-grammar.cpp.o
+[ 43%] Building CXX object src/CMakeFiles/llama.dir/llama-graph.cpp.o
+[ 43%] Building CXX object src/CMakeFiles/llama.dir/llama-hparams.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/llama.dir/llama-impl.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/llama.dir/llama-io.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/llama.dir/llama-kv-cache.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/llama.dir/llama-kv-cache-iswa.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/llama.dir/llama-kv-cache-dsa.cpp.o
+[ 45%] Building CXX object src/CMakeFiles/llama.dir/llama-kv-cache-dsv4.cpp.o
+[ 46%] Building CXX object src/CMakeFiles/llama.dir/llama-memory.cpp.o
+[ 46%] Building CXX object src/CMakeFiles/llama.dir/llama-memory-hybrid.cpp.o
+[ 46%] Building CXX object src/CMakeFiles/llama.dir/llama-memory-hybrid-iswa.cpp.o
+[ 46%] Building CXX object src/CMakeFiles/llama.dir/llama-memory-recurrent.cpp.o
+[ 46%] Building CXX object src/CMakeFiles/llama.dir/llama-mmap.cpp.o
+[ 46%] Building CXX object src/CMakeFiles/llama.dir/llama-model-loader.cpp.o
+[ 46%] Building CXX object src/CMakeFiles/llama.dir/llama-model-saver.cpp.o
+[ 48%] Building CXX object src/CMakeFiles/llama.dir/llama-model.cpp.o
+[ 48%] Building CXX object src/CMakeFiles/llama.dir/llama-quant.cpp.o
+[ 48%] Building CXX object src/CMakeFiles/llama.dir/llama-sampler.cpp.o
+[ 48%] Building CXX object src/CMakeFiles/llama.dir/llama-vocab.cpp.o
+[ 48%] Building CXX object src/CMakeFiles/llama.dir/unicode-data.cpp.o
+[ 48%] Building CXX object src/CMakeFiles/llama.dir/unicode.cpp.o
+[ 48%] Building CXX object src/CMakeFiles/llama.dir/models/afmoe.cpp.o
+[ 50%] Building CXX object src/CMakeFiles/llama.dir/models/apertus.cpp.o
+[ 50%] Building CXX object src/CMakeFiles/llama.dir/models/arcee.cpp.o
+[ 50%] Building CXX object src/CMakeFiles/llama.dir/models/arctic.cpp.o
+[ 50%] Building CXX object src/CMakeFiles/llama.dir/models/arwkv7.cpp.o
+[ 50%] Building CXX object src/CMakeFiles/llama.dir/models/baichuan.cpp.o
+[ 50%] Building CXX object src/CMakeFiles/llama.dir/models/bailingmoe.cpp.o
+[ 50%] Building CXX object src/CMakeFiles/llama.dir/models/bailingmoe2.cpp.o
+[ 51%] Building CXX object src/CMakeFiles/llama.dir/models/bert.cpp.o
+[ 51%] Building CXX object src/CMakeFiles/llama.dir/models/bitnet.cpp.o
+[ 51%] Building CXX object src/CMakeFiles/llama.dir/models/bloom.cpp.o
+[ 51%] Building CXX object src/CMakeFiles/llama.dir/models/chameleon.cpp.o
+[ 51%] Building CXX object src/CMakeFiles/llama.dir/models/chatglm.cpp.o
+[ 53%] Building CXX object src/CMakeFiles/llama.dir/models/codeshell.cpp.o
+[ 53%] Building CXX object src/CMakeFiles/llama.dir/models/cogvlm.cpp.o
+[ 53%] Building CXX object src/CMakeFiles/llama.dir/models/cohere2.cpp.o
+[ 53%] Building CXX object src/CMakeFiles/llama.dir/models/cohere2moe.cpp.o
+[ 53%] Building CXX object src/CMakeFiles/llama.dir/models/command-r.cpp.o
+[ 53%] Building CXX object src/CMakeFiles/llama.dir/models/dbrx.cpp.o
+[ 53%] Building CXX object src/CMakeFiles/llama.dir/models/deci.cpp.o
+[ 53%] Building CXX object src/CMakeFiles/llama.dir/models/deepseek.cpp.o
+[ 54%] Building CXX object src/CMakeFiles/llama.dir/models/deepseek2.cpp.o
+[ 54%] Building CXX object src/CMakeFiles/llama.dir/models/deepseek2ocr.cpp.o
+[ 54%] Building CXX object src/CMakeFiles/llama.dir/models/deepseek32.cpp.o
+[ 54%] Building CXX object src/CMakeFiles/llama.dir/models/deepseek4.cpp.o
+[ 54%] Building CXX object src/CMakeFiles/llama.dir/models/delta-net-base.cpp.o
+[ 54%] Building CXX object src/CMakeFiles/llama.dir/models/dflash.cpp.o
+[ 54%] Building CXX object src/CMakeFiles/llama.dir/models/dots1.cpp.o
+[ 56%] Building CXX object src/CMakeFiles/llama.dir/models/dream.cpp.o
+[ 56%] Building CXX object src/CMakeFiles/llama.dir/models/eagle3.cpp.o
+[ 56%] Building CXX object src/CMakeFiles/llama.dir/models/ernie4-5-moe.cpp.o
+[ 56%] Building CXX object src/CMakeFiles/llama.dir/models/ernie4-5.cpp.o
+[ 56%] Building CXX object src/CMakeFiles/llama.dir/models/eurobert.cpp.o
+[ 56%] Building CXX object src/CMakeFiles/llama.dir/models/exaone-moe.cpp.o
+[ 56%] Building CXX object src/CMakeFiles/llama.dir/models/exaone.cpp.o
+[ 57%] Building CXX object src/CMakeFiles/llama.dir/models/exaone4.cpp.o
+[ 57%] Building CXX object src/CMakeFiles/llama.dir/models/falcon-h1.cpp.o
+[ 57%] Building CXX object src/CMakeFiles/llama.dir/models/falcon.cpp.o
+[ 57%] Building CXX object src/CMakeFiles/llama.dir/models/gemma-embedding.cpp.o
+[ 57%] Building CXX object src/CMakeFiles/llama.dir/models/gemma.cpp.o
+[ 57%] Building CXX object src/CMakeFiles/llama.dir/models/gemma2.cpp.o
+[ 57%] Building CXX object src/CMakeFiles/llama.dir/models/gemma3.cpp.o
+[ 59%] Building CXX object src/CMakeFiles/llama.dir/models/gemma3n.cpp.o
+[ 59%] Building CXX object src/CMakeFiles/llama.dir/models/gemma4-assistant.cpp.o
+[ 59%] Building CXX object src/CMakeFiles/llama.dir/models/gemma4.cpp.o
+[ 59%] Building CXX object src/CMakeFiles/llama.dir/models/glm-dsa.cpp.o
+[ 59%] Building CXX object src/CMakeFiles/llama.dir/models/glm4-moe.cpp.o
+[ 59%] Building CXX object src/CMakeFiles/llama.dir/models/glm4.cpp.o
+[ 60%] Building CXX object src/CMakeFiles/llama.dir/models/gpt2.cpp.o
+[ 60%] Building CXX object src/CMakeFiles/llama.dir/models/gptneox.cpp.o
+[ 60%] Building CXX object src/CMakeFiles/llama.dir/models/granite-hybrid.cpp.o
+[ 60%] Building CXX object src/CMakeFiles/llama.dir/models/granite-moe.cpp.o
+[ 60%] Building CXX object src/CMakeFiles/llama.dir/models/granite.cpp.o
+[ 60%] Building CXX object src/CMakeFiles/llama.dir/models/grok.cpp.o
+[ 60%] Building CXX object src/CMakeFiles/llama.dir/models/grovemoe.cpp.o
+[ 62%] Building CXX object src/CMakeFiles/llama.dir/models/hunyuan-dense.cpp.o
+[ 62%] Building CXX object src/CMakeFiles/llama.dir/models/hunyuan-moe.cpp.o
+[ 62%] Building CXX object src/CMakeFiles/llama.dir/models/hunyuan-vl.cpp.o
+[ 62%] Building CXX object src/CMakeFiles/llama.dir/models/hy-v3.cpp.o
+[ 62%] Building CXX object src/CMakeFiles/llama.dir/models/internlm2.cpp.o
+[ 62%] Building CXX object src/CMakeFiles/llama.dir/models/jais.cpp.o
+[ 62%] Building CXX object src/CMakeFiles/llama.dir/models/jais2.cpp.o
+[ 64%] Building CXX object src/CMakeFiles/llama.dir/models/jamba.cpp.o
+[ 64%] Building CXX object src/CMakeFiles/llama.dir/models/jina-bert-v2.cpp.o
+[ 64%] Building CXX object src/CMakeFiles/llama.dir/models/jina-bert-v3.cpp.o
+[ 64%] Building CXX object src/CMakeFiles/llama.dir/models/kimi-linear.cpp.o
+[ 64%] Building CXX object src/CMakeFiles/llama.dir/models/lfm2.cpp.o
+[ 64%] Building CXX object src/CMakeFiles/llama.dir/models/lfm2moe.cpp.o
+[ 64%] Building CXX object src/CMakeFiles/llama.dir/models/llada-moe.cpp.o
+[ 65%] Building CXX object src/CMakeFiles/llama.dir/models/llada.cpp.o
+[ 65%] Building CXX object src/CMakeFiles/llama.dir/models/llama-embed.cpp.o
+[ 65%] Building CXX object src/CMakeFiles/llama.dir/models/llama.cpp.o
+[ 65%] Building CXX object src/CMakeFiles/llama.dir/models/llama4.cpp.o
+[ 65%] Building CXX object src/CMakeFiles/llama.dir/models/maincoder.cpp.o
+[ 65%] Building CXX object src/CMakeFiles/llama.dir/models/mamba-base.cpp.o
+[ 67%] Building CXX object src/CMakeFiles/llama.dir/models/mamba.cpp.o
+[ 67%] Building CXX object src/CMakeFiles/llama.dir/models/mamba2.cpp.o
+[ 67%] Building CXX object src/CMakeFiles/llama.dir/models/mellum.cpp.o
+[ 67%] Building CXX object src/CMakeFiles/llama.dir/models/mimo2.cpp.o
+[ 67%] Building CXX object src/CMakeFiles/llama.dir/models/minicpm.cpp.o
+[ 67%] Building CXX object src/CMakeFiles/llama.dir/models/minicpm3.cpp.o
+[ 67%] Building CXX object src/CMakeFiles/llama.dir/models/minimax-m2.cpp.o
+[ 68%] Building CXX object src/CMakeFiles/llama.dir/models/mistral3.cpp.o
+[ 68%] Building CXX object src/CMakeFiles/llama.dir/models/mistral4.cpp.o
+[ 68%] Building CXX object src/CMakeFiles/llama.dir/models/modern-bert.cpp.o
+[ 68%] Building CXX object src/CMakeFiles/llama.dir/models/mpt.cpp.o
+[ 68%] Building CXX object src/CMakeFiles/llama.dir/models/nemotron-h-moe.cpp.o
+[ 68%] Building CXX object src/CMakeFiles/llama.dir/models/nemotron-h.cpp.o
+[ 68%] Building CXX object src/CMakeFiles/llama.dir/models/nemotron.cpp.o
+[ 70%] Building CXX object src/CMakeFiles/llama.dir/models/neo-bert.cpp.o
+[ 70%] Building CXX object src/CMakeFiles/llama.dir/models/nomic-bert-moe.cpp.o
+[ 70%] Building CXX object src/CMakeFiles/llama.dir/models/nomic-bert.cpp.o
+[ 70%] Building CXX object src/CMakeFiles/llama.dir/models/olmo.cpp.o
+[ 70%] Building CXX object src/CMakeFiles/llama.dir/models/olmo2.cpp.o
+[ 70%] Building CXX object src/CMakeFiles/llama.dir/models/olmoe.cpp.o
+[ 70%] Building CXX object src/CMakeFiles/llama.dir/models/openai-moe.cpp.o
+[ 71%] Building CXX object src/CMakeFiles/llama.dir/models/openelm.cpp.o
+[ 71%] Building CXX object src/CMakeFiles/llama.dir/models/orion.cpp.o
+[ 71%] Building CXX object src/CMakeFiles/llama.dir/models/paddleocr.cpp.o
+[ 71%] Building CXX object src/CMakeFiles/llama.dir/models/pangu-embed.cpp.o
+[ 71%] Building CXX object src/CMakeFiles/llama.dir/models/phi2.cpp.o
+[ 71%] Building CXX object src/CMakeFiles/llama.dir/models/phi3.cpp.o
+[ 71%] Building CXX object src/CMakeFiles/llama.dir/models/phimoe.cpp.o
+[ 73%] Building CXX object src/CMakeFiles/llama.dir/models/plamo.cpp.o
+[ 73%] Building CXX object src/CMakeFiles/llama.dir/models/plamo2.cpp.o
+[ 73%] Building CXX object src/CMakeFiles/llama.dir/models/plamo3.cpp.o
+[ 73%] Building CXX object src/CMakeFiles/llama.dir/models/plm.cpp.o
+[ 73%] Building CXX object src/CMakeFiles/llama.dir/models/qwen.cpp.o
+[ 73%] Building CXX object src/CMakeFiles/llama.dir/models/qwen2.cpp.o
+[ 75%] Building CXX object src/CMakeFiles/llama.dir/models/qwen2moe.cpp.o
+[ 75%] Building CXX object src/CMakeFiles/llama.dir/models/qwen3.cpp.o
+[ 75%] Building CXX object src/CMakeFiles/llama.dir/models/qwen2vl.cpp.o
+[ 75%] Building CXX object src/CMakeFiles/llama.dir/models/qwen35.cpp.o
+[ 75%] Building CXX object src/CMakeFiles/llama.dir/models/qwen35moe.cpp.o
+[ 75%] Building CXX object src/CMakeFiles/llama.dir/models/qwen3moe.cpp.o
+[ 75%] Building CXX object src/CMakeFiles/llama.dir/models/qwen3next.cpp.o
+[ 76%] Building CXX object src/CMakeFiles/llama.dir/models/qwen3vl.cpp.o
+[ 76%] Building CXX object src/CMakeFiles/llama.dir/models/qwen3vlmoe.cpp.o
+[ 76%] Building CXX object src/CMakeFiles/llama.dir/models/refact.cpp.o
+[ 76%] Building CXX object src/CMakeFiles/llama.dir/models/rnd1.cpp.o
+[ 76%] Building CXX object src/CMakeFiles/llama.dir/models/rwkv6-base.cpp.o
+[ 76%] Building CXX object src/CMakeFiles/llama.dir/models/rwkv6.cpp.o
+[ 76%] Building CXX object src/CMakeFiles/llama.dir/models/rwkv6qwen2.cpp.o
+[ 78%] Building CXX object src/CMakeFiles/llama.dir/models/rwkv7-base.cpp.o
+[ 78%] Building CXX object src/CMakeFiles/llama.dir/models/rwkv7.cpp.o
+[ 78%] Building CXX object src/CMakeFiles/llama.dir/models/seed-oss.cpp.o
+[ 78%] Building CXX object src/CMakeFiles/llama.dir/models/smallthinker.cpp.o
+[ 78%] Building CXX object src/CMakeFiles/llama.dir/models/smollm3.cpp.o
+[ 78%] Building CXX object src/CMakeFiles/llama.dir/models/stablelm.cpp.o
+[ 78%] Building CXX object src/CMakeFiles/llama.dir/models/starcoder.cpp.o
+[ 79%] Building CXX object src/CMakeFiles/llama.dir/models/starcoder2.cpp.o
+[ 79%] Building CXX object src/CMakeFiles/llama.dir/models/step35.cpp.o
+[ 79%] Building CXX object src/CMakeFiles/llama.dir/models/t5.cpp.o
+[ 79%] Building CXX object src/CMakeFiles/llama.dir/models/t5encoder.cpp.o
+[ 79%] Building CXX object src/CMakeFiles/llama.dir/models/talkie.cpp.o
+[ 79%] Building CXX object src/CMakeFiles/llama.dir/models/wavtokenizer-dec.cpp.o
+[ 81%] Building CXX object src/CMakeFiles/llama.dir/models/xverse.cpp.o
+[ 81%] Linking CXX static library libllama.a
+[ 81%] Built target llama
+[ 82%] Building CXX object common/CMakeFiles/llama-common.dir/arg.cpp.o
+[ 82%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/mtmd.cpp.o
+[ 82%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/mtmd-image.cpp.o
+[ 82%] Building CXX object common/CMakeFiles/llama-common.dir/chat-auto-parser-generator.cpp.o
+[ 82%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/mtmd-audio.cpp.o
+[ 82%] Building CXX object common/CMakeFiles/llama-common.dir/chat-auto-parser-helpers.cpp.o
+[ 82%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/mtmd-helper.cpp.o
+[ 82%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/clip.cpp.o
+[ 82%] Building CXX object common/CMakeFiles/llama-common.dir/chat-diff-analyzer.cpp.o
+[ 82%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/cogvlm.cpp.o
+[ 82%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/conformer.cpp.o
+[ 82%] Building CXX object common/CMakeFiles/llama-common.dir/chat-peg-parser.cpp.o
+[ 84%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/dotsocr.cpp.o
+[ 84%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/exaone4_5.cpp.o
+[ 84%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/gemma4a.cpp.o
+[ 84%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/gemma4v.cpp.o
+[ 84%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/gemma4ua.cpp.o
+[ 84%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/gemma4uv.cpp.o
+[ 84%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/glm4v.cpp.o
+[ 84%] Building CXX object common/CMakeFiles/llama-common.dir/chat.cpp.o
+[ 85%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/granite-speech.cpp.o
+[ 85%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/granite4-vision.cpp.o
+[ 85%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/hunyuanvl.cpp.o
+[ 85%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/internvl.cpp.o
+[ 85%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/kimivl.cpp.o
+[ 85%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/kimik25.cpp.o
+[ 87%] Building CXX object common/CMakeFiles/llama-common.dir/common.cpp.o
+[ 87%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/nemotron-v2-vl.cpp.o
+[ 89%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/llama4.cpp.o
+[ 89%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/llava.cpp.o
+[ 89%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/minicpmv.cpp.o
+[ 89%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/paddleocr.cpp.o
+[ 89%] Building CXX object common/CMakeFiles/llama-common.dir/console.cpp.o
+[ 89%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/pixtral.cpp.o
+[ 89%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/qwen2vl.cpp.o
+[ 90%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/qwen3vl.cpp.o
+[ 90%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/mimovl.cpp.o
+[ 90%] Building CXX object common/CMakeFiles/llama-common.dir/debug.cpp.o
+[ 90%] Building CXX object common/CMakeFiles/llama-common.dir/download.cpp.o
+[ 90%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/qwen3a.cpp.o
+[ 90%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/step3vl.cpp.o
+[ 90%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/siglip.cpp.o
+[ 90%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/whisper-enc.cpp.o
+[ 90%] Building CXX object common/CMakeFiles/llama-common.dir/fit.cpp.o
+[ 90%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/deepseekocr.cpp.o
+[ 92%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/deepseekocr2.cpp.o
+[ 92%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/mobilenetv5.cpp.o
+[ 92%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/youtuvl.cpp.o
+[ 92%] Building CXX object common/CMakeFiles/llama-common.dir/hf-cache.cpp.o
+[ 92%] Building CXX object tools/mtmd/CMakeFiles/mtmd.dir/models/yasa2.cpp.o
+[ 93%] Building CXX object common/CMakeFiles/llama-common.dir/imatrix-loader.cpp.o
+[ 93%] Building CXX object common/CMakeFiles/llama-common.dir/json-schema-to-grammar.cpp.o
+[ 93%] Linking CXX static library libmtmd.a
+[ 93%] Built target mtmd
+[ 93%] Building CXX object common/CMakeFiles/llama-common.dir/llguidance.cpp.o
+[ 93%] Building CXX object common/CMakeFiles/llama-common.dir/log.cpp.o
+[ 93%] Building CXX object common/CMakeFiles/llama-common.dir/ngram-cache.cpp.o
+[ 93%] Building CXX object common/CMakeFiles/llama-common.dir/ngram-map.cpp.o
+[ 93%] Building CXX object common/CMakeFiles/llama-common.dir/ngram-mod.cpp.o
+[ 95%] Building CXX object common/CMakeFiles/llama-common.dir/peg-parser.cpp.o
+[ 95%] Building CXX object common/CMakeFiles/llama-common.dir/preset.cpp.o
+[ 95%] Building CXX object common/CMakeFiles/llama-common.dir/reasoning-budget.cpp.o
+[ 95%] Building CXX object common/CMakeFiles/llama-common.dir/sampling.cpp.o
+[ 95%] Building CXX object common/CMakeFiles/llama-common.dir/speculative.cpp.o
+[ 95%] Building CXX object common/CMakeFiles/llama-common.dir/unicode.cpp.o
+[ 95%] Building CXX object common/CMakeFiles/llama-common.dir/jinja/lexer.cpp.o
+[ 96%] Building CXX object common/CMakeFiles/llama-common.dir/jinja/parser.cpp.o
+[ 96%] Building CXX object common/CMakeFiles/llama-common.dir/jinja/runtime.cpp.o
+[ 96%] Building CXX object common/CMakeFiles/llama-common.dir/jinja/value.cpp.o
+[ 96%] Building CXX object common/CMakeFiles/llama-common.dir/jinja/string.cpp.o
+[ 96%] Building CXX object common/CMakeFiles/llama-common.dir/jinja/caps.cpp.o
+[ 96%] Linking CXX static library libllama-common.a
+[ 96%] Built target llama-common
+[ 98%] Building CXX object tools/server/CMakeFiles/server-context.dir/server-queue.cpp.o
+[ 98%] Building CXX object tools/server/CMakeFiles/server-context.dir/server-chat.cpp.o
+[ 98%] Building CXX object tools/server/CMakeFiles/server-context.dir/server-common.cpp.o
+[ 98%] Building CXX object tools/server/CMakeFiles/server-context.dir/server-task.cpp.o
+[ 98%] Building CXX object tools/server/CMakeFiles/server-context.dir/server-context.cpp.o
+[ 98%] Building CXX object tools/server/CMakeFiles/server-context.dir/server-stream.cpp.o
+[ 98%] Building CXX object tools/server/CMakeFiles/server-context.dir/server-tools.cpp.o
+[ 98%] Building CXX object tools/server/CMakeFiles/server-context.dir/server-schema.cpp.o
+[ 98%] Linking CXX static library libserver-context.a
+[ 98%] Built target server-context
+[ 98%] Building CXX object tools/server/CMakeFiles/llama-server-impl.dir/server-http.cpp.o
+[ 98%] Building CXX object tools/server/CMakeFiles/llama-server-impl.dir/server-models.cpp.o
+[ 98%] Building CXX object tools/server/CMakeFiles/llama-server-impl.dir/server.cpp.o
+[ 98%] Linking CXX static library libllama-server-impl.a
+[ 98%] Built target llama-server-impl
+[100%] Building CXX object tools/server/CMakeFiles/llama-server.dir/main.cpp.o
+[100%] Linking CXX executable ../../bin/llama-server
+[100%] Built target llama-server

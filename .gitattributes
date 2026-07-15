@@ -1,4 +1,6 @@
-# Preserve archived raw command output byte-for-byte and keep it out of textual diffs.
+# Preserve raw command output byte-for-byte and keep it out of textual diffs.
 /archive/project-kickoff-2026-07-14/docs/** -text -diff
+/docs/spike-0/research/** -text -diff
+/docs/spike-0/ubuntu-b10011/** -text -diff
 # The normative plan uses Markdown hard line breaks intentionally.
 /IMPLEMENTATION_SPEC.md whitespace=-blank-at-eol
