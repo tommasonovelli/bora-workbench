@@ -10,7 +10,8 @@ La release attiva è `b10011`, commit
 `bf2c86ddc0685f580595954056c2e77ebabfab4f`. La matrice verificata e ora completa contiene:
 
 - Ubuntu CPU: prebuilt ufficiale `llama-b10011-bin-ubuntu-x64.tar.gz`;
-- Ubuntu CUDA: archivio sorgente del commit completo;
+- Ubuntu CUDA: archivio sorgente del commit completo, perché la release non pubblica alcun prebuilt
+  CUDA per Linux;
 - Windows CPU: prebuilt ufficiale `llama-b10011-bin-win-cpu-x64.zip`;
 - Windows CUDA: server CUDA 13.3 e runtime CUDA 13.3 sovrapposti.
 
@@ -21,7 +22,10 @@ sono copiati è `docs/spike-0.json`; gli output grezzi e i manifest sono sotto `
 
 1. Aprire uno spike separato e ottenere l'approvazione esplicita della nuova release precisa.
 2. Registrare tag, commit sorgente completo, `--version`, `--help`, licenza e asset ufficiali. Non
-   usare il ramo corrente per correggere il contratto di una release appuntata.
+   usare il ramo corrente per correggere il contratto di una release appuntata. Verificare
+   esplicitamente se la nuova release pubblichi un prebuilt CUDA per Linux: la build dal sorgente
+   esiste soltanto perché quell'asset manca, quindi se comparisse andrebbe provato e preferito
+   invece di conservare per inerzia la compilazione.
 3. Scaricare ogni archivio tramite HTTPS e conservarne nome, URL e SHA-256 pubblicato. Verificare
    localmente con `sha256sum <file>` su Ubuntu o `Get-FileHash -Algorithm SHA256 <file>` su Windows.
 4. Estrarre in una directory di prova sicura. Per Windows CUDA sovrapporre soltanto la coppia

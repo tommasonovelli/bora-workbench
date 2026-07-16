@@ -135,7 +135,7 @@
   commit appuntato con prerequisiti espliciti e solo target `llama-server`.
 - [x] Comandi `engine install [--force]` ed `engine status`, diagnostica doctor e procedura
   `docs/engine-lock.md` implementati con test offline.
-- [x] Sync frozen, lint, format, 167 test, `validate`, build e verifica wheel isolata verdi su
+- [x] Sync frozen, lint, format, 168 test, `validate`, build e verifica wheel isolata verdi su
   Ubuntu con uv 0.11.28 e CPython 3.12.13.
 - [x] Matrice CI GitHub Ubuntu 22.04/Windows Server 2022 verde sul commit `25956a5` (run
   `29493604755`), inclusi 167 test, `validate`, build e verifica wheel isolata.
@@ -923,8 +923,9 @@ Stop:
 - cambio backend = nuova installazione completa e attivazione atomica tramite manifest;
 - TLS e checksum non possono essere disabilitati;
 - cancellazioni limitate a `data_dir()/engine` e `cache_dir()/llama.cpp` dopo verifica del percorso;
-- per Ubuntu CUDA si usa l'asset sorgente appuntato e verificato dal lock; niente clone di un tag
-  mobile e niente installazione automatica di pacchetti.
+- per Ubuntu CUDA, coppia che nessun prebuilt CUDA per Linux copre nella release appuntata, si usa
+  l'asset sorgente appuntato e verificato dal lock; niente clone di un tag mobile e niente
+  installazione automatica di pacchetti.
 
 ### 5.11 Errori ed exit code
 
