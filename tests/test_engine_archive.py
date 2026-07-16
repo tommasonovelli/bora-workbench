@@ -6,6 +6,7 @@ import io
 import stat
 import tarfile
 import zipfile
+from pathlib import Path
 from typing import cast
 
 import pytest
@@ -50,6 +51,31 @@ def test_extracts_regular_zip_and_tar_files(tmp_path) -> None:
     assert (tar_out / "bin/llama-server").read_bytes() == b"ubuntu"
 
 
+def test_accepts_confined_declared_tar_symlink(tmp_path, monkeypatch) -> None:
+    """Allow only the internal relative symlinks required by the verified Ubuntu CPU asset."""
+    path = tmp_path / "safe-link.tar.gz"
+    with tarfile.open(path, "w:gz") as archive:
+        file_info = tarfile.TarInfo("lib/libengine.so.1")
+        file_info.size = len(b"library")
+        archive.addfile(file_info, io.BytesIO(b"library"))
+        link_info = tarfile.TarInfo("lib/libengine.so")
+        link_info.type = tarfile.SYMTYPE
+        link_info.linkname = "libengine.so.1"
+        archive.addfile(link_info)
+    observed: list[tuple[Path, str]] = []
+
+    def capture_symlink(target, link_name):
+        """Record safe symlink creation without requiring Windows symlink privileges."""
+        observed.append((target, link_name))
+
+    monkeypatch.setattr(Path, "symlink_to", capture_symlink)
+    destination = tmp_path / "safe-link-out"
+    extract_asset(asset("tar.gz"), path, destination)
+
+    assert (destination / "lib/libengine.so.1").read_bytes() == b"library"
+    assert observed == [(destination / "lib/libengine.so", "libengine.so.1")]
+
+
 def test_rejects_zip_traversal_and_symlinks(tmp_path) -> None:
     """Refuse ZIP members that escape staging or encode a Unix symlink."""
     traversal = tmp_path / "traversal.zip"
@@ -69,8 +95,8 @@ def test_rejects_zip_traversal_and_symlinks(tmp_path) -> None:
 
 
 @pytest.mark.parametrize("link_type", [tarfile.SYMTYPE, tarfile.LNKTYPE])
-def test_rejects_tar_symbolic_and_hard_links(tmp_path, link_type) -> None:
-    """Refuse both link kinds before tarfile can resolve their targets."""
+def test_rejects_escaping_symlink_and_all_hardlinks(tmp_path, link_type) -> None:
+    """Refuse escaping symbolic links and hardlinks rather than following their targets."""
     path = tmp_path / f"link-{link_type!r}.tar.gz"
     with tarfile.open(path, "w:gz") as archive:
         info = tarfile.TarInfo("llama-server")
@@ -78,5 +104,5 @@ def test_rejects_tar_symbolic_and_hard_links(tmp_path, link_type) -> None:
         info.linkname = "../outside"
         archive.addfile(info)
 
-    with pytest.raises(EngineError, match="non-regular archive member"):
+    with pytest.raises(EngineError, match=r"unsafe archive member|non-regular archive member"):
         extract_asset(asset("tar.gz"), path, tmp_path / "out")

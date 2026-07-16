@@ -139,7 +139,11 @@
   Ubuntu con uv 0.11.28 e CPython 3.12.13.
 - [x] Matrice CI GitHub Ubuntu 22.04/Windows Server 2022 verde sul commit `25956a5` (run
   `29493604755`), inclusi 167 test, `validate`, build e verifica wheel isolata.
-- [ ] Installazioni reali Windows CUDA/CPU e Ubuntu CPU/CUDA, seguite da avvio `coding`.
+- [x] Installazioni reali Ubuntu CUDA dal sorgente e Ubuntu CPU dal prebuilt con digest del lock;
+  `engine status`, `coding`, salute 200, modelli, chat da 5 token con MTP, Ctrl-C 130 e pulizia di
+  stato, porta, processo e GPU verificati. Il percorso CPU è stato isolato rimuovendo soltanto
+  `nvidia-smi` dal `PATH` del processo di collaudo.
+- [ ] Installazioni reali Windows CUDA/CPU, seguite da avvio `coding` e pulizia completa.
 
 ### Prossima azione obbligatoria
 

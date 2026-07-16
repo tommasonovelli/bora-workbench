@@ -57,7 +57,9 @@ non si sostituisce un valore con una supposizione.
 
 `qwen-launcher engine install` seleziona il backend rilevato. I download finiscono prima in file
 univoci `.part` sotto la cache gestita e vengono promossi soltanto dopo SHA-256 corretto. L'estrazione
-rifiuta percorsi assoluti, drive Windows, `..`, link e file speciali.
+rifiuta percorsi assoluti, drive Windows, `..`, hardlink, symlink non dichiarati o in fuga e file
+speciali. Sono ammessi soltanto i symlink tar relativi, confinati e diretti a file o symlink
+esplicitamente presenti nello stesso archivio, necessari al prebuilt Ubuntu verificato.
 
 Ogni installazione verificata viene promossa in una nuova directory immutabile sotto
 `data_dir()/engine/installations/`. Il puntatore attivo è `data_dir()/engine/current.json`, schema
