@@ -85,15 +85,16 @@ def test_different_model_gets_strengthened_fallback_warning() -> None:
     assert "without performance or compatibility guarantees" in plan.warnings[0]
 
 
-def test_profile_without_requested_mode_falls_back(tmp_path) -> None:
-    """Treat a valid partial profile as uncalibrated for modes it does not cover."""
+@pytest.mark.parametrize("mode_id", ["studio", "vstudio"])
+def test_profile_without_requested_mode_falls_back(tmp_path, mode_id) -> None:
+    """Treat a valid partial profile as uncalibrated for either uncovered UI mode."""
     files = build_valid_content(tmp_path)
     plan = build_launch_plan(
-        request("owner/model:file", "studio"), load_catalog(files.root), hardware()
+        request("owner/model:file", mode_id), load_catalog(files.root), hardware()
     )
 
     assert plan.profile_id is None
-    assert plan.mode.id == "studio"
+    assert plan.mode.id == mode_id
 
 
 @pytest.mark.parametrize("ram,available", [(27.9, 24), (28, 23.9)])

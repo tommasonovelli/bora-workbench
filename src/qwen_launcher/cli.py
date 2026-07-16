@@ -11,9 +11,10 @@ from importlib.metadata import PackageNotFoundError, version
 import typer
 from rich.console import Console
 
+from qwen_launcher._cli_control import run_stop, show_status
 from qwen_launcher._cli_doctor import DoctorData, build_doctor_table
 from qwen_launcher._cli_engine import run_engine_install, show_engine_status
-from qwen_launcher._cli_services import run_coding, run_stop, show_status
+from qwen_launcher._cli_services import run_coding, run_studio, run_vstudio
 from qwen_launcher.config import Config, ConfigError, load_config
 from qwen_launcher.engine import engine_status
 from qwen_launcher.hardware import HardwareError, HardwareInfo, detect_hardware
@@ -30,6 +31,7 @@ engine_app = typer.Typer(help="Install and inspect the pinned managed llama.cpp 
 app.add_typer(engine_app, name="engine")
 _stdout = Console()
 _stderr = Console(stderr=True)
+_MEMORY_GATE_HELP = "Bypass only the default-model total and available RAM gate."
 
 
 def package_version() -> str:
@@ -156,12 +158,26 @@ def engine_status_command() -> None:
 
 @app.command()
 def coding(
-    force: bool = typer.Option(
-        False, "--force", help="Bypass only the default-model total and available RAM gate."
-    ),
+    force: bool = typer.Option(False, "--force", help=_MEMORY_GATE_HELP),
 ) -> None:
     """Launch API-first coding mode in foreground with UI and vision explicitly disabled."""
     run_coding(force, _stdout, _stderr)
+
+
+@app.command()
+def studio(
+    force: bool = typer.Option(False, "--force", help=_MEMORY_GATE_HELP),
+) -> None:
+    """Launch text chat mode with the integrated llama.cpp interface enabled."""
+    run_studio(force, _stdout, _stderr)
+
+
+@app.command()
+def vstudio(
+    force: bool = typer.Option(False, "--force", help=_MEMORY_GATE_HELP),
+) -> None:
+    """Launch multimodal chat with the integrated interface and pinned vision projector."""
+    run_vstudio(force, _stdout, _stderr)
 
 
 @app.command()

@@ -14,15 +14,16 @@ from qwen_launcher.config import Config
 from qwen_launcher.profiles import LaunchPlan, load_catalog
 
 
-def plan(tmp_path: Path, backend: str = "cpu") -> LaunchPlan:
-    """Build a coding launch plan without depending on host hardware."""
-    mode = load_catalog().mode("coding")
+def plan(tmp_path: Path, backend: str = "cpu", mode_id: str = "coding") -> LaunchPlan:
+    """Build one packaged-mode launch plan without depending on host hardware."""
+    mode = load_catalog().mode(mode_id)
     assert mode is not None
+    mmproj = tmp_path / "mmproj.gguf" if mode.services.vision else None
     return LaunchPlan(
         mode,
         "owner/model:file",
         tmp_path / "model.gguf",
-        None,
+        mmproj,
         8080,
         None,
         8192,
@@ -34,18 +35,35 @@ def plan(tmp_path: Path, backend: str = "cpu") -> LaunchPlan:
 
 
 @pytest.mark.parametrize("backend", ["cpu", "cuda"])
-def test_builder_emits_only_verified_flags_and_explicit_coding_switches(tmp_path, backend) -> None:
-    """Build distinct CPU/CUDA commands with coding UI and vision explicitly disabled."""
+@pytest.mark.parametrize(
+    ("mode_id", "has_ui", "has_vision", "sampling"),
+    [
+        ("coding", False, False, ("0.6", "0.95")),
+        ("studio", True, False, ("0.7", "0.8")),
+        ("vstudio", True, True, ("0.7", "0.8")),
+    ],
+)
+def test_builder_emits_verified_three_mode_matrix(
+    tmp_path, backend, mode_id, has_ui, has_vision, sampling
+) -> None:
+    """Emit exact UI, vision, sampling, and backend switches for all three modes."""
     lock = engine.load_engine_lock()
-    command = engine.build_command(tmp_path / "llama-server", plan(tmp_path, backend), lock)
+    selected_plan = plan(tmp_path, backend, mode_id)
+    command = engine.build_command(tmp_path / "llama-server", selected_plan, lock)
     flags = {token for token in command[1:] if token.startswith("-")}
 
     assert flags <= set(lock["verified_flags"])
-    assert "--no-webui" in command
-    assert "--no-mmproj" in command
+    assert ("--webui" in command) is has_ui
+    assert ("--no-webui" in command) is not has_ui
+    assert ("--mmproj" in command) is has_vision
+    assert ("--no-mmproj" in command) is not has_vision
+    assert sampling[0] == command[command.index("--temp") + 1]
+    assert sampling[1] == command[command.index("--top-p") + 1]
+    assert command[command.index("--top-k") + 1] == "20"
+    assert str(selected_plan.model_path) in command
+    assert (str(selected_plan.mmproj_path) in command) is has_vision
     assert ("-ncmoe" in command) is (backend == "cuda")
     assert ("-ngl" in command) is (backend == "cuda")
-    assert str(tmp_path / "model.gguf") in command
 
 
 def test_builder_defensively_rejects_unverified_lock_option(tmp_path) -> None:

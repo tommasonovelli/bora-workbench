@@ -34,6 +34,9 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/v1/models":
             self._send_json(200, {"data": []})
             return
+        if self.path == "/":
+            self._send_json(200, {"interface": "fake integrated UI"})
+            return
         if self.path != "/health":
             self._send_json(404, {"error": "not found"})
             return

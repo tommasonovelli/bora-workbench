@@ -23,7 +23,8 @@
 - [x] **Step 2C — Contratto artefatto modello.**
 - [x] **Step 3 — Vertical slice `coding`, stato, stop e status.**
 - [x] **Step 4 — Asset lock e attivazione atomica del motore.**
-- [ ] **Step 5 — `studio` e `vstudio`.**
+- [~] **Step 5 — `studio` e `vstudio`:** implementazione e collaudo reale Ubuntu conclusi; restano
+  collaudo Windows e matrice CI del commit.
 - [ ] **Step 5A / Calibration Gate / 5B — Calibrazione assistita e profili iniziali.**
 - [ ] **Step 6A / Human Gate / 6B — Release 0.1.**
 - [ ] **Step 7 — Skill e router.**
@@ -150,10 +151,26 @@
   non ha elencato dispositivi CUDA. Un primo probe a freddo CUDA è scaduto dopo 10 secondi ed è stato
   ripulito senza attivazione parziale; il retry, il cambio backend e la riattivazione sono riusciti.
 
+### Step 5 — dettaglio
+
+- [x] Comandi `studio` e `vstudio` implementati riusando il lifecycle esistente e soltanto i
+  contratti UI/vision, sampling e mmproj appuntati nel lock.
+- [x] URL UI/API, profilo o baseline, log e natura essenziale dell'interfaccia integrata mostrati;
+  apertura browser eseguita solo dopo READY e solo con `open_browser=true`.
+- [x] Matrice argomenti CPU/CUDA dei tre modi, browser abilitato/disabilitato, fallback da profilo
+  parziale ed end-to-end col server fake coperti da test offline.
+- [x] Sync frozen, lint, format, 180 test, `validate`, build e verifica wheel isolata verdi su Ubuntu
+  con uv 0.11.28 e CPython 3.12.13.
+- [x] Collaudo reale Ubuntu 24.04 CUDA: `studio` con UI, modelli e chat 200; `vstudio` con UI, modelli
+  e vision 200 tramite mmproj, risposta `Rosso`; entrambi con baseline dichiarata, Ctrl-C 130 e
+  pulizia completa di stato, processo e GPU.
+- [ ] Collaudo reale Windows 11 di chat `studio`, vision `vstudio` e stop pulito.
+- [ ] Matrice CI GitHub Ubuntu 22.04/Windows Server 2022 verde sul commit dello Step 5.
+
 ### Prossima azione obbligatoria
 
-Gli Step 3 e 4 sono conclusi. La prossima azione obbligatoria è lo Step 5; non anticipare lo Step 5A
-o step successivi.
+Gli Step 3 e 4 sono conclusi. Lo Step 5 resta aperto esclusivamente per collaudo Windows e matrice
+CI; non iniziare lo Step 5A o step successivi.
 
 ---
 

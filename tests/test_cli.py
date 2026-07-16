@@ -4,6 +4,7 @@ from types import SimpleNamespace
 
 from typer.testing import CliRunner
 
+import qwen_launcher._cli_control as control_cli
 import qwen_launcher._cli_services as service_cli
 import qwen_launcher.cli as cli_module
 import qwen_launcher.config as config_module
@@ -140,9 +141,14 @@ def test_coding_ctrl_c_maps_to_exit_130(monkeypatch) -> None:
     plan = SimpleNamespace(mode=mode, backend="cpu", profile_id=None, warnings=())
     state = SimpleNamespace(log_path="server.log")
     running = SimpleNamespace(state=state, warnings=())
-    monkeypatch.setattr(
-        service_cli, "_prepare_coding", lambda force, stderr: (running, plan, "/v1")
+    session = SimpleNamespace(
+        running=running,
+        plan=plan,
+        api_url="http://127.0.0.1:8080/v1",
+        ui_url=None,
+        is_browser_enabled=False,
     )
+    monkeypatch.setattr(service_cli, "_prepare_mode", lambda mode_id, force, stderr: session)
     interruption = KeyboardInterrupt()
     monkeypatch.setattr(
         service_cli, "wait_foreground", lambda running: (_ for _ in ()).throw(interruption)
@@ -157,8 +163,8 @@ def test_coding_ctrl_c_maps_to_exit_130(monkeypatch) -> None:
 def test_status_and_stop_commands_are_idempotent(monkeypatch) -> None:
     """Expose successful empty-state status and stop behavior through the CLI."""
     empty = SimpleNamespace(services=(), warnings=(), stopped=())
-    monkeypatch.setattr(service_cli, "status_services", lambda: empty)
-    monkeypatch.setattr(service_cli, "stop_services", lambda: empty)
+    monkeypatch.setattr(control_cli, "status_services", lambda: empty)
+    monkeypatch.setattr(control_cli, "stop_services", lambda: empty)
 
     status_result = runner.invoke(app, ["status"])
     stop_result = runner.invoke(app, ["stop"])

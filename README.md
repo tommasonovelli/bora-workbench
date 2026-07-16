@@ -5,7 +5,7 @@ Distribuzione locale e riproducibile in sviluppo attorno a
 
 ## Stato
 
-Il repository contiene il vertical slice locale del modo `coding`:
+Il repository contiene i tre modi locali `coding`, `studio` e `vstudio`:
 
 - package Python 3.12 con layout `src/` e build `uv_build`;
 - percorsi Linux/Windows senza side effect e configurazione severa;
@@ -15,19 +15,20 @@ Il repository contiene il vertical slice locale del modo `coding`:
 - risoluzione read-only del modello appuntato e verifica dell'eseguibile `llama-server`;
 - builder governato esclusivamente da `engine.lock`;
 - lifecycle con lock d'avvio, salute, stato atomico, log, `status` e `stop` sicuro;
+- UI integrata esplicita per `studio` e `vstudio`, con mmproj appuntato per la vision;
 - installazione motore da asset verificati, estrazione sicura e attivazione atomica via manifest;
 - accesso alle risorse compatibile con wheel/zip e test offline con server fake.
 
 Lo **Spike 0 è completo** con decisione `GO`: `llama.cpp b10011`, il contratto macchina, la matrice
 Ubuntu/Windows CPU/CUDA e il protocollo `benchmark/v1` sono verificati. Il contratto e la matrice
 completa degli asset sono inclusi nella wheel come `engine.lock`. Non esistono ancora profili di
-produzione; `coding` può usare un motore esplicito, dal `PATH` o installato in modo gestito.
+produzione; ogni modo può usare un motore esplicito, dal `PATH` o installato in modo gestito.
 
-Gli Step 1, 2A, 2B, 2C e 3 sono completi. Suite, build, wheel isolata, matrice CI Ubuntu/Windows e
-collaudi reali Ubuntu/Windows CUDA del vertical slice `coding`, `status` e `stop` sono verdi. Il
-catalogo profili vuoto è valido: `coding` usa la baseline dello spike senza presentarla come profilo
-ottimizzato. Lo Step 4 è implementato e resta aperto per i collaudi reali multipiattaforma e la CI;
-non è iniziato lo Step 5. Il piano normativo e il tracker sono in
+Gli Step 1–4 sono completi. Suite, build, wheel isolata, matrice CI Ubuntu/Windows e collaudi reali
+previsti dai relativi gate sono verdi. Il catalogo profili vuoto è valido: i tre modi usano la
+baseline dello spike senza presentarla come profilo ottimizzato. Lo Step 5 è implementato e provato
+localmente, incluso il collaudo reale Ubuntu CUDA di chat e vision; resta aperto fino al collaudo
+Windows e alla matrice CI del commit. Il piano normativo e il tracker sono in
 [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
 [`docs/spike-0/`](docs/spike-0/).
 
@@ -46,6 +47,8 @@ uv run --frozen qwen-launcher doctor
 uv run --frozen qwen-launcher engine install
 uv run --frozen qwen-launcher engine status
 uv run --frozen qwen-launcher coding
+uv run --frozen qwen-launcher studio
+uv run --frozen qwen-launcher vstudio
 uv run --frozen qwen-launcher status
 uv run --frozen qwen-launcher stop
 ```
@@ -58,7 +61,9 @@ appuntato, senza installare pacchetti. Dettagli e procedura di aggiornamento son
 appuntata nella cache Hugging Face e verificato
 per nome, dimensione e SHA-256. Un modello diverso richiede `model_path` esplicito. CUDA su host
 multi-GPU resta bloccato perché lo Spike 0 ha verificato soltanto una macchina a GPU singola.
-`--force` bypassa esclusivamente le soglie RAM del modello predefinito.
+`--force` bypassa esclusivamente le soglie RAM del modello predefinito. `studio` abilita la UI
+integrata testuale; `vstudio` abilita anche il mmproj verificato. Entrambi mostrano URL UI/API e log
+e aprono la UI dopo READY quando `open_browser=true`. Open WebUI non fa parte della 0.1.
 
 Build e verifica isolata:
 

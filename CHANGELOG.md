@@ -16,6 +16,8 @@ All notable changes to this project will be documented in this file.
 - Complete verified engine asset matrix, secure streamed downloads and confined archive extraction.
 - Immutable managed-engine installations with atomic manifest activation, status and doctor diagnostics.
 - Pinned llama.cpp and NVIDIA CUDA third-party notices for managed installations.
+- `studio` and `vstudio` commands with the integrated UI, optional browser opening and pinned vision
+  projector activation.
 
 ### Changed
 
