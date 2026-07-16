@@ -48,7 +48,6 @@ def test_extracts_regular_zip_and_tar_files(tmp_path) -> None:
 
     assert (zip_out / "bin/llama-server.exe").read_bytes() == b"windows"
     assert (tar_out / "bin/llama-server").read_bytes() == b"ubuntu"
-    assert (tar_out / "bin/llama-server").stat().st_mode & stat.S_IXUSR
 
 
 def test_rejects_zip_traversal_and_symlinks(tmp_path) -> None:

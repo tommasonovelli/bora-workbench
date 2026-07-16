@@ -135,7 +135,7 @@
   commit appuntato con prerequisiti espliciti e solo target `llama-server`.
 - [x] Comandi `engine install [--force]` ed `engine status`, diagnostica doctor e procedura
   `docs/engine-lock.md` implementati con test offline.
-- [x] Sync frozen, lint, format, 166 test, `validate`, build e verifica wheel isolata verdi su
+- [x] Sync frozen, lint, format, 167 test, `validate`, build e verifica wheel isolata verdi su
   Ubuntu con uv 0.11.28 e CPython 3.12.13.
 - [ ] Matrice CI Ubuntu/Windows dello Step 4.
 - [ ] Installazioni reali Windows CUDA/CPU e Ubuntu CPU/CUDA, seguite da avvio `coding`.

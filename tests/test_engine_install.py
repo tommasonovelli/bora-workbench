@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from pathlib import Path
 from typing import cast
 
@@ -67,6 +68,26 @@ def patch_artifacts(monkeypatch) -> None:
 def manifest_bytes(root: Path) -> bytes:
     """Read the exact current manifest bytes for atomicity assertions."""
     return (root / "engine/current.json").read_bytes()
+
+
+def test_ubuntu_verification_requests_executable_mode(tmp_path, monkeypatch) -> None:
+    """Apply the Ubuntu executable bit without asserting POSIX mode behavior on Windows hosts."""
+    executable = tmp_path / "llama-server"
+    executable.write_bytes(b"server")
+    selected = replace(request(tmp_path), platform_key="ubuntu", set_executable_mode=True)
+    observed_modes: list[int] = []
+
+    def capture_mode(path, mode):
+        """Record the requested mode independently of host chmod semantics."""
+        del path
+        observed_modes.append(mode)
+
+    monkeypatch.setattr(Path, "chmod", capture_mode)
+    monkeypatch.setattr(engine, "verify_engine", lambda path, lock: path.resolve())
+
+    installer._verify_staged(executable, selected)
+
+    assert observed_modes[0] & 0o100
 
 
 def test_install_no_op_force_and_backend_change(tmp_path, monkeypatch) -> None:
