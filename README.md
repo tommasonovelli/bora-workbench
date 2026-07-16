@@ -28,9 +28,9 @@ Gli Step 1–4 sono completi. Suite, build, wheel isolata, matrice CI Ubuntu/Win
 previsti dai relativi gate sono verdi. Il catalogo profili vuoto è valido: i tre modi usano la
 baseline dello spike senza presentarla come profilo ottimizzato. Lo Step 5 è completo: chat e vision
 sono collaudate realmente su Ubuntu e Windows CUDA e la matrice CI Ubuntu/Windows è verde. Lo Step
-5A è implementato localmente: automatizza `benchmark/v1`, confronta candidati espliciti, monitora
-VRAM e genera bundle draft atomici e validabili; restano da completare le verifiche CI
-multipiattaforma prima del Calibration Gate. Il piano normativo e il tracker sono in
+5A è completo: automatizza `benchmark/v1`, confronta candidati espliciti, monitora VRAM e genera
+bundle draft atomici e validabili; la matrice CI Ubuntu/Windows è verde. La prossima attività è il
+Calibration Gate eseguito personalmente da Tommaso. Il piano normativo e il tracker sono in
 [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
 [`docs/spike-0/`](docs/spike-0/).
 

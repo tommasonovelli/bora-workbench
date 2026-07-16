@@ -25,8 +25,8 @@
 - [x] **Step 4 — Asset lock e attivazione atomica del motore.**
 - [x] **Step 5 — `studio` e `vstudio`:** implementazione, collaudi reali Ubuntu/Windows e matrice CI
   multipiattaforma conclusi.
-- [~] **Step 5A — Calibrazione assistita:** core, test offline, documentazione e verifica wheel
-  locali completati; resta la matrice CI Ubuntu/Windows prima di chiudere lo step.
+- [x] **Step 5A — Calibrazione assistita:** core, test offline, documentazione, verifica wheel e
+  matrice CI Ubuntu/Windows completati.
 - [ ] **Calibration Gate / Step 5B — Prima calibrazione e profili iniziali.**
 - [ ] **Step 6A / Human Gate / 6B — Release 0.1.**
 - [ ] **Step 7 — Skill e router.**
@@ -185,13 +185,16 @@
   anteprima e `validate --path` implementato; nessuna policy o profilo reale aggiunto.
 - [x] Sync frozen, lint, format, 210 test, `validate`, build e verifica wheel isolata verdi su Ubuntu
   con uv 0.11.28 e CPython 3.12.13.
-- [ ] Matrice CI GitHub Ubuntu 22.04/Windows Server 2022 verde sul commit dello Step 5A.
+- [x] Matrice CI GitHub Ubuntu 22.04/Windows Server 2022 verde sul commit `eb0f13c` (run
+  `29505535712`), inclusi 210 test, `validate`, build e verifica wheel isolata. Il primo run ha
+  rilevato correttamente la conversione CRLF dei protocolli su Windows; `.gitattributes` ora ne
+  preserva i byte e i digest appuntati su entrambi gli OS.
 
 ### Prossima azione obbligatoria
 
-Gli Step 3, 4 e 5 sono conclusi e lo Step 5A è completo localmente. La prossima azione obbligatoria
-è chiudere la matrice CI multipiattaforma dello Step 5A; non iniziare il Calibration Gate, lo Step
-5B o step successivi fino a quel risultato.
+Gli Step 3, 4, 5 e 5A sono conclusi. La prossima azione obbligatoria è il Calibration Gate 0.1,
+eseguito personalmente da Tommaso con parametri espliciti; non iniziare lo Step 5B o step successivi
+prima di almeno un esito `CALIBRATION-ACCEPTED`.
 
 ---
 
