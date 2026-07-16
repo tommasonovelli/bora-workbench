@@ -19,6 +19,10 @@ from qwen_launcher._engine_types import (
 JsonObject = dict[str, object]
 _ALLOWED_ROLES = {"server", "cuda-runtime", "source"}
 _HEX_64 = re.compile(r"^[0-9a-f]{64}$")
+# Ubuntu CUDA is the only pair compiled instead of downloaded: the pinned release publishes no
+# Linux CUDA prebuilt, so the lock pins the commit archive as its source asset (specification
+# section 5.10). Windows CUDA needs two roles because upstream ships the server and the
+# redistributable CUDA runtime as separate archives.
 _REQUIRED_ROLES = {
     ("ubuntu", "cpu"): {"server"},
     ("ubuntu", "cuda"): {"source"},
