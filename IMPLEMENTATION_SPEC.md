@@ -23,8 +23,8 @@
 - [x] **Step 2C — Contratto artefatto modello.**
 - [x] **Step 3 — Vertical slice `coding`, stato, stop e status.**
 - [x] **Step 4 — Asset lock e attivazione atomica del motore.**
-- [~] **Step 5 — `studio` e `vstudio`:** implementazione e collaudo reale Ubuntu conclusi; restano
-  collaudo Windows e matrice CI del commit.
+- [x] **Step 5 — `studio` e `vstudio`:** implementazione, collaudi reali Ubuntu/Windows e matrice CI
+  multipiattaforma conclusi.
 - [ ] **Step 5A / Calibration Gate / 5B — Calibrazione assistita e profili iniziali.**
 - [ ] **Step 6A / Human Gate / 6B — Release 0.1.**
 - [ ] **Step 7 — Skill e router.**
@@ -164,13 +164,17 @@
 - [x] Collaudo reale Ubuntu 24.04 CUDA: `studio` con UI, modelli e chat 200; `vstudio` con UI, modelli
   e vision 200 tramite mmproj, risposta `Rosso`; entrambi con baseline dichiarata, Ctrl-C 130 e
   pulizia completa di stato, processo e GPU.
-- [ ] Collaudo reale Windows 11 di chat `studio`, vision `vstudio` e stop pulito.
-- [ ] Matrice CI GitHub Ubuntu 22.04/Windows Server 2022 verde sul commit dello Step 5.
+- [x] Collaudo reale Windows 11 build 10.0.26200 CUDA col motore gestito b10011: `studio` con UI,
+  modelli e chat 200, risposta esatta `OK STUDIO WINDOWS`; `vstudio` con UI, modelli e vision 200
+  tramite mmproj verificato, risposta `Rosso`; MTP attivo, PID sulla GPU 0, ambiente padre invariato
+  e stop con pulizia completa di stato, porta, processo e GPU.
+- [x] Matrice CI GitHub Ubuntu 22.04/Windows Server 2022 verde sul commit `18dfe87` (run
+  `29500119988`), inclusi 180 test, `validate`, build e verifica wheel isolata.
 
 ### Prossima azione obbligatoria
 
-Gli Step 3 e 4 sono conclusi. Lo Step 5 resta aperto esclusivamente per collaudo Windows e matrice
-CI; non iniziare lo Step 5A o step successivi.
+Gli Step 3, 4 e 5 sono conclusi. La prossima azione obbligatoria è lo Step 5A; non iniziare il
+Calibration Gate, lo Step 5B o step successivi.
 
 ---
 

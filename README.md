@@ -26,9 +26,9 @@ produzione; ogni modo può usare un motore esplicito, dal `PATH` o installato in
 
 Gli Step 1–4 sono completi. Suite, build, wheel isolata, matrice CI Ubuntu/Windows e collaudi reali
 previsti dai relativi gate sono verdi. Il catalogo profili vuoto è valido: i tre modi usano la
-baseline dello spike senza presentarla come profilo ottimizzato. Lo Step 5 è implementato e provato
-localmente, incluso il collaudo reale Ubuntu CUDA di chat e vision; resta aperto fino al collaudo
-Windows e alla matrice CI del commit. Il piano normativo e il tracker sono in
+baseline dello spike senza presentarla come profilo ottimizzato. Lo Step 5 è completo: chat e vision
+sono collaudate realmente su Ubuntu e Windows CUDA e la matrice CI Ubuntu/Windows è verde. Lo Step
+5A non è ancora iniziato. Il piano normativo e il tracker sono in
 [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
 [`docs/spike-0/`](docs/spike-0/).
 
