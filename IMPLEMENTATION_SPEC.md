@@ -137,7 +137,8 @@
   `docs/engine-lock.md` implementati con test offline.
 - [x] Sync frozen, lint, format, 167 test, `validate`, build e verifica wheel isolata verdi su
   Ubuntu con uv 0.11.28 e CPython 3.12.13.
-- [ ] Matrice CI Ubuntu/Windows dello Step 4.
+- [x] Matrice CI GitHub Ubuntu 22.04/Windows Server 2022 verde sul commit `25956a5` (run
+  `29493604755`), inclusi 167 test, `validate`, build e verifica wheel isolata.
 - [ ] Installazioni reali Windows CUDA/CPU e Ubuntu CPU/CUDA, seguite da avvio `coding`.
 
 ### Prossima azione obbligatoria
