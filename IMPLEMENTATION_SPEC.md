@@ -119,13 +119,14 @@
   dello spike: modello appuntato verificato, baseline `ctx=8192`/`n_cpu_moe=48`, UI e vision off
   esplicite, salute, `/v1/models`, chat con MTP, GPU 0, stato e stop pulito verificati.
 - [ ] Collaudo manuale reale `coding` e stop pulito su Windows con motore dello spike.
-- [ ] Matrice CI Ubuntu/Windows verde per lo Step 3.
+- [x] Matrice CI GitHub Ubuntu 22.04/Windows Server 2022 verde sul commit `7689e83` (run
+  `29487698370`), inclusi test, `validate`, build e verifica wheel isolata.
 
 ### Prossima azione obbligatoria
 
-Lo Step 2C è concluso e lo Step 3 è in corso con il gate Ubuntu chiuso. La prossima azione è il
-collaudo reale Windows, seguito dalla matrice CI Ubuntu/Windows; non iniziare lo Step 4 o step
-successivi finché il gate dello Step 3 non è chiuso.
+Lo Step 2C è concluso e lo Step 3 è in corso con gate Ubuntu e matrice CI chiusi. La prossima azione
+è esclusivamente il collaudo reale Windows; non iniziare lo Step 4 o step successivi finché il gate
+dello Step 3 non è chiuso.
 
 ---
 
