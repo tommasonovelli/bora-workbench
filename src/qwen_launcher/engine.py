@@ -1,39 +1,31 @@
-"""Resolve pinned model artifacts and locate a compatible llama.cpp executable.
-
-This module may branch on the operating system because engine and cache layouts are platform-bound
-(specification sections 4.1, 5.8, and Spike 0's locked source evidence).
-"""
+"""Resolve, install, and locate the platform-bound engine from locked evidence."""
 
 from __future__ import annotations
 
-import json
 import os
+import platform
 import re
 import shutil
 import subprocess
 from collections.abc import Mapping
-from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
+from qwen_launcher._engine_types import (
+    Backend,
+    EngineError,
+    EngineStatus,
+    InstallRequest,
+    InstallResult,
+    PlatformKey,
+    ResolvedModel,
+)
 from qwen_launcher.config import Config
-from qwen_launcher.paths import data_dir
+from qwen_launcher.paths import cache_dir, data_dir
 from qwen_launcher.profiles import LaunchPlan
 from qwen_launcher.resources import read_json
 
 JsonObject = dict[str, object]
-
-
-class EngineError(RuntimeError):
-    """Report an absent or incompatible model or engine artifact."""
-
-
-@dataclass(frozen=True, slots=True)
-class ResolvedModel:
-    """Hold physical model files without changing their declarative identity."""
-
-    model_path: Path
-    mmproj_path: Path | None
 
 
 def load_engine_lock() -> JsonObject:
@@ -125,29 +117,59 @@ def verify_engine(executable: Path, lock: JsonObject) -> Path:
 
 
 def _managed_candidate(backend: str, lock: JsonObject) -> Path | None:
-    """Resolve a managed manifest only when it stays below immutable installations."""
-    engine_root = data_dir() / "engine"
-    manifest_path = engine_root / "current.json"
-    if not manifest_path.is_file():
-        return None
+    """Resolve the active manifest through the confined managed-engine contract."""
+    from qwen_launcher._engine_manifest import managed_candidate
+
+    return managed_candidate(data_dir() / "engine", backend, lock)
+
+
+def _platform_key() -> PlatformKey:
+    """Map only supported x86-64 Windows and Ubuntu hosts to lock asset identifiers."""
+    machine = platform.machine().lower()
+    if machine not in {"amd64", "x86_64"}:
+        raise EngineError(f"managed engine installation requires x86-64, found {machine!r}")
+    system = platform.system().lower()
+    if system == "windows":
+        return "windows"
+    if system != "linux":
+        raise EngineError(f"managed engine installation is unsupported on {platform.system()}")
     try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as error:
-        raise EngineError(
-            f"managed engine manifest is invalid: {manifest_path}: {error}"
-        ) from error
-    if not isinstance(manifest, dict) or not isinstance(manifest.get("schema"), str):
-        raise EngineError(f"managed engine manifest has no valid schema: {manifest_path}")
-    if manifest.get("release") != lock["release"] or manifest.get("backend") != backend:
-        raise EngineError("managed engine release or backend differs from engine.lock")
-    relative = manifest.get("executable")
-    if not isinstance(relative, str) or Path(relative).is_absolute():
-        raise EngineError("managed engine executable must be a relative path")
-    candidate = (engine_root / relative).resolve()
-    installations = (engine_root / "installations").resolve()
-    if not candidate.is_relative_to(installations):
-        raise EngineError("managed engine executable escapes the installations directory")
-    return candidate
+        distribution = platform.freedesktop_os_release().get("ID", "").lower()
+    except OSError as error:
+        raise EngineError(f"cannot identify the Linux distribution: {error}") from error
+    if distribution != "ubuntu":
+        raise EngineError(f"managed engine installation requires Ubuntu, found {distribution!r}")
+    return "ubuntu"
+
+
+def install_engine(backend: Backend, force: bool = False) -> InstallResult:
+    """Install and activate the complete lock-selected engine for this host."""
+    from qwen_launcher._engine_install import install_engine as run_install
+
+    lock = load_engine_lock()
+    platform_key = _platform_key()
+    notices = ("notices/llama.cpp-LICENSE",)
+    if platform_key == "windows" and backend == "cuda":
+        notices += ("notices/NVIDIA-CUDA-EULA.html",)
+    request = InstallRequest(
+        platform_key,
+        backend,
+        force,
+        data_dir() / "engine",
+        cache_dir() / "llama.cpp",
+        lock,
+        notices,
+        platform_key == "ubuntu",
+    )
+    return run_install(request)
+
+
+def engine_status(lock: JsonObject | None = None) -> EngineStatus:
+    """Inspect the active managed engine without creating files or directories."""
+    from qwen_launcher._engine_manifest import inspect_status
+
+    selected_lock = load_engine_lock() if lock is None else lock
+    return inspect_status(data_dir() / "engine", selected_lock)
 
 
 def build_command(executable: Path, plan: LaunchPlan, lock: JsonObject) -> tuple[str, ...]:

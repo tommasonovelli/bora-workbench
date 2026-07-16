@@ -3,5 +3,7 @@
 /docs/spike-0/ubuntu-b10011/** -text -diff
 /docs/spike-0/windows-b10011/** -text -diff
 /docs/spike-0/SHA256SUMS -text
+# Preserve the exact NVIDIA notice bytes verified by the Spike 0 digest.
+/src/qwen_launcher/resources/notices/NVIDIA-CUDA-EULA.html -text -diff
 # The normative plan uses Markdown hard line breaks intentionally.
 /IMPLEMENTATION_SPEC.md whitespace=-blank-at-eol

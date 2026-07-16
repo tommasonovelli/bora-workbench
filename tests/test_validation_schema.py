@@ -8,13 +8,12 @@ from qwen_launcher.validation import validate_resources
 from tests.content_fixtures import build_valid_content, copy_resource_root, read_json, write_json
 
 
-def test_installed_content_has_only_expected_engine_warning() -> None:
-    """Accept production modes and the intentionally incomplete Step 4 asset lock."""
+def test_installed_content_and_complete_engine_lock_are_valid() -> None:
+    """Accept production modes and the complete verified Step 4 asset matrix."""
     result = validate_resources()
 
     assert result.errors == ()
-    assert len(result.warnings) == 1
-    assert result.warnings[0].field_path == "$.assets_complete"
+    assert result.warnings == ()
 
 
 def test_malformed_json_reports_file_path_and_reason(tmp_path) -> None:

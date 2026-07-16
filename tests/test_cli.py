@@ -25,6 +25,15 @@ def patch_directories(tmp_path, monkeypatch):
     monkeypatch.setattr(config_module, "config_dir", lambda: directories["config_dir"])
     for name, path in directories.items():
         monkeypatch.setattr(cli_module, name, lambda path=path: path)
+    absent_engine = SimpleNamespace(
+        is_active=False,
+        release=None,
+        backend=None,
+        executable=None,
+        is_compatible=False,
+        differences=("not installed",),
+    )
+    monkeypatch.setattr(cli_module, "engine_status", lambda: absent_engine)
     return directories
 
 
@@ -54,13 +63,12 @@ def test_version() -> None:
     assert result.stdout.strip() == "0.1.0.dev0"
 
 
-def test_validate_passes_with_expected_engine_warning() -> None:
-    """Return zero for valid packaged content containing only warnings."""
+def test_validate_passes_with_complete_engine_assets() -> None:
+    """Return zero for packaged content with the complete Step 4 engine lock."""
     result = runner.invoke(app, ["validate"])
 
     assert result.exit_code == 0
-    assert "engine.lock:$.assets_complete" in result.stdout
-    assert "Validation passed" in result.stdout
+    assert "Validation passed with 0 warning(s)" in result.stdout
 
 
 def test_validate_maps_errors_to_exit_1(monkeypatch) -> None:

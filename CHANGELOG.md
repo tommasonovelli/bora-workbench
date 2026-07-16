@@ -13,6 +13,9 @@ All notable changes to this project will be documented in this file.
 - Normative `IMPLEMENTATION_SPEC.md` with progress tracker, plus archived raw spike evidence.
 - Exact profile matching, pinned model resolution and lock-governed CPU/CUDA command building.
 - `coding`, `status` and `stop` with atomic state, startup locking, health polling and safe PID identity.
+- Complete verified engine asset matrix, secure streamed downloads and confined archive extraction.
+- Immutable managed-engine installations with atomic manifest activation, status and doctor diagnostics.
+- Pinned llama.cpp and NVIDIA CUDA third-party notices for managed installations.
 
 ### Changed
 

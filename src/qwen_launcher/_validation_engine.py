@@ -158,8 +158,10 @@ def _command_issues(lock: JsonObject) -> list[ValidationIssue]:
 
 
 def validate_engine_lock(lock: JsonObject) -> list[ValidationIssue]:
-    """Validate engine identity, pinned model artifacts, and command vocabulary."""
-    issues: list[ValidationIssue] = []
+    """Validate engine identity, pinned artifacts, assets, and command vocabulary."""
+    from qwen_launcher._validation_assets import validate_assets
+
+    issues: list[ValidationIssue] = validate_assets(lock)
     if lock.get("schema") != "engine-lock/v1":
         issues.append(_error("$.schema", "must equal 'engine-lock/v1'"))
     for field in ("release", "default_model"):

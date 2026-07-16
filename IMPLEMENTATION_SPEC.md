@@ -22,7 +22,7 @@
 - [x] **Step 2B — Validazione, modelli runtime e hardware.**
 - [x] **Step 2C — Contratto artefatto modello.**
 - [x] **Step 3 — Vertical slice `coding`, stato, stop e status.**
-- [ ] **Step 4 — Asset lock e attivazione atomica del motore.**
+- [~] **Step 4 — Asset lock e attivazione atomica del motore.**
 - [ ] **Step 5 — `studio` e `vstudio`.**
 - [ ] **Step 5A / Calibration Gate / 5B — Calibrazione assistita e profili iniziali.**
 - [ ] **Step 6A / Human Gate / 6B — Release 0.1.**
@@ -125,10 +125,25 @@
 - [x] Matrice CI GitHub Ubuntu 22.04/Windows Server 2022 verde sul commit `7689e83` (run
   `29487698370`), inclusi test, `validate`, build e verifica wheel isolata.
 
+### Step 4 — dettaglio
+
+- [x] Matrice asset reale dello spike completata nel lock e `assets_complete=true`; avvisi MIT e
+  NVIDIA verificati inclusi nelle risorse installabili.
+- [x] Download HTTPS in streaming `.part`, SHA-256 obbligatorio, estrazione confinata, staging,
+  promozione immutabile e attivazione atomica tramite `current.json` implementati.
+- [x] Prebuilt Ubuntu CPU e Windows CPU/CUDA selezionati per coppia esatta; build Ubuntu CUDA dal
+  commit appuntato con prerequisiti espliciti e solo target `llama-server`.
+- [x] Comandi `engine install [--force]` ed `engine status`, diagnostica doctor e procedura
+  `docs/engine-lock.md` implementati con test offline.
+- [x] Sync frozen, lint, format, 166 test, `validate`, build e verifica wheel isolata verdi su
+  Ubuntu con uv 0.11.28 e CPython 3.12.13.
+- [ ] Matrice CI Ubuntu/Windows dello Step 4.
+- [ ] Installazioni reali Windows CUDA/CPU e Ubuntu CPU/CUDA, seguite da avvio `coding`.
+
 ### Prossima azione obbligatoria
 
-Lo Step 3 è concluso: gate reali Ubuntu/Windows e matrice CI sono chiusi. La prossima azione
-obbligatoria è esclusivamente lo Step 4; non anticipare lo Step 5 o step successivi.
+Lo Step 3 è concluso e lo Step 4 è in corso. La prossima azione obbligatoria è chiudere verifiche,
+CI e collaudi reali dello Step 4; non anticipare lo Step 5 o step successivi.
 
 ---
 

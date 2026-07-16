@@ -161,7 +161,7 @@
       "status": "ok"
     }
   },
-  "assets_complete": false,
+  "assets_complete": true,
   "assets": [
     {
       "os": "ubuntu",

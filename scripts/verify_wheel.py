@@ -43,11 +43,15 @@ def main() -> int:
             "from qwen_launcher.resources import read_json, read_text; "
             "assert version('qwen-launcher') == '0.1.0.dev0'; "
             "assert 'Spike 0' in read_text('README.txt'); "
-            "assert read_json('engine.lock')['release'] == 'b10011'"
+            "lock = read_json('engine.lock'); "
+            "assert lock['release'] == 'b10011' and lock['assets_complete']; "
+            "assert 'ggml authors' in read_text('notices/llama.cpp-LICENSE'); "
+            "assert 'NVIDIA' in read_text('notices/NVIDIA-CUDA-EULA.html')"
         )
         subprocess.run([str(python), "-c", command], check=True)
         subprocess.run([str(python), "-m", "qwen_launcher.cli", "--version"], check=True)
         subprocess.run([str(python), "-m", "qwen_launcher.cli", "validate"], check=True)
+        subprocess.run([str(python), "-m", "qwen_launcher.cli", "engine", "status"], check=True)
     return 0
 
 

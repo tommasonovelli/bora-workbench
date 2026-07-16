@@ -7,6 +7,7 @@ from pathlib import Path
 
 from rich.table import Table
 
+from qwen_launcher._engine_types import EngineStatus
 from qwen_launcher.config import Config
 from qwen_launcher.hardware import HardwareInfo
 
@@ -20,6 +21,7 @@ class DoctorData:
     profiles: int
     version: str
     directories: tuple[Path, Path, Path, Path]
+    engine: EngineStatus
 
 
 def _gib(value: float | None) -> str:
@@ -54,6 +56,11 @@ def build_doctor_table(data: DoctorData) -> Table:
         ("VRAM total", _gib(hardware.vram_total_gib)),
         ("VRAM free", _gib(hardware.vram_free_gib)),
         ("Calibrated profiles", str(data.profiles) if data.profiles else "none"),
+        ("Managed engine", "active" if data.engine.is_active else "not installed"),
+        ("Engine release", data.engine.release or "none"),
+        ("Engine backend", data.engine.backend or "none"),
+        ("Engine compatible", "yes" if data.engine.is_compatible else "no"),
+        ("Engine executable", str(data.engine.executable) if data.engine.executable else "none"),
         ("Config directory", str(data.directories[0])),
         ("Data directory", str(data.directories[1])),
         ("Cache directory", str(data.directories[2])),

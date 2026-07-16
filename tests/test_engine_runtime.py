@@ -103,15 +103,16 @@ def test_managed_manifest_must_stay_below_installations(tmp_path, monkeypatch) -
     data = tmp_path / "data"
     engine_root = data / "engine"
     engine_root.mkdir(parents=True)
-    manifest = {"schema": "test/v1", "release": "b10011", "backend": "cpu"}
+    manifest = {"schema": "managed-engine/v1", "release": "b10011", "backend": "cpu"}
     monkeypatch.setattr(engine, "data_dir", lambda: data)
     monkeypatch.setattr(engine.shutil, "which", lambda name: None)
 
-    (engine_root / "current.json").write_text(
-        json.dumps({**manifest, "executable": "../outside"}), encoding="utf-8"
-    )
-    with pytest.raises(engine.EngineError, match="escapes"):
-        engine.locate(Config(), "cpu")
+    for unsafe in ("../outside", r"C:\\outside\\llama-server.exe"):
+        (engine_root / "current.json").write_text(
+            json.dumps({**manifest, "executable": unsafe}), encoding="utf-8"
+        )
+        with pytest.raises(engine.EngineError, match="safe relative"):
+            engine.locate(Config(), "cpu")
 
     relative = "installations/b10011-cpu/llama-server"
     (engine_root / "current.json").write_text(

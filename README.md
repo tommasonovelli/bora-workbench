@@ -15,17 +15,19 @@ Il repository contiene il vertical slice locale del modo `coding`:
 - risoluzione read-only del modello appuntato e verifica dell'eseguibile `llama-server`;
 - builder governato esclusivamente da `engine.lock`;
 - lifecycle con lock d'avvio, salute, stato atomico, log, `status` e `stop` sicuro;
+- installazione motore da asset verificati, estrazione sicura e attivazione atomica via manifest;
 - accesso alle risorse compatibile con wheel/zip e test offline con server fake.
 
 Lo **Spike 0 è completo** con decisione `GO`: `llama.cpp b10011`, il contratto macchina, la matrice
-Ubuntu/Windows CPU/CUDA e il protocollo `benchmark/v1` sono verificati. Il contratto iniziale è
-incluso nella wheel come `engine.lock`; gli asset restano intenzionalmente marcati incompleti fino
-allo Step 4. Non esistono ancora profili di produzione e `coding` richiede un motore già presente.
+Ubuntu/Windows CPU/CUDA e il protocollo `benchmark/v1` sono verificati. Il contratto e la matrice
+completa degli asset sono inclusi nella wheel come `engine.lock`. Non esistono ancora profili di
+produzione; `coding` può usare un motore esplicito, dal `PATH` o installato in modo gestito.
 
 Gli Step 1, 2A, 2B, 2C e 3 sono completi. Suite, build, wheel isolata, matrice CI Ubuntu/Windows e
 collaudi reali Ubuntu/Windows CUDA del vertical slice `coding`, `status` e `stop` sono verdi. Il
 catalogo profili vuoto è valido: `coding` usa la baseline dello spike senza presentarla come profilo
-ottimizzato. Lo Step 4 è la prossima azione obbligatoria. Il piano normativo e il tracker sono in
+ottimizzato. Lo Step 4 è implementato e resta aperto per i collaudi reali multipiattaforma e la CI;
+non è iniziato lo Step 5. Il piano normativo e il tracker sono in
 [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
 [`docs/spike-0/`](docs/spike-0/).
 
@@ -41,14 +43,19 @@ uv run --frozen pytest
 uv run --frozen qwen-launcher --version
 uv run --frozen qwen-launcher validate
 uv run --frozen qwen-launcher doctor
+uv run --frozen qwen-launcher engine install
+uv run --frozen qwen-launcher engine status
 uv run --frozen qwen-launcher coding
 uv run --frozen qwen-launcher status
 uv run --frozen qwen-launcher stop
 ```
 
-`coding` richiede già disponibili il modello e un `llama-server` compatibile con `engine.lock`: lo
-Step 4 aggiungerà l'installazione gestita, quindi non viene ancora effettuato alcun download. Il
-modello predefinito è risolto alla revisione snapshot appuntata nella cache Hugging Face e verificato
+`engine install` scarica tramite HTTPS esclusivamente gli asset del lock per OS/backend rilevato,
+verifica SHA-256, conserva gli avvisi di terze parti e attiva un'installazione immutabile tramite
+`current.json`. Su Ubuntu CUDA controlla i prerequisiti e compila il solo server dal commit
+appuntato, senza installare pacchetti. Dettagli e procedura di aggiornamento sono in
+[`docs/engine-lock.md`](docs/engine-lock.md). Il modello predefinito è risolto alla revisione snapshot
+appuntata nella cache Hugging Face e verificato
 per nome, dimensione e SHA-256. Un modello diverso richiede `model_path` esplicito. CUDA su host
 multi-GPU resta bloccato perché lo Spike 0 ha verificato soltanto una macchina a GPU singola.
 `--force` bypassa esclusivamente le soglie RAM del modello predefinito.

@@ -12,8 +12,10 @@ import typer
 from rich.console import Console
 
 from qwen_launcher._cli_doctor import DoctorData, build_doctor_table
+from qwen_launcher._cli_engine import run_engine_install, show_engine_status
 from qwen_launcher._cli_services import run_coding, run_stop, show_status
 from qwen_launcher.config import Config, ConfigError, load_config
+from qwen_launcher.engine import engine_status
 from qwen_launcher.hardware import HardwareError, HardwareInfo, detect_hardware
 from qwen_launcher.paths import cache_dir, config_dir, data_dir, state_dir
 from qwen_launcher.profiles import load_catalog
@@ -24,6 +26,8 @@ app = typer.Typer(
     help="Launch and manage the calibrated local Qwen distribution.",
     no_args_is_help=True,
 )
+engine_app = typer.Typer(help="Install and inspect the pinned managed llama.cpp engine.")
+app.add_typer(engine_app, name="engine")
 _stdout = Console()
 _stderr = Console(stderr=True)
 
@@ -114,16 +118,40 @@ def doctor() -> None:
         catalog = load_catalog()
         compatible_profiles = sum(profile.is_engine_compatible for profile in catalog.profiles)
     directories = (config_dir(), data_dir(), cache_dir(), state_dir())
-    data = DoctorData(config, hardware, compatible_profiles, package_version(), directories)
+    managed_engine = engine_status()
+    data = DoctorData(
+        config,
+        hardware,
+        compatible_profiles,
+        package_version(),
+        directories,
+        managed_engine,
+    )
     _stdout.print(build_doctor_table(data))
     for warning in hardware.warnings:
         _stdout.print(f"[yellow]WARNING[/yellow] {warning}")
     if compatible_profiles == 0:
         message = "No calibrated profile is installed; this is expected before Step 5B."
         _stdout.print(f"[yellow]WARNING[/yellow] {message}")
+    for difference in managed_engine.differences:
+        _stdout.print(f"[yellow]Engine:[/yellow] {difference}")
     _print_validation(validation)
     if validation.errors:
         raise typer.Exit(code=1)
+
+
+@engine_app.command("install")
+def engine_install_command(
+    force: bool = typer.Option(False, "--force", help="Reinstall an already compatible target."),
+) -> None:
+    """Install and atomically activate the lock-selected engine for detected hardware."""
+    run_engine_install(force, _stdout, _stderr)
+
+
+@engine_app.command("status")
+def engine_status_command() -> None:
+    """Show active managed-engine compatibility and differences from the lock."""
+    show_engine_status(_stdout)
 
 
 @app.command()
