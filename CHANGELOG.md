@@ -20,8 +20,12 @@ All notable changes to this project will be documented in this file.
   projector activation.
 - Assisted `calibrate` trials with immutable benchmark resources, aggregate VRAM monitoring,
   atomic draft bundles, privacy redaction and explicit bundle validation.
+- Post-stop VRAM stabilization with an explicit release tolerance and final release evidence.
+- Recursive JSON redaction, relative discard-log references and privacy scanning for shared bundles.
 
 ### Changed
 
 - Split Step 2 into declarative and core phases and added a 0.1 assisted-calibration gate so
   feasibility benchmarks cannot be published as optimized profiles.
+- Excessive VRAM baseline drift now discards only the affected candidate instead of aborting the
+  complete calibration; all-discarded bundles receive an explicit CLI summary.

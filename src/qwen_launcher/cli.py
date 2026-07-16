@@ -176,7 +176,7 @@ def calibrate(
     ] = None,
     settings: Annotated[
         str | None,
-        typer.Option("--settings", help="Explicit RUNS[:MIN_FREE_VRAM_GIB] values."),
+        typer.Option("--settings", help="Explicit RUNS[:MIN_FREE_GIB:RELEASE_TOLERANCE_GIB]."),
     ] = None,
 ) -> None:
     """Compare explicit candidates and generate a local unaccepted calibration/v1 bundle."""

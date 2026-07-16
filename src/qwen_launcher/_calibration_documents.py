@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from importlib.metadata import PackageNotFoundError, version
 
+from qwen_launcher import _calibration_vram as vram_protocol
+from qwen_launcher._calibration_metadata import launcher_version
+from qwen_launcher._calibration_privacy import relative_log_reason
 from qwen_launcher._calibration_types import CandidateTrial, TrialResult
 from qwen_launcher.calibration import CalibrationSettings, CalibrationTarget
 
@@ -22,14 +24,6 @@ class DocumentContext:
     settings: CalibrationSettings
     trials: TrialResult
     logs: LogEvidence
-
-
-def _launcher_version() -> str:
-    """Read installed package metadata with the source-checkout development fallback."""
-    try:
-        return version("qwen-launcher")
-    except PackageNotFoundError:
-        return "0.1.0.dev0"
 
 
 def _hardware(context: DocumentContext) -> dict[str, object]:
@@ -87,6 +81,7 @@ def _candidate(context: DocumentContext, mode_id: str, trial: CandidateTrial) ->
         "vram_baseline_gib": None if vram is None else vram.baseline_used_gib,
         "vram_peak_gib": None if vram is None else vram.peak_used_gib,
         "vram_min_free_gib": None if vram is None else vram.minimum_free_gib,
+        "vram_release_used_gib": None if vram is None else vram.release_used_gib,
         "warmup_tok_s": None if benchmark is None else benchmark.warmup_tok_s,
         "measured_tok_s": None if benchmark is None else list(benchmark.measured_tok_s),
         "tok_s": _summary(trial),
@@ -97,8 +92,10 @@ def _candidate(context: DocumentContext, mode_id: str, trial: CandidateTrial) ->
     }
     if trial.candidate.n_cpu_moe is not None:
         value["n_cpu_moe"] = trial.candidate.n_cpu_moe
-    if trial.discard_reason is not None:
-        value["discard_reason"] = trial.discard_reason
+    evidence = context.logs[(mode_id, trial.candidate.id)]
+    reason = relative_log_reason(trial.discard_reason, trial.log_paths, evidence)
+    if reason is not None:
+        value["discard_reason"] = reason
     return value
 
 
@@ -118,7 +115,7 @@ def build_report(context: DocumentContext) -> dict[str, object]:
         "id": context.report_id,
         "created_at": context.created_at,
         "decision": "draft",
-        "launcher_version": _launcher_version(),
+        "launcher_version": launcher_version(),
         "model": context.target.config.model,
         "engine": context.target.lock["release"],
         "engine_source_commit": context.target.lock["source_commit"],
@@ -126,9 +123,11 @@ def build_report(context: DocumentContext) -> dict[str, object]:
         "benchmark_protocol": "benchmark/v1",
         "policy": {
             "id": None,
-            "gpu_poll_interval_ms": 250,
+            "gpu_poll_interval_ms": vram_protocol.GPU_POLL_INTERVAL_MS,
+            "gpu_release_stabilization_ms": vram_protocol.GPU_RELEASE_STABILIZATION_MS,
             "stable_start_runs": context.settings.stable_start_runs,
             "minimum_free_vram_gib": context.settings.minimum_free_vram_gib,
+            "vram_release_tolerance_gib": context.settings.vram_release_tolerance_gib,
             "candidates": _policy_candidates(context),
         },
         "hardware": _hardware(context),

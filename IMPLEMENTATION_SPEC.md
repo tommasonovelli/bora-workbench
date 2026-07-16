@@ -1,4 +1,4 @@
-# qwen-launcher — Specifica centrale di implementazione (v3.2)
+# qwen-launcher — Specifica centrale di implementazione (v3.3)
 
 ## 0. Tracker di avanzamento — aggiornato al 16 luglio 2026
 
@@ -25,9 +25,10 @@
 - [x] **Step 4 — Asset lock e attivazione atomica del motore.**
 - [x] **Step 5 — `studio` e `vstudio`:** implementazione, collaudi reali Ubuntu/Windows e matrice CI
   multipiattaforma conclusi.
-- [x] **Step 5A — Calibrazione assistita:** core, test offline, documentazione, verifica wheel e
-  matrice CI Ubuntu/Windows completati.
-- [ ] **Calibration Gate / Step 5B — Prima calibrazione e profili iniziali.**
+- [~] **Step 5A — Calibrazione assistita:** core iniziale e precedente matrice CI completati;
+  correzioni dal primo run reale implementate e verificate localmente, nuova matrice CI pendente.
+- [~] **Calibration Gate / Step 5B — Prima calibrazione e profili iniziali:** primo run Linux
+  raccolto ma non accettato; mini-spike cache KV Q8/`--no-mmap` e nuova calibrazione obbligatori.
 - [ ] **Step 6A / Human Gate / 6B — Release 0.1.**
 - [ ] **Step 7 — Skill e router.**
 - [ ] **Step 8 — Open WebUI e sync.**
@@ -189,18 +190,23 @@
   `29505535712`), inclusi 210 test, `validate`, build e verifica wheel isolata. Il primo run ha
   rilevato correttamente la conversione CRLF dei protocolli su Windows; `.gitattributes` ora ne
   preserva i byte e i digest appuntati su entrambi gli OS.
+- [~] Correzione dal primo run reale: rilascio VRAM ricampionato fino a 10 s con tolleranza
+  esplicita; deriva fra avvii oltre tolleranza trasformata in scarto del candidato; campione finale
+  registrato; report e fallback redatti; scanner privacy e riepilogo «tutti scartati» coperti da
+  test offline. Verifiche locali completate; nuova matrice CI Ubuntu/Windows ancora da eseguire.
 
 ### Prossima azione obbligatoria
 
-Gli Step 3, 4, 5 e 5A sono conclusi. La prossima azione obbligatoria è il Calibration Gate 0.1,
-eseguito personalmente da Tommaso con parametri espliciti; non iniziare lo Step 5B o step successivi
+Gli Step 3, 4, 5 e la correzione 5A sono conclusi. La prossima azione obbligatoria è il mini-spike
+manuale cache KV Q8/`--no-mmap` su b10011; dopo un GO, una PR dichiarativa separata aggiorna il lock
+e Tommaso ripete la calibrazione con parametri espliciti. Non iniziare lo Step 5B o step successivi
 prima di almeno un esito `CALIBRATION-ACCEPTED`.
 
 ---
 
 > **Stato:** documento normativo centrale, pronto a guidare l'implementazione per step.  
-> **Data di consolidamento:** 15 luglio 2026; v3.2 approvata dopo lo Step 1 per separare fattibilità,
-> calibrazione e contribuzione dei profili.  
+> **Data di consolidamento:** 16 luglio 2026; v3.3 recepisce l'evidenza del primo run reale e
+> corregge il protocollo Step 5A senza anticipare policy o profili.  
 > **Sostituisce:** la v3.1, `PIANO_IMPLEMENTAZIONE_v2.md`, le due revisioni successive e la v3 non
 > corretta.  
 > **Regola d'uso:** una sessione di sviluppo esegue un solo step, nell'ordine indicato. Prima di
@@ -338,6 +344,9 @@ Regole conseguenti:
 | D-028 | `calibrate` è locale, esplicito, riproducibile e non pubblica né modifica il repository | prove pesanti e possibili fallimenti restano sotto controllo dell'utente |
 | D-029 | il primo uso guidato su 8 GiB VRAM e 32 GiB RAM precede l'approvazione della policy automatica | margine VRAM, candidati e criteri finali derivano da evidenza reale, non da stime ricordate |
 | D-030 | identità `model` e percorso eseguibile `model_path` sono distinti; il modello predefinito si risolve in sola lettura alla revisione e ai digest appuntati | `llama-server -m` accetta un percorso, mentre `--hf-repo` risolve un branch mobile e può modificare la cache Hugging Face |
+| D-031 | `calibration/v1` ricampiona il rilascio VRAM ogni 250 ms per massimo 10 s e usa una tolleranza GiB esplicita, applicata anche alla deriva fra avvii | rende operativo «vicino alla baseline» senza soglie hardware inventate; prima di policy/report accettati, i contratti v1 vengono corretti e le vecchie bozze locali devono essere rigenerate |
+| D-032 | ogni bundle redige ricorsivamente i JSON e i log, usa riferimenti log relativi e passa uno scanner privacy automatico oltre alla revisione umana | impedisce che messaggi operativi correttamente dettagliati trasferiscano percorsi o identità nei file condivisibili |
+| D-033 | il modello resta `UD-Q4_K_M`; cache KV Q8 e `--no-mmap` entrano nel lock soltanto dopo mini-spike GO su b10011 e in una modifica dichiarativa separata | distingue quantizzazione dei pesi e della cache e impedisce di appuntare prestazioni o compatibilità non misurate |
 
 Le sole decisioni lasciate allo spike sono: release esatta di `llama.cpp`, nomi esatti dei flag per
 quella release, forma reale della salute, asset ufficiali disponibili, compatibilità della UI e
@@ -561,10 +570,12 @@ soltanto:
 
 - `schema`, costante `calibration-policy/v1`;
 - `benchmark_protocol`, costante `benchmark/v1`;
-- `gpu_poll_interval_ms`, inizialmente costante `250` per `calibration/v1`;
+- `gpu_poll_interval_ms`, costante `250`, e `gpu_release_stabilization_ms`, costante `10000`, per
+  `calibration/v1`;
 - `policies`, array non vuoto di policy con id unico. Ogni policy contiene `id`, `model`, `engine`,
-  `backend`, lista `os`, `stable_start_runs`, eventuali `minimum_calibration_vram_gib` e
-  `minimum_free_vram_gib` obbligatori per CUDA e vietati per CPU, `modes` e `hardware_classes`;
+  `backend`, lista `os`, `stable_start_runs`; `minimum_calibration_vram_gib`,
+  `minimum_free_vram_gib` e `vram_release_tolerance_gib` sono obbligatori per CUDA e vietati per
+  CPU; seguono `modes` e `hardware_classes`;
 - ogni voce `modes.<id>` contiene una lista ordinata e non vuota `candidates`; ogni candidato ha id
   unico, `ctx` e `n_cpu_moe`, obbligatorio su CUDA e vietato su CPU;
 - ogni classe contiene id unico e finestre inclusive `ram_gib` e `vram_gib` con le regole dei
@@ -579,14 +590,15 @@ campi come parametri espliciti e non inventa default mancanti.
   `decision`, uno fra `draft`, `accepted`, `rejected`; `launcher_version`; `model`; `engine`;
   `engine_source_commit`; `calibration_protocol`, costante `calibration/v1`; e
   `benchmark_protocol`, costante `benchmark/v1`;
-- `policy`, con id o `null`, polling, avvii stabili, riserva VRAM e lista ordinata dei candidati usati;
+- `policy`, con id o `null`, polling, finestra di stabilizzazione, avvii stabili, riserva VRAM,
+  tolleranza di rilascio e lista ordinata dei candidati usati;
 - `hardware`, con OS/versione, CPU, core, RAM totale/disponibile, backend, GPU indice/nome/driver e
   VRAM totale/libera; i campi GPU sono `null` su CPU e non esistono hostname, username o percorsi;
 - `hardware_class`, id approvato o `null` per una classe nuova ancora proposta;
 - `modes`, oggetto non vuoto; ogni modo contiene `candidates` e `selected_candidate_id`, che è `null`
   finché il modo non viene accettato;
 - ogni risultato candidato ripete id, `ctx` ed eventuale `n_cpu_moe`, registra `outcome`, motivo di
-  scarto opzionale, avvii riusciti, baseline/picco/minimo libero VRAM nullable su CPU, warm-up,
+  scarto opzionale, avvii riusciti, baseline/picco/minimo libero/campione finale VRAM nullable su CPU, warm-up,
   esattamente cinque misure valide, `{min, median, max}` e digest dei log relativi;
 - `selection_rule`, costante della regola in sezione 5.6; `privacy_reviewed`, booleano che deve essere
   `true` per `decision=accepted`; e `evidence_manifest`, percorso relativo del manifest del bundle.
@@ -715,27 +727,33 @@ Protocollo iniziale:
    concorrenti rendono la misura invalida e fermano la calibrazione con rimedio azionabile;
 2. usa la policy approvata oppure, esclusivamente nello Step 5A prima del Calibration Gate, candidati,
    riserva e contesti forniti esplicitamente da Tommaso;
-3. parte dalla baseline più prudente approvata e varia soltanto `n_cpu_moe` per CUDA; non assume
-   monotonicità, non usa ricerca binaria e non prova flag fuori da `engine.lock`;
+3. parte dalla baseline più prudente approvata e varia soltanto `n_cpu_moe` per CUDA; usa un solo
+   `ctx` per modo/run, una lista esplicita per modo e può infittire i passi vicino al confine soltanto
+   da evidenza precedente; non assume monotonicità, non genera candidati, non usa ricerca binaria e
+   non prova flag fuori da `engine.lock`;
 4. avvia un processo nuovo per ogni candidato, attende READY, esegue il carico reale del modo e
    campiona la VRAM complessiva tramite `nvidia-smi` ogni 250 ms;
 5. `coding` e `studio` eseguono la richiesta testuale verificata; `vstudio` esegue anche la richiesta
    vision con mmproj; raggiungere READY da solo non rende valido un candidato;
-6. morte, OOM, salute incompatibile, risposta invalida, margine VRAM violato o memoria non tornata
-   vicino alla baseline dopo lo stop scartano il candidato e conservano il log;
+6. dopo lo stop CUDA ricampiona ogni 250 ms fino a 10 s e accetta appena la memoria usata è entro
+   `baseline + vram_release_tolerance_gib`; morte, OOM, salute incompatibile, risposta invalida,
+   margine violato o rilascio fuori soglia scartano il candidato e conservano il log; la stessa
+   tolleranza limita l'intervallo fra baseline degli avvii e una deriva maggiore scarta il candidato,
+   mentre carico compute concorrente, cambio driver o monitor guasto invalidano l'intero run;
 7. ogni candidato rimasto supera il numero di avvii stabili della policy e `benchmark/v1`; la
    selezione massimizza la mediana tok/s fra i candidati che rispettano stabilità e riserva, poi
    preferisce maggiore VRAM libera e infine la busta più prudente;
 8. genera report, profilo proposto, risultati benchmark, manifest SHA-256 e guida di contribuzione in
-   `data_dir()/calibrations/<id>/` con scritture atomiche; il report usa percorsi relativi e rimuove
-   hostname, username e percorsi privati;
+   `data_dir()/calibrations/<id>/` con scritture atomiche; i motivi puntano ai log relativi copiati,
+   tutti i campi stringa e log sono redatti e `validate --path` rifiuta identità locali o pattern di
+   percorsi assoluti POSIX/Windows prima della revisione umana;
 9. valida il bundle localmente e richiede conferma umana: un output non confermato resta una bozza e
    non può entrare nei contenuti distribuiti.
 
-La riserva minima di VRAM, l'insieme e l'ordine dei candidati, gli avvii stabili e le finestre
-nominali, inclusa la VRAM minima per avviare automaticamente la baseline, non vengono dedotti dal
-ricordo di prove precedenti. Lo Step 5A raccoglie la prima evidenza su 8 GiB VRAM e 32 GiB RAM; il
-Calibration Gate approva valori esatti e lo Step 5B li registra in
+La riserva minima e la tolleranza di rilascio VRAM, l'insieme e l'ordine dei candidati, gli avvii
+stabili e le finestre nominali, inclusa la VRAM minima per avviare automaticamente la baseline, non
+vengono dedotti dal ricordo di prove precedenti. Lo Step 5A raccoglie la prima evidenza su 8 GiB VRAM
+e 32 GiB RAM; il Calibration Gate approva valori esatti e lo Step 5B li registra in
 `calibration-policy.json`. Una modifica successiva richiede nuova evidenza e revisione della policy.
 
 Un utente sopra i requisiti della policy ma senza profilo può continuare con la baseline oppure
@@ -853,6 +871,14 @@ Le sequenze mostrate fra parentesi angolari sono segnaposto della specifica e no
 un lock prodotto. `docs/spike-0.json` e `engine.lock` devono contenere dati reali; un comportamento
 non applicabile usa una sequenza vuota o `null` soltanto dove il contratto lo consente, con la
 motivazione nello spike.
+
+Il contratto attivo mantiene i pesi `UD-Q4_K_M`, la cache predefinita verificata e `--mmap`. Prima
+della nuova calibrazione, Tommaso esegue su b10011 il mini-spike definito in `CALIBRATE.md`,
+confrontando contratto attuale, cache K/V `q8_0` con mmap e cache K/V `q8_0` con `--no-mmap` a parità
+di candidati. Registra RAM, VRAM, avvio, salute, MTP, vision, stop e `benchmark/v1`. Soltanto un GO
+consente di aggiungere `--cache-type-k`, `--cache-type-v` e/o `--no-mmap` ai flag verificati e agli
+argomenti fissi o CUDA del lock; il cambio è dichiarativo, separato dalle correzioni core e ripetuto
+su Windows prima di sostenere compatibilità Windows.
 
 Il modello predefinito viene risolto senza rete e senza scritture alla directory snapshot della
 revisione appuntata, rispettando la precedenza delle directory cache osservata nel sorgente della
@@ -1377,25 +1403,31 @@ nessuna policy finale entrano in questo step, così la PR core resta separata da
    token e `finish_reason` senza rete nei test.
 2. Implementa `qwen-launcher calibrate --mode <id|all>`. In assenza della policy approvata il comando
    richiede interattivamente o tramite opzioni esplicite contesti, candidati `n_cpu_moe`, riserva
-   VRAM e numero di avvii; non sceglie default dalla memoria dell'autore.
+   VRAM, tolleranza di rilascio e numero di avvii; non sceglie default dalla memoria dell'autore.
 3. Mostra preflight, baseline, candidati, durata indicativa e destinazione; richiede conferma prima di
    avviare processi e consente annullamento pulito con exit 130.
 4. Esegue il protocollo della sezione 5.6 riusando builder, lifecycle, salute e stop di produzione;
    ogni candidato ha processo e log separati e un fallimento non altera stato o profilo attivo.
 5. Campiona VRAM complessiva e libera, non soltanto quella attribuita al PID; registra baseline,
-   minimo libero e picco. Un carico concorrente o una deriva non spiegata invalida il run invece di
-   produrre numeri apparentemente precisi.
+   minimo libero, picco e campione finale. Dopo lo stop usa la finestra fissa e la tolleranza
+   esplicita di 5.6; deriva oltre soglia scarta il candidato, mentre contaminazione o monitor
+   inaffidabile invalidano il run.
 6. Genera un bundle locale con report, risultati, bozza profilo, digest e guida PR. La bozza non passa
    come profilo distribuibile finché policy, finestra e selezione non sono approvate.
 7. Implementa `validate --path <bundle>` senza modificare la validazione predefinita delle risorse
    installate. Nessun comando crea branch, commit, push, issue o PR.
-8. Rimuove dai file condivisibili hostname, username e percorsi assoluti; mostra l'anteprima esatta
-   dei dati da condividere.
+8. Rimuove dai file condivisibili hostname, username e percorsi assoluti tramite riferimenti log
+   relativi e redazione ricorsiva; lo scanner privacy di `validate --path` protegge anche bundle
+   altrui e la CLI mostra l'anteprima esatta dei dati da condividere.
+9. Se nessun candidato è valido, conserva exit 0 per la procedura riuscita ma lo dichiara
+   esplicitamente per ogni modo.
 
-**Test obbligatori:** policy assente; opzioni esplicite; annullamento; ordine candidati; candidato
-valido, crash, OOM simulato, timeout, margine violato, carico concorrente, memoria non rilasciata;
-processo distinto; warm-up escluso; cinque misure; mediana e spareggi; coding/studio/vstudio;
-interruzione; bundle atomico; digest; privacy; validazione bundle; nessuna rete o GPU reale.
+**Test obbligatori:** policy assente; sintassi CPU/CUDA; annullamento; ordine candidati; candidato
+valido, crash, OOM simulato, timeout, margine violato, carico concorrente; rilascio lento, entro/fuori
+tolleranza e oltre finestra; deriva fra avvii entro/oltre soglia; processo distinto; warm-up escluso;
+cinque misure; mediana e spareggi; coding/studio/vstudio; interruzione; bundle atomico; digest;
+riferimenti relativi, redazione JSON/log/fallback e scanner privacy POSIX/Windows; nessuna rete o GPU
+reale.
 
 **Definition of Done:** Tommaso può installare la wheel dello Step 5A e avviare la prima calibrazione
 guidata fornendo parametri espliciti; il risultato è una bozza verificabile, non un profilo già
@@ -1414,8 +1446,9 @@ che dovrà ricevere un profilo iniziale. Il gate:
 - osserva picco VRAM, minimo libero, RAM, stabilità e tok/s;
 - considera il ricordo di circa 7,4–7,6 GiB totali usati soltanto come ipotesi da misurare, non come
   soglia già approvata;
-- approva o rifiuta VRAM minima per la baseline automatica, riserva minima, lista e ordine candidati,
-  contesti, avvii stabili, regola di selezione e finestre nominali RAM/VRAM non sovrapposte;
+- approva o rifiuta VRAM minima per la baseline automatica, riserva minima, tolleranza di rilascio,
+  lista e ordine candidati, contesti, avvii stabili, regola di selezione e finestre nominali RAM/VRAM
+  non sovrapposte;
 - controlla privacy, report, digest e profilo proposto;
 - decide `CALIBRATION-ACCEPTED` oppure `CALIBRATION-REJECTED` separatamente per ogni OS/modo.
 

@@ -28,9 +28,11 @@ Gli Step 1–4 sono completi. Suite, build, wheel isolata, matrice CI Ubuntu/Win
 previsti dai relativi gate sono verdi. Il catalogo profili vuoto è valido: i tre modi usano la
 baseline dello spike senza presentarla come profilo ottimizzato. Lo Step 5 è completo: chat e vision
 sono collaudate realmente su Ubuntu e Windows CUDA e la matrice CI Ubuntu/Windows è verde. Lo Step
-5A è completo: automatizza `benchmark/v1`, confronta candidati espliciti, monitora VRAM e genera
-bundle draft atomici e validabili; la matrice CI Ubuntu/Windows è verde. La prossima attività è il
-Calibration Gate eseguito personalmente da Tommaso. Il piano normativo e il tracker sono in
+5A è completo e corretto dopo il primo run reale: automatizza `benchmark/v1`, confronta candidati
+espliciti, stabilizza il rilascio VRAM con tolleranza dichiarata e genera bundle draft atomici,
+redatti e validabili. La prossima attività manuale è il mini-spike cache KV Q8/`--no-mmap`, seguito
+dalla nuova calibrazione e dal Calibration Gate eseguiti personalmente da Tommaso. Il piano
+normativo e il tracker sono in
 [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
 [`docs/spike-0/`](docs/spike-0/).
 
@@ -67,10 +69,11 @@ per nome, dimensione e SHA-256. Un modello diverso richiede `model_path` esplici
 multi-GPU resta bloccato perché lo Spike 0 ha verificato soltanto una macchina a GPU singola.
 `--force` bypassa esclusivamente le soglie RAM del modello predefinito. `studio` abilita la UI
 integrata testuale; `vstudio` abilita anche il mmproj verificato. Entrambi mostrano URL UI/API e log
-e aprono la UI dopo READY quando `open_browser=true`. La calibrazione Step 5A richiede candidati e
-criteri espliciti finché la policy non è approvata; produce soltanto una bozza locale. Protocollo,
-sintassi e privacy sono descritti in [`docs/calibration.md`](docs/calibration.md). Open WebUI non fa
-parte della 0.1.
+e aprono la UI dopo READY quando `open_browser=true`. La calibrazione Step 5A richiede candidati,
+riserva e tolleranza di rilascio espliciti finché la policy non è approvata; produce soltanto una
+bozza locale. Il modello resta `UD-Q4_K_M`: la cache KV Q8 proposta non entra in `engine.lock` prima
+del mini-spike b10011 con esito GO. Protocollo, sintassi e privacy sono descritti in
+[`docs/calibration.md`](docs/calibration.md). Open WebUI non fa parte della 0.1.
 
 Build e verifica isolata:
 

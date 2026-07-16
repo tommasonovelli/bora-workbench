@@ -18,6 +18,26 @@ La release attiva è `b10011`, commit
 URL, SHA-256, formati, ruoli e percorsi eseguibili sono dati normativi nel lock. L'evidenza da cui
 sono copiati è `docs/spike-0.json`; gli output grezzi e i manifest sono sotto `docs/spike-0/`.
 
+Il contratto attivo usa ancora `--mmap` e non imposta la cache KV Q8. La proposta
+`--cache-type-k q8_0 --cache-type-v q8_0` con eventuale `--no-mmap` resta fuori dal lock finché il
+mini-spike b10011 di `CALIBRATE.md` non produce un GO. I pesi restano `UD-Q4_K_M`: la proposta
+riguarda la cache KV, non una sostituzione del GGUF con pesi Q8.
+
+## Mini-spike cache KV Q8 sulla release invariata
+
+Quando cambia un flag fisso senza cambiare release, si applica comunque la gerarchia delle fonti:
+
+1. confrontare contratto attuale, cache K/V Q8 con mmap e cache K/V Q8 con `--no-mmap`;
+2. usare modello, release, candidati e workload identici, includendo coding, smoke studio/vstudio e
+   backend CPU;
+3. registrare avvio/OOM, RAM, VRAM, caricamento, salute, MTP, vision, stop e cinque misure
+   `benchmark/v1`;
+4. conservare comandi, log e manifest sotto `docs/` e dichiarare GO o NO-GO;
+5. soltanto con GO aggiungere le forme lunghe verificate a `verified_flags` e al ramo appropriato di
+   `command_contract`, aggiornando test flag-lock e argomenti attesi;
+6. mantenere la modifica del lock separata dalle correzioni core e ripetere l'evidenza su Windows
+   prima di estendere il contratto Windows.
+
 ## Procedura di aggiornamento volontario
 
 1. Aprire uno spike separato e ottenere l'approvazione esplicita della nuova release precisa.

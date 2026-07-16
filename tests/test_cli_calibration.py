@@ -5,12 +5,14 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 import qwen_launcher._cli_calibration as calibration_cli
 from qwen_launcher.calibration import CalibrationOutcome
 from qwen_launcher.cli import app
 from tests.test_calibration import cpu_target
+from tests.test_calibration_drift import cuda_target
 
 runner = CliRunner()
 
@@ -77,6 +79,36 @@ def test_interactive_values_generate_exact_draft_preview(tmp_path, monkeypatch) 
     assert "Exact shareable preview" in result.stdout
     assert '"decision": "draft"' in result.stdout
     assert "no data was uploaded" in result.stdout
+
+
+def test_cuda_settings_require_reserve_and_release_tolerance() -> None:
+    """Accept only the new explicit three-part CUDA settings syntax."""
+    selected_target = cuda_target()
+
+    assert calibration_cli._explicit_settings("2:0.25:0.0625", selected_target) == (
+        2,
+        0.25,
+        0.0625,
+    )
+    with pytest.raises(calibration_cli.CalibrationError, match="RELEASE_TOLERANCE_GIB"):
+        calibration_cli._explicit_settings("2:0.25", selected_target)
+
+
+def test_all_discarded_outcome_is_explicit(tmp_path, monkeypatch) -> None:
+    """Tell the operator when a successful bundle contains no valid candidate."""
+    outcome = fake_outcome(tmp_path)
+    outcome = CalibrationOutcome(outcome.bundle_path, outcome.report_id, (("coding", None),))
+    monkeypatch.setattr(calibration_cli, "prepare_target", lambda mode: cpu_target())
+    monkeypatch.setattr(calibration_cli, "run_calibration", lambda target, settings: outcome)
+
+    result = runner.invoke(
+        app,
+        ["calibrate", "--mode", "coding", "--candidate", "safe:8192", "--settings", "1"],
+        input="y\n",
+    )
+
+    assert result.exit_code == 0
+    assert "no valid candidate; bundle contains discards only" in result.stdout
 
 
 def test_invalid_candidate_is_cli_input_error(monkeypatch) -> None:

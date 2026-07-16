@@ -66,7 +66,7 @@ def trial(runtime: Path, selected_target: CalibrationTarget) -> TrialResult:
 def test_bundle_is_atomic_valid_digest_complete_and_privacy_safe(tmp_path, monkeypatch) -> None:
     """Promote only a complete bundle with redacted logs, draft report, and verified manifest."""
     selected_target = target()
-    settings = CalibrationSettings((Candidate("safe", 8192, None),), 1, None)
+    settings = CalibrationSettings((Candidate("safe", 8192, None),), 1, None, None)
 
     def fake_trials(target_value, settings_value, runtime):
         """Return deterministic evidence rooted in the workspace transient directory."""
@@ -96,7 +96,7 @@ def test_bundle_is_atomic_valid_digest_complete_and_privacy_safe(tmp_path, monke
 def test_tampered_bundle_fails_manifest_and_log_digest_validation(tmp_path, monkeypatch) -> None:
     """Detect any post-generation evidence change through both manifest and report log digests."""
     selected_target = target()
-    settings = CalibrationSettings((Candidate("safe", 8192, None),), 1, None)
+    settings = CalibrationSettings((Candidate("safe", 8192, None),), 1, None, None)
     monkeypatch.setattr(
         runner,
         "run_trials",
@@ -118,7 +118,7 @@ def test_cuda_draft_contains_non_null_gpu_and_candidate_evidence(tmp_path, monke
     cuda = HardwareInfo("linux", "test", "Test CPU", 12, 32, 24, "cuda", 1, 0, "Test GPU", 8, 7)
     selected_target = replace(selected_target, hardware=cuda)
     candidate = Candidate("safe", 8192, 48)
-    settings = CalibrationSettings((candidate,), 1, 1)
+    settings = CalibrationSettings((candidate,), 1, 1, 0.125)
 
     def cuda_trials(target_value, settings_value, runtime):
         """Build complete CUDA memory, driver, benchmark, and log evidence."""
@@ -127,7 +127,7 @@ def test_cuda_draft_contains_non_null_gpu_and_candidate_evidence(tmp_path, monke
         log.parent.mkdir(parents=True)
         log.write_text("CUDA candidate complete\n", encoding="utf-8")
         measured = BenchmarkResult(1, (1, 2, 3, 4, 5), TokenRate(1, 3, 5))
-        vram = VramSummary(1, 6.5, 1.5, "610.47")
+        vram = VramSummary(1, 6.5, 1.5, 1.05, "610.47")
         result = CandidateTrial(candidate, "valid", None, 1, measured, vram, (log,))
         return TrialResult((ModeTrials(target_value.modes[0], (result,), "safe"),), "610.47")
 
@@ -138,8 +138,11 @@ def test_cuda_draft_contains_non_null_gpu_and_candidate_evidence(tmp_path, monke
     report = json.loads((outcome.bundle_path / f"{outcome.report_id}.json").read_text())
     evidence = report["modes"]["coding"]["candidates"][0]
     assert report["hardware"]["gpu_driver"] == "610.47"
+    assert report["policy"]["gpu_release_stabilization_ms"] == 10000
+    assert report["policy"]["vram_release_tolerance_gib"] == 0.125
     assert evidence["n_cpu_moe"] == 48
     assert evidence["vram_min_free_gib"] == 1.5
+    assert evidence["vram_release_used_gib"] == 1.05
 
 
 def test_interruption_removes_staging_and_never_promotes_partial_bundle(
@@ -147,7 +150,7 @@ def test_interruption_removes_staging_and_never_promotes_partial_bundle(
 ) -> None:
     """Clean only transient managed evidence and leave no bundle after Ctrl-C."""
     selected_target = target()
-    settings = CalibrationSettings((Candidate("safe", 8192, None),), 1, None)
+    settings = CalibrationSettings((Candidate("safe", 8192, None),), 1, None, None)
 
     def interrupted(*args):
         """Interrupt candidate execution before document generation."""

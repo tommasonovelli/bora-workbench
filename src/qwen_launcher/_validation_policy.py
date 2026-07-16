@@ -107,17 +107,22 @@ def validate_policies(documents: tuple[Document, ...], mode_ids: set[str]) -> li
     return issues
 
 
-def _policy_catalog(documents: tuple[Document, ...]) -> tuple[dict[str, JsonObject], int | None]:
-    """Index schema-valid policies and retain their catalog polling interval."""
+def _policy_catalog(
+    documents: tuple[Document, ...],
+) -> tuple[dict[str, JsonObject], tuple[int, int] | None]:
+    """Index policies and retain their global polling and release-window protocol."""
     policies: dict[str, JsonObject] = {}
-    poll_interval: int | None = None
+    protocol: tuple[int, int] | None = None
     for document in documents:
         if document.data.get("schema") != "calibration-policy/v1":
             continue
-        poll_interval = cast(int, document.data["gpu_poll_interval_ms"])
+        protocol = (
+            cast(int, document.data["gpu_poll_interval_ms"]),
+            cast(int, document.data["gpu_release_stabilization_ms"]),
+        )
         for policy in cast(list[JsonObject], document.data["policies"]):
             policies[cast(str, policy["id"])] = policy
-    return policies, poll_interval
+    return policies, protocol
 
 
 def _expected_candidates(policy: JsonObject, report: Document) -> list[JsonObject]:
@@ -133,7 +138,7 @@ def _expected_candidates(policy: JsonObject, report: Document) -> list[JsonObjec
 
 
 def _link_issues(
-    report: Document, policies: dict[str, JsonObject], poll_interval: int | None
+    report: Document, policies: dict[str, JsonObject], protocol: tuple[int, int] | None
 ) -> list[ValidationIssue]:
     """Require a named report policy snapshot to match its packaged policy exactly."""
     snapshot = cast(JsonObject, report.data["policy"])
@@ -152,13 +157,16 @@ def _link_issues(
         issues.append(_error(report, "$.hardware.backend", "differs from referenced policy"))
     if hardware["os_name"] not in cast(list[str], policy["os"]):
         issues.append(_error(report, "$.hardware.os_name", "not covered by referenced policy"))
-    for field in ("stable_start_runs", "minimum_free_vram_gib"):
+    fields = ("stable_start_runs", "minimum_free_vram_gib", "vram_release_tolerance_gib")
+    for field in fields:
         if snapshot[field] != policy.get(field):
             issues.append(_error(report, f"$.policy.{field}", "differs from referenced policy"))
-    if snapshot["gpu_poll_interval_ms"] != poll_interval:
-        issues.append(
-            _error(report, "$.policy.gpu_poll_interval_ms", "differs from policy catalog")
-        )
+    observed_protocol = (
+        snapshot["gpu_poll_interval_ms"],
+        snapshot["gpu_release_stabilization_ms"],
+    )
+    if observed_protocol != protocol:
+        issues.append(_error(report, "$.policy", "GPU protocol differs from policy catalog"))
     if snapshot["candidates"] != _expected_candidates(policy, report):
         issues.append(_error(report, "$.policy.candidates", "differs from referenced policy"))
     classes = {item["id"] for item in cast(list[JsonObject], policy["hardware_classes"])}
@@ -169,9 +177,9 @@ def _link_issues(
 
 def validate_policy_links(documents: tuple[Document, ...]) -> list[ValidationIssue]:
     """Validate every non-null report policy reference against packaged policy content."""
-    policies, poll_interval = _policy_catalog(documents)
+    policies, protocol = _policy_catalog(documents)
     issues: list[ValidationIssue] = []
     for document in documents:
         if document.data.get("schema") == "calibration-report/v1":
-            issues.extend(_link_issues(document, policies, poll_interval))
+            issues.extend(_link_issues(document, policies, protocol))
     return issues

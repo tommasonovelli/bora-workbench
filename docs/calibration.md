@@ -21,23 +21,27 @@ commit e non effettua upload.
 
 Finché `calibration-policy.json` è assente, candidati e criteri devono essere forniti senza default
 nascosti. Un candidato CUDA usa `ID:CTX:N_CPU_MOE`; un candidato CPU usa `ID:CTX`. L'opzione
-`--settings` usa `RUNS:MIN_FREE_VRAM_GIB` su CUDA e `RUNS` su CPU.
+`--settings` usa `RUNS:MIN_FREE_VRAM_GIB:RELEASE_TOLERANCE_GIB` su CUDA e `RUNS` su CPU. La
+tolleranza è espressa in GiB, deve essere non negativa e non ha un default implicito; `0` è valido.
 
 Esempio puramente sintattico, **non** policy consigliata:
 
 ```console
 qwen-launcher calibrate \
-  --mode all \
-  --candidate <id-1>:<ctx-1>:<n-cpu-moe-1> \
-  --candidate <id-2>:<ctx-2>:<n-cpu-moe-2> \
-  --settings <avvii-stabili>:<riserva-vram-gib>
+  --mode coding \
+  --candidate <id-1>:<ctx>:<n-cpu-moe-1> \
+  --candidate <id-2>:<ctx>:<n-cpu-moe-2> \
+  --settings <avvii-stabili>:<riserva-vram-gib>:<tolleranza-rilascio-gib>
 ```
 
-I valori reali del primo run devono essere forniti e approvati da Tommaso; non vanno ricavati dallo
-spike, che ha verificato soltanto la fattibilità della busta `ctx=8192`, `n_cpu_moe=48`.
-Omettendo candidati o impostazioni, la CLI li richiede interattivamente. In entrambi i casi mostra
-hardware, workload, destinazione, durata non stimabile con precisione, spazio occupato dai log e
-rischio di crash/scarto, poi richiede conferma.
+I valori reali devono essere forniti e approvati da Tommaso. Ogni run usa un solo contesto per modo;
+un ripiego di contesto è un run separato. La lista è esplicita, ordinata dalla busta più prudente e
+provata per intero senza ricerca binaria o arresto al primo fallimento. Il mini-spike può indicare
+dove usare passi più fitti, ma non genera candidati implicitamente.
+
+Omettendo candidati o impostazioni, la CLI li richiede interattivamente. Mostra hardware, workload,
+destinazione, finestra/tolleranza di rilascio, durata non stimabile con precisione, log e rischio di
+crash o scarto, poi richiede conferma.
 
 ## Protocollo eseguito
 
@@ -49,11 +53,27 @@ Per ogni modo e candidato, nell'ordine dichiarato, il launcher:
 4. esegue il carico testuale verificato; `vstudio` esegue anche la richiesta immagine verificata;
 5. sull'ultimo avvio stabile esegue `benchmark/v1`: un warm-up escluso e cinque misure esatte da 256
    token;
-6. arresta il processo e richiede che la GPU torni alla baseline;
-7. scarta soltanto il candidato in caso di crash, OOM, timeout, risposta incompatibile o riserva
-   violata; un carico concorrente invalida invece la calibrazione;
-8. propone il candidato con mediana maggiore, poi maggiore VRAM libera, poi il primo candidato
+6. dopo lo stop ricampiona ogni 250 ms fino a 10 secondi e accetta il rilascio appena la memoria
+   usata è entro `baseline + RELEASE_TOLERANCE_GIB`;
+7. applica la stessa tolleranza all'intervallo fra le baseline degli avvii stabili; una deriva oltre
+   soglia scarta il solo candidato, mentre carico compute, cambio driver o monitor guasto invalidano
+   l'intera calibrazione;
+8. scarta il candidato in caso di crash, OOM, timeout, risposta incompatibile, riserva violata o
+   rilascio non stabilizzato;
+9. propone il candidato con mediana maggiore, poi maggiore VRAM libera, poi il primo candidato
    nell'ordine prudente dichiarato.
+
+Il report conserva finestra, tolleranza e campione finale di rilascio. Se tutti i candidati sono
+scartati, il comando termina correttamente dopo aver dichiarato esplicitamente che il bundle contiene
+solo scarti.
+
+## Cache KV Q8: non ancora attiva
+
+Il modello resta `UD-Q4_K_M`. La configurazione candidata usa cache KV Q8 tramite
+`--cache-type-k q8_0 --cache-type-v q8_0` ed eventualmente `--no-mmap`, ma questi argomenti **non
+sono ancora nel contratto attivo**. Prima occorre il mini-spike manuale su `llama.cpp b10011`
+descritto in `CALIBRATE.md`, con confronto fra contratto attuale, Q8 con mmap e Q8 senza mmap. Solo
+un esito GO consente una PR dichiarativa separata per `engine.lock`.
 
 ## Bundle e privacy
 
@@ -69,17 +89,15 @@ calibrations/<calibration-id>/
 └── SHA256SUMS
 ```
 
-Il report usa `decision=draft`, `privacy_reviewed=false` e selezioni accettate nulle. La proposta non
-usa lo schema `profile/v1`, dichiara `draft-not-distributable` e lascia classe/finestra hardware a
-`null`: non può essere copiata fra i profili distribuiti. Hostname, username e percorsi privati noti
-sono rimossi dai log; la CLI mostra il contenuto esatto di ogni file condivisibile, e la revisione
-umana deve includere ogni voce elencata nel manifest.
-
-Validazione locale indipendente dalle risorse installate:
+Il report usa `decision=draft`, `privacy_reviewed=false` e selezioni accettate nulle. La proposta è
+`draft-not-distributable` e non inventa classe o finestra hardware. I motivi di scarto puntano ai log
+relativi copiati; tutti i campi stringa dei tre JSON e i log vengono redatti. La validazione cerca
+anche username, hostname e pattern di percorsi assoluti POSIX/Windows in ogni file condivisibile.
 
 ```console
 qwen-launcher validate --path <percorso-del-bundle>
 ```
 
-La validazione controlla schema e semantica del report, riferimenti ai candidati, digest dei log,
-completezza del manifest e stato non distribuibile della proposta. Non crea branch, issue o PR.
+La validazione controlla schema, semantica, riferimenti, digest, manifest, stato non distribuibile e
+privacy automatica. La revisione umana di ogni file nel manifest resta obbligatoria. Il comando non
+crea branch, issue o PR.

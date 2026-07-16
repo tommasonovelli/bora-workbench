@@ -67,18 +67,30 @@ def _logs(root: Path) -> tuple[Path, ...]:
 
 
 def _combine_vram(summaries: list[VramSummary]) -> VramSummary | None:
-    """Combine stable starts and reject unexplained changes in their pre-run baseline."""
+    """Combine all stable-start measurements into conservative candidate evidence."""
     if not summaries:
         return None
     baseline = summaries[0]
-    if any(item.baseline_used_gib != baseline.baseline_used_gib for item in summaries[1:]):
-        raise CalibrationError("GPU baseline drifted between stable candidate starts")
     return VramSummary(
         baseline.baseline_used_gib,
         max(item.peak_used_gib for item in summaries),
         min(item.minimum_free_gib for item in summaries),
+        max(item.release_used_gib for item in summaries),
         baseline.driver_version,
     )
+
+
+def _baseline_drifted(progress: _CandidateProgress, tolerance_gib: float | None) -> bool:
+    """Return whether stable-start baselines span more than the explicit tolerance."""
+    if tolerance_gib is None or len(progress.summaries) < 2:
+        return False
+    baselines = [summary.baseline_used_gib for summary in progress.summaries]
+    return max(baselines) - min(baselines) > tolerance_gib
+
+
+def _drift_error() -> CalibrationError:
+    """Build the candidate-level diagnosis for excessive baseline drift."""
+    return CalibrationError("GPU baseline drift exceeded release tolerance between stable starts")
 
 
 def _discarded(progress: _CandidateProgress, error: Exception) -> CandidateTrial:
@@ -111,6 +123,8 @@ def _run_candidate(context: _TrialContext, mode: Mode, candidate: Candidate) -> 
             progress.benchmark = measured or progress.benchmark
             if vram is not None:
                 progress.summaries.append(vram)
+                if _baseline_drifted(progress, settings.vram_release_tolerance_gib):
+                    raise _drift_error()
         if progress.benchmark is None:
             raise CalibrationError("final stable start produced no benchmark/v1 result")
         return CandidateTrial(
@@ -127,6 +141,8 @@ def _run_candidate(context: _TrialContext, mode: Mode, candidate: Candidate) -> 
     except StartFailure as failure:
         if failure.vram is not None:
             progress.summaries.append(failure.vram)
+        if _baseline_drifted(progress, settings.vram_release_tolerance_gib):
+            return _discarded(progress, _drift_error())
         if target.hardware.backend == "cuda" and not progress.summaries:
             raise CalibrationError(
                 f"cannot preserve CUDA failure evidence: {failure.error}"

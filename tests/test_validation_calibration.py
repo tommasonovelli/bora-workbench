@@ -29,10 +29,12 @@ def valid_policy(backend: str = "cuda") -> dict[str, object]:
         candidate["n_cpu_moe"] = 48
         policy["minimum_calibration_vram_gib"] = 8
         policy["minimum_free_vram_gib"] = 0.5
+        policy["vram_release_tolerance_gib"] = 0.125
     return {
         "schema": "calibration-policy/v1",
         "benchmark_protocol": "benchmark/v1",
         "gpu_poll_interval_ms": 250,
+        "gpu_release_stabilization_ms": 10000,
         "policies": [policy],
     }
 

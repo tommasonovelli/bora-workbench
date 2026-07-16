@@ -44,6 +44,7 @@ class CalibrationSettings:
     candidates: tuple[Candidate, ...]
     stable_start_runs: int
     minimum_free_vram_gib: float | None
+    vram_release_tolerance_gib: float | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,10 +112,13 @@ def validate_settings(settings: CalibrationSettings, backend: Backend) -> None:
     if settings.stable_start_runs < 1:
         raise CalibrationError("stable start runs must be at least 1")
     reserve = settings.minimum_free_vram_gib
+    tolerance = settings.vram_release_tolerance_gib
     if backend == "cuda" and (reserve is None or reserve < 0):
         raise CalibrationError("minimum free VRAM GiB is required and non-negative on CUDA")
-    if backend == "cpu" and reserve is not None:
-        raise CalibrationError("minimum free VRAM GiB is forbidden on CPU")
+    if backend == "cuda" and (tolerance is None or tolerance < 0):
+        raise CalibrationError("VRAM release tolerance GiB is required and non-negative on CUDA")
+    if backend == "cpu" and (reserve is not None or tolerance is not None):
+        raise CalibrationError("VRAM settings are forbidden on CPU")
 
 
 def _selected_modes(mode_value: str, catalog: Catalog) -> tuple[Mode, ...]:

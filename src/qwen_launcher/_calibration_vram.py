@@ -1,4 +1,4 @@
-"""Sample aggregate VRAM every 250 ms and reject contaminated calibration runs."""
+"""Sample aggregate VRAM and verify tolerant, stabilized release after each trial."""
 
 from __future__ import annotations
 
@@ -9,16 +9,28 @@ from dataclasses import dataclass, field
 
 from qwen_launcher._hardware_monitoring import GpuSnapshot, query_gpu_snapshot
 
-_POLL_INTERVAL_SECONDS = 0.250
+GPU_POLL_INTERVAL_MS = 250
+GPU_RELEASE_STABILIZATION_MS = 10_000
+_POLL_INTERVAL_SECONDS = GPU_POLL_INTERVAL_MS / 1000
+_RELEASE_STABILIZATION_SECONDS = GPU_RELEASE_STABILIZATION_MS / 1000
+
+
+@dataclass(frozen=True, slots=True)
+class VramThresholds:
+    """Hold explicit CUDA reserve and post-stop release tolerance values."""
+
+    minimum_free_gib: float
+    release_tolerance_gib: float
 
 
 @dataclass(frozen=True, slots=True)
 class VramSummary:
-    """Hold aggregate baseline, peak use, minimum free memory, and driver evidence."""
+    """Hold aggregate baseline, peak, reserve, release, and driver evidence."""
 
     baseline_used_gib: float
     peak_used_gib: float
     minimum_free_gib: float
+    release_used_gib: float
     driver_version: str
 
 
@@ -36,7 +48,7 @@ class VramMonitor:
     """Collect fixed-interval selected-GPU snapshots around one fresh server process."""
 
     gpu_index: int
-    minimum_free_gib: float
+    thresholds: VramThresholds
     query: Callable[[int], GpuSnapshot] = query_gpu_snapshot
     _baseline: GpuSnapshot | None = field(default=None, init=False)
     _samples: list[GpuSnapshot] = field(default_factory=list, init=False)
@@ -71,27 +83,53 @@ class VramMonitor:
             self._stop_event.wait(max(0.0, deadline - time.monotonic()))
 
     def finish(self, managed_pid: int | None) -> VramSummary:
-        """Stop polling after process cleanup and require full uncontaminated release."""
-        self._stop_event.set()
-        if self._thread is not None:
-            self._thread.join()
-        if self._error is not None:
-            raise VramError(f"GPU monitoring failed: {self._error}") from self._error
-        release = self.query(self.gpu_index)
+        """Wait up to ten seconds for post-stop memory to return within tolerance."""
+        self._stop_polling()
         baseline = self._require_baseline()
-        minimum_free = min(sample.vram_free_gib for sample in self._samples)
-        peak_used = max(sample.vram_total_gib - sample.vram_free_gib for sample in self._samples)
-        summary = VramSummary(
-            baseline.vram_total_gib - baseline.vram_free_gib,
-            peak_used,
-            minimum_free,
-            baseline.driver_version,
-        )
+        release = self._wait_for_release(baseline)
+        summary = self._summary(baseline, release)
         try:
             self._validate_samples(managed_pid, baseline, release)
         except VramError as error:
             raise VramError(str(error), summary) from error
         return summary
+
+    def _stop_polling(self) -> None:
+        """Join the polling thread and surface its first query failure."""
+        self._stop_event.set()
+        if self._thread is not None:
+            self._thread.join()
+        if self._error is not None:
+            raise VramError(f"GPU monitoring failed: {self._error}") from self._error
+
+    def _wait_for_release(self, baseline: GpuSnapshot) -> GpuSnapshot:
+        """Sample release on the protocol schedule until tolerance or deadline is reached."""
+        baseline_used = self._used_gib(baseline)
+        limit = baseline_used + self.thresholds.release_tolerance_gib
+        deadline = time.monotonic() + _RELEASE_STABILIZATION_SECONDS
+        while True:
+            release = self.query(self.gpu_index)
+            self._samples.append(release)
+            if release.compute_pids or release.vram_total_gib != baseline.vram_total_gib:
+                return release
+            if self._used_gib(release) <= limit:
+                return release
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return release
+            time.sleep(min(_POLL_INTERVAL_SECONDS, remaining))
+
+    def _summary(self, baseline: GpuSnapshot, release: GpuSnapshot) -> VramSummary:
+        """Aggregate every workload and release sample into reproducible evidence."""
+        minimum_free = min(sample.vram_free_gib for sample in self._samples)
+        peak_used = max(self._used_gib(sample) for sample in self._samples)
+        return VramSummary(
+            self._used_gib(baseline),
+            peak_used,
+            minimum_free,
+            self._used_gib(release),
+            baseline.driver_version,
+        )
 
     def _require_baseline(self) -> GpuSnapshot:
         """Return the mandatory baseline or diagnose invalid monitor use."""
@@ -99,19 +137,23 @@ class VramMonitor:
             raise VramError("VRAM monitor was not started")
         return self._baseline
 
+    @staticmethod
+    def _used_gib(snapshot: GpuSnapshot) -> float:
+        """Return aggregate used memory from one total/free GPU snapshot."""
+        return snapshot.vram_total_gib - snapshot.vram_free_gib
+
     def _validate_samples(
         self, managed_pid: int | None, baseline: GpuSnapshot, release: GpuSnapshot
     ) -> None:
-        """Reject foreign processes, reserve violations, capacity drift, and retained VRAM."""
+        """Reject foreign processes, reserve or capacity violations, and retained VRAM."""
         allowed = set() if managed_pid is None else {managed_pid}
         foreign = set().union(*(set(sample.compute_pids) for sample in self._samples)) - allowed
         if foreign or release.compute_pids:
             raise VramError("concurrent GPU compute workload contaminated calibration; stop it")
         if any(sample.vram_total_gib != baseline.vram_total_gib for sample in self._samples):
             raise VramError("reported total VRAM changed during calibration")
-        if any(sample.vram_free_gib < self.minimum_free_gib for sample in self._samples):
+        if any(sample.vram_free_gib < self.thresholds.minimum_free_gib for sample in self._samples):
             raise VramError("minimum free VRAM reserve was violated")
-        baseline_used = baseline.vram_total_gib - baseline.vram_free_gib
-        release_used = release.vram_total_gib - release.vram_free_gib
-        if release_used > baseline_used:
-            raise VramError("GPU memory did not return to its pre-run baseline after stop")
+        release_limit = self._used_gib(baseline) + self.thresholds.release_tolerance_gib
+        if self._used_gib(release) > release_limit:
+            raise VramError("GPU memory did not stabilize within release tolerance after stop")

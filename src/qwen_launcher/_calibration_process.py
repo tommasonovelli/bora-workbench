@@ -5,7 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from qwen_launcher._calibration_vram import VramError, VramMonitor, VramSummary
+from qwen_launcher._calibration_vram import (
+    VramError,
+    VramMonitor,
+    VramSummary,
+    VramThresholds,
+)
 from qwen_launcher.benchmark import BenchmarkResult, run_benchmark, run_probe, run_vision_probe
 from qwen_launcher.calibration import CalibrationError, CalibrationSettings, CalibrationTarget
 from qwen_launcher.engine import build_command
@@ -47,9 +52,12 @@ def _monitor(target: CalibrationTarget, settings: CalibrationSettings) -> VramMo
     """Create aggregate monitoring only for CUDA, using the explicit reserve."""
     if target.hardware.backend == "cpu":
         return None
-    if target.hardware.gpu_index is None or settings.minimum_free_vram_gib is None:
-        raise CalibrationError("CUDA calibration requires selected GPU and explicit VRAM reserve")
-    return VramMonitor(target.hardware.gpu_index, settings.minimum_free_vram_gib)
+    reserve = settings.minimum_free_vram_gib
+    tolerance = settings.vram_release_tolerance_gib
+    if target.hardware.gpu_index is None or reserve is None or tolerance is None:
+        raise CalibrationError("CUDA calibration requires explicit VRAM reserve and tolerance")
+    thresholds = VramThresholds(reserve, tolerance)
+    return VramMonitor(target.hardware.gpu_index, thresholds)
 
 
 def _workload(mode: Mode, base_url: str, is_final: bool) -> BenchmarkResult | None:

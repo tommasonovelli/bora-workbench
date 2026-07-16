@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 
 import typer
 from rich.console import Console
 
 from qwen_launcher.calibration import (
     CalibrationError,
+    CalibrationOutcome,
     CalibrationSettings,
     CalibrationTarget,
     parse_candidate,
@@ -55,15 +55,19 @@ def _prompt_candidates(target: CalibrationTarget) -> tuple[str, ...]:
             return tuple(values)
 
 
-def _explicit_settings(value: str, target: CalibrationTarget) -> tuple[int, float | None]:
-    """Parse explicit ``RUNS[:MIN_FREE_VRAM_GIB]`` values without defaults."""
+def _explicit_settings(
+    value: str, target: CalibrationTarget
+) -> tuple[int, float | None, float | None]:
+    """Parse explicit CUDA reserve and release tolerance without hidden defaults."""
     fields = value.split(":")
-    expected = 2 if target.hardware.backend == "cuda" else 1
+    expected = 3 if target.hardware.backend == "cuda" else 1
     if len(fields) != expected:
-        syntax = "RUNS:MIN_FREE_VRAM_GIB" if expected == 2 else "RUNS"
+        syntax = "RUNS:MIN_FREE_VRAM_GIB:RELEASE_TOLERANCE_GIB" if expected == 3 else "RUNS"
         raise CalibrationError(f"--settings must use {syntax} syntax")
     try:
-        return int(fields[0]), float(fields[1]) if expected == 2 else None
+        if expected == 1:
+            return int(fields[0]), None, None
+        return int(fields[0]), float(fields[1]), float(fields[2])
     except ValueError as error:
         raise CalibrationError("--settings values must be numeric") from error
 
@@ -73,13 +77,15 @@ def _settings(target: CalibrationTarget, options: CalibrationCliInput) -> Calibr
     values = options.candidate_values or _prompt_candidates(target)
     candidates = tuple(parse_candidate(value, target.hardware.backend) for value in values)
     if options.settings_value is not None:
-        starts, reserve = _explicit_settings(options.settings_value, target)
+        starts, reserve, tolerance = _explicit_settings(options.settings_value, target)
     else:
         starts = typer.prompt("Required fresh stable starts per candidate", type=int)
         reserve = None
+        tolerance = None
         if target.hardware.backend == "cuda":
             reserve = typer.prompt("Minimum free VRAM reserve in GiB", type=float)
-    return CalibrationSettings(candidates, starts, reserve)
+            tolerance = typer.prompt("Post-stop VRAM release tolerance in GiB", type=float)
+    return CalibrationSettings(candidates, starts, reserve, tolerance)
 
 
 def _show_preflight(
@@ -99,6 +105,11 @@ def _show_preflight(
             f"{target.hardware.vram_free_gib:.3f} GiB free"
         )
     console.print("Candidates: " + ", ".join(candidate.id for candidate in settings.candidates))
+    if settings.vram_release_tolerance_gib is not None:
+        console.print(
+            f"Post-stop VRAM release: 10 s window, "
+            f"{settings.vram_release_tolerance_gib:.3f} GiB tolerance"
+        )
     starts = len(target.modes) * len(settings.candidates) * settings.stable_start_runs
     console.print(
         f"Workload: {starts} fresh server start(s); each final start runs 1 warm-up + 5 measures."
@@ -111,10 +122,17 @@ def _show_preflight(
     console.print("Risk: a trial process may crash or be discarded; production state is isolated.")
 
 
-def _show_outcome(path: Path, console: Console) -> None:
-    """Print every exact shareable file and the manual privacy-review boundary."""
+def _show_outcome(outcome: CalibrationOutcome, console: Console) -> None:
+    """Print candidate outcomes, shareable files, and the manual review boundary."""
+    path = outcome.bundle_path
     console.print(f"[green]Draft bundle created:[/green] {path}")
     console.print("Proposed selections are not accepted profiles and no data was uploaded.")
+    for mode_id, candidate_id in outcome.proposed_selections:
+        if candidate_id is None:
+            message = f"{mode_id}: no valid candidate; bundle contains discards only."
+            console.print(f"[yellow]{message}[/yellow]")
+        else:
+            console.print(f"{mode_id}: proposed candidate {candidate_id}")
     files = sorted(file for file in path.rglob("*") if file.is_file())
     for file in files:
         relative = file.relative_to(path).as_posix()
@@ -132,7 +150,7 @@ def run_calibrate(options: CalibrationCliInput, output: CalibrationCliOutput) ->
         if not typer.confirm("Start local calibration?", default=False):
             raise CalibrationCancelled("calibration cancelled before process start")
         outcome = run_calibration(target, settings)
-        _show_outcome(outcome.bundle_path, output.stdout)
+        _show_outcome(outcome, output.stdout)
     except (KeyboardInterrupt, typer.Abort, CalibrationCancelled) as error:
         output.stderr.print(f"[yellow]Calibration cancelled:[/yellow] {error}")
         raise typer.Exit(code=130) from error

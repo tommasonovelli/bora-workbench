@@ -55,7 +55,7 @@ def test_step_5a_has_no_packaged_policy_and_requires_explicit_values() -> None:
     """Keep policy absent and reject any attempt to calibrate from author-memory defaults."""
     assert not resource("content/calibration-policy.json").is_file()
     with pytest.raises(CalibrationError, match="explicit candidate"):
-        validate_settings(CalibrationSettings((), 0, None), "cuda")
+        validate_settings(CalibrationSettings((), 0, None, None), "cuda")
 
 
 def test_candidate_syntax_is_backend_specific_and_preserves_order() -> None:
@@ -75,16 +75,16 @@ def test_selection_uses_median_then_free_vram_then_declared_order() -> None:
     candidates = (Candidate("first", 8192, 48), Candidate("second", 8192, 32))
     trials = (
         CandidateTrial(
-            candidates[0], "valid", None, 2, benchmark(10), VramSummary(1, 7, 1, "x"), ()
+            candidates[0], "valid", None, 2, benchmark(10), VramSummary(1, 7, 1, 1, "x"), ()
         ),
         CandidateTrial(
-            candidates[1], "valid", None, 2, benchmark(10), VramSummary(1, 6, 2, "x"), ()
+            candidates[1], "valid", None, 2, benchmark(10), VramSummary(1, 6, 2, 1, "x"), ()
         ),
     )
     assert select_candidate(trials) == "second"
 
     equal_free = trials[1].__class__(
-        candidates[1], "valid", None, 2, benchmark(10), VramSummary(1, 7, 1, "x"), ()
+        candidates[1], "valid", None, 2, benchmark(10), VramSummary(1, 7, 1, 1, "x"), ()
     )
     assert select_candidate((trials[0], equal_free)) == "first"
 
@@ -93,7 +93,7 @@ def test_modes_and_candidates_use_distinct_fresh_process_roots(tmp_path, monkeyp
     """Run every mode/candidate in declared order with a distinct root for every stable start."""
     target = cpu_target(("coding", "studio", "vstudio"))
     settings = CalibrationSettings(
-        (Candidate("safe", 8192, None), Candidate("fast", 16384, None)), 2, None
+        (Candidate("safe", 8192, None), Candidate("fast", 16384, None)), 2, None, None
     )
     roots: list[Path] = []
 
@@ -122,7 +122,7 @@ def test_candidate_failure_is_discarded_and_next_candidate_runs(
     """Retain OOM/crash/timeout diagnosis without contaminating the following candidate."""
     target = cpu_target()
     settings = CalibrationSettings(
-        (Candidate("bad", 8192, None), Candidate("good", 16384, None)), 1, None
+        (Candidate("bad", 8192, None), Candidate("good", 16384, None)), 1, None, None
     )
 
     def fake_start(target_value, settings_value, spec):
@@ -175,7 +175,7 @@ def test_each_mode_runs_text_benchmark_and_vstudio_adds_vision(
 def test_keyboard_interrupt_stops_without_generating_partial_trials(tmp_path, monkeypatch) -> None:
     """Propagate interruption so the workspace owner can remove transient process evidence."""
     target = cpu_target()
-    settings = CalibrationSettings((Candidate("safe", 8192, None),), 1, None)
+    settings = CalibrationSettings((Candidate("safe", 8192, None),), 1, None, None)
 
     def interrupted(*args):
         """Simulate Ctrl-C from an active candidate process."""

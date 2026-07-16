@@ -1,10 +1,9 @@
 # CALIBRATE.md — Analisi del primo run di calibrazione e piano correttivo proposto
 
-> **Stato:** documento di analisi e proposta, **non normativo**. `IMPLEMENTATION_SPEC.md` resta
-> l'unica fonte normativa; ogni modifica qui proposta a codice, schema, lock o specifica richiede
-> l'approvazione esplicita di Tommaso (Registro delle decisioni e Calibration Gate). Questo
-> documento non anticipa lo Step 5B: serve a correggere lo Step 5A e a preparare un Calibration
-> Gate ripetibile.
+> **Stato:** analisi non normativa con decisione parziale approvata. Le correzioni core A/B e il
+> riepilogo CLI sono state recepite in codice e in `IMPLEMENTATION_SPEC.md`; C resta subordinata al
+> mini-spike manuale b10011 con esito GO e D guida soltanto la lista esplicita del prossimo run.
+> `IMPLEMENTATION_SPEC.md` resta l'unica fonte normativa. Questo documento non anticipa lo Step 5B.
 > **Data:** 16 luglio 2026. **Evidenza di riferimento:** bundle locale
 > `calibration-20260716t142541702536` (run reale `calibrate --mode coding` su Ubuntu 24.04,
 > RTX 2060 SUPER 8 GiB, 32 GiB RAM) e spike `docs/spike-0/`.
@@ -21,7 +20,8 @@ ma non ha accettato alcun candidato e ha rivelato quattro problemi distinti:
 | C | Il contratto motore non copre cache KV Q8 e `--no-mmap` | limite di `engine.lock` | mini-spike mirato su b10011, poi aggiornamento del lock (§5) |
 | D | Ricerca di `n_cpu_moe` troppo grossolana (48 → 38 → 36) | limite di strategia | scala dichiarata asimmetrica informata dal mini-spike (§6) |
 
-L'ordine di esecuzione proposto è in §8. Nessun punto è implementato da questo documento.
+L'ordine aggiornato è in §8: A/B e il riepilogo sono implementati; C/D restano attività manuali o
+dichiarative subordinate a nuova evidenza.
 
 ## 2. Evidenza misurata del run del 16 luglio
 
@@ -62,10 +62,10 @@ Fatti rilevanti, tutti verificabili nei log redatti del bundle:
 
 ## 3. Problema A — Il controllo di rilascio VRAM scarta candidati sani
 
-### Cosa dice la specifica e cosa fa il codice
+### Cosa diceva la specifica e cosa faceva il codice prima della correzione
 
-`IMPLEMENTATION_SPEC.md` §5.6 punto 6 scarta un candidato quando la memoria non è «tornata
-**vicino** alla baseline dopo lo stop». L'implementazione è invece più severa in tre punti:
+`IMPLEMENTATION_SPEC.md` §5.6 punto 6 scartava un candidato quando la memoria non era «tornata
+**vicino** alla baseline dopo lo stop». L'implementazione precedente era più severa in tre punti:
 
 1. `src/qwen_launcher/_calibration_vram.py:80` preleva **un solo campione**, immediatamente dopo
    lo stop del processo;
@@ -124,9 +124,9 @@ campi `vram_baseline_gib` del report.
 
 ## 4. Problema B — Percorsi privati nei campi testuali del report
 
-### Evidenza
+### Evidenza del bundle precedente alla correzione
 
-Nel report del bundle i due candidati OOM hanno `discard_reason` del tipo:
+Nel report del bundle i due candidati OOM avevano `discard_reason` del tipo:
 
 ```text
 OOM: llama-server exited during startup; inspect /home/<utente>/.local/share/qwen-launcher/
@@ -302,11 +302,10 @@ cambiare gli exit code contrattuali.
 
 ## 8. Ordine di esecuzione proposto
 
-1. **PR core (correzioni Step 5A):** §3 (finestra + tolleranza esplicita, deriva fra avvii come
-   scarto), §4 (B1+B2+B3), §7 (riepilogo), con i test offline elencati; poi
-   `uv sync --frozen`, lint, format, `pytest`, `validate`, build e verifica wheel.
-   Richiede l'emendamento contestuale di `IMPLEMENTATION_SPEC.md` §5.6 (finestra e tolleranza) e
-   della sintassi documentata in `docs/calibration.md`.
+1. **Correzioni core Step 5A — implementate:** §3 (finestra + tolleranza esplicita, deriva fra
+   avvii come scarto), §4 (B1+B2+B3) e §7 (riepilogo), con schema, test, specifica e
+   `docs/calibration.md` aggiornati. La verifica locale completa è registrata nel commit relativo;
+   la matrice CI Ubuntu/Windows resta da eseguire dopo la pubblicazione autorizzata del commit.
 2. **Mini-spike cache Q8 / no-mmap su b10011** (§5, manuale di Tommaso), con evidenza conservata
    in `docs/` come per lo Spike 0. Decisione GO/NO-GO esplicita.
 3. **PR dichiarativa `engine.lock`** (solo dopo GO): flag verificati, `fixed_args`, evidenza e
@@ -324,7 +323,7 @@ evidenza Windows (§ Step 5B, punto 3).
 
 | Problema | Scelta | Motivo in una riga |
 |---|---|---|
-| A — rilascio VRAM | finestra 10 s a 250 ms + tolleranza esplicita (0 ammesso), stessa soglia per la deriva fra avvii, deriva = scarto non aborto | rispetta «vicino alla baseline» senza soglie inventate e senza perdere la difesa anti-leak |
-| B — privacy report | percorsi relativi nei motivi + redazione di tutti i campi stringa + scanner privacy in `validate --path` | tre strati: report utile, generazione robusta, cancello verificabile |
+| A — rilascio VRAM | **implementata:** finestra 10 s a 250 ms + tolleranza esplicita (0 ammesso), stessa soglia per la deriva fra avvii, deriva = scarto non aborto | rispetta «vicino alla baseline» senza soglie inventate e senza perdere la difesa anti-leak |
+| B — privacy report | **implementata:** percorsi relativi nei motivi + redazione di tutti i campi stringa + scanner privacy in `validate --path` | tre strati: report utile, generazione robusta, cancello verificabile |
 | C — cache Q8 / mmap | mini-spike su b10011, poi `fixed_args` con `--cache-type-k q8_0 --cache-type-v q8_0 --no-mmap` | i flag sono proprietà del contratto motore, adottabili solo con evidenza sulla release appuntata |
 | D — strategia candidati | scala dichiarata asimmetrica (passo 1 al confine) informata dal mini-spike; un `ctx` per run; liste per modo; `calibration/v2` per lo screening futuro | precisione ±1 dove conta, piena conformità a §5.6.3, costo controllato |

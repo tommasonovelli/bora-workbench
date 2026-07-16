@@ -67,6 +67,7 @@ def _candidate(backend: str) -> dict[str, object]:
         "vram_baseline_gib": 1 if backend == "cuda" else None,
         "vram_peak_gib": 7 if backend == "cuda" else None,
         "vram_min_free_gib": 1 if backend == "cuda" else None,
+        "vram_release_used_gib": 1 if backend == "cuda" else None,
         "warmup_tok_s": 1,
         "measured_tok_s": [1, 2, 3, 4, 5],
         "tok_s": {"min": 1, "median": 3, "max": 5},
@@ -116,8 +117,10 @@ def valid_report(backend: str = "cuda", engine: str = "b10011") -> dict[str, obj
         "policy": {
             "id": None,
             "gpu_poll_interval_ms": 250,
+            "gpu_release_stabilization_ms": 10000,
             "stable_start_runs": 2,
             "minimum_free_vram_gib": 0.5 if backend == "cuda" else None,
+            "vram_release_tolerance_gib": 0.125 if backend == "cuda" else None,
             "candidates": [policy_candidate],
         },
         "hardware": _hardware(backend),

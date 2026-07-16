@@ -219,8 +219,10 @@
       "required": [
         "id",
         "gpu_poll_interval_ms",
+        "gpu_release_stabilization_ms",
         "stable_start_runs",
         "minimum_free_vram_gib",
+        "vram_release_tolerance_gib",
         "candidates"
       ],
       "properties": {
@@ -240,6 +242,10 @@
           "description": "GPU memory polling interval used for the run.",
           "const": 250
         },
+        "gpu_release_stabilization_ms": {
+          "description": "Maximum post-stop stabilization window used for GPU memory release.",
+          "const": 10000
+        },
         "stable_start_runs": {
           "description": "Required number of successful fresh starts per valid candidate.",
           "type": "integer",
@@ -247,6 +253,18 @@
         },
         "minimum_free_vram_gib": {
           "description": "Required free-VRAM reserve, or null for a CPU calibration.",
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vram_release_tolerance_gib": {
+          "description": "Accepted post-stop used-VRAM increase, or null for CPU calibration.",
           "anyOf": [
             {
               "type": "number",
@@ -447,6 +465,7 @@
         "vram_baseline_gib",
         "vram_peak_gib",
         "vram_min_free_gib",
+        "vram_release_used_gib",
         "warmup_tok_s",
         "measured_tok_s",
         "tok_s",
@@ -511,6 +530,18 @@
         },
         "vram_min_free_gib": {
           "description": "Minimum free GPU memory during the candidate, or null on CPU.",
+          "anyOf": [
+            {
+              "type": "number",
+              "minimum": 0
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "vram_release_used_gib": {
+          "description": "Aggregate used GPU memory at the accepted or final release sample, or null on CPU.",
           "anyOf": [
             {
               "type": "number",

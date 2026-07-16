@@ -8,8 +8,9 @@ from unittest.mock import Mock
 
 import pytest
 
+import qwen_launcher._calibration_vram as vram_module
 import qwen_launcher._hardware_monitoring as monitoring
-from qwen_launcher._calibration_vram import VramError, VramMonitor
+from qwen_launcher._calibration_vram import VramError, VramMonitor, VramThresholds
 from qwen_launcher._hardware_monitoring import GpuSnapshot
 
 
@@ -18,28 +19,36 @@ def snapshot(free: float, pids: tuple[int, ...] = ()) -> GpuSnapshot:
     return GpuSnapshot(8, free, "610.47", pids)
 
 
-def query_sequence(polled: GpuSnapshot, released: GpuSnapshot):
-    """Return a thread-aware query and event that distinguish baseline/poll/release calls."""
+def query_sequence(polled: GpuSnapshot, releases: tuple[GpuSnapshot, ...]):
+    """Return a thread-aware query and event for baseline, workload, and release calls."""
     observed = threading.Event()
     main_calls = 0
 
     def query(index: int) -> GpuSnapshot:
-        """Serve baseline/release on the owner thread and run samples on the poller thread."""
+        """Serve baseline/release on the owner thread and workload on the poller."""
         nonlocal main_calls
         assert index == 0
         if threading.current_thread().name == "qwen-calibration-vram":
             observed.set()
             return polled
         main_calls += 1
-        return snapshot(7) if main_calls == 1 else released
+        if main_calls == 1:
+            return snapshot(7)
+        release_index = min(main_calls - 2, len(releases) - 1)
+        return releases[release_index]
 
     return query, observed
 
 
+def monitor_for(query, tolerance: float = 0) -> VramMonitor:
+    """Build one monitor with an explicit reserve and release tolerance."""
+    return VramMonitor(0, VramThresholds(1, tolerance), query)
+
+
 def test_monitor_records_peak_reserve_and_clean_release() -> None:
-    """Measure aggregate peak/minimum free VRAM and permit only the managed compute PID."""
-    query, observed = query_sequence(snapshot(1.5, (42,)), snapshot(7))
-    monitor = VramMonitor(0, 1, query)
+    """Measure aggregate peak, reserve, and the final clean release sample."""
+    query, observed = query_sequence(snapshot(1.5, (42,)), (snapshot(7),))
+    monitor = monitor_for(query)
 
     monitor.start()
     assert observed.wait(timeout=1)
@@ -48,31 +57,66 @@ def test_monitor_records_peak_reserve_and_clean_release() -> None:
     assert summary.baseline_used_gib == 1
     assert summary.peak_used_gib == 6.5
     assert summary.minimum_free_gib == 1.5
+    assert summary.release_used_gib == 1
     assert summary.driver_version == "610.47"
+
+
+def test_release_stabilizes_within_window(monkeypatch) -> None:
+    """Accept delayed CUDA release once a later 250 ms sample reaches tolerance."""
+    releases = (snapshot(6.7), snapshot(6.95))
+    query, observed = query_sequence(snapshot(2, (42,)), releases)
+    monkeypatch.setattr(vram_module.time, "sleep", lambda seconds: None)
+    monitor = monitor_for(query, tolerance=0.1)
+
+    monitor.start()
+    assert observed.wait(timeout=1)
+    summary = monitor.finish(42)
+
+    assert summary.release_used_gib == pytest.approx(1.05)
+
+
+def test_release_within_explicit_tolerance_is_valid() -> None:
+    """Accept environmental VRAM noise no larger than the operator-supplied tolerance."""
+    query, observed = query_sequence(snapshot(2, (42,)), (snapshot(6.9),))
+    monitor = monitor_for(query, tolerance=0.125)
+
+    monitor.start()
+    assert observed.wait(timeout=1)
+
+    assert monitor.finish(42).release_used_gib == pytest.approx(1.1)
+
+
+def test_release_beyond_window_retains_summary(monkeypatch) -> None:
+    """Discard persistent retained memory while preserving its final release sample."""
+    query, observed = query_sequence(snapshot(2, (42,)), (snapshot(6),))
+    monkeypatch.setattr(vram_module, "_RELEASE_STABILIZATION_SECONDS", 0)
+    monitor = monitor_for(query, tolerance=0.125)
+    monitor.start()
+    assert observed.wait(timeout=1)
+
+    with pytest.raises(VramError, match="stabilize") as captured:
+        monitor.finish(42)
+
+    assert captured.value.summary is not None
+    assert captured.value.summary.release_used_gib == 2
 
 
 def test_concurrent_compute_load_blocks_before_candidate_start() -> None:
     """Reject pre-existing compute PIDs instead of attributing their memory to calibration."""
-    monitor = VramMonitor(0, 1, lambda index: snapshot(6, (999,)))
+    monitor = monitor_for(lambda index: snapshot(6, (999,)))
 
     with pytest.raises(VramError, match="concurrent"):
         monitor.start()
 
 
-@pytest.mark.parametrize(
-    ("polled", "released", "match"),
-    [(snapshot(0.5, (42,)), snapshot(7), "reserve"), (snapshot(2, (42,)), snapshot(6), "baseline")],
-)
-def test_invalid_reserve_or_unreleased_memory_retains_measured_summary(
-    polled: GpuSnapshot, released: GpuSnapshot, match: str
-) -> None:
-    """Discard invalid candidates while retaining real non-null CUDA memory evidence."""
-    query, observed = query_sequence(polled, released)
-    monitor = VramMonitor(0, 1, query)
+def test_reserve_violation_retains_measured_summary() -> None:
+    """Discard a reserve violation while retaining real non-null CUDA evidence."""
+    query, observed = query_sequence(snapshot(0.5, (42,)), (snapshot(7),))
+    monitor = monitor_for(query)
     monitor.start()
     assert observed.wait(timeout=1)
 
-    with pytest.raises(VramError, match=match) as captured:
+    with pytest.raises(VramError, match="reserve") as captured:
         monitor.finish(42)
 
     assert captured.value.summary is not None

@@ -10,6 +10,7 @@ from typing import cast
 
 from jsonschema import Draft202012Validator, FormatChecker
 
+from qwen_launcher._calibration_privacy import privacy_findings
 from qwen_launcher._validation_report import validate_reports
 from qwen_launcher.profiles import load_catalog
 from qwen_launcher.resources import read_json
@@ -158,11 +159,13 @@ def _proposal(root: Path, document: Document | None) -> list[ValidationIssue]:
 
 
 def validate_bundle(root: Path) -> ValidationResult:
-    """Validate one local Step 5A bundle independently from packaged resource content."""
+    """Validate one local Step 5A bundle, including its shareable privacy boundary."""
     if not root.is_dir():
         return ValidationResult((_issue(str(root), "$", "bundle path must be a directory"),))
     document, issues = _report(root)
     issues.extend(_manifest(root))
     issues.extend(_log_digests(root, document))
     issues.extend(_proposal(root, document))
+    for file, message in privacy_findings(root):
+        issues.append(_issue(file, "$", message))
     return ValidationResult(tuple(sorted(issues, key=lambda item: (item.file, item.field_path))))

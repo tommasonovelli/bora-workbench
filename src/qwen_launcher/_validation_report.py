@@ -12,6 +12,7 @@ from qwen_launcher.validation import Document, JsonObject, ValidationIssue
 
 _GPU_FIELDS = ("gpu_index", "gpu_name", "gpu_driver", "vram_total_gib", "vram_free_gib")
 _MEMORY_FIELDS = ("vram_baseline_gib", "vram_peak_gib", "vram_min_free_gib")
+_MEMORY_FIELDS += ("vram_release_used_gib",)
 
 
 @dataclass(frozen=True, slots=True)
@@ -64,11 +65,13 @@ def _hardware_issues(document: Document) -> list[ValidationIssue]:
             issues.append(_error(document, f"$.hardware.{field}", "must be null on CPU"))
         if backend == "cuda" and value is None:
             issues.append(_error(document, f"$.hardware.{field}", "must be present on CUDA"))
-    reserve = cast(JsonObject, document.data["policy"])["minimum_free_vram_gib"]
-    if backend == "cpu" and reserve is not None:
-        issues.append(_error(document, "$.policy.minimum_free_vram_gib", "must be null on CPU"))
-    if backend == "cuda" and reserve is None:
-        issues.append(_error(document, "$.policy.minimum_free_vram_gib", "required on CUDA"))
+    policy = cast(JsonObject, document.data["policy"])
+    for field in ("minimum_free_vram_gib", "vram_release_tolerance_gib"):
+        value = policy[field]
+        if backend == "cpu" and value is not None:
+            issues.append(_error(document, f"$.policy.{field}", "must be null on CPU"))
+        if backend == "cuda" and value is None:
+            issues.append(_error(document, f"$.policy.{field}", "required on CUDA"))
     return issues
 
 
