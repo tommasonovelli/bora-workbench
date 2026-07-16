@@ -1,1 +1,1 @@
-Package resources live here. Spike 0 reached GO, and engine.lock contains its verified machine contract. Schemas and content are added in Step 2.
+Package resources live here. Spike 0 reached GO; engine.lock contains its verified machine contract, schemas/content define the declarative contracts, and benchmark-v1 preserves the exact prompt and request bytes reused by assisted calibration.

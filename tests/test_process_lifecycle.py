@@ -100,6 +100,19 @@ def test_incompatible_health_and_crash_fail_with_log(tmp_path, monkeypatch, mode
     assert lifecycle.status_services(tmp_path).services == ()
 
 
+def test_spawn_callback_exposes_pid_before_readiness_failure(tmp_path, monkeypatch) -> None:
+    """Expose candidate identity early enough for VRAM monitoring when startup later crashes."""
+    fast_health(monkeypatch)
+    pids: list[int] = []
+    failed = request(free_port(), "crash")
+    observed = lifecycle.StartRequest(failed.command, failed.plan, failed.lock, pids.append)
+
+    with pytest.raises(lifecycle.ProcessError):
+        lifecycle.start_service(observed, tmp_path)
+
+    assert len(pids) == 1
+
+
 def test_loading_timeout_stops_child_and_cleans_state(tmp_path, monkeypatch) -> None:
     """Bound perpetual 503 polling and leave no managed child or live state behind."""
     fast_health(monkeypatch, timeout=0.05)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import socket
 import subprocess
 import time
 from dataclasses import dataclass
@@ -15,6 +16,16 @@ from qwen_launcher.engine import JsonObject
 _REQUEST_TIMEOUT_SECONDS = 2.0
 _POLL_INTERVAL_SECONDS = 1.0
 _LOAD_TIMEOUT_SECONDS = 15 * 60.0
+
+
+def port_is_available(port: int) -> bool:
+    """Check localhost binding so occupied ports fail before model loading."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            probe.bind(("127.0.0.1", port))
+    except OSError:
+        return False
+    return True
 
 
 class HealthError(RuntimeError):

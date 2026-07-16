@@ -18,6 +18,8 @@ All notable changes to this project will be documented in this file.
 - Pinned llama.cpp and NVIDIA CUDA third-party notices for managed installations.
 - `studio` and `vstudio` commands with the integrated UI, optional browser opening and pinned vision
   projector activation.
+- Assisted `calibrate` trials with immutable benchmark resources, aggregate VRAM monitoring,
+  atomic draft bundles, privacy redaction and explicit bundle validation.
 
 ### Changed
 

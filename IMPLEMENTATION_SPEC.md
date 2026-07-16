@@ -25,7 +25,9 @@
 - [x] **Step 4 — Asset lock e attivazione atomica del motore.**
 - [x] **Step 5 — `studio` e `vstudio`:** implementazione, collaudi reali Ubuntu/Windows e matrice CI
   multipiattaforma conclusi.
-- [ ] **Step 5A / Calibration Gate / 5B — Calibrazione assistita e profili iniziali.**
+- [~] **Step 5A — Calibrazione assistita:** core, test offline, documentazione e verifica wheel
+  locali completati; resta la matrice CI Ubuntu/Windows prima di chiudere lo step.
+- [ ] **Calibration Gate / Step 5B — Prima calibrazione e profili iniziali.**
 - [ ] **Step 6A / Human Gate / 6B — Release 0.1.**
 - [ ] **Step 7 — Skill e router.**
 - [ ] **Step 8 — Open WebUI e sync.**
@@ -171,10 +173,25 @@
 - [x] Matrice CI GitHub Ubuntu 22.04/Windows Server 2022 verde sul commit `18dfe87` (run
   `29500119988`), inclusi 180 test, `validate`, build e verifica wheel isolata.
 
+### Step 5A — dettaglio
+
+- [x] Risorse `benchmark/v1` copiate byte per byte dallo spike e verificate tramite SHA-256; un
+  warm-up escluso, cinque misure esatte, token, `finish_reason` e timing ricontrollati offline.
+- [x] `calibrate --mode <id|all>` richiede candidati, contesti, avvii e riserva espliciti senza policy;
+  mostra preflight e rischio e richiede conferma prima di avviare prove.
+- [x] Processi freschi e stato isolato per candidato, carichi coding/studio/vstudio, polling VRAM
+  complessivo a 250 ms, scarti e selezione deterministica implementati con test senza GPU o rete.
+- [x] Bundle draft atomico con report, benchmark, proposta non distribuibile, log redatti, manifest,
+  anteprima e `validate --path` implementato; nessuna policy o profilo reale aggiunto.
+- [x] Sync frozen, lint, format, 210 test, `validate`, build e verifica wheel isolata verdi su Ubuntu
+  con uv 0.11.28 e CPython 3.12.13.
+- [ ] Matrice CI GitHub Ubuntu 22.04/Windows Server 2022 verde sul commit dello Step 5A.
+
 ### Prossima azione obbligatoria
 
-Gli Step 3, 4 e 5 sono conclusi. La prossima azione obbligatoria è lo Step 5A; non iniziare il
-Calibration Gate, lo Step 5B o step successivi.
+Gli Step 3, 4 e 5 sono conclusi e lo Step 5A è completo localmente. La prossima azione obbligatoria
+è chiudere la matrice CI multipiattaforma dello Step 5A; non iniziare il Calibration Gate, lo Step
+5B o step successivi fino a quel risultato.
 
 ---
 

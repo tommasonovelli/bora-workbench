@@ -14,6 +14,30 @@ import tempfile
 from pathlib import Path
 
 
+def _verify_install(python: Path) -> None:
+    """Exercise installed metadata, resources, validation, engine status, and calibration CLI."""
+    command = (
+        "import hashlib; "
+        "from importlib.metadata import version; "
+        "from qwen_launcher.resources import read_json, read_text, resource; "
+        "assert version('qwen-launcher') == '0.1.0.dev0'; "
+        "assert 'Spike 0' in read_text('README.txt'); "
+        "lock = read_json('engine.lock'); "
+        "assert lock['release'] == 'b10011' and lock['assets_complete']; "
+        "assert 'ggml authors' in read_text('notices/llama.cpp-LICENSE'); "
+        "assert 'NVIDIA' in read_text('notices/NVIDIA-CUDA-EULA.html'); "
+        "assert hashlib.sha256(resource('benchmark-v1/prompt.txt').read_bytes()).hexdigest() == "
+        "'1c7182235411da2d4fe6fca130e3effb0b0d965569c52abd8fd45327103ddb2e'; "
+        "assert hashlib.sha256(resource('benchmark-v1/request.json').read_bytes()).hexdigest() == "
+        "'025dc91aeb61a790d5fd36c27f127e04761ae7f1c3d6b542d0cfd9d37bc5c19f'"
+    )
+    subprocess.run([str(python), "-c", command], check=True)
+    subprocess.run([str(python), "-m", "qwen_launcher.cli", "--version"], check=True)
+    subprocess.run([str(python), "-m", "qwen_launcher.cli", "validate"], check=True)
+    subprocess.run([str(python), "-m", "qwen_launcher.cli", "engine", "status"], check=True)
+    subprocess.run([str(python), "-m", "qwen_launcher.cli", "calibrate", "--help"], check=True)
+
+
 def main() -> int:
     """Install the wheel in an isolated environment and verify it, returning a process exit code."""
     # Globbing in Python rather than in the shell keeps this identical on Ubuntu and Windows. An
@@ -36,22 +60,7 @@ def main() -> int:
             check=True,
         )
         python = environment / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
-        # Runs inside the isolated interpreter, so the checks travel as source text. Step 2B adds
-        # installed-content validation to the import, resource, and version checks.
-        command = (
-            "from importlib.metadata import version; "
-            "from qwen_launcher.resources import read_json, read_text; "
-            "assert version('qwen-launcher') == '0.1.0.dev0'; "
-            "assert 'Spike 0' in read_text('README.txt'); "
-            "lock = read_json('engine.lock'); "
-            "assert lock['release'] == 'b10011' and lock['assets_complete']; "
-            "assert 'ggml authors' in read_text('notices/llama.cpp-LICENSE'); "
-            "assert 'NVIDIA' in read_text('notices/NVIDIA-CUDA-EULA.html')"
-        )
-        subprocess.run([str(python), "-c", command], check=True)
-        subprocess.run([str(python), "-m", "qwen_launcher.cli", "--version"], check=True)
-        subprocess.run([str(python), "-m", "qwen_launcher.cli", "validate"], check=True)
-        subprocess.run([str(python), "-m", "qwen_launcher.cli", "engine", "status"], check=True)
+        _verify_install(python)
     return 0
 
 

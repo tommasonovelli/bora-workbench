@@ -1,26 +1,30 @@
-"""CLI presentation and exit-code mapping without platform-specific branching.
-
-Commands in this module only read input, call services, and present results. Platform logic stays in
-its assigned modules as required by specification sections 4.1 and 5.11.
-"""
+"""Provide CLI presentation and exit-code mapping without platform branching (sections 4.1/5.11)."""
 
 from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
+from pathlib import Path
+from typing import Annotated
 
 import typer
 from rich.console import Console
 
+from qwen_launcher._cli_calibration import (
+    CalibrationCliInput,
+    CalibrationCliOutput,
+    run_calibrate,
+)
 from qwen_launcher._cli_control import run_stop, show_status
 from qwen_launcher._cli_doctor import DoctorData, build_doctor_table
 from qwen_launcher._cli_engine import run_engine_install, show_engine_status
 from qwen_launcher._cli_services import run_coding, run_studio, run_vstudio
+from qwen_launcher._cli_validation import run_validate, show_validation
 from qwen_launcher.config import Config, ConfigError, load_config
 from qwen_launcher.engine import engine_status
 from qwen_launcher.hardware import HardwareError, HardwareInfo, detect_hardware
 from qwen_launcher.paths import cache_dir, config_dir, data_dir, state_dir
 from qwen_launcher.profiles import load_catalog
-from qwen_launcher.validation import ValidationIssue, ValidationResult, validate_resources
+from qwen_launcher.validation import validate_resources
 
 app = typer.Typer(
     name="qwen-launcher",
@@ -63,32 +67,15 @@ def main(
     del version_requested
 
 
-def _print_issue(item: ValidationIssue) -> None:
-    """Print one validation issue to the stream appropriate for its severity."""
-    label = f"{item.file}:{item.field_path}: {item.message}"
-    if item.severity == "error":
-        _stderr.print(f"[red]ERROR[/red] {label}")
-    else:
-        _stdout.print(f"[yellow]WARNING[/yellow] {label}")
-
-
-def _print_validation(result: ValidationResult) -> None:
-    """Print deterministic validation details and a concise summary."""
-    for item in result.issues:
-        _print_issue(item)
-    if result.errors:
-        _stderr.print(f"[red]Validation failed:[/red] {len(result.errors)} error(s)")
-    else:
-        _stdout.print(f"[green]Validation passed[/green] with {len(result.warnings)} warning(s)")
-
-
 @app.command("validate")
-def validate_command() -> None:
-    """Validate installed schemas, content references, evidence, and engine compatibility."""
-    result = validate_resources()
-    _print_validation(result)
-    if result.errors:
-        raise typer.Exit(code=1)
+def validate_command(
+    path: Annotated[
+        Path | None, typer.Option("--path", help="Validate a local calibration bundle.")
+    ] = None,
+) -> None:
+    """Validate installed resources or one explicit local calibration bundle."""
+    source = validate_resources() if path is None else path
+    run_validate(source, _stdout, _stderr)
 
 
 def _load_doctor_config() -> Config:
@@ -137,7 +124,7 @@ def doctor() -> None:
         _stdout.print(f"[yellow]WARNING[/yellow] {message}")
     for difference in managed_engine.differences:
         _stdout.print(f"[yellow]Engine:[/yellow] {difference}")
-    _print_validation(validation)
+    show_validation(validation, _stdout, _stderr)
     if validation.errors:
         raise typer.Exit(code=1)
 
@@ -178,6 +165,23 @@ def vstudio(
 ) -> None:
     """Launch multimodal chat with the integrated interface and pinned vision projector."""
     run_vstudio(force, _stdout, _stderr)
+
+
+@app.command()
+def calibrate(
+    mode: Annotated[str, typer.Option("--mode", help="Packaged mode id or 'all'.")],
+    candidate: Annotated[
+        list[str] | None,
+        typer.Option("--candidate", help="Repeat explicit ID:CTX[:N_CPU_MOE] candidates."),
+    ] = None,
+    settings: Annotated[
+        str | None,
+        typer.Option("--settings", help="Explicit RUNS[:MIN_FREE_VRAM_GIB] values."),
+    ] = None,
+) -> None:
+    """Compare explicit candidates and generate a local unaccepted calibration/v1 bundle."""
+    options = CalibrationCliInput(mode, tuple(candidate or ()), settings)
+    run_calibrate(options, CalibrationCliOutput(_stdout, _stderr))
 
 
 @app.command()

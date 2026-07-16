@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import os
-import socket
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -13,7 +13,12 @@ from typing import cast
 import psutil
 
 from qwen_launcher._process_control import ControlError, ServiceReport, status_at, stop_at
-from qwen_launcher._process_health import HealthError, HealthTarget, wait_for_health
+from qwen_launcher._process_health import (
+    HealthError,
+    HealthTarget,
+    port_is_available,
+    wait_for_health,
+)
 from qwen_launcher._process_lock import StartLockError, acquire_start_lock
 from qwen_launcher._process_state import (
     ServiceState,
@@ -33,11 +38,12 @@ class ProcessError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class StartRequest:
-    """Group the verified command, launch plan, and health/version lock contracts."""
+    """Group launch contracts and an optional immediate PID observer used by calibration."""
 
     command: tuple[str, ...]
     plan: LaunchPlan
     lock: JsonObject
+    on_spawn: Callable[[int], None] | None = None
 
 
 @dataclass(slots=True)
@@ -47,16 +53,6 @@ class RunningService:
     process: subprocess.Popen[str]
     state: ServiceState
     warnings: tuple[str, ...] = ()
-
-
-def _port_is_available(port: int) -> bool:
-    """Check localhost binding before spawn so occupied ports fail before model loading."""
-    try:
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
-            probe.bind(("127.0.0.1", port))
-    except OSError:
-        return False
-    return True
 
 
 def _child_environment(plan: LaunchPlan) -> dict[str, str]:
@@ -129,8 +125,7 @@ def _terminate_popen(process: subprocess.Popen[str]) -> None:
 def _health_target(request: StartRequest, log_path: Path) -> HealthTarget:
     """Build the loopback health URL exclusively from the locked path and configured port."""
     health = cast(JsonObject, request.lock["health_contract"])
-    url = f"http://127.0.0.1:{request.plan.port}{health['path']}"
-    return HealthTarget(url, health, log_path)
+    return HealthTarget(f"http://127.0.0.1:{request.plan.port}{health['path']}", health, log_path)
 
 
 def start_service(request: StartRequest, root: Path | None = None) -> RunningService:
@@ -141,7 +136,7 @@ def start_service(request: StartRequest, root: Path | None = None) -> RunningSer
             snapshot = clean_state(selected_root)
             if snapshot.services:
                 raise ProcessError("a managed service is already running; run qwen-launcher stop")
-            if not _port_is_available(request.plan.port):
+            if not port_is_available(request.plan.port):
                 raise ProcessError(f"port {request.plan.port} is already occupied")
             log_path = _log_path(selected_root)
             with log_path.open("x", encoding="utf-8") as log:
@@ -154,6 +149,8 @@ def start_service(request: StartRequest, root: Path | None = None) -> RunningSer
                     encoding="utf-8",
                     creationflags=_creation_flags(),
                 )
+            if request.on_spawn is not None:
+                request.on_spawn(process.pid)
             service = _service_state(process, request, log_path)
             write_state(selected_root, (service,))
         running = RunningService(process, service, snapshot.warnings)
