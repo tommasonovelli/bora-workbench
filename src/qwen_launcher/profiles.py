@@ -1,19 +1,22 @@
-"""Load validated resources immutably; matching and fallback remain reserved for Step 3."""
+"""Load profiles, match exact hardware classes, and build immutable launch plans."""
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from importlib.resources.abc import Traversable
-from typing import Literal, cast
+from pathlib import Path
+from typing import Literal
 
-from qwen_launcher.resources import resource_root
-
-JsonObject = dict[str, object]
+from qwen_launcher.config import Config
+from qwen_launcher.hardware import HardwareInfo
 
 
 class ContentError(RuntimeError):
     """Report packaged content that cannot safely become a runtime catalog."""
+
+
+class PlanError(RuntimeError):
+    """Report a launch request that cannot produce a safe plan."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,7 +65,7 @@ class TokenRate:
 
 @dataclass(frozen=True, slots=True)
 class ProfileMatch:
-    """Hold hardware constraints used later by Step 3 matching."""
+    """Hold the exact hardware constraints used for profile matching."""
 
     backend: Literal["cuda", "cpu"]
     vram_gib: GibRange
@@ -109,90 +112,55 @@ class Catalog:
         return next((mode for mode in self.modes if mode.id == mode_id), None)
 
 
-def _read_object(file: Traversable) -> JsonObject:
-    """Decode one already validated JSON object from a Traversable."""
-    return cast(JsonObject, json.loads(file.read_text(encoding="utf-8")))
+@dataclass(frozen=True, slots=True)
+class LaunchRequest:
+    """Group user configuration, mode, and already resolved model artifacts."""
+
+    config: Config
+    mode_id: str
+    model_path: Path
+    mmproj_path: Path | None = None
 
 
-def _range(values: object) -> GibRange:
-    """Construct an immutable GiB range from validated JSON values."""
-    minimum, maximum = cast(list[float | None], values)
-    return GibRange(float(cast(float, minimum)), None if maximum is None else float(maximum))
+@dataclass(frozen=True, slots=True)
+class LaunchPlan:
+    """Fuse behavior, envelope, model identity, and selected hardware without ambiguity."""
+
+    mode: Mode
+    model: str
+    model_path: Path
+    mmproj_path: Path | None
+    port: int
+    profile_id: str | None
+    ctx: int
+    n_cpu_moe: int | None
+    backend: Literal["cuda", "cpu"]
+    gpu_index: int | None
+    warnings: tuple[str, ...]
 
 
-def _token_rate(value: object) -> TokenRate:
-    """Construct a token-rate summary from a validated JSON object."""
-    rates = cast(JsonObject, value)
-    return TokenRate(float(rates["min"]), float(rates["median"]), float(rates["max"]))
-
-
-def _envelope(value: object) -> Envelope:
-    """Construct one immutable performance envelope."""
-    raw = cast(JsonObject, value)
-    tok_s = _token_rate(raw["tok_s"]) if "tok_s" in raw else None
-    n_cpu_moe = cast(int | None, raw.get("n_cpu_moe"))
-    return Envelope(cast(int, raw["ctx"]), n_cpu_moe, tok_s)
-
-
-def _mode(file: Traversable) -> Mode:
-    """Construct a runtime mode from one validated mode resource."""
-    raw = _read_object(file)
-    services = cast(JsonObject, raw["services"])
-    sampling = cast(JsonObject, raw["sampling"])
-    return Mode(
-        cast(str, raw["id"]),
-        cast(str, raw["description"]),
-        ModeServices(cast(bool, services["ui"]), cast(bool, services["vision"])),
-        Sampling(float(sampling["temp"]), float(sampling["top_p"]), cast(int, sampling["top_k"])),
-    )
-
-
-def _profile(file: Traversable, engine_release: str) -> Profile:
-    """Construct a runtime profile and mark lock-release divergence."""
-    raw = _read_object(file)
-    match = cast(JsonObject, raw["match"])
-    raw_modes = cast(JsonObject, raw["modes"])
-    profile_match = ProfileMatch(
-        cast(Literal["cuda", "cpu"], match["backend"]),
-        _range(match["vram_gib"]),
-        _range(match["ram_gib"]),
-        tuple(cast(list[str], match.get("os", []))),
-    )
-    modes = tuple((name, _envelope(value)) for name, value in sorted(raw_modes.items()))
-    profile_engine = cast(str, raw["engine"])
-    return Profile(
-        cast(str, raw["id"]),
-        cast(str, raw["model"]),
-        profile_engine,
-        cast(str, raw["measured_on"]),
-        cast(str, raw["calibration_report"]),
-        profile_match,
-        modes,
-        profile_engine == engine_release,
-    )
-
-
-def _json_files(directory: Traversable) -> tuple[Traversable, ...]:
-    """Return sorted JSON children, treating an absent directory as an empty catalog."""
-    if not directory.is_dir():
-        return ()
-    children = (item for item in directory.iterdir() if item.name.endswith(".json"))
-    return tuple(sorted(children, key=lambda item: item.name))
+DEFAULT_MODEL_MIN_TOTAL_GIB = 28.0
+DEFAULT_MODEL_MIN_AVAILABLE_GIB = 24.0
 
 
 def load_catalog(root: Traversable | None = None) -> Catalog:
     """Validate and load package content, refusing any validation error."""
-    from qwen_launcher.validation import validate_resources
+    from qwen_launcher._profile_loading import load_catalog_from_root
 
-    selected_root = resource_root() if root is None else root
-    result = validate_resources(selected_root)
-    if result.errors:
-        issue = result.errors[0]
-        raise ContentError(f"{issue.file}:{issue.field_path}: {issue.message}")
-    engine_release = cast(str, _read_object(selected_root.joinpath("engine.lock"))["release"])
-    content = selected_root.joinpath("content")
-    modes = tuple(_mode(file) for file in _json_files(content.joinpath("modes")))
-    profiles = tuple(
-        _profile(file, engine_release) for file in _json_files(content.joinpath("profiles"))
-    )
-    return Catalog(modes, profiles)
+    return load_catalog_from_root(root)
+
+
+def enforce_memory_gate(config: Config, hardware: HardwareInfo, *, force: bool) -> None:
+    """Enforce the default-model total and available RAM gate from section 5.5."""
+    from qwen_launcher._profile_matching import enforce_memory_gate_for_launch
+
+    enforce_memory_gate_for_launch(config, hardware, force=force)
+
+
+def build_launch_plan(
+    request: LaunchRequest, catalog: Catalog, hardware: HardwareInfo
+) -> LaunchPlan:
+    """Select an exact calibrated profile or the verified non-optimized baseline."""
+    from qwen_launcher._profile_matching import build_plan
+
+    return build_plan(request, catalog, hardware)

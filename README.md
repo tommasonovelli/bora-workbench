@@ -5,26 +5,27 @@ Distribuzione locale e riproducibile in sviluppo attorno a
 
 ## Stato
 
-Il repository contiene per ora il fondamento indipendente dal motore:
+Il repository contiene il vertical slice locale del modo `coding`:
 
 - package Python 3.12 con layout `src/` e build `uv_build`;
-- percorsi Linux/Windows senza side effect;
-- configurazione TOML e ambiente con validazione severa;
-- schemi e modi dichiarativi validati semanticamente;
+- percorsi Linux/Windows senza side effect e configurazione severa;
+- schemi, modi, report e profili validati semanticamente;
 - rilevamento CPU, RAM e GPU NVIDIA senza modificare l'ambiente padre;
-- CLI con `--version`, `validate` e diagnostica hardware `doctor`;
-- accesso alle risorse compatibile con wheel/zip;
-- test, lint e CI Linux/Windows.
+- matching esatto dei profili e baseline verificata ma non ottimizzata;
+- risoluzione read-only del modello appuntato e verifica dell'eseguibile `llama-server`;
+- builder governato esclusivamente da `engine.lock`;
+- lifecycle con lock d'avvio, salute, stato atomico, log, `status` e `stop` sicuro;
+- accesso alle risorse compatibile con wheel/zip e test offline con server fake.
 
 Lo **Spike 0 è completo** con decisione `GO`: `llama.cpp b10011`, il contratto macchina, la matrice
 Ubuntu/Windows CPU/CUDA e il protocollo `benchmark/v1` sono verificati. Il contratto iniziale è
 incluso nella wheel come `engine.lock`; gli asset restano intenzionalmente marcati incompleti fino
-allo Step 4. Non esistono ancora profili di produzione né comandi di avvio.
+allo Step 4. Non esistono ancora profili di produzione e `coding` richiede un motore già presente.
 
-Gli Step 1, 2A, 2B e 2C sono completi, inclusa la matrice CI Ubuntu/Windows. La correzione Step 2C
-separa l'identità del modello dal percorso GGUF richiesto dal motore. Il catalogo profili vuoto è
-valido: i benchmark dello spike provano fattibilità, non profili ottimizzati. Il piano normativo e il
-tracker sono in
+Gli Step 1, 2A, 2B e 2C sono completi, inclusa la matrice CI Ubuntu/Windows. Lo Step 3 è implementato:
+suite, build, wheel isolata e collaudo reale Ubuntu CUDA sono verdi; resta aperto fino al collaudo
+Windows e alla matrice CI. Il catalogo profili vuoto è valido: `coding` usa la baseline dello spike
+senza presentarla come profilo ottimizzato. Il piano normativo e il tracker sono in
 [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
 [`docs/spike-0/`](docs/spike-0/).
 
@@ -40,7 +41,17 @@ uv run --frozen pytest
 uv run --frozen qwen-launcher --version
 uv run --frozen qwen-launcher validate
 uv run --frozen qwen-launcher doctor
+uv run --frozen qwen-launcher coding
+uv run --frozen qwen-launcher status
+uv run --frozen qwen-launcher stop
 ```
+
+`coding` richiede già disponibili il modello e un `llama-server` compatibile con `engine.lock`: lo
+Step 4 aggiungerà l'installazione gestita, quindi non viene ancora effettuato alcun download. Il
+modello predefinito è risolto alla revisione snapshot appuntata nella cache Hugging Face e verificato
+per nome, dimensione e SHA-256. Un modello diverso richiede `model_path` esplicito. CUDA su host
+multi-GPU resta bloccato perché lo Spike 0 ha verificato soltanto una macchina a GPU singola.
+`--force` bypassa esclusivamente le soglie RAM del modello predefinito.
 
 Build e verifica isolata:
 

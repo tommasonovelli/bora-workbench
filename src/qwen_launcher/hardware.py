@@ -159,6 +159,16 @@ def _detect_host() -> _HostInfo:
     )
 
 
+def ensure_launch_supported(hardware: HardwareInfo) -> None:
+    """Block unverified CUDA multi-GPU startup as required by Spike 0 evidence."""
+    if hardware.backend == "cuda" and hardware.gpu_count > 1:
+        message = (
+            "CUDA startup on multi-GPU hosts is not verified for llama.cpp b10011; "
+            "use a single-GPU host or disable extra GPUs before launching"
+        )
+        raise HardwareError(message)
+
+
 def detect_hardware() -> HardwareInfo:
     """Detect required host facts without network, files, or parent-environment mutation."""
     host = _detect_host()
@@ -176,7 +186,7 @@ def detect_hardware() -> HardwareInfo:
         return HardwareInfo(*common, "cpu", 0, None, None, None, None, warnings)
     selected = _select_gpu(gpus)
     if len(gpus) > 1:
-        warnings += ("Multiple NVIDIA GPUs detected; CUDA startup remains blocked until Step 3.",)
+        warnings += ("Multiple NVIDIA GPUs detected; CUDA startup is blocked in version 0.1.",)
     return HardwareInfo(
         *common,
         "cuda",

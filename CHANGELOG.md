@@ -11,6 +11,8 @@ All notable changes to this project will be documented in this file.
 - Minimal `--version` and `doctor` CLI.
 - Package-resource helpers, tests, wheel verification and CI.
 - Normative `IMPLEMENTATION_SPEC.md` with progress tracker, plus archived raw spike evidence.
+- Exact profile matching, pinned model resolution and lock-governed CPU/CUDA command building.
+- `coding`, `status` and `stop` with atomic state, startup locking, health polling and safe PID identity.
 
 ### Changed
 

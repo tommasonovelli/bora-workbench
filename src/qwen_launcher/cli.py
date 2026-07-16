@@ -10,8 +10,9 @@ from importlib.metadata import PackageNotFoundError, version
 
 import typer
 from rich.console import Console
-from rich.table import Table
 
+from qwen_launcher._cli_doctor import DoctorData, build_doctor_table
+from qwen_launcher._cli_services import run_coding, run_stop, show_status
 from qwen_launcher.config import Config, ConfigError, load_config
 from qwen_launcher.hardware import HardwareError, HardwareInfo, detect_hardware
 from qwen_launcher.paths import cache_dir, config_dir, data_dir, state_dir
@@ -102,47 +103,6 @@ def _detect_for_doctor() -> HardwareInfo:
         raise typer.Exit(code=1) from error
 
 
-def _gib(value: float | None) -> str:
-    """Format an exact GiB measurement for human diagnostics."""
-    return "not applicable" if value is None else f"{value:.2f} GiB"
-
-
-def _gpu_label(hardware: HardwareInfo) -> str:
-    """Describe the selected GPU without implying multi-GPU launch support."""
-    if hardware.gpu_index is None:
-        return "none"
-    return f"{hardware.gpu_name} (index {hardware.gpu_index}, detected {hardware.gpu_count})"
-
-
-def _doctor_table(config: Config, hardware: HardwareInfo, profiles: int) -> Table:
-    """Build the read-only Step 2B diagnostic table."""
-    table = Table(title="qwen-launcher — Step 2B diagnostics")
-    table.add_column("Item")
-    table.add_column("Value")
-    rows = [
-        ("Version", package_version()),
-        ("Configuration", "valid"),
-        ("Model", config.model),
-        ("llama.cpp port", str(config.llama_port)),
-        ("OS", f"{hardware.os_name} — {hardware.os_version}"),
-        ("CPU", f"{hardware.cpu_name} ({hardware.cpu_cores} logical cores)"),
-        ("RAM total", _gib(hardware.ram_total_gib)),
-        ("RAM available", _gib(hardware.ram_available_gib)),
-        ("Backend", hardware.backend),
-        ("GPU", _gpu_label(hardware)),
-        ("VRAM total", _gib(hardware.vram_total_gib)),
-        ("VRAM free", _gib(hardware.vram_free_gib)),
-        ("Calibrated profiles", str(profiles) if profiles else "none"),
-        ("Config directory", str(config_dir())),
-        ("Data directory", str(data_dir())),
-        ("Cache directory", str(cache_dir())),
-        ("State directory", str(state_dir())),
-    ]
-    for label, value in rows:
-        table.add_row(label, value)
-    return table
-
-
 @app.command()
 def doctor() -> None:
     """Describe configuration, hardware, content, and paths without modifying the machine."""
@@ -153,7 +113,9 @@ def doctor() -> None:
     if not validation.errors:
         catalog = load_catalog()
         compatible_profiles = sum(profile.is_engine_compatible for profile in catalog.profiles)
-    _stdout.print(_doctor_table(config, hardware, compatible_profiles))
+    directories = (config_dir(), data_dir(), cache_dir(), state_dir())
+    data = DoctorData(config, hardware, compatible_profiles, package_version(), directories)
+    _stdout.print(build_doctor_table(data))
     for warning in hardware.warnings:
         _stdout.print(f"[yellow]WARNING[/yellow] {warning}")
     if compatible_profiles == 0:
@@ -162,6 +124,28 @@ def doctor() -> None:
     _print_validation(validation)
     if validation.errors:
         raise typer.Exit(code=1)
+
+
+@app.command()
+def coding(
+    force: bool = typer.Option(
+        False, "--force", help="Bypass only the default-model total and available RAM gate."
+    ),
+) -> None:
+    """Launch API-first coding mode in foreground with UI and vision explicitly disabled."""
+    run_coding(force, _stdout, _stderr)
+
+
+@app.command()
+def status() -> None:
+    """Show live managed services and clean stale state idempotently."""
+    show_status(_stdout, _stderr)
+
+
+@app.command()
+def stop() -> None:
+    """Stop only identity-verified managed services and remain idempotent when none exist."""
+    run_stop(_stdout, _stderr)
 
 
 if __name__ == "__main__":

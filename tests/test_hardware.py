@@ -105,6 +105,19 @@ def test_gpu_selection_prefers_total_vram_then_index(monkeypatch) -> None:
     assert "shell" not in kwargs
 
 
+def test_multi_gpu_cuda_startup_is_blocked_by_unverified_spike_boundary(monkeypatch) -> None:
+    """Refuse to promise physical GPU selection that the single-GPU spike did not prove."""
+    patch_host(monkeypatch)
+    output = "0, GPU Zero, 8192, 7000\n1, GPU One, 8192, 7000\n"
+    monkeypatch.setattr(
+        hardware.subprocess, "run", Mock(return_value=SimpleNamespace(stdout=output))
+    )
+    info = hardware.detect_hardware()
+
+    with pytest.raises(hardware.HardwareError, match="multi-GPU hosts"):
+        hardware.ensure_launch_supported(info)
+
+
 def test_detection_does_not_mutate_parent_cuda_environment(monkeypatch) -> None:
     """Leave CUDA_VISIBLE_DEVICES untouched because only Step 3 builds child environments."""
     patch_host(monkeypatch)

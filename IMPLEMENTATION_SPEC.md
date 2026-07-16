@@ -21,7 +21,7 @@
 - [x] **Step 2A — Contratti dichiarativi e modi.**
 - [x] **Step 2B — Validazione, modelli runtime e hardware.**
 - [x] **Step 2C — Contratto artefatto modello.**
-- [ ] **Step 3 — Vertical slice `coding`, stato, stop e status.**
+- [~] **Step 3 — Vertical slice `coding`, stato, stop e status.**
 - [ ] **Step 4 — Asset lock e attivazione atomica del motore.**
 - [ ] **Step 5 — `studio` e `vstudio`.**
 - [ ] **Step 5A / Calibration Gate / 5B — Calibrazione assistita e profili iniziali.**
@@ -107,10 +107,25 @@
 - [x] Commit `1b89a27` e `5cdfec2` pubblicati; matrice CI Ubuntu/Windows verde, inclusi
   `validate`, build e verifica wheel isolata.
 
+### Step 3 — dettaglio
+
+- [x] Matching esatto, gate RAM, fallback non ottimizzato e blocco CUDA multi-GPU implementati.
+- [x] Risoluzione read-only del modello, verifica artefatti, locate e builder lock-only implementati.
+- [x] Lifecycle `coding`, salute, log, stato atomico, lock d'avvio, `status` e `stop` coperti da test
+  offline col server fake.
+- [x] Sync frozen, lint, format, 137 test, `validate`, build e verifica wheel isolata verdi su Ubuntu
+  con uv 0.11.28 e CPython 3.12.13.
+- [x] Collaudo reale Ubuntu CUDA col motore b10011 ricostruito dall'archivio del commit e checksum
+  dello spike: modello appuntato verificato, baseline `ctx=8192`/`n_cpu_moe=48`, UI e vision off
+  esplicite, salute, `/v1/models`, chat con MTP, GPU 0, stato e stop pulito verificati.
+- [ ] Collaudo manuale reale `coding` e stop pulito su Windows con motore dello spike.
+- [ ] Matrice CI Ubuntu/Windows verde per lo Step 3.
+
 ### Prossima azione obbligatoria
 
-Lo Step 2C è concluso. La prossima sessione di implementazione può iniziare esclusivamente lo Step 3,
-senza anticipare lo Step 4 o gli step successivi.
+Lo Step 2C è concluso e lo Step 3 è in corso con il gate Ubuntu chiuso. La prossima azione è il
+collaudo reale Windows, seguito dalla matrice CI Ubuntu/Windows; non iniziare lo Step 4 o step
+successivi finché il gate dello Step 3 non è chiuso.
 
 ---
 
