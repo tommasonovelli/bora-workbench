@@ -84,3 +84,10 @@ default nel codice.
 modello predefinito il percorso viene risolto nello Step 3 dalla revisione snapshot appuntata nel
 lock, senza rete né modifiche alla cache Hugging Face. Il launcher non crea né modifica
 automaticamente il file di configurazione.
+
+## Licenza
+
+Il progetto è distribuito con licenza [MIT](LICENSE). Le installazioni gestite del motore
+conservano gli avvisi di terze parti richiesti: il testo MIT di `llama.cpp` e, solo su Windows
+CUDA, la NVIDIA CUDA Toolkit EULA. Il modello resta sotto la propria licenza Apache-2.0 e non
+viene redistribuito dal launcher.
