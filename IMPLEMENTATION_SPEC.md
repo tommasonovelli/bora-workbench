@@ -21,7 +21,7 @@
 - [x] **Step 2A — Contratti dichiarativi e modi.**
 - [x] **Step 2B — Validazione, modelli runtime e hardware.**
 - [x] **Step 2C — Contratto artefatto modello.**
-- [~] **Step 3 — Vertical slice `coding`, stato, stop e status.**
+- [x] **Step 3 — Vertical slice `coding`, stato, stop e status.**
 - [ ] **Step 4 — Asset lock e attivazione atomica del motore.**
 - [ ] **Step 5 — `studio` e `vstudio`.**
 - [ ] **Step 5A / Calibration Gate / 5B — Calibrazione assistita e profili iniziali.**
@@ -118,15 +118,17 @@
 - [x] Collaudo reale Ubuntu CUDA col motore b10011 ricostruito dall'archivio del commit e checksum
   dello spike: modello appuntato verificato, baseline `ctx=8192`/`n_cpu_moe=48`, UI e vision off
   esplicite, salute, `/v1/models`, chat con MTP, GPU 0, stato e stop pulito verificati.
-- [ ] Collaudo manuale reale `coding` e stop pulito su Windows con motore dello spike.
+- [x] Collaudo reale Windows 11 CUDA con la coppia b10011 CUDA 13.3 verificata dai digest del lock:
+  un solo server e stato baseline esatto; salute 200, modello con `n_ctx=8192`, UI 404 e chat valida
+  con 5 completion token e MTP `draft_n=4`/`draft_n_accepted=4`; PID sulla GPU 0 e ambiente padre
+  invariato; stop 0 idempotente, stato vuoto, porta/PID/GPU puliti e log completo.
 - [x] Matrice CI GitHub Ubuntu 22.04/Windows Server 2022 verde sul commit `7689e83` (run
   `29487698370`), inclusi test, `validate`, build e verifica wheel isolata.
 
 ### Prossima azione obbligatoria
 
-Lo Step 2C è concluso e lo Step 3 è in corso con gate Ubuntu e matrice CI chiusi. La prossima azione
-è esclusivamente il collaudo reale Windows; non iniziare lo Step 4 o step successivi finché il gate
-dello Step 3 non è chiuso.
+Lo Step 3 è concluso: gate reali Ubuntu/Windows e matrice CI sono chiusi. La prossima azione
+obbligatoria è esclusivamente lo Step 4; non anticipare lo Step 5 o step successivi.
 
 ---
 

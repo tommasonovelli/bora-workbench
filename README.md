@@ -22,11 +22,10 @@ Ubuntu/Windows CPU/CUDA e il protocollo `benchmark/v1` sono verificati. Il contr
 incluso nella wheel come `engine.lock`; gli asset restano intenzionalmente marcati incompleti fino
 allo Step 4. Non esistono ancora profili di produzione e `coding` richiede un motore già presente.
 
-Gli Step 1, 2A, 2B e 2C sono completi, inclusa la matrice CI Ubuntu/Windows. Lo Step 3 è implementato:
-suite, build, wheel isolata, collaudo reale Ubuntu CUDA e matrice CI Ubuntu/Windows sono verdi;
-resta aperto soltanto fino al collaudo reale Windows. Il catalogo profili vuoto è valido: `coding`
-usa la baseline dello spike
-senza presentarla come profilo ottimizzato. Il piano normativo e il tracker sono in
+Gli Step 1, 2A, 2B, 2C e 3 sono completi. Suite, build, wheel isolata, matrice CI Ubuntu/Windows e
+collaudi reali Ubuntu/Windows CUDA del vertical slice `coding`, `status` e `stop` sono verdi. Il
+catalogo profili vuoto è valido: `coding` usa la baseline dello spike senza presentarla come profilo
+ottimizzato. Lo Step 4 è la prossima azione obbligatoria. Il piano normativo e il tracker sono in
 [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
 [`docs/spike-0/`](docs/spike-0/).
 
