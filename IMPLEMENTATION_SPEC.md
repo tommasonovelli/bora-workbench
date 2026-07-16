@@ -22,7 +22,7 @@
 - [x] **Step 2B — Validazione, modelli runtime e hardware.**
 - [x] **Step 2C — Contratto artefatto modello.**
 - [x] **Step 3 — Vertical slice `coding`, stato, stop e status.**
-- [~] **Step 4 — Asset lock e attivazione atomica del motore.**
+- [x] **Step 4 — Asset lock e attivazione atomica del motore.**
 - [ ] **Step 5 — `studio` e `vstudio`.**
 - [ ] **Step 5A / Calibration Gate / 5B — Calibrazione assistita e profili iniziali.**
 - [ ] **Step 6A / Human Gate / 6B — Release 0.1.**
@@ -143,12 +143,17 @@
   `engine status`, `coding`, salute 200, modelli, chat da 5 token con MTP, Ctrl-C 130 e pulizia di
   stato, porta, processo e GPU verificati. Il percorso CPU è stato isolato rimuovendo soltanto
   `nvidia-smi` dal `PATH` del processo di collaudo.
-- [ ] Installazioni reali Windows CUDA/CPU, seguite da avvio `coding` e pulizia completa.
+- [x] Installazioni reali Windows 11 CUDA 13.3 e CPU verificate dai tre archivi con digest del lock,
+  avvisi richiesti e manifest atomico. Entrambi i backend hanno avviato `coding` con baseline
+  esatta, salute e modelli 200, UI 404, chat da 5 token con MTP e pulizia completa di stato, porta e
+  processo; CUDA ha usato il PID sulla GPU 0 senza mutare l'ambiente padre, mentre il prebuilt CPU
+  non ha elencato dispositivi CUDA. Un primo probe a freddo CUDA è scaduto dopo 10 secondi ed è stato
+  ripulito senza attivazione parziale; il retry, il cambio backend e la riattivazione sono riusciti.
 
 ### Prossima azione obbligatoria
 
-Lo Step 3 è concluso e lo Step 4 è in corso. La prossima azione obbligatoria è chiudere verifiche,
-CI e collaudi reali dello Step 4; non anticipare lo Step 5 o step successivi.
+Gli Step 3 e 4 sono conclusi. La prossima azione obbligatoria è lo Step 5; non anticipare lo Step 5A
+o step successivi.
 
 ---
 
