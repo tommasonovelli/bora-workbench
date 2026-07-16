@@ -137,8 +137,8 @@
   `docs/engine-lock.md` implementati con test offline.
 - [x] Sync frozen, lint, format, 168 test, `validate`, build e verifica wheel isolata verdi su
   Ubuntu con uv 0.11.28 e CPython 3.12.13.
-- [x] Matrice CI GitHub Ubuntu 22.04/Windows Server 2022 verde sul commit `25956a5` (run
-  `29493604755`), inclusi 167 test, `validate`, build e verifica wheel isolata.
+- [x] Matrice CI GitHub Ubuntu 22.04/Windows Server 2022 verde sul commit `f7c463b` (run
+  `29494925651`), inclusi 168 test, `validate`, build e verifica wheel isolata.
 - [x] Installazioni reali Ubuntu CUDA dal sorgente e Ubuntu CPU dal prebuilt con digest del lock;
   `engine status`, `coding`, salute 200, modelli, chat da 5 token con MTP, Ctrl-C 130 e pulizia di
   stato, porta, processo e GPU verificati. Il percorso CPU è stato isolato rimuovendo soltanto
