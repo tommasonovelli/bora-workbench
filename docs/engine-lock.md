@@ -18,11 +18,12 @@ La release attiva è `b10011`, commit
 URL, SHA-256, formati, ruoli e percorsi eseguibili sono dati normativi nel lock. L'evidenza da cui
 sono copiati è `docs/spike-0.json`; gli output grezzi e i manifest sono sotto `docs/spike-0/`.
 
-Il contratto attivo usa ancora `--mmap` e non imposta la cache KV Q8. Il mini-spike Ubuntu b10011
-ha dato GO a `--cache-type-k q8_0 --cache-type-v q8_0` con mmap e NO-GO a `--no-mmap`; evidenza e
-misure sono in `docs/mini-spike-kv-q8-ubuntu.md`. Il cambio resta fuori dal lock globale fino allo
-smoke Windows CUDA 13.3. I pesi restano `UD-Q4_K_M`: la proposta riguarda la cache KV, non una
-sostituzione del GGUF con pesi Q8.
+Il contratto attivo conserva `--mmap` e imposta la cache KV Q8 tramite
+`--cache-type-k q8_0 --cache-type-v q8_0` nel solo ramo CUDA di `command_contract.backend_args`;
+il ramo CPU resta invariato e `--no-mmap` resta rifiutato. L'evidenza è duplice: mini-spike Ubuntu
+b10011 (`docs/mini-spike-kv-q8-ubuntu.md`, GO Q8+mmap e NO-GO no-mmap) e smoke Windows 11 CUDA 13.3
+(`docs/mini-spike-kv-q8-windows.md`, GO Q8+mmap sui tre modi). I pesi restano `UD-Q4_K_M`: il cambio
+riguarda la cache KV, non una sostituzione del GGUF con pesi Q8.
 
 ## Mini-spike cache KV Q8 sulla release invariata
 
@@ -39,9 +40,10 @@ Quando cambia un flag fisso senza cambiare release, si applica comunque la gerar
 6. mantenere la modifica del lock separata dalle correzioni core e ripetere l'evidenza su Windows
    prima di estendere il contratto Windows.
 
-Ubuntu ha completato questa procedura il 17 luglio 2026. La proposta risultante conserva `--mmap`,
-lascia invariato il ramo CPU e aggiunge i due argomenti cache Q8 soltanto a
-`command_contract.backend_args.cuda`; resta non adottabile finché lo smoke Windows è pendente.
+Ubuntu ha completato questa procedura il 17 luglio 2026; Windows 11 ha completato lo smoke CUDA 13.3
+lo stesso giorno. La modifica adottata conserva `--mmap`, lascia invariato il ramo CPU e aggiunge i
+due argomenti cache Q8 soltanto a `command_contract.backend_args.cuda`, insieme alle forme lunghe
+`--cache-type-k`/`--cache-type-v` in `verified_flags`.
 
 ## Procedura di aggiornamento volontario
 

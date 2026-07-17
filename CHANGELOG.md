@@ -35,3 +35,6 @@ All notable changes to this project will be documented in this file.
   recompute resource constraints, policy provenance and deterministic accepted selections.
 - The 0.1 plan now requires hardware-independent local search instead of exporting the 32/8 host's
   optimum through nominal RAM/VRAM classes.
+- The engine command contract now pins KV-cache Q8 (`--cache-type-k q8_0 --cache-type-v q8_0`) on
+  the CUDA branch only, keeping mmap enabled and the CPU branch unchanged, after paired Ubuntu and
+  Windows 11 CUDA 13.3 smoke evidence on llama.cpp b10011.

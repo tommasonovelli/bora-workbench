@@ -64,6 +64,13 @@ def test_builder_emits_verified_three_mode_matrix(
     assert (str(selected_plan.mmproj_path) in command) is has_vision
     assert ("-ncmoe" in command) is (backend == "cuda")
     assert ("-ngl" in command) is (backend == "cuda")
+    assert ("--cache-type-k" in command) is (backend == "cuda")
+    assert ("--cache-type-v" in command) is (backend == "cuda")
+    if backend == "cuda":
+        assert command[command.index("--cache-type-k") + 1] == "q8_0"
+        assert command[command.index("--cache-type-v") + 1] == "q8_0"
+    assert "--no-mmap" not in command
+    assert "--mmap" in command
 
 
 def test_builder_defensively_rejects_unverified_lock_option(tmp_path) -> None:

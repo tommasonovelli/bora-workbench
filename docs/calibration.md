@@ -75,13 +75,14 @@ bundle contiene solo scarti. La RAM disponibile durante il trial e l'attivazione
 requisiti aperti del protocollo successivo: `v1` non deve essere presentato come ottimizzazione
 portabile.
 
-## Cache KV Q8: non ancora attiva
+## Cache KV Q8: attiva nel ramo CUDA
 
-Il modello resta `UD-Q4_K_M`. La configurazione candidata usa cache KV Q8 tramite
-`--cache-type-k q8_0 --cache-type-v q8_0` mantenendo mmap, ma questi argomenti **non sono ancora nel
-contratto attivo**. Il mini-spike Ubuntu ha approvato Q8+mmap e rifiutato `--no-mmap`; resta lo smoke
-Windows sulla stessa release. Solo un GO anche Windows consente una PR dichiarativa separata per
-`engine.lock`.
+Il modello resta `UD-Q4_K_M`. Il contratto attivo imposta la cache KV Q8 tramite
+`--cache-type-k q8_0 --cache-type-v q8_0` nel solo ramo CUDA, mantenendo mmap; il ramo CPU è
+invariato. Il mini-spike Ubuntu ha approvato Q8+mmap e rifiutato `--no-mmap`; lo smoke Windows CUDA
+13.3 ha confermato Q8+mmap sui tre modi (`docs/mini-spike-kv-q8-windows.md`). Le calibrazioni e i
+report precedenti al cambio restano evidenza del contratto senza Q8 e non sono confrontabili con le
+misure successive.
 
 ## Bundle e privacy
 

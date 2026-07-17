@@ -25,6 +25,8 @@
     "-np",
     "--fit",
     "--help",
+    "--cache-type-k",
+    "--cache-type-v",
     "--cors-origins",
     "--host",
     "--jinja",
@@ -132,7 +134,11 @@
         "-ngl",
         "99",
         "-ncmoe",
-        "{n_cpu_moe}"
+        "{n_cpu_moe}",
+        "--cache-type-k",
+        "q8_0",
+        "--cache-type-v",
+        "q8_0"
       ],
       "cpu": []
     }
