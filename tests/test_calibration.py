@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -92,8 +93,10 @@ def test_selection_uses_median_then_free_vram_then_declared_order() -> None:
 def test_modes_and_candidates_use_distinct_fresh_process_roots(tmp_path, monkeypatch) -> None:
     """Run every mode/candidate in declared order with a distinct root for every stable start."""
     target = cpu_target(("coding", "studio", "vstudio"))
+    cuda = HardwareInfo("linux", "test", "CPU", 12, 32, 24, "cuda", 1, 0, "GPU", 8, 7)
+    target = replace(target, hardware=cuda)
     settings = CalibrationSettings(
-        (Candidate("safe", 8192, None), Candidate("fast", 16384, None)), 2, None, None
+        (Candidate("safe", 8192, 48), Candidate("fast", 8192, 47)), 2, 0.5, 0.125
     )
     roots: list[Path] = []
 
@@ -104,7 +107,9 @@ def test_modes_and_candidates_use_distinct_fresh_process_roots(tmp_path, monkeyp
         log = spec.root / "logs/server.log"
         log.parent.mkdir(parents=True)
         log.write_text("safe log", encoding="utf-8")
-        return (benchmark(float(spec.plan.ctx)) if spec.is_final else None, None)
+        rate = 100.0 - (spec.plan.n_cpu_moe or 0)
+        vram = VramSummary(1, 6, 2, 1, "test-driver")
+        return (benchmark(rate) if spec.is_final else None, vram)
 
     monkeypatch.setattr(runner, "run_start", fake_start)
     result = runner.run_trials(target, settings, tmp_path)
@@ -121,16 +126,19 @@ def test_candidate_failure_is_discarded_and_next_candidate_runs(
 ) -> None:
     """Retain OOM/crash/timeout diagnosis without contaminating the following candidate."""
     target = cpu_target()
+    cuda = HardwareInfo("linux", "test", "CPU", 12, 32, 24, "cuda", 1, 0, "GPU", 8, 7)
+    target = replace(target, hardware=cuda)
     settings = CalibrationSettings(
-        (Candidate("bad", 8192, None), Candidate("good", 16384, None)), 1, None, None
+        (Candidate("bad", 8192, 48), Candidate("good", 8192, 47)), 1, 0.5, 0.125
     )
 
     def fake_start(target_value, settings_value, spec):
-        """Fail the first context and complete the second with exact benchmark evidence."""
+        """Fail the first envelope and complete the second with exact benchmark evidence."""
         del target_value, settings_value
-        if spec.plan.ctx == 8192:
-            raise StartFailure(ProcessError(message), None)
-        return benchmark(20), None
+        vram = VramSummary(1, 6, 2, 1, "test-driver")
+        if spec.plan.n_cpu_moe == 48:
+            raise StartFailure(ProcessError(message), vram)
+        return benchmark(20), vram
 
     monkeypatch.setattr(runner, "run_start", fake_start)
     result = runner.run_trials(target, settings, tmp_path)

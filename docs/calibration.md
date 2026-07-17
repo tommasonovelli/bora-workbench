@@ -1,8 +1,11 @@
 # Calibrazione assistita (`calibration/v1`)
 
-La calibrazione confronta più buste esplicite; non è un normale avvio e non equivale a un singolo
-benchmark. Lo Step 5A non distribuisce ancora una policy o un profilo: ogni risultato resta una
-bozza locale fino al Calibration Gate e allo Step 5B.
+La calibrazione confronta buste esplicite sulla macchina corrente; non è un normale avvio e non
+equivale a un singolo benchmark. L'attuale `calibration/v1` è un protocollo di laboratorio per il
+Gate: non è ancora il calibratore pubblico generale. Lo Step 5A non distribuisce policy o profili e
+ogni risultato resta una bozza locale. Una classe RAM/VRAM non rende portabile il vincitore su CPU e
+GPU diverse: per questo i profili v1 condivisi sono ora reference-only e non entrano direttamente nel
+`LaunchPlan`. L'audit e il percorso correttivo sono in `CALIBRATE.md`.
 
 ## Prerequisiti
 
@@ -34,10 +37,12 @@ qwen-launcher calibrate \
   --settings <avvii-stabili>:<riserva-vram-gib>:<tolleranza-rilascio-gib>
 ```
 
-I valori reali devono essere forniti e approvati da Tommaso. Ogni run usa un solo contesto per modo;
-un ripiego di contesto è un run separato. La lista è esplicita, ordinata dalla busta più prudente e
-provata per intero senza ricerca binaria o arresto al primo fallimento. Il mini-spike può indicare
-dove usare passi più fitti, ma non genera candidati implicitamente.
+I valori reali devono essere forniti e approvati da Tommaso. Il codice impone un solo contesto per
+run: un ripiego di contesto è una prova separata, perché tok/s non deve premiare una finestra più
+piccola. Su CUDA ogni `n_cpu_moe` è unico e la lista è ordinata dal più prudente al più aggressivo,
+poi provata per intero senza arresto al primo fallimento. Su CPU, a contesto fisso, `v1` accetta un
+solo candidato perché non possiede ancora un asse di tuning verificato. La scala ricavata dal PC
+8-GiB può riprodurre quel PC, ma non costituisce la futura policy per macchine diverse.
 
 Omettendo candidati o impostazioni, la CLI li richiede interattivamente. Mostra hardware, workload,
 destinazione, finestra/tolleranza di rilascio, durata non stimabile con precisione, log e rischio di
@@ -63,17 +68,20 @@ Per ogni modo e candidato, nell'ordine dichiarato, il launcher:
 9. propone il candidato con mediana maggiore, poi maggiore VRAM libera, poi il primo candidato
    nell'ordine prudente dichiarato.
 
-Il report conserva finestra, tolleranza e campione finale di rilascio. Se tutti i candidati sono
-scartati, il comando termina correttamente dopo aver dichiarato esplicitamente che il bundle contiene
-solo scarti.
+Il report conserva finestra, tolleranza e campione finale di rilascio. `validate` ricostruisce anche
+riserva, rilascio, coerenza della VRAM e vincitore deterministico di un eventuale report accettato.
+Se tutti i candidati sono scartati, il comando termina correttamente dopo aver dichiarato che il
+bundle contiene solo scarti. La RAM disponibile durante il trial e l'attivazione locale restano
+requisiti aperti del protocollo successivo: `v1` non deve essere presentato come ottimizzazione
+portabile.
 
 ## Cache KV Q8: non ancora attiva
 
 Il modello resta `UD-Q4_K_M`. La configurazione candidata usa cache KV Q8 tramite
-`--cache-type-k q8_0 --cache-type-v q8_0` ed eventualmente `--no-mmap`, ma questi argomenti **non
-sono ancora nel contratto attivo**. Prima occorre il mini-spike manuale su `llama.cpp b10011`
-descritto in `CALIBRATE.md`, con confronto fra contratto attuale, Q8 con mmap e Q8 senza mmap. Solo
-un esito GO consente una PR dichiarativa separata per `engine.lock`.
+`--cache-type-k q8_0 --cache-type-v q8_0` mantenendo mmap, ma questi argomenti **non sono ancora nel
+contratto attivo**. Il mini-spike Ubuntu ha approvato Q8+mmap e rifiutato `--no-mmap`; resta lo smoke
+Windows sulla stessa release. Solo un GO anche Windows consente una PR dichiarativa separata per
+`engine.lock`.
 
 ## Bundle e privacy
 
@@ -99,5 +107,6 @@ qwen-launcher validate --path <percorso-del-bundle>
 ```
 
 La validazione controlla schema, semantica, riferimenti, digest, manifest, stato non distribuibile e
-privacy automatica. La revisione umana di ogni file nel manifest resta obbligatoria. Il comando non
-crea branch, issue o PR.
+privacy automatica. Un report accettato richiede inoltre una policy approvata; ciò non autorizza
+comunque ad applicare il vincitore a un altro PC. La revisione umana di ogni file nel manifest resta
+obbligatoria. Il comando non crea branch, issue o PR.

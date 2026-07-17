@@ -29,3 +29,9 @@ All notable changes to this project will be documented in this file.
   feasibility benchmarks cannot be published as optimized profiles.
 - Excessive VRAM baseline drift now discards only the affected candidate instead of aborting the
   complete calibration; all-discarded bundles receive an explicit CLI summary.
+- Shared profile v1 envelopes are reference-only seeds and no longer enter a launch plan without a
+  future compatible local calibration record.
+- Calibration v1 now rejects mixed contexts, duplicate or unsafe candidate ordering, and validators
+  recompute resource constraints, policy provenance and deterministic accepted selections.
+- The 0.1 plan now requires hardware-independent local search instead of exporting the 32/8 host's
+  optimum through nominal RAM/VRAM classes.

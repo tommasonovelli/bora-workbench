@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from qwen_launcher.resources import resource
+from tests.calibration_fixtures import valid_policy
 
 _ENGINE_COMMIT = "bf2c86ddc0685f580595954056c2e77ebabfab4f"
 
@@ -115,7 +116,7 @@ def valid_report(backend: str = "cuda", engine: str = "b10011") -> dict[str, obj
         "calibration_protocol": "calibration/v1",
         "benchmark_protocol": "benchmark/v1",
         "policy": {
-            "id": None,
+            "id": "synthetic-policy",
             "gpu_poll_interval_ms": 250,
             "gpu_release_stabilization_ms": 10000,
             "stable_start_runs": 2,
@@ -165,6 +166,7 @@ def build_valid_content(
 ) -> ContentFiles:
     """Create linked report/profile fixture content under an isolated resource root."""
     root = copy_resource_root(tmp_path)
+    write_json(root / "content/calibration-policy.json", valid_policy(backend, engine))
     report_path = root / "content/calibrations/synthetic-report.json"
     profile_path = root / "content/profiles/synthetic-profile.json"
     write_json(report_path, valid_report(backend, engine))

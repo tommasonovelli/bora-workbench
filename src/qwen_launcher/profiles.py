@@ -1,4 +1,4 @@
-"""Load profiles, match exact hardware classes, and build immutable launch plans."""
+"""Load shared profile seeds and build immutable baseline or local launch plans."""
 
 from __future__ import annotations
 
@@ -84,7 +84,7 @@ class Envelope:
 
 @dataclass(frozen=True, slots=True)
 class Profile:
-    """Represent one validated profile and its engine compatibility state."""
+    """Represent one validated shared seed and its engine compatibility state."""
 
     id: str
     model: str
@@ -160,7 +160,7 @@ def enforce_memory_gate(config: Config, hardware: HardwareInfo, *, force: bool) 
 def build_launch_plan(
     request: LaunchRequest, catalog: Catalog, hardware: HardwareInfo
 ) -> LaunchPlan:
-    """Select an exact calibrated profile or the verified non-optimized baseline."""
+    """Build the verified baseline while shared profiles remain reference-only seeds."""
     from qwen_launcher._profile_matching import build_plan
 
     return build_plan(request, catalog, hardware)

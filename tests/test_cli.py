@@ -94,7 +94,7 @@ def test_doctor_is_read_only_and_reports_hardware(tmp_path, monkeypatch) -> None
     assert "qwen-launcher diagnostics" in result.stdout
     assert "Test CPU" in result.stdout
     assert "32.00 GiB" in result.stdout
-    assert "No calibrated profile" in result.stdout
+    assert "No local calibration record" in result.stdout
     assert not any(tmp_path.iterdir())
 
 

@@ -1,338 +1,196 @@
-# CALIBRATE.md — Analisi del primo run di calibrazione e piano correttivo proposto
+# CALIBRATE.md — Audit di portabilità della calibrazione
 
-> **Stato:** analisi non normativa con decisione parziale approvata. Le correzioni core A/B e il
-> riepilogo CLI sono state recepite in codice e in `IMPLEMENTATION_SPEC.md`; C ha ottenuto GO Ubuntu
-> per Q8+mmap e NO-GO per no-mmap, ma resta subordinata allo smoke Windows prima del lock globale; D
-> guida soltanto la lista esplicita del prossimo run.
-> `IMPLEMENTATION_SPEC.md` resta l'unica fonte normativa. Questo documento non anticipa lo Step 5B.
-> **Data:** 16 luglio 2026. **Evidenza di riferimento:** bundle locale
-> `calibration-20260716t142541702536` (run reale `calibrate --mode coding` su Ubuntu 24.04,
-> RTX 2060 SUPER 8 GiB, 32 GiB RAM) e spike `docs/spike-0/`.
+> **Stato:** analisi non normativa che corregge il precedente piano host-specific. La specifica
+> normativa resta `IMPLEMENTATION_SPEC.md`. Nessun profilo o policy di produzione è autorizzato da
+> questo documento e lo Step 5B resta chiuso.
+> **Data:** 17 luglio 2026. **Evidenza conservata:** primo bundle reale
+> `calibration-20260716t142541702536` e mini-spike Q8 sotto
+> `docs/mini-spike-kv-q8-ubuntu/`.
 
-## 1. Sintesi
+## 1. Requisito di prodotto chiarito
 
-Il primo run reale del calibratore ha funzionato meccanicamente (exit 0, bundle atomico valido)
-ma non ha accettato alcun candidato e ha rivelato quattro problemi distinti:
+Il prodotto non deve trovare una configurazione per la macchina del maintainer e applicarla a PC
+che hanno soltanto la stessa quantità nominale di memoria. Deve invece:
 
-| # | Problema | Tipo | Soluzione scelta |
-|---|---|---|---|
-| A | Il controllo di rilascio VRAM scarta candidati sani | bug core Step 5A | finestra di stabilizzazione + tolleranza esplicita (§3) |
-| B | Percorsi privati assoluti nei campi testuali del report | bug privacy Step 5A | percorsi relativi + redazione dei documenti + scanner in `validate` (§4) |
-| C | Il contratto motore non copre cache KV Q8 e `--no-mmap` | limite di `engine.lock` | mini-spike mirato su b10011, poi aggiornamento del lock (§5) |
-| D | Ricerca di `n_cpu_moe` troppo grossolana (48 → 38 → 36) | limite di strategia | scala dichiarata asimmetrica informata dal mini-spike (§6) |
+1. eseguire la ricerca sulla macchina dell'utente;
+2. misurare il rapporto prestazionale reale fra CPU, GPU, RAM, VRAM, driver e carico del modo;
+3. scegliere localmente una busta stabile secondo un obiettivo dichiarato;
+4. riutilizzare il risultato solo finché hardware e contratti rilevanti restano compatibili;
+5. usare evidenza condivisa soltanto per governare o accelerare la ricerca, mai come prova che il
+   candidato ottimo su un PC sia ottimo su un altro.
 
-L'ordine aggiornato è in §8: A/B e il riepilogo sono implementati; C/D restano attività manuali o
-dichiarative subordinate a nuova evidenza.
+Una calibrazione locale è intenzionalmente personalizzata. L'overfitting indesiderato nasce quando
+quel risultato viene promosso a decisione portabile senza una nuova misura locale.
 
-## 2. Evidenza misurata del run del 16 luglio
+## 2. Perché la correzione basata sulla larghezza delle classi non basta
 
-Parametri espliciti forniti: `ctx=131072` per tutti i candidati, `n_cpu_moe ∈ {48, 38, 36}`,
-2 avvii stabili, riserva minima 0,25 GiB. Esito per candidato (valori dal report del bundle):
+La proposta di imporre finestre larghe almeno 1 GiB e un margine di 0,5 GiB dai bordi impedirebbe una
+classe singleton, ma non dimostrerebbe portabilità. Due PC con 32 GiB RAM e 8 GiB VRAM possono avere:
 
-| Candidato | `n_cpu_moe` | Esito | Avvii riusciti | Picco VRAM | Min. libera | Baseline pre-run |
-|---|---:|---|---:|---:|---:|---:|
-| `safe` | 48 | scartato (rilascio VRAM) | 1 di 2 | 6,677 GiB | 1,323 GiB | 0,885 GiB |
-| `historical` | 38 | scartato (OOM all'avvio) | 0 | 7,573 GiB | 0,427 GiB | 0,924 GiB |
-| `aggressive` | 36 | scartato (OOM all'avvio) | 0 | 5,263 GiB | 2,737 GiB | 0,924 GiB |
+- GPU di generazioni e bandwidth diverse;
+- CPU con prestazioni per core e memoria molto diverse;
+- rapporti CPU/GPU opposti, decisivi per `n_cpu_moe`;
+- driver, processi grafici e VRAM libera differenti;
+- RAM disponibile e pressione di memoria differenti;
+- comportamento diverso fra Linux e Windows.
 
-Fatti rilevanti, tutti verificabili nei log redatti del bundle:
+Perciò `[31, 33]` e `[7.5, 8.5]` possono descrivere capacità nominali, ma non autorizzano a chiamare
+la busta misurata sulla RTX 2060 SUPER «calibrata» su ogni macchina 32/8. Anche CPU e nome GPU nel
+solo campo di provenienza non risolvono questo limite.
 
-- **Il candidato 48 era funzionalmente valido.** Ha completato due avvii, il carico reale e
-  l'intero `benchmark/v1`: warm-up 30,85 tok/s e cinque misure da 256 token
-  (30,03 / 30,18 / 29,41 / 30,24 / 30,25 tok/s, mediana 30,18). Rispetto alla mediana dello spike
-  a `ctx=8192`/`n_cpu_moe=48` (31,52 tok/s, `docs/spike-0/ubuntu-b10011/benchmarks/cuda-coding/`),
-  il passaggio a `ctx=131072` costa circa il 4,3 %. Il candidato è stato scartato **soltanto** dal
-  controllo post-stop descritto in §3, e lo schema `calibration-report/v1` azzera correttamente le
-  misure di un candidato scartato: i numeri sopravvivono solo nei log.
-- **38 e 36 falliscono all'avvio con il contratto attuale** (cache KV a precisione piena,
-  `--mmap`): `historical` non ha allocato un buffer di calcolo da 168,02 MiB, `aggressive` uno da
-  531,00 MiB (`ggml_backend_cuda_buffer_type_alloc_buffer ... cudaMalloc failed: out of memory`).
-  Il picco registrato per 36 (5,263 GiB) è più basso del reale: il polling a 250 ms può non
-  osservare l'istante del picco prima del crash. È un limite noto del campionamento, non un bug.
-- **Il motore stesso suggerisce `--no-mmap`.** Nel log di caricamento di b10011 compare:
-  `tensor overrides to CPU are used with mmap enabled - consider using --no-mmap for better
-  performance`.
-- **La baseline ambiente non è stabile al MiB.** Fra il primo e i successivi candidati la VRAM
-  usata a riposo è passata da 0,885 a 0,924 GiB (≈ 40 MiB): sulla GPU che pilota anche il desktop,
-  compositor e applicazioni grafiche muovono decine di MiB senza alcun carico compute.
-- **Il successo storico di `ctx=131072`/`n_cpu_moe=38` non è direttamente comparabile.** Il
-  comando manuale storico usava `-ctk q8_0 -ctv q8_0 --no-mmap` (e `-hf` invece del `-m`
-  verificato): la cache KV quantizzata e la mappatura memoria cambiano in modo sostanziale le
-  allocazioni. Quella evidenza motiva l'ipotesi di §5, ma non contiene digest, versioni esatte né
-  misure riproducibili: non può entrare nel contratto senza una verifica sulla release appuntata.
+Non vengono quindi introdotte soglie arbitrarie di larghezza o distanza dai bordi come surrogato
+della generalizzazione. Le classi possono al massimo indicizzare seed o evidenza comparabile.
 
-## 3. Problema A — Il controllo di rilascio VRAM scarta candidati sani
+## 3. Audit dell'attuale `calibration/v1`
 
-### Cosa diceva la specifica e cosa faceva il codice prima della correzione
+### 3.1 Parti valide
 
-`IMPLEMENTATION_SPEC.md` §5.6 punto 6 scartava un candidato quando la memoria non era «tornata
-**vicino** alla baseline dopo lo stop». L'implementazione precedente era più severa in tre punti:
+Restano validi e utili:
 
-1. `src/qwen_launcher/_calibration_vram.py:80` preleva **un solo campione**, immediatamente dopo
-   lo stop del processo;
-2. `_calibration_vram.py:116-117` pretende `release_used <= baseline_used` con **tolleranza
-   zero**: un solo MiB sopra la baseline scarta il candidato;
-3. `src/qwen_launcher/_calibration_runner.py:74-75` pretende l'**uguaglianza esatta** della
-   baseline fra gli avvii stabili dello stesso candidato; una deriva di 1 MiB solleva
-   `CalibrationError` che — propagandosi fuori da `_discarded` — **aborta l'intera calibrazione**
-   senza bundle, un esito ancora peggiore dello scarto.
+- processo fresco e stato isolato per ogni prova;
+- carico reale per modo, incluso vision per `vstudio`;
+- polling aggregato VRAM a 250 ms;
+- rilascio VRAM entro 10 s con tolleranza esplicita;
+- rilevamento di processi compute concorrenti;
+- `benchmark/v1` con warm-up escluso e cinque misure;
+- bundle atomico, redazione, manifest e scanner privacy;
+- fallback non ottimizzato quando manca una calibrazione locale valida.
 
-Nel run reale il campione immediato dopo lo stop risultava circa 40 MiB sopra la baseline;
-pochi istanti dopo la GPU era scesa **sotto** la baseline (0,529 GiB usati, osservato
-dall'operatore). Non c'era alcuna perdita persistente: solo rilascio CUDA non ancora
-stabilizzato e rumore del desktop, cioè esattamente il margine che «vicino alla baseline»
-intendeva concedere.
+Le correzioni del primo run su rilascio VRAM e privacy rimangono necessarie e corrette.
 
-### Opzioni considerate
+### 3.2 Limiti che impediscono l'uso pubblico come calibratore generale
 
-| Opzione | Descrizione | Valutazione |
-|---|---|---|
-| A1 | Finestra di stabilizzazione post-stop, tolleranza zero: si ricampiona a 250 ms fino a X secondi e si accetta appena `usata ≤ baseline` | Avrebbe salvato il run del 16 luglio senza introdurre soglie. Resta però fragile alla crescita *legittima* della memoria grafica del desktop durante una prova lunga: se il compositor cresce di 30 MiB, la baseline non viene mai più raggiunta e il candidato sano viene scartato di nuovo. |
-| A2 | Finestra di stabilizzazione + **tolleranza esplicita** fornita dall'operatore (poi fissata dalla policy al Gate) | Copre sia il rilascio lento sia il rumore ambientale. Nessuna soglia inventata: pre-Gate il valore è un parametro esplicito come riserva e avvii (stesso principio dello Step 5A); il Gate approva il valore definitivo da evidenza misurata. Con tolleranza 0 degenera in A1. |
-| A3 | Abbandonare il confronto aggregato e verificare solo che nessun processo compute resti sulla GPU dopo lo stop | Il controllo sui PID compute esiste già (`_calibration_vram.py:107-109`). Da solo però non rileva memoria trattenuta dal driver o leak non attribuiti a processi vivi: perderebbe la difesa che il controllo aggregato fornisce. |
-| A4 | Tolleranza fissa cablata nel codice (es. 64 MiB) | Vietata: sarebbe una soglia inventata dalla memoria dell'autore, contro §5.6 e il principio dello Step 5A. |
+1. **Dominio dei candidati esterno.** L'utente deve conoscere e fornire manualmente
+   `n_cpu_moe`; il programma sceglie solo fra quei valori e non dimostra di avere cercato il dominio
+   rilevante.
+2. **Lista derivata da un solo host.** La scala `48, 44, 42, 40, 39, 38, 37` nasce dal confine di una
+   RTX 2060 SUPER 8 GiB. Può essere utile per ripetere quel caso, non è una policy portabile.
+3. **Contesto e prestazioni erano separati solo nella documentazione.** Il codice accettava contesti
+   diversi nello stesso run; massimizzare tok/s avrebbe favorito normalmente il contesto minore.
+4. **Nessun asse CPU verificato.** A contesto fisso i candidati CPU sono identici; dichiarare una
+   scelta «ottima» sarebbe fittizio finché uno spike non approva parametri CPU realmente variabili.
+5. **RAM non monitorata durante i trial.** Il report registra la disponibilità iniziale, ma non il
+   minimo osservato durante caricamento e benchmark.
+6. **Selezione fragile rispetto al rumore.** La mediana maggiore vince anche per differenze minime;
+   non esiste ancora evidenza per fissare una fascia di equivalenza o un criterio statistico.
+7. **Nessuna attivazione locale.** Il bundle è una bozza di contribuzione: l'utente sostiene il costo
+   della calibrazione ma gli avvii successivi non usano ancora il risultato.
+8. **Matching per capacità precedente.** Prima di questa correzione `profile/v1` applicava una busta
+   condivisa tramite OS, backend e finestre RAM/VRAM senza misurarla sul PC corrente.
 
-### Soluzione scelta: A2
+Questi sono limiti architetturali. Non si correggono cambiando soltanto i bordi delle classi.
 
-1. **Finestra di stabilizzazione**: dopo lo stop, `VramMonitor.finish()` ricampiona a 250 ms per
-   una finestra massima fissa e dichiarata (proposta: **10 secondi**, coerente con i timeout
-   procedurali di stop di §5.9 — 10 s terminate + 5 s kill). Il controllo passa appena un
-   campione soddisfa `usata ≤ baseline + tolleranza`; l'ultimo campione osservato entra
-   nell'evidenza del candidato. La finestra è una costante procedurale del protocollo, come
-   l'intervallo di polling da 250 ms: va ratificata con un emendamento a §5.6.
-2. **Tolleranza esplicita**: la sintassi `--settings` su CUDA diventa
-   `RUNS:MIN_FREE_VRAM_GIB:RELEASE_TOLERANCE_GIB` (o prompt interattivo equivalente); su CPU
-   resta `RUNS`. Nessun default: come per la riserva, il valore è richiesto e `0` è ammesso.
-   Al Calibration Gate Tommaso approva il valore definitivo dall'evidenza (il rumore osservato
-   finora è ±40 MiB) e lo Step 5B lo registra nella policy con un campo dedicato, ad esempio
-   `vram_release_tolerance_gib` accanto a `minimum_free_vram_gib`. L'estensione dello schema
-   `calibration-policy/v1` avviene prima che esista qualunque policy pubblicata, quindi non rompe
-   contenuti distribuiti; va comunque emendata la lista dei campi in §5.3.
-3. **Stessa tolleranza per la deriva fra avvii**: `_combine_vram` confronta le baseline dei
-   diversi avvii con la stessa tolleranza invece dell'uguaglianza esatta, e una deriva oltre
-   soglia **scarta il candidato** con motivo esplicito invece di abortire l'intera calibrazione.
-   L'aborto totale resta riservato ai casi già previsti (carico compute concorrente, driver
-   cambiato, monitor guasto).
-4. **Test**: rilascio lento entro finestra (valido), rilascio oltre finestra (scartato),
-   rilascio entro tolleranza (valido), oltre tolleranza (scartato), deriva fra avvii entro/oltre
-   soglia, tolleranza rifiutata su CPU, sintassi `--settings` vecchia e nuova. Tutto offline con
-   il monitor fake esistente.
+## 4. Interpretazione corretta dell'evidenza esistente
 
-Nota onesta sul caso limite: con una tolleranza approvata T, un leak reale ≤ T diventerebbe
-invisibile al singolo candidato. La difesa resta stratificata: il controllo PID compute continua a
-rilevare processi sopravvissuti e la deriva cumulativa fra candidati successivi resta visibile nei
-campi `vram_baseline_gib` del report.
+Il run del 16 luglio conserva valore diagnostico sulla macchina originale:
 
-## 4. Problema B — Percorsi privati nei campi testuali del report
+| Candidato | `ctx` | `n_cpu_moe` | Evidenza utile |
+|---|---:|---:|---|
+| safe | 131072 | 48 | carico e benchmark completati; falso scarto per rilascio VRAM corretto dopo il run |
+| historical | 131072 | 38 | OOM col contratto allora attivo |
+| aggressive | 131072 | 36 | OOM col contratto allora attivo |
 
-### Evidenza del bundle precedente alla correzione
+Il mini-spike Ubuntu conserva inoltre questi esiti sul contratto motore:
 
-Nel report del bundle i due candidati OOM avevano `discard_reason` del tipo:
+- cache K/V Q8 con mmap: `GO` Ubuntu;
+- Q8 con `--no-mmap`: `NO-GO` Ubuntu;
+- smoke Windows ancora necessario prima di modificare il lock globale.
 
-```text
-OOM: llama-server exited during startup; inspect /home/<utente>/.local/share/qwen-launcher/
-calibrations/.calibration-<id>.tmp-<esadecimale>/.runtime/coding/historical/start-1/logs/...
-```
+Questi fatti possono correggere il contratto Q8 e riprodurre il PC originale. Non approvano una
+policy universale, una classe portabile o una lista di ricerca completa.
 
-Il testo proviene dai messaggi operativi di `_process_health.py:68,79,83` e `process.py:88,195`,
-che per contratto (§5.9) devono mostrare il percorso del log **all'utente su stderr**. Quel
-contratto è corretto e non va toccato; l'errore è ricopiare il messaggio non redatto dentro un
-file condivisibile. La redazione attuale copre soltanto i log copiati
-(`_calibration_bundle.py:_sanitized_log`), non i tre documenti JSON, e `validate --path`
-(`_calibration_validation.py`) controlla schema, manifest, digest e riferimenti ma nessun
-contenuto testuale. Risultato: il bundle è formalmente valido ma viola §5.6 punto 8 e l'attività 8
-dello Step 5A («rimuove dai file condivisibili hostname, username e percorsi assoluti»).
+## 5. Architettura corretta
 
-### Opzioni considerate
+### 5.1 Policy portabile
 
-| Opzione | Descrizione | Valutazione |
-|---|---|---|
-| B1 | Riscrivere nei motivi di scarto i percorsi runtime nel percorso **relativo del log copiato** (es. `logs/coding/historical/run-1.log`) | Strutturale: il riferimento resta utile al revisore del bundle e sparisce l'informazione privata. La corrispondenza sorgente→`run-N.log` esiste già in `_copy_logs`. |
-| B2 | Applicare la redazione `_private_values` a **tutti i campi stringa** dei tre documenti JSON prima della scrittura | Difesa in profondità: copre qualunque testo futuro (nuovi motivi di scarto, messaggi di libreria) senza dipendere dalla disciplina di chi genera il messaggio. |
-| B3 | Estendere `validate_bundle` con uno **scanner privacy**: errore se un file condivisibile contiene i valori privati noti localmente (username, hostname, home, percorsi di modello/motore/staging) o pattern generici di percorso assoluto (`/home/`, `/Users/`, `C:\Users\`, radici drive) | Rende il cancello verificabile: «validate passa» torna a implicare «condivisibile». I pattern generici proteggono anche il revisore che valida un bundle altrui. |
-| B4 | Cambiare i messaggi del process layer per non contenere mai percorsi | Rigettata: degraderebbe l'esperienza interattiva richiesta da §5.9 per risolvere un problema che appartiene al confine del bundle. |
+La policy distribuita deve descrivere il **metodo di ricerca**, non il vincitore di Tommaso. Per ogni
+modello, motore, backend e modo deve fissare soltanto valori verificati e revisionati:
 
-### Soluzione scelta: B1 + B2 + B3 insieme
+- target di contesto, tenuto costante durante un confronto;
+- dominio legale degli assi realmente supportati dal lock;
+- strategia deterministica di screening e verifica;
+- riserve RAM/VRAM e controlli di stabilità;
+- numero di avvii e misure;
+- criterio di selezione e regole di invalidazione.
 
-Non sono alternative ma strati: B1 rende il report *utile e pulito*, B2 protegge dai casi non
-previsti, B3 impedisce la regressione. Test da aggiungere: motivo di scarto con percorso runtime
-→ nel report compare il percorso relativo del log copiato; valore privato iniettato in un campo
-testo → redatto; bundle con percorso assoluto in un campo → `validate --path` fallisce con
-messaggio azionabile; pattern Windows e POSIX. Da correggere anche il caso del log di fallback
-(`_copy_logs`): oggi scrive il `discard_reason` grezzo e lo redige solo alla copia; con B1+B2 il
-testo nasce già pulito.
+Il dominio di `n_cpu_moe` non viene dedotto dai risultati 8 GiB: limite e semantica devono essere
+verificati sul modello e sulla release appuntati. Nessun nuovo flag CPU entra senza spike e lock.
 
-## 5. Problema C — Il contratto motore non copre cache KV Q8 e `--no-mmap`
+### 5.2 Calibrazione locale autorevole
 
-### Perché non si può «semplicemente usare i flag del vecchio script»
+Ogni macchina esegue il protocollo. Il risultato locale contiene almeno modello e digest artefatto,
+release/commit e digest del contratto motore, modo, backend, identità hardware locale stabile,
+busta scelta, risorse minime osservate e benchmark. Il record:
 
-- §5.7 e D-017: il builder emette **soltanto** flag presenti in `verified_flags` ed espande solo i
-  template del `command_contract`; il test flag-lock fallisce per costruzione su ogni flag nuovo.
-- §5.6 punto 3: i candidati di calibrazione variano **soltanto** `n_cpu_moe` (e il contesto
-  dichiarato). La quantizzazione della cache non può essere un asse dei candidati, altrimenti i
-  confronti non sarebbero più a parità di condizioni: è una proprietà fissa del contratto motore
-  (`fixed_args`, che per §5.8 ospita esattamente «template/Jinja/MTP/cache/flash/mmap verificati»).
-- Gerarchia delle fonti (§2): il ricordo di un comando manuale funzionante è un'assunzione
-  dell'esecutore finché non è riverificato sulla release appuntata.
+- è scritto atomicamente in una directory gestita;
+- è usato prima dei seed condivisi;
+- non viene condiviso automaticamente;
+- viene ignorato dopo cambi incompatibili di modello, motore, backend o hardware;
+- non viene usato quando RAM/VRAM libera corrente non copre il fabbisogno misurato più la riserva.
 
-### Cosa sappiamo già (evidenza, non ipotesi)
+La revisione privacy è necessaria per condividere un bundle, non per usare localmente un risultato
+che ha già superato i controlli automatici.
 
-- L'help verificato di b10011 (`docs/spike-0/ubuntu-b10011/{cpu,cuda}-help.txt`, righe 75-90)
-  elenca `-ctk, --cache-type-k` e `-ctv, --cache-type-v` con `q8_0` fra i valori ammessi, e la
-  coppia `--mmap, --no-mmap`. I flag sono quindi *appuntabili*: `help_contract` con
-  `must_list_verified_flags=true` li coprirebbe su entrambi i backend.
-- Il log del run reale contiene il suggerimento del motore a usare `--no-mmap` con gli esperti
-  spostati su CPU (§2).
-- Il comando storico dell'autore usava esattamente `-ctk q8_0 -ctv q8_0 --no-mmap` a
-  `ctx=131072`/`n_cpu_moe=38` sulla stessa macchina, con l'avvertenza di comparabilità di §2.
-- Meccanicamente, una cache K/V `q8_0` occupa circa la metà di una cache f16: a `ctx=131072` il
-  risparmio è dell'ordine dei GiB, cioè proprio la scala dei buffer da 168-531 MiB che oggi
-  mandano in OOM 38 e 36. È un'aspettativa qualitativa da confermare con misure, non un numero da
-  contratto.
+### 5.3 Ruolo dei dati condivisi
 
-### Opzioni considerate
+Report e profili distribuiti sono evidenza di riferimento e possono:
 
-| Opzione | Descrizione | Valutazione |
-|---|---|---|
-| C1 | Status quo (cache f16, `--mmap`) | Rinuncia a VRAM preziosa su una classe hardware da 8 GiB; contraddice il suggerimento del motore stesso e l'evidenza storica. |
-| C2 | Cache come asse dei candidati di calibrazione | Viola §5.6.3, moltiplica la matrice e rompe la comparabilità dei candidati. |
-| C3 | **Mini-spike mirato su b10011, poi aggiornamento del lock** | Unica via conforme: la verifica avviene sulla release appuntata, l'aggiornamento segue `docs/engine-lock.md` e resta una PR dichiarativa separata. |
-| C4 | Doppio contratto (con e senza Q8, scelto a runtime) | Complessità e ambiguità senza requisito dimostrato; i profili non trasportano flag arbitrari. |
+- proporre seed da provare per primi;
+- mostrare risultati osservati su componenti dichiarati;
+- ridurre il costo della ricerca senza eliminarne la verifica locale.
 
-### Soluzione scelta: C3, con questa procedura
+Non possono:
 
-**Mini-spike (manuale, eseguito da Tommaso, evidenza conservata come per lo Spike 0):**
+- diventare automaticamente la busta finale su un altro PC;
+- promettere gli stessi tok/s;
+- usare nearest-match;
+- escludere dalla calibrazione hardware supportato solo perché fuori dalla classe 32/8.
 
-1. Stessa release/commit b10011 già installata; stesso modello appuntato risolto con `-m`.
-2. Tre configurazioni a confronto, a parità di tutto il resto del contratto attuale:
-   (a) contratto attuale (f16 + `--mmap`); (b) `--cache-type-k q8_0 --cache-type-v q8_0` +
-   `--mmap`; (c) `--cache-type-k q8_0 --cache-type-v q8_0` + `--no-mmap`.
-3. Punti di misura minimi per configurazione: `ctx=131072` con `n_cpu_moe=48` e `n_cpu_moe=38`,
-   modo `coding`; più uno smoke `studio`/`vstudio` (UI e vision con mmproj) sulla configurazione
-   candidata; più il backend CPU per decidere l'ambito del cambio (vedi sotto).
-4. Grandezze registrate: avvio riuscito/OOM, tempo di caricamento, RAM totale/disponibile prima e
-   durante (`--no-mmap` sposta il modello da page cache a memoria anonima: su 32 GiB va misurato,
-   non presunto), VRAM picco/minima libera, salute, MTP (`draft_n`/`draft_n_accepted`), risposta
-   vision, cinque misure `benchmark/v1` e stabilità dello stop.
-5. Criterio GO: la configurazione candidata non regredisce su salute, MTP, vision e stabilità, non
-   viola il gate RAM di §5.5, e libera VRAM o migliora tok/s in modo misurato. Qualunque
-   divergenza ferma l'adozione (§2: una contraddizione non si risolve silenziosamente).
+### 5.4 Ricerca e costo
 
-**Esito Ubuntu del 17 luglio 2026:** `GO` per cache K/V Q8 mantenendo `--mmap`; `NO-GO` per
-`--no-mmap`. A `ctx=131072`, Q8+mmap ha aumentato la mediana coding e liberato circa 1,2 GiB di VRAM
-sia a 48 sia a 38; salute, MTP, UI, vision, benchmark, CPU smoke e stop sono passati. No-mmap ha
-richiesto 49–82 secondi di caricamento contro circa 2,2, ha ridotto la RAM disponibile a circa
-8,4–8,7 GiB, ha peggiorato la mediana e non è rientrato entro 0,125 GiB dalla baseline dopo 10 s.
-Evidenza: `docs/mini-spike-kv-q8-ubuntu.md` e directory omonima. La qualità semantica non è misurata
-da `benchmark/v1` e non viene dichiarata invariata.
+`calibration/v1` esegue il benchmark completo su ogni candidato valido. Una policy sufficientemente
+ampia sarebbe lenta. Il percorso pubblico richiede quindi un protocollo successivo, versionato, con:
 
-**Aggiornamento del lock (solo dopo GO anche dello smoke Windows, PR dichiarativa separata dai fix core):**
+1. screening locale economico dell'intero dominio approvato;
+2. scelta deterministica di finalisti senza assumere che memoria o prestazioni siano perfettamente
+   monotone;
+3. avvii stabili e `benchmark/v1` completo sui finalisti;
+4. selezione soltanto fra candidati allo stesso contesto;
+5. ripetizione separata per ciascun modo.
 
-- `verified_flags` += `--cache-type-k`, `--cache-type-v`, `--no-mmap` (forme lunghe, come
-  preferito da §5.7; le forme corte `-ctk`/`-ctv` restano equivalenti ma il lock ne appunta una);
-- `command_contract.fixed_args` conserva `--mmap`; `backend_args.cuda` aggiunge
-  `--cache-type-k q8_0 --cache-type-v q8_0`;
-- il ramo CPU resta invariato: lo smoke ne conferma la compatibilità, ma il beneficio dimostrato è
-  specificamente la VRAM CUDA e non esiste evidenza comparativa per cambiare il contratto CPU;
-- il test flag-lock esistente copre automaticamente i flag nuovi; si aggiornano i test del builder
-  che asseriscono gli argomenti attesi e l'evidenza in `docs/` secondo `docs/engine-lock.md`
-  (punti 6-9: matrice sui due OS prima di toccare il lock).
+Numero di finalisti, misure di screening e trattamento del rumore devono arrivare da uno spike; non
+vengono inventati in questo documento.
 
-**Fuori ambito dichiarato:** i flag draft `-ctkd`/`-ctvd` (cache del modello draft MTP) esistono
-nell'help ma non vengono toccati senza una necessità dimostrata dal mini-spike; nessun altro flag
-viene aggiunto «per completezza» (§5.12). La perdita qualitativa della cache Q8 è plausibilmente
-minima ma non è quantificata da questa proposta: se il Gate la vorrà misurare, va definito un
-protocollo di qualità separato, non improvvisato dentro `benchmark/v1`.
+## 6. Correzioni core applicabili senza inventare evidenza
 
-## 6. Problema D — Strategia di ricerca di `n_cpu_moe` troppo grossolana
+L'audit autorizza subito soltanto invarianti dimostrabili:
 
-### Vincoli normativi (e perché sono sensati)
+- un run confronta un solo contesto;
+- `n_cpu_moe` è unico e ordinato dal più prudente al più aggressivo;
+- su CPU non si finge una ricerca con candidati identici;
+- `validate` ricostruisce il vincitore di ogni report accettato;
+- `validate` ricontrolla riserva, rilascio e coerenza picco/minimo libero VRAM;
+- un report accettato richiede policy e classe nominate e la misura originale deve appartenervi;
+- il profilo deve copiare esattamente classe approvata e OS misurato;
+- un profilo v1 condiviso resta un seed e non viene più applicato direttamente al `LaunchPlan`.
 
-§5.6 punto 3: si parte dalla baseline più prudente, si varia solo `n_cpu_moe`, **niente ricerca
-binaria, niente assunzione di monotonicità, niente candidati generati implicitamente**. Il run
-reale mostra perché: 36 è fallito allocando 531 MiB dove 38 ne chiedeva 168 — le allocazioni
-cambiano forma vicino al confine (frammentazione, buffer temporanei), quindi «40 fallisce»
-non dimostra che 39 fallisca né che 41 riesca. Una bisezione convergerebbe con fiducia
-ingiustificata su un confine che non è una funzione monotona pulita.
+Questi controlli impediscono report incoerenti, ma **non rendono portabile una busta**. La parte
+mancante richiede il nuovo protocollo locale descritto sopra.
 
-### Opzioni considerate
+## 7. Gate corretto
 
-Costo per candidato con la procedura attuale: ogni candidato *avviabile* paga
-`avvii_stabili × (caricamento modello + carico del modo)` più un `benchmark/v1` completo
-(warm-up + 5×256 token) sull'ultimo avvio; un candidato OOM costa un solo caricamento fallito,
-cioè poco. Il costo totale cresce quindi soprattutto col numero di candidati **validi** dichiarati.
+Il precedente invito a ripetere subito la lista 8 GiB viene ritirato come percorso verso una policy
+pubblica. L'ordine corretto è:
 
-| Opzione | Descrizione | Valutazione |
-|---|---|---|
-| S1 | Salti grossi (48 → 38 → 36, come il primo run) | Nessuna precisione: fra 48 e 38 restano dieci valori mai osservati; è ciò che ha motivato questa sezione. |
-| S2 | Scala uniforme a passo 1 (48, 47, …, 36) | Massima precisione, conforme, ma paga il benchmark completo anche su una lunga coda di candidati prudenti tutti validi e tutti prevedibilmente più lenti del migliore. |
-| S3 | **Scala dichiarata asimmetrica informata dal mini-spike**: passo 2 nella zona sicura, passo 1 attorno al confine indicato dalle misure del mini-spike | Stessa conformità di S2 (lista esplicita, ordinata, provata per intero), precisione ±1 dove serve, molti meno benchmark sprecati lontano dal confine. |
-| S4 | Due fasi: screening dichiarato (1 avvio + carico + VRAM, senza benchmark) su scala fitta, poi avvii stabili + benchmark solo sui migliori K dichiarati | La più efficiente, ma cambia il protocollo: §5.6 punto 7 impone il benchmark a ogni candidato sopravvissuto e `calibration-report/v1` non ha un esito «sondato senza benchmark». Richiederebbe `calibration/v2` + `report/v2` + approvazione: non per questo Gate. |
-| S5 | Bisezione adattiva sull'intervallo | Vietata da §5.6.3 e tecnicamente fragile per la non-monotonicità osservata. |
+1. completare lo smoke Windows Q8+mmap, che resta evidenza indipendente sul lock;
+2. verificare sul modello/engine appuntati il dominio legale degli assi di calibrazione;
+3. definire con evidenza screening, finalisti, monitoraggio RAM e criterio robusto;
+4. implementare e testare il protocollo versionato per la ricerca locale;
+5. implementare record locale, compatibilità, headroom e invalidazione;
+6. eseguire il gate sulla macchina di Tommaso come primo caso reale, senza attribuirgli portabilità;
+7. provare almeno casi hardware eterogenei o fixture che ne riproducano confini differenti;
+8. aprire lo Step 5B solo dopo almeno un risultato locale accettato e dopo aver dimostrato che un PC
+   fuori dalla classe originaria può eseguire la propria ricerca.
 
-### Soluzione scelta: S3 ora, S4 registrata come evoluzione futura
-
-Il «modo intelligente» conforme non è rendere adattiva l'esecuzione, ma **spendere bene due punti
-di misura prima di dichiarare la lista**: il mini-spike di §5 misura comunque `48` e `38` con la
-cache Q8, e quei due punti (picco VRAM e margine osservati) dicono dove infittire la scala. La
-calibrazione resta un elenco esplicito, ordinato dal più prudente, provato per intero e
-riprodotto identico da chiunque.
-
-Esempio concreto per `coding` (da approvare al momento, **non** è una policy):
-
-- se il mini-spike mostra `38` avviabile con margine sulla riserva:
-  `48, 44, 42, 40, 39, 38, 37, 36` — passo 2 nella zona sicura, passo 1 attorno e sotto il
-  confine storico, senza fermarsi al primo fallimento;
-- se `38` resta OOM anche con Q8: `48, 46, 44, 43, 42, 41, 40, 39, 38` — infittita più in alto.
-
-Regole di contorno proposte:
-
-- **un solo `ctx` per run di calibrazione per modo** (oggi 131072): la regola di selezione
-  massimizza la mediana tok/s e non pesa il contesto, quindi mischiare `ctx` diversi nella stessa
-  lista farebbe vincere un contesto più piccolo appena marginalmente più veloce. Un eventuale
-  ripiego di contesto (98304, 65536, …) è un run dichiarato separato, non un candidato in più;
-- **liste per modo, non uniche**: `vstudio` carica anche il mmproj (≈ 0,9 GiB di artefatto) e ha
-  un confine più prudente di `coding`; la policy per-modo dello schema lo consente già;
-- l'ordine dichiarato resta dal più prudente al più aggressivo e **tutti** i candidati vengono
-  provati anche dopo un fallimento intermedio, come oggi: è ciò che rende il report una mappa del
-  confine invece di un'estrapolazione.
-
-S4 (screening + benchmark selettivo) resta la strada giusta quando la calibrazione pubblica
-diventerà un'operazione frequente su hardware altrui: va registrata come proposta per
-`calibration/v2` nel Registro delle decisioni, non improvvisata ora.
-
-## 7. Nota minore — esito «tutti scartati» ed exit code
-
-L'exit 0 del run era corretto per §5.11: la procedura è riuscita e il bundle documenta
-legittimamente anche solo scarti. L'equivoco era di presentazione: la CLI mostra i file ma non
-dichiara l'esito. Proposta (dentro la PR core di §8): un riepilogo finale esplicito per modo —
-candidato proposto oppure «nessun candidato valido: il bundle documenta solo scarti» — senza
-cambiare gli exit code contrattuali.
-
-## 8. Ordine di esecuzione proposto
-
-1. **Correzioni core Step 5A — implementate:** §3 (finestra + tolleranza esplicita, deriva fra
-   avvii come scarto), §4 (B1+B2+B3) e §7 (riepilogo), con schema, test, specifica e
-   `docs/calibration.md` aggiornati. La verifica locale completa è registrata nel commit relativo;
-   la matrice CI Ubuntu/Windows resta da eseguire dopo la pubblicazione autorizzata del commit.
-2. **Mini-spike cache Q8 / no-mmap su b10011:** Ubuntu completato con GO Q8+mmap e NO-GO
-   no-mmap; smoke Windows CUDA 13.3 ancora obbligatorio.
-3. **PR dichiarativa `engine.lock`** (solo dopo GO Windows): flag verificati, ramo CUDA, evidenza e
-   `docs/engine-lock.md` aggiornati; mai nella stessa PR dei fix core.
-4. **Ricalibrazione:** `calibrate --mode coding` con la scala di §6 e i parametri espliciti
-   (riserva e tolleranza inclusi); poi `studio` e `vstudio` con le loro liste.
-5. **Calibration Gate 0.1:** Tommaso approva o rifiuta riserva, tolleranza di rilascio, finestre,
-   liste candidati, contesti e selezioni per OS/modo. Solo con `CALIBRATION-ACCEPTED` si apre lo
-   Step 5B (policy, campo `vram_release_tolerance_gib`, profili iniziali).
-
-Windows ripete i passi 2 e 4 per conto proprio: nessun risultato Linux viene riusato come
-evidenza Windows (§ Step 5B, punto 3).
-
-## 9. Decisioni riassuntive
-
-| Problema | Scelta | Motivo in una riga |
-|---|---|---|
-| A — rilascio VRAM | **implementata:** finestra 10 s a 250 ms + tolleranza esplicita (0 ammesso), stessa soglia per la deriva fra avvii, deriva = scarto non aborto | rispetta «vicino alla baseline» senza soglie inventate e senza perdere la difesa anti-leak |
-| B — privacy report | **implementata:** percorsi relativi nei motivi + redazione di tutti i campi stringa + scanner privacy in `validate --path` | tre strati: report utile, generazione robusta, cancello verificabile |
-| C — cache Q8 / mmap | GO Ubuntu per `--cache-type-k q8_0 --cache-type-v q8_0` nel ramo CUDA con `--mmap`; NO-GO `--no-mmap`; Windows pendente | i flag sono proprietà del contratto motore e il lock globale richiede evidenza sui due OS |
-| D — strategia candidati | scala dichiarata asimmetrica (passo 1 al confine) informata dal mini-spike; un `ctx` per run; liste per modo; `calibration/v2` per lo screening futuro | precisione ±1 dove conta, piena conformità a §5.6.3, costo controllato |
+Fino ad allora la baseline verificata resta il comportamento sicuro. Non viene pubblicata la classe
+`[31, 33]` / `[7.5, 8.5]` come soluzione al problema di generalizzazione.

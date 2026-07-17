@@ -102,16 +102,16 @@ def doctor() -> None:
     config = _load_doctor_config()
     hardware = _detect_for_doctor()
     validation = validate_resources()
-    compatible_profiles = 0
+    shared_seeds = 0
     if not validation.errors:
         catalog = load_catalog()
-        compatible_profiles = sum(profile.is_engine_compatible for profile in catalog.profiles)
+        shared_seeds = sum(profile.is_engine_compatible for profile in catalog.profiles)
     directories = (config_dir(), data_dir(), cache_dir(), state_dir())
     managed_engine = engine_status()
     data = DoctorData(
         config,
         hardware,
-        compatible_profiles,
+        shared_seeds,
         package_version(),
         directories,
         managed_engine,
@@ -119,9 +119,8 @@ def doctor() -> None:
     _stdout.print(build_doctor_table(data))
     for warning in hardware.warnings:
         _stdout.print(f"[yellow]WARNING[/yellow] {warning}")
-    if compatible_profiles == 0:
-        message = "No calibrated profile is installed; this is expected before Step 5B."
-        _stdout.print(f"[yellow]WARNING[/yellow] {message}")
+    message = "No local calibration record is installed; shared profiles are reference-only."
+    _stdout.print(f"[yellow]WARNING[/yellow] {message}")
     for difference in managed_engine.differences:
         _stdout.print(f"[yellow]Engine:[/yellow] {difference}")
     show_validation(validation, _stdout, _stderr)
@@ -179,7 +178,7 @@ def calibrate(
         typer.Option("--settings", help="Explicit RUNS[:MIN_FREE_GIB:RELEASE_TOLERANCE_GIB]."),
     ] = None,
 ) -> None:
-    """Compare explicit candidates and generate a local unaccepted calibration/v1 bundle."""
+    """Run gate-only calibration/v1 and generate a local unaccepted evidence bundle."""
     options = CalibrationCliInput(mode, tuple(candidate or ()), settings)
     run_calibrate(options, CalibrationCliOutput(_stdout, _stderr))
 

@@ -9,8 +9,10 @@ alla volta. Prima di una modifica:
 4. non usare rete nei test;
 5. non modificare configurazione utente o cache Hugging Face.
 
-Una pull request modifica **contenuto dichiarativo oppure core, mai entrambi**. I profili devono
-contenere misure reali raccolte con il protocollo e la release del lock.
+Una pull request modifica **contenuto dichiarativo oppure core, mai entrambi**. I report devono
+contenere misure reali raccolte con il protocollo e la release del lock. Finché l'audit di
+portabilità dello Step 5A è aperto non si accettano profili di produzione: una misura su un host non
+può essere trasformata in una busta finale per altri PC usando soltanto classi RAM/VRAM.
 
 ## Revisione delle pull request
 

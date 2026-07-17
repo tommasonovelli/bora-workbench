@@ -6,6 +6,7 @@ from typing import cast
 
 from qwen_launcher._validation_policy import validate_policies, validate_policy_links
 from qwen_launcher._validation_report import validate_reports
+from qwen_launcher._validation_selection import validate_report_selections
 from qwen_launcher.validation import Document, ValidationIssue
 
 
@@ -35,4 +36,5 @@ def validate_calibration(documents: tuple[Document, ...]) -> list[ValidationIssu
     issues.extend(validate_policies(documents, mode_ids))
     issues.extend(validate_reports(documents, mode_ids))
     issues.extend(validate_policy_links(documents))
+    issues.extend(validate_report_selections(documents))
     return issues

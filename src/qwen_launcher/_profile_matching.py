@@ -27,7 +27,7 @@ def _contains(memory_range: GibRange, value: float) -> bool:
 
 
 def _profile_applies(profile: Profile, request: LaunchRequest, hardware: HardwareInfo) -> bool:
-    """Require exact identity, engine, mode, backend, OS, RAM, and VRAM compatibility."""
+    """Require exact compatibility before considering a shared profile as a search seed."""
     if not profile.is_engine_compatible or profile.model != request.config.model:
         return False
     if profile.match.backend != hardware.backend or profile.envelope_for(request.mode_id) is None:
@@ -62,7 +62,7 @@ def _sort_key(profile: Profile, hardware: HardwareInfo) -> tuple[float, float, i
 def _select_profile(
     request: LaunchRequest, catalog: Catalog, hardware: HardwareInfo
 ) -> tuple[Profile | None, tuple[str, ...]]:
-    """Select the most specific applicable profile and diagnose an id-only tie."""
+    """Select the most specific shared seed and diagnose an id-only tie."""
     matches = [
         profile for profile in catalog.profiles if _profile_applies(profile, request, hardware)
     ]
@@ -102,36 +102,35 @@ def _fallback(request: LaunchRequest, hardware: HardwareInfo) -> tuple[Envelope,
     """Return the verified spike baseline while making its uncalibrated status explicit."""
     n_cpu_moe = _FALLBACK_CUDA_N_CPU_MOE if hardware.backend == "cuda" else None
     if request.config.model == DEFAULT_MODEL:
-        warning = "No calibrated profile matched; using the verified, non-optimized baseline."
+        warning = "No local calibration record matched; using the non-optimized baseline."
     else:
         warning = (
-            "This model has no calibrated profile; using the default model's baseline without "
-            "performance or compatibility guarantees."
+            "This model has no local calibration record; using the default model's baseline "
+            "without performance or compatibility guarantees."
         )
     return Envelope(_FALLBACK_CTX, n_cpu_moe, None), (warning,)
 
 
 def build_plan(request: LaunchRequest, catalog: Catalog, hardware: HardwareInfo) -> LaunchPlan:
-    """Fuse one valid mode with an exact profile or the declared fallback envelope."""
+    """Use the baseline because D-034 forbids treating a shared seed as locally calibrated."""
     mode = catalog.mode(request.mode_id)
     if mode is None:
         valid = ", ".join(item.id for item in catalog.modes)
         raise PlanError(f"unknown mode {request.mode_id!r}; valid modes: {valid}")
-    profile, warnings = _select_profile(request, catalog, hardware)
-    if profile is None:
-        envelope, fallback_warnings = _fallback(request, hardware)
-        warnings += fallback_warnings
-    else:
-        envelope = profile.envelope_for(request.mode_id)
-        if envelope is None:  # Defensive: _profile_applies already excludes this case.
-            raise PlanError(f"profile {profile.id!r} does not cover mode {request.mode_id!r}")
+    seed, warnings = _select_profile(request, catalog, hardware)
+    envelope, fallback_warnings = _fallback(request, hardware)
+    warnings += fallback_warnings
+    if seed is not None:
+        warnings += (
+            f"Shared profile {seed.id!r} is reference-only; local calibration is required.",
+        )
     return LaunchPlan(
         mode,
         request.config.model,
         request.model_path,
         request.mmproj_path,
         request.config.llama_port,
-        None if profile is None else profile.id,
+        None,
         envelope.ctx,
         envelope.n_cpu_moe,
         hardware.backend,

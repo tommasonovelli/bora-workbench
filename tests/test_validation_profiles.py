@@ -79,6 +79,21 @@ def test_profile_model_and_hardware_must_match_report(tmp_path) -> None:
     assert "$.match.ram_gib" in paths
 
 
+def test_profile_must_copy_policy_class_and_measured_os_exactly(tmp_path) -> None:
+    """Prevent profile windows from being widened beyond their accepted evidence provenance."""
+    files = build_valid_content(tmp_path)
+    profile = read_json(files.profile)
+    profile["match"]["vram_gib"] = [6, 10]  # type: ignore[index]
+    profile["match"]["os"] = ["linux", "windows"]  # type: ignore[index]
+    write_json(files.profile, profile)
+
+    result = validate_resources(files.root)
+
+    messages = {issue.message for issue in result.errors}
+    assert "differs from the report's approved policy class" in messages
+    assert "must contain only the operating system measured by the report" in messages
+
+
 def test_unaccepted_report_cannot_calibrate_profile(tmp_path) -> None:
     """Reject a reviewed report until its decision and mode selection are accepted."""
     files = build_valid_content(tmp_path)

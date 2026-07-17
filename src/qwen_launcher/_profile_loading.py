@@ -61,7 +61,7 @@ def _mode(file: Traversable) -> Mode:
 
 
 def _profile(file: Traversable, engine_release: str) -> Profile:
-    """Construct a runtime profile and mark lock-release divergence."""
+    """Construct a shared seed and mark lock-release divergence."""
     raw = _read_object(file)
     match = cast(JsonObject, raw["match"])
     raw_modes = cast(JsonObject, raw["modes"])

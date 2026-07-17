@@ -18,7 +18,7 @@ class DoctorData:
 
     config: Config
     hardware: HardwareInfo
-    profiles: int
+    shared_seeds: int
     version: str
     directories: tuple[Path, Path, Path, Path]
     engine: EngineStatus
@@ -55,7 +55,7 @@ def build_doctor_table(data: DoctorData) -> Table:
         ("GPU", _gpu_label(hardware)),
         ("VRAM total", _gib(hardware.vram_total_gib)),
         ("VRAM free", _gib(hardware.vram_free_gib)),
-        ("Calibrated profiles", str(data.profiles) if data.profiles else "none"),
+        ("Shared profile seeds", str(data.shared_seeds) if data.shared_seeds else "none"),
         ("Managed engine", "active" if data.engine.is_active else "not installed"),
         ("Engine release", data.engine.release or "none"),
         ("Engine backend", data.engine.backend or "none"),

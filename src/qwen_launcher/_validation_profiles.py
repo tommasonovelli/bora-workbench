@@ -6,6 +6,7 @@ import hashlib
 from itertools import combinations
 from typing import cast
 
+from qwen_launcher._validation_profile_class import validate_profile_classes
 from qwen_launcher.validation import Document, JsonObject, ValidationIssue
 
 
@@ -189,4 +190,5 @@ def validate_profiles(documents: tuple[Document, ...], engine: JsonObject) -> li
             issues.append(
                 _error(right, "$.match", f"overlaps profile {cast(str, left.data['id'])!r}")
             )
+    issues.extend(validate_profile_classes(documents))
     return issues

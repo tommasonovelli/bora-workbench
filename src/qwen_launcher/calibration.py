@@ -100,15 +100,30 @@ def _validate_candidate(candidate: Candidate, backend: Backend) -> None:
         raise CalibrationError(f"candidate {candidate.id!r} forbids n_cpu_moe on CPU")
 
 
-def validate_settings(settings: CalibrationSettings, backend: Backend) -> None:
-    """Require complete explicit Step 5A settings and preserve candidate order."""
-    if not settings.candidates:
-        raise CalibrationError("at least one explicit candidate is required without a policy")
-    ids = [candidate.id for candidate in settings.candidates]
+def _validate_candidate_set(candidates: tuple[Candidate, ...], backend: Backend) -> None:
+    """Enforce the comparable candidate set required by specification section 5.6."""
+    ids = [candidate.id for candidate in candidates]
     if len(ids) != len(set(ids)):
         raise CalibrationError("candidate ids must be unique")
-    for candidate in settings.candidates:
+    for candidate in candidates:
         _validate_candidate(candidate, backend)
+    if len({candidate.ctx for candidate in candidates}) != 1:
+        raise CalibrationError("all candidates in one calibration run must use the same context")
+    if backend == "cpu" and len(candidates) > 1:
+        raise CalibrationError("CPU calibration has no varying envelope at a fixed context")
+    if backend == "cuda":
+        values = [cast(int, candidate.n_cpu_moe) for candidate in candidates]
+        if len(values) != len(set(values)):
+            raise CalibrationError("CUDA candidates must use unique n_cpu_moe values")
+        if values != sorted(values, reverse=True):
+            raise CalibrationError("CUDA candidates must be ordered from prudent to aggressive")
+
+
+def validate_settings(settings: CalibrationSettings, backend: Backend) -> None:
+    """Require complete explicit Step 5A settings without comparing unlike contexts."""
+    if not settings.candidates:
+        raise CalibrationError("at least one explicit candidate is required without a policy")
+    _validate_candidate_set(settings.candidates, backend)
     if settings.stable_start_runs < 1:
         raise CalibrationError("stable start runs must be at least 1")
     reserve = settings.minimum_free_vram_gib

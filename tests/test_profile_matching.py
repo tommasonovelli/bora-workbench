@@ -1,5 +1,6 @@
-"""Tests for exact profile matching, fallback, memory gates, and launch-plan identity."""
+"""Tests for seed matching, fallback, memory gates, and launch-plan identity."""
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -42,17 +43,21 @@ def request(model: str, mode: str = "coding") -> LaunchRequest:
 
 
 @pytest.mark.parametrize("backend", ["cuda", "cpu"])
-def test_exact_profile_matches_accepted_report(tmp_path, backend) -> None:
-    """Select the calibrated CUDA or CPU envelope only inside its exact class."""
+def test_shared_profile_is_seed_only_even_inside_its_exact_class(tmp_path, backend) -> None:
+    """Never transfer a measured envelope to another machine without local calibration."""
     files = build_valid_content(tmp_path, backend=backend)
-    plan = build_launch_plan(
-        request("owner/model:file"), load_catalog(files.root), hardware(backend)
+    detected = hardware(backend)
+    detected = replace(
+        detected,
+        cpu_name="Different CPU",
+        gpu_name="Different GPU" if backend == "cuda" else None,
     )
+    plan = build_launch_plan(request("owner/model:file"), load_catalog(files.root), detected)
 
-    assert plan.profile_id == "synthetic-profile"
+    assert plan.profile_id is None
     assert plan.ctx == 8192
     assert plan.n_cpu_moe == (48 if backend == "cuda" else None)
-    assert plan.warnings == ()
+    assert any("reference-only" in warning for warning in plan.warnings)
 
 
 def test_empty_catalog_uses_declared_default_baseline() -> None:
@@ -73,7 +78,7 @@ def test_outside_profile_class_never_uses_nearest_match(tmp_path) -> None:
     )
 
     assert plan.profile_id is None
-    assert "no calibrated profile" in plan.warnings[0].casefold()
+    assert "no local calibration record" in plan.warnings[0].casefold()
 
 
 def test_different_model_gets_strengthened_fallback_warning() -> None:

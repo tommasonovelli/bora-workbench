@@ -93,6 +93,9 @@ def _show_preflight(
 ) -> None:
     """Show exact workload, risk, evidence location, and detected baseline before confirmation."""
     console.print("[bold]Calibration preflight[/bold]")
+    console.print(
+        "[yellow]calibration/v1 is gate-only and cannot create a portable profile.[/yellow]"
+    )
     console.print(f"Modes: {', '.join(mode.id for mode in target.modes)}")
     console.print(f"Backend: {target.hardware.backend}; engine: {target.lock['release']}")
     console.print(

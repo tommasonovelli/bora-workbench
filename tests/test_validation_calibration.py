@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from qwen_launcher.validation import validate_resources
+from tests.calibration_fixtures import valid_policy
 from tests.content_fixtures import (
     build_valid_content,
     copy_resource_root,
@@ -10,33 +11,6 @@ from tests.content_fixtures import (
     refresh_profile_digest,
     write_json,
 )
-
-
-def valid_policy(backend: str = "cuda") -> dict[str, object]:
-    """Build one synthetic policy without publishing calibration content."""
-    candidate: dict[str, object] = {"id": "safe", "ctx": 8192}
-    policy: dict[str, object] = {
-        "id": "synthetic-policy",
-        "model": "owner/model:file",
-        "engine": "b10011",
-        "backend": backend,
-        "os": ["linux"],
-        "stable_start_runs": 2,
-        "modes": {"coding": {"candidates": [candidate]}},
-        "hardware_classes": [{"id": "class-one", "ram_gib": [31, 33], "vram_gib": [7, 9]}],
-    }
-    if backend == "cuda":
-        candidate["n_cpu_moe"] = 48
-        policy["minimum_calibration_vram_gib"] = 8
-        policy["minimum_free_vram_gib"] = 0.5
-        policy["vram_release_tolerance_gib"] = 0.125
-    return {
-        "schema": "calibration-policy/v1",
-        "benchmark_protocol": "benchmark/v1",
-        "gpu_poll_interval_ms": 250,
-        "gpu_release_stabilization_ms": 10000,
-        "policies": [policy],
-    }
 
 
 def test_valid_cpu_report_and_profile_use_null_gpu_fields(tmp_path) -> None:
@@ -104,12 +78,7 @@ def test_policy_and_report_reject_unknown_modes(tmp_path) -> None:
 def test_named_report_policy_must_resolve_and_match(tmp_path) -> None:
     """Validate a non-null report policy reference and reject an unknown replacement."""
     files = build_valid_content(tmp_path)
-    write_json(files.root / "content/calibration-policy.json", valid_policy())
     report = read_json(files.report)
-    report["policy"]["id"] = "synthetic-policy"  # type: ignore[index]
-    report["hardware_class"] = "class-one"
-    write_json(files.report, report)
-    refresh_profile_digest(files)
 
     assert validate_resources(files.root).errors == ()
 
@@ -148,6 +117,64 @@ def test_report_candidate_order_must_match_policy_snapshot(tmp_path) -> None:
     result = validate_resources(files.root)
 
     assert any("order differs" in issue.message for issue in result.errors)
+
+
+def test_accepted_report_requires_policy_and_deterministic_winner(tmp_path) -> None:
+    """Reject ungoverned acceptance and a valid candidate that loses the declared selection rule."""
+    files = build_valid_content(tmp_path)
+    report = read_json(files.report)
+    report["policy"]["id"] = None  # type: ignore[index]
+    write_json(files.report, report)
+    refresh_profile_digest(files)
+    result = validate_resources(files.root)
+    assert any("approved policy" in issue.message for issue in result.errors)
+
+    report["policy"]["id"] = "synthetic-policy"  # type: ignore[index]
+    candidate = report["modes"]["coding"]["candidates"][0].copy()  # type: ignore[index]
+    candidate.update({"id": "slower", "n_cpu_moe": 47, "measured_tok_s": [1, 1, 1, 1, 1]})
+    candidate["tok_s"] = {"min": 1, "median": 1, "max": 1}
+    report["modes"]["coding"]["candidates"].append(candidate)  # type: ignore[index]
+    report["modes"]["coding"]["selected_candidate_id"] = "slower"  # type: ignore[index]
+    snapshot = {"mode": "coding", "id": "slower", "ctx": 8192, "n_cpu_moe": 47}
+    report["policy"]["candidates"].append(snapshot)  # type: ignore[index]
+    policy = valid_policy()
+    mode = policy["policies"][0]["modes"]["coding"]  # type: ignore[index]
+    mode["candidates"].append({"id": "slower", "ctx": 8192, "n_cpu_moe": 47})
+    write_json(files.root / "content/calibration-policy.json", policy)
+    write_json(files.report, report)
+    refresh_profile_digest(files)
+
+    result = validate_resources(files.root)
+    assert any("deterministic selection rule" in issue.message for issue in result.errors)
+
+
+def test_valid_cuda_candidate_must_reproduce_resource_constraints(tmp_path) -> None:
+    """Reject accepted candidate evidence below reserve or above post-stop release tolerance."""
+    files = build_valid_content(tmp_path)
+    report = read_json(files.report)
+    candidate = report["modes"]["coding"]["candidates"][0]  # type: ignore[index]
+    candidate["vram_min_free_gib"] = 0.25
+    candidate["vram_peak_gib"] = 7.75
+    candidate["vram_release_used_gib"] = 1.2
+    write_json(files.report, report)
+    refresh_profile_digest(files)
+
+    result = validate_resources(files.root)
+    messages = {issue.message for issue in result.errors}
+    assert "violates policy reserve" in messages
+    assert "exceeds release tolerance" in messages
+
+
+def test_named_policy_class_must_contain_calibration_host(tmp_path) -> None:
+    """Prevent a report from assigning measured hardware to an unrelated nominal class."""
+    files = build_valid_content(tmp_path)
+    report = read_json(files.report)
+    report["hardware"]["ram_total_gib"] = 64  # type: ignore[index]
+    write_json(files.report, report)
+    refresh_profile_digest(files)
+
+    result = validate_resources(files.root)
+    assert any("outside the named policy class" in issue.message for issue in result.errors)
 
 
 def test_report_paths_must_be_bundle_relative(tmp_path) -> None:

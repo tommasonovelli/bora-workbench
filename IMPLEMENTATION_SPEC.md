@@ -1,6 +1,6 @@
-# qwen-launcher — Specifica centrale di implementazione (v3.3)
+# qwen-launcher — Specifica centrale di implementazione (v3.4)
 
-## 0. Tracker di avanzamento — aggiornato al 16 luglio 2026
+## 0. Tracker di avanzamento — aggiornato al 17 luglio 2026
 
 > Questo blocco registra lo stato reale del repository. Questo è il documento normativo
 > `IMPLEMENTATION_SPEC.md` alla radice, unica copia normativa nel repository come previsto dallo
@@ -25,11 +25,12 @@
 - [x] **Step 4 — Asset lock e attivazione atomica del motore.**
 - [x] **Step 5 — `studio` e `vstudio`:** implementazione, collaudi reali Ubuntu/Windows e matrice CI
   multipiattaforma conclusi.
-- [~] **Step 5A — Calibrazione assistita:** core iniziale e precedente matrice CI completati;
-  correzioni dal primo run reale implementate e verificate localmente, nuova matrice CI pendente.
-- [~] **Calibration Gate / Step 5B — Prima calibrazione e profili iniziali:** primo run Linux non
-  accettato; mini-spike Ubuntu GO per Q8+mmap e NO-GO per no-mmap; smoke Windows, lock e nuova
-  calibrazione ancora obbligatori.
+- [~] **Step 5A — Calibrazione assistita:** `calibration/v1`, bundle e correzioni del primo run sono
+  implementati, ma l'audit di portabilità ha riaperto lo step: il protocollo esplicito è idoneo al
+  laboratorio del Gate, non ancora alla calibrazione generale di PC diversi.
+- [~] **Calibration Gate / Step 5B — Prima calibrazione locale:** primo run Linux non accettato;
+  mini-spike Ubuntu GO per Q8+mmap e NO-GO per no-mmap. Restano obbligatori smoke Windows, contratto
+  Q8, ricerca hardware-indipendente, monitoraggio RAM e record locale prima di qualunque profilo.
 - [ ] **Step 6A / Human Gate / 6B — Release 0.1.**
 - [ ] **Step 7 — Skill e router.**
 - [ ] **Step 8 — Open WebUI e sync.**
@@ -114,7 +115,8 @@
 
 ### Step 3 — dettaglio
 
-- [x] Matching esatto, gate RAM, fallback non ottimizzato e blocco CUDA multi-GPU implementati.
+- [x] Matching v1, gate RAM, fallback non ottimizzato e blocco CUDA multi-GPU implementati; D-034
+  ha poi riclassificato il matching condiviso come seed e ne ha vietato l'uso diretto nel piano.
 - [x] Risoluzione read-only del modello, verifica artefatti, locate e builder lock-only implementati.
 - [x] Lifecycle `coding`, salute, log, stato atomico, lock d'avvio, `status` e `stop` coperti da test
   offline col server fake.
@@ -198,20 +200,25 @@
 - [x] Mini-spike Ubuntu b10011: cache K/V Q8 con mmap GO su coding/studio/vstudio CUDA e smoke CPU;
   no-mmap NO-GO per caricamento, RAM, throughput e rilascio. Evidenza sotto
   `docs/mini-spike-kv-q8-ubuntu/`; nessuna promessa qualitativa deriva da `benchmark/v1`.
+- [~] Audit portabilità: il core ora vieta confronti fra contesti, candidati equivalenti o fuori
+  ordine; `validate` ricostruisce riserva, rilascio, classe d'origine e selezione; i profili v1
+  condivisi non entrano più direttamente nel `LaunchPlan`. Verifica locale Windows: sync frozen,
+  Ruff, 229 test, `validate`, build e wheel isolata verdi; il primo probe wheel del motore a freddo è
+  scaduto, il retry è riuscito. Restano CI, monitoraggio RAM, ricerca versionata e risultato locale.
 
 ### Prossima azione obbligatoria
 
-Gli Step 3, 4, 5 e la correzione 5A sono conclusi; il mini-spike Ubuntu ha approvato Q8+mmap e
-rifiutato no-mmap. La prossima azione obbligatoria è lo smoke Windows CUDA 13.3 sul contratto Q8+mmap;
-dopo un GO, una PR dichiarativa separata aggiorna il solo ramo CUDA del lock e Tommaso ripete la
-calibrazione con parametri espliciti. Non iniziare lo Step 5B o step successivi
-prima di almeno un esito `CALIBRATION-ACCEPTED`.
+Il Calibration Gate resta chiuso. Lo smoke Windows CUDA 13.3 su Q8+mmap può completare l'evidenza del
+lock, ma non autorizza una policy derivata dalla sola macchina 32/8. Prima di ripetere la calibrazione
+vanno verificati il dominio legale degli assi e il protocollo hardware-indipendente, quindi completata
+la correzione Step 5A descritta in D-034–D-037. Non iniziare lo Step 5B o step successivi prima di
+almeno un esito locale `CALIBRATION-ACCEPTED` prodotto dal protocollo corretto.
 
 ---
 
 > **Stato:** documento normativo centrale, pronto a guidare l'implementazione per step.  
-> **Data di consolidamento:** 16 luglio 2026; v3.3 recepisce l'evidenza del primo run reale e
-> corregge il protocollo Step 5A senza anticipare policy o profili.  
+> **Data di consolidamento:** 17 luglio 2026; v3.4 separa evidenza condivisa e calibrazione locale,
+> ritira la portabilità implicita delle classi RAM/VRAM e riapre lo Step 5A.  
 > **Sostituisce:** la v3.1, `PIANO_IMPLEMENTAZIONE_v2.md`, le due revisioni successive e la v3 non
 > corretta.  
 > **Regola d'uso:** una sessione di sviluppo esegue un solo step, nell'ordine indicato. Prima di
@@ -241,11 +248,12 @@ Il documento è deliberatamente unico. Le decisioni durevoli vengono registrate 
 `unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M`. Il pacchetto:
 
 - rileva l'hardware;
-- sceglie parametri calibrati tramite profili dichiarativi;
+- calibra e conserva localmente i parametri sulla macchina dell'utente;
+- usa profili e report condivisi soltanto come seed o evidenza, mai come sostituti della misura locale;
 - usa una release precisa e collaudata di `llama.cpp`;
 - avvia e governa `llama-server`;
 - espone tre modi (`coding`, `studio`, `vstudio`);
-- guida l'utente senza profilo nella calibrazione e genera un contributo riproducibile;
+- guida l'utente nella calibrazione locale e può generare un contributo riproducibile separato;
 - rende estendibili contenuti e profili senza rendere estendibile arbitrariamente il core;
 - nella 0.2 aggiunge skill, router deterministico, Open WebUI gestita e sincronizzazione.
 
@@ -324,7 +332,7 @@ Regole conseguenti:
 | D-003 | dipendenze runtime 0.1: `typer`, `rich`, `psutil`, `httpx`, `jsonschema`; dev: `pytest`, `ruff` | perimetro minimo e controllabile |
 | D-004 | `pyyaml` entra solo allo Step 7 | serve al frontmatter delle skill, non alla 0.1 |
 | D-005 | risorse dentro la wheel; helper in `qwen_launcher.resources.__init__` | elimina il conflitto `resources.py`/`resources/` |
-| D-006 | modi = comportamento; profili = prestazioni per modello, motore, hardware e modo | nessuna precedenza ambigua nella fusione |
+| D-006 | modi = comportamento; record locali = prestazioni misurate; profili condivisi = seed/evidenza | nessuna precedenza ambigua e nessun trasferimento implicito dell'optimum |
 | D-007 | un profilo può coprire un sottoinsieme dei modi | aggiungere un modo non invalida tutti i profili |
 | D-008 | una sola GPU; `CUDA_VISIBLE_DEVICES` è impostata solo nell'ambiente del figlio | rende reale e stabile la scelta della GPU; va verificato nello spike |
 | D-009 | il ripiego rigido di memoria vale solo per il modello predefinito calibrato | non si applicano numeri ignoti a modelli diversi |
@@ -343,15 +351,19 @@ Regole conseguenti:
 | D-022 | Open WebUI usa ambienti versionati e un manifest di attivazione atomico | applica anche al secondo servizio gestito la portabilità richiesta su Windows |
 | D-023 | `main` richiede CI e revisione code owner per i contributori; il bypass amministratore resta attivo finché esiste un solo maintainer | evita di bloccare l'unico code owner sulle proprie modifiche senza indebolire il flusso dei contributori |
 | D-024 | i comandi e benchmark dello Spike 0 provano fattibilità e compatibilità, non una busta ottimale | un singolo candidato funzionante non dimostra che usi al meglio RAM, VRAM o tok/s |
-| D-025 | un profilo di produzione nasce soltanto da `calibration/v1`, report accettato e benchmark del candidato scelto | separa dati calibrati da baseline, ricordi e tentativi non riproducibili |
-| D-026 | gli intervalli RAM/VRAM riconoscono classi nominali approvate, non sono interpolati; classi applicabili allo stesso modo non si sovrappongono | evita profili «più vicini», spareggi casuali e buste ottimizzate per capacità diverse |
-| D-027 | hardware sopra il gate ma senza profilo usa una baseline verificata con warning e può avviare volontariamente `calibrate` | mantiene il prodotto usabile e riduce l'attrito per contribuire nuove calibrazioni |
+| D-025 | decisione storica superata da D-034–D-037: `calibration/v1` lega ancora report e profilo, ma non autorizza contenuto di produzione | conserva la provenienza del contratto senza promuovere il vecchio matching |
+| D-026 | gli intervalli RAM/VRAM riconoscono classi nominali non interpolate e non sovrapposte, usabili soltanto per ordinare seed | evita nearest-match senza confondere capacità con optimum locale |
+| D-027 | hardware sopra il gate ma senza record locale usa una baseline verificata con warning e può avviare volontariamente `calibrate` | mantiene il prodotto usabile e riduce l'attrito della calibrazione locale |
 | D-028 | `calibrate` è locale, esplicito, riproducibile e non pubblica né modifica il repository | prove pesanti e possibili fallimenti restano sotto controllo dell'utente |
-| D-029 | il primo uso guidato su 8 GiB VRAM e 32 GiB RAM precede l'approvazione della policy automatica | margine VRAM, candidati e criteri finali derivano da evidenza reale, non da stime ricordate |
+| D-029 | il primo uso guidato su 8 GiB VRAM e 32 GiB RAM è un caso locale del Gate, non la base sufficiente di una policy portabile | conserva evidenza reale senza trasformare un host nel dominio del prodotto |
 | D-030 | identità `model` e percorso eseguibile `model_path` sono distinti; il modello predefinito si risolve in sola lettura alla revisione e ai digest appuntati | `llama-server -m` accetta un percorso, mentre `--hf-repo` risolve un branch mobile e può modificare la cache Hugging Face |
 | D-031 | `calibration/v1` ricampiona il rilascio VRAM ogni 250 ms per massimo 10 s e usa una tolleranza GiB esplicita, applicata anche alla deriva fra avvii | rende operativo «vicino alla baseline» senza soglie hardware inventate; prima di policy/report accettati, i contratti v1 vengono corretti e le vecchie bozze locali devono essere rigenerate |
 | D-032 | ogni bundle redige ricorsivamente i JSON e i log, usa riferimenti log relativi e passa uno scanner privacy automatico oltre alla revisione umana | impedisce che messaggi operativi correttamente dettagliati trasferiscano percorsi o identità nei file condivisibili |
 | D-033 | il modello resta `UD-Q4_K_M`; cache KV Q8 e `--no-mmap` entrano nel lock soltanto dopo mini-spike GO su b10011 e in una modifica dichiarativa separata | distingue quantizzazione dei pesi e della cache e impedisce di appuntare prestazioni o compatibilità non misurate |
+| D-034 | una busta ottima è un risultato locale; una classe RAM/VRAM e l'host di provenienza non autorizzano ad applicarla come calibrata a componenti diversi | capacità uguali non implicano lo stesso rapporto CPU/GPU, driver, pressione memoria o massimo prestazionale |
+| D-035 | report e profili condivisi sono seed/evidenza; il runtime usa come calibrato soltanto un record locale compatibile con modello, contratto motore, modo, backend e hardware correnti | consente a ogni PC supportato di misurare il proprio optimum senza nearest-match o fingerprint distribuiti |
+| D-036 | la policy pubblica governa un dominio di ricerca verificato e indipendente dalla macchina 32/8; ogni confronto mantiene fisso il contesto e misura localmente risorse e prestazioni | impedisce che una lista costruita attorno al confine della RTX 2060 SUPER diventi il dominio implicito del prodotto |
+| D-037 | `calibration/v1` resta protocollo di laboratorio del Gate; prima della calibrazione pubblica 0.1 serve un protocollo successivo con screening, finalisti, monitoraggio RAM, record locale e invalidazione | estendere v1 silenziosamente o inventare limiti/criteri senza spike violerebbe versionamento ed evidenza |
 
 Le sole decisioni lasciate allo spike sono: release esatta di `llama.cpp`, nomi esatti dei flag per
 quella release, forma reale della salute, asset ufficiali disponibili, compatibilità della UI e
@@ -370,8 +382,8 @@ versione di Open WebUI approvata dal manutentore.
 | `paths.py` | directory per OS; nessun'altra logica |
 | `config.py` | lettura, precedenze e validazione della configurazione |
 | `hardware.py` | RAM/CPU/GPU, unità GiB, selezione GPU |
-| `profiles.py` | caricamento dati, matching, ripiego, costruzione `LaunchPlan` |
-| `calibration.py` | prove candidate, policy, selezione e bundle di contribuzione; nessuna logica OS |
+| `profiles.py` | caricamento di seed condivisi, ripiego e costruzione `LaunchPlan`; nessun seed è calibrato localmente |
+| `calibration.py` | ricerca locale, record compatibile, selezione e bundle di contribuzione; nessuna logica OS |
 | `benchmark.py` | `benchmark/v1` puro e misure riproducibili riusate dalla calibrazione |
 | `engine.py` | lock, ricerca, compatibilità, download/build, installazione sicura e attivazione atomica |
 | `process.py` | processi, segnali, stato, lock d'avvio, salute, log, stop/status |
@@ -415,10 +427,11 @@ qwen-launcher/
 │       ├── __init__.py
 │       ├── engine.lock
 │       ├── schemas/
-│       │   ├── calibration-policy.v1.json
-│       │   ├── calibration-report.v1.json
+│       │   ├── calibration-policy.v1.json      # contratto storico di laboratorio
+│       │   ├── calibration-report.v1.json      # evidenza storica di laboratorio
 │       │   ├── mode.v1.json
-│       │   └── profile.v1.json
+│       │   ├── profile.v1.json                 # seed condivisi, mai buste finali
+│       │   └── <schemi successivi approvati nello Step 5A>
 │       └── content/
 │           ├── calibration-policy.json
 │           ├── calibrations/*.json
@@ -431,7 +444,7 @@ qwen-launcher/
 │   ├── engine-lock.md
 │   ├── benchmarks.md
 │   ├── calibration.md
-│   ├── calibrations/*/             # evidenza accettata e manifest dei profili distribuiti
+│   ├── calibrations/*/             # evidenza accettata e manifest dei seed condivisi
 │   └── anatomy/{mode,profile}.md
 ├── scripts/verify_wheel.py
 ├── tests/
@@ -446,6 +459,10 @@ qwen-launcher/
 ├── CHANGELOG.md
 └── LICENSE
 ```
+
+I nomi e campi degli schemi successivi non vengono fissati prima dello spike richiesto da D-037;
+devono essere versionati esplicitamente e aggiornare questo albero nello stesso step che li approva.
+Il record locale vive nella directory dati gestita e non nelle risorse della wheel.
 
 ### 4.3 Risorse di pacchetto
 
@@ -550,7 +567,9 @@ e identificatori `^[a-z0-9-]+$`.
 - `sampling.top_p`, numero `> 0` e `<= 1`;
 - `sampling.top_k`, intero `>= 0`.
 
-`profile/v1` possiede soltanto:
+`profile/v1` descrive il contratto storico a classi implementato prima dell'audit D-034. Resta
+validabile per fixture ed evidenza pre-Gate, ma non può diventare contenuto di produzione 0.1 né
+essere presentato come calibrazione portabile. Possiede soltanto:
 
 - `schema`, costante `profile/v1`;
 - `id`, uguale al nome del file;
@@ -570,8 +589,8 @@ e identificatori `^[a-z0-9-]+$`.
   è un intero `>= 0` obbligatorio per profili CUDA e vietato per profili CPU, tramite controllo
   semantico incrociato col backend.
 
-`calibration-policy/v1` è il contratto macchina approvato dopo il Calibration Gate. Possiede
-soltanto:
+`calibration-policy/v1` è il contratto esplicito del laboratorio Step 5A. Non è la policy pubblica
+hardware-indipendente richiesta da D-036/D-037. Possiede soltanto:
 
 - `schema`, costante `calibration-policy/v1`;
 - `benchmark_protocol`, costante `benchmark/v1`;
@@ -586,10 +605,12 @@ soltanto:
 - ogni classe contiene id unico e finestre inclusive `ram_gib` e `vram_gib` con le regole dei
   profili; classi della stessa policy non si sovrappongono.
 
-Il file finale è `resources/content/calibration-policy.json`; prima del Gate lo Step 5A usa gli stessi
-campi come parametri espliciti e non inventa default mancanti.
+`calibration-policy/v1` non riceve un file di produzione. Prima del Gate lo Step 5A usa gli stessi
+campi come parametri espliciti e non inventa default mancanti; soltanto la policy del protocollo
+successivo approvato occuperà `resources/content/calibration-policy.json`.
 
-`calibration-report/v1` possiede soltanto:
+`calibration-report/v1` conserva l'evidenza del laboratorio e non autorizza da solo un record locale
+o una busta trasferibile. Possiede soltanto:
 
 - `schema`, costante `calibration-report/v1`; `id`, uguale al nome del file; `created_at` UTC;
   `decision`, uno fra `draft`, `accepted`, `rejected`; `launcher_version`; `model`; `engine`;
@@ -610,17 +631,22 @@ campi come parametri espliciti e non inventa default mancanti.
 
 Condizionali JSON Schema e controlli semantici vietano misure o selezioni fittizie nei candidati
 scartati e richiedono cinque misure, riepilogo coerente e candidato selezionato per ogni modo di un
-report accettato.
+report accettato. La validazione ricostruisce il vincitore, riserva e rilascio VRAM, coerenza fra
+picco/minimo libero/totale, policy approvata e appartenenza della macchina d'origine alla classe
+nominata. Questi controlli provano coerenza dell'evidenza, non portabilità della busta.
 
 Un profilo può coprire solo alcuni modi. `validate` segnala come errore un modo citato ma inesistente;
 non segnala come errore un modo non coperto. Sampling e servizi non possono comparire nei profili;
 parametri di memoria non possono comparire nei modi. Un profilo è invalido se report o digest
-mancano, se la busta non coincide col candidato selezionato, se modello/motore/hardware divergono o
-se la sua finestra si sovrappone a un'altra classe applicabile allo stesso OS, backend e modo.
+mancano, se la busta non coincide col candidato selezionato, se modello/motore/hardware divergono,
+se finestre e OS non copiano esattamente classe approvata e OS misurato o se la sua finestra si
+sovrappone a un'altra classe applicabile allo stesso OS, backend e modo. Anche un profilo v1 valido
+resta evidenza/seed e non una calibrazione locale per un'altra macchina, come stabilito da D-034.
 
 Lo Step 2A crea schemi e modi; lo Step 2B aggiunge fixture sintetiche soltanto nei test. Nessuno dei
-due crea profili di produzione: i risultati dello Spike 0 non soddisfano `calibration/v1`. I primi
-report e profili reali entrano soltanto nello Step 5B dopo il Calibration Gate.
+due crea profili di produzione: i risultati dello Spike 0 non soddisfano una calibrazione. Dopo
+D-037, lo Step 5B può distribuire policy e sola evidenza del protocollo successivo; la busta usata
+dal runtime nasce invece dalla calibrazione locale dell'utente.
 
 Le dataclass gelate costituiscono il modello runtime. Gli eventuali default sono applicati dai
 caricatori, mai da `jsonschema`.
@@ -656,13 +682,17 @@ blocca l'avvio CUDA multi-GPU con errore operativo invece di promettere un isola
 
 ### 5.5 Matching, buste e ripiego
 
-Un profilo è calibrato soltanto se coincide col proprio report `calibration/v1` accettato e
-coincidono modello, release del motore, backend, OS quando specificato, classe hardware e modo
-richiesto. Le finestre RAM/VRAM riconoscono capacità nominali che possono essere riportate con valori
-leggermente diversi; non autorizzano interpolazione, estrapolazione o selezione del profilo più
-vicino. Una nuova finestra è contenuto dichiarativo approvato, non il risultato di un algoritmo.
+Un record è calibrato per l'avvio soltanto quando è stato prodotto localmente dal protocollo
+successivo a `calibration/v1` e coincidono modello/artefatto, release/commit e contratto del motore,
+modo, backend e identità hardware stabile definita dal relativo schema. Deve inoltre conservare
+headroom RAM/VRAM sufficiente rispetto alla disponibilità corrente. Una divergenza lo invalida e
+richiede baseline o nuova calibrazione; non esiste nearest-match.
 
-Spareggio fra profili calibrati, con estremi inclusivi:
+Le finestre RAM/VRAM di `profile/v1` riconoscono capacità nominali e possono ordinare seed condivisi,
+ma D-034 vieta di usarle come prova che il vincitore dell'host d'origine sia calibrato localmente.
+Non autorizzano interpolazione, estrapolazione o selezione della busta più vicina.
+
+Spareggio difensivo fra seed condivisi, con estremi inclusivi:
 
 ```text
 CUDA:
@@ -678,9 +708,10 @@ CPU:
 ```
 
 Un massimo `null` vale infinito e produce un intervallo meno specifico di qualunque intervallo finito
-con lo stesso minimo. I profili distribuiti non possono avere finestre sovrapposte per lo stesso
-modello, motore, backend, OS e modo; `validate` le rifiuta. Lo spareggio resta difensivo per contenuti
-esterni non ancora validati e un pareggio risolto dall'id genera un warning in `doctor`.
+con lo stesso minimo. I seed distribuiti non possono avere finestre sovrapposte per lo stesso modello,
+motore, backend, OS e modo; `validate` le rifiuta. Lo spareggio ordina soltanto il lavoro del
+calibratore e non produce
+un `LaunchPlan` calibrato. Un pareggio risolto dall'id genera un warning in `doctor`.
 
 Gate di memoria per il solo modello predefinito:
 
@@ -695,28 +726,29 @@ incompatibile, porta occupata, checksum, contenuti invalidi o lock.
 
 Dopo il gate:
 
-1. profilo calibrato per il modo → usa la sua busta;
-2. hardware/modo non calibrato ma modello predefinito con memoria sufficiente → baseline verificata
-   nello spike (`ctx=8192`; `n_cpu_moe=48` su CUDA, assente su CPU), warning che non è ottimizzata e,
-   quando lo Step 5B esiste, invito a eseguire `qwen-launcher calibrate` e contribuire il bundle;
-3. modello diverso dal predefinito → nessun profilo del modello predefinito viene usato; baseline
+1. record locale compatibile per il modo e con headroom corrente sufficiente → usa la sua busta;
+2. nessun record locale valido ma modello predefinito con memoria sufficiente → baseline verificata
+   nello spike (`ctx=8192`; `n_cpu_moe=48` su CUDA, assente su CPU), warning che non è ottimizzata e
+   invito a eseguire la calibrazione locale; gli eventuali seed condivisi ordinano soltanto la ricerca;
+3. modello diverso dal predefinito → nessun dato del modello predefinito viene usato; baseline
    con warning rafforzato, senza gate rigido basato su numeri non calibrati e senza dichiararla
    calibrata per il modello diverso.
 
 Il valore precedente `ctx=16384` non è usato come ripiego perché lo Spike 0 ha misurato `ctx=8192`.
 Il ripiego mantiene il prodotto usabile, ma non genera report, profilo o promessa di prestazioni.
 
-`LaunchPlan` è la fusione non ambigua di modo + busta + config + identità del profilo/fallback +
-backend/GPU. Conserva separatamente l'identità `model`, usata per matching e stato, e il
+`LaunchPlan` è la fusione non ambigua di modo + busta + config + identità del record locale/fallback
++ backend/GPU. Conserva separatamente l'identità `model`, usata per compatibilità e stato, e il
 `model_path` fisico passato al motore. Un modo inesistente è input CLI invalido e mostra l'elenco dei
 modi validi.
 
 ### 5.6 Calibrazione assistita e contribuzione
 
-`calibration/v1` è distinto da `benchmark/v1`: il benchmark misura una busta già scelta; la
-calibrazione confronta più candidati, verifica memoria e stabilità, usa `benchmark/v1` su ciascun
-candidato valido e produce una busta proposta. Lo Spike 0 ha provato un solo candidato e quindi non
-è una calibrazione.
+`calibration/v1` è distinto da `benchmark/v1`: confronta candidati espliciti, verifica VRAM e
+stabilità e usa `benchmark/v1` su ciascun candidato valido. Lo Spike 0 ha provato un solo candidato e
+quindi non è una calibrazione. Dopo l'audit D-034, anche `v1` resta un protocollo di laboratorio: non
+conosce un dominio portabile, non monitora la RAM durante il trial e non produce un record locale
+riutilizzabile, quindi non può alimentare profili di produzione.
 
 `qwen-launcher calibrate --mode <id|all>` è un'operazione locale, esplicita e potenzialmente lunga.
 Non parte durante un normale lancio, non modifica config o sorgenti, non crea commit, non usa API
@@ -732,10 +764,10 @@ Protocollo iniziale:
    concorrenti rendono la misura invalida e fermano la calibrazione con rimedio azionabile;
 2. usa la policy approvata oppure, esclusivamente nello Step 5A prima del Calibration Gate, candidati,
    riserva e contesti forniti esplicitamente da Tommaso;
-3. parte dalla baseline più prudente approvata e varia soltanto `n_cpu_moe` per CUDA; usa un solo
-   `ctx` per modo/run, una lista esplicita per modo e può infittire i passi vicino al confine soltanto
-   da evidenza precedente; non assume monotonicità, non genera candidati, non usa ricerca binaria e
-   non prova flag fuori da `engine.lock`;
+3. parte dalla baseline più prudente approvata e varia soltanto `n_cpu_moe` per CUDA; il codice
+   impone un solo `ctx` per run, valori unici ordinati dal più prudente al più aggressivo e, su CPU,
+   un solo candidato finché non esiste un asse verificato; la lista esplicita serve al Gate e non è
+   una policy per hardware diverso; non prova flag fuori da `engine.lock`;
 4. avvia un processo nuovo per ogni candidato, attende READY, esegue il carico reale del modo e
    campiona la VRAM complessiva tramite `nvidia-smi` ogni 250 ms;
 5. `coding` e `studio` eseguono la richiesta testuale verificata; `vstudio` esegue anche la richiesta
@@ -745,9 +777,10 @@ Protocollo iniziale:
    margine violato o rilascio fuori soglia scartano il candidato e conservano il log; la stessa
    tolleranza limita l'intervallo fra baseline degli avvii e una deriva maggiore scarta il candidato,
    mentre carico compute concorrente, cambio driver o monitor guasto invalidano l'intero run;
-7. ogni candidato rimasto supera il numero di avvii stabili della policy e `benchmark/v1`; la
-   selezione massimizza la mediana tok/s fra i candidati che rispettano stabilità e riserva, poi
-   preferisce maggiore VRAM libera e infine la busta più prudente;
+7. ogni candidato rimasto supera il numero di avvii stabili e `benchmark/v1`; la selezione
+   massimizza la mediana tok/s fra i candidati che rispettano stabilità e riserva, poi preferisce
+   maggiore VRAM libera e infine l'ordine prudente; `validate` ricostruisce questa scelta, che resta
+   il migliore fra i candidati provati e non una prova di optimum globale;
 8. genera report, profilo proposto, risultati benchmark, manifest SHA-256 e guida di contribuzione in
    `data_dir()/calibrations/<id>/` con scritture atomiche; i motivi puntano ai log relativi copiati,
    tutti i campi stringa e log sono redatti e `validate --path` rifiuta identità locali o pattern di
@@ -755,17 +788,16 @@ Protocollo iniziale:
 9. valida il bundle localmente e richiede conferma umana: un output non confermato resta una bozza e
    non può entrare nei contenuti distribuiti.
 
-La riserva minima e la tolleranza di rilascio VRAM, l'insieme e l'ordine dei candidati, gli avvii
-stabili e le finestre nominali, inclusa la VRAM minima per avviare automaticamente la baseline, non
-vengono dedotti dal ricordo di prove precedenti. Lo Step 5A raccoglie la prima evidenza su 8 GiB VRAM
-e 32 GiB RAM; il Calibration Gate approva valori esatti e lo Step 5B li registra in
-`calibration-policy.json`. Una modifica successiva richiede nuova evidenza e revisione della policy.
+Riserva e tolleranza VRAM, dominio degli assi, avvii e criterio statistico non vengono dedotti dal
+ricordo di prove precedenti. Il run 8/32 produce evidenza sul proprio host, non valori universali.
+Una policy pubblica richiede il protocollo successivo previsto da D-037: dominio legale verificato
+nel lock o in contenuto approvato, screening locale, finalisti, RAM e VRAM durante il trial, criterio
+robusto e record atomico compatibile con la macchina corrente. Contesto e modi restano separati.
 
-Un utente sopra i requisiti della policy ma senza profilo può continuare con la baseline oppure
-calibrare uno o più modi. Un profilo parziale è valido solo per i modi provati. Nessun profilo «più vicino» viene usato e
-una nuova classe hardware resta proposta finché il manutentore non approva una finestra non
-sovrapposta. Il bundle deve rendere la PR un'operazione di copia, validazione e revisione; la
-pubblicazione resta sempre manuale.
+Un utente idoneo senza record locale continua con la baseline oppure calibra uno o più modi. Un
+record parziale vale solo per i modi provati. Nessun seed «più vicino» viene usato come busta finale e
+hardware fuori dalle vecchie classi non viene escluso dalla ricerca locale. Il bundle condivisibile
+resta separato dal record privato; pubblicazione e revisione restano manuali.
 
 ### 5.7 Contratto del comando motore
 
@@ -1394,8 +1426,9 @@ spike; stop pulito.
 
 ### Step 5A — Calibrazione assistita e generazione del bundle
 
-**Obiettivo:** trasformare la ricerca manuale di `n_cpu_moe` in una procedura locale riproducibile,
-prima senza fingere di conoscere policy e profilo ottimali.
+**Obiettivo:** prima conservare una procedura di laboratorio riproducibile, poi completarla come
+calibrazione realmente locale e riutilizzabile su PC supportati diversi, senza trasferire l'optimum
+della macchina del maintainer.
 
 **Perimetro core:** `benchmark.py`, `calibration.py`, CLI, monitoraggio tramite i moduli esistenti,
 risorse immutabili di `benchmark/v1`, test e documentazione tecnica minima. Nessun profilo reale e
@@ -1413,10 +1446,10 @@ nessuna policy finale entrano in questo step, così la PR core resta separata da
    avviare processi e consente annullamento pulito con exit 130.
 4. Esegue il protocollo della sezione 5.6 riusando builder, lifecycle, salute e stop di produzione;
    ogni candidato ha processo e log separati e un fallimento non altera stato o profilo attivo.
-5. Campiona VRAM complessiva e libera, non soltanto quella attribuita al PID; registra baseline,
-   minimo libero, picco e campione finale. Dopo lo stop usa la finestra fissa e la tolleranza
-   esplicita di 5.6; deriva oltre soglia scarta il candidato, mentre contaminazione o monitor
-   inaffidabile invalidano il run.
+5. In `calibration/v1` campiona VRAM complessiva e libera, non soltanto quella attribuita al PID;
+   registra baseline, minimo libero, picco e campione finale. Dopo lo stop usa finestra e tolleranza
+   di 5.6; deriva oltre soglia scarta il candidato, contaminazione o monitor inaffidabile invalidano
+   il run. Il successore deve campionare anche RAM disponibile per tutti i backend.
 6. Genera un bundle locale con report, risultati, bozza profilo, digest e guida PR. La bozza non passa
    come profilo distribuibile finché policy, finestra e selezione non sono approvate.
 7. Implementa `validate --path <bundle>` senza modificare la validazione predefinita delle risorse
@@ -1426,78 +1459,92 @@ nessuna policy finale entrano in questo step, così la PR core resta separata da
    altrui e la CLI mostra l'anteprima esatta dei dati da condividere.
 9. Se nessun candidato è valido, conserva exit 0 per la procedura riuscita ma lo dichiara
    esplicitamente per ogni modo.
+10. Correzione D-034: vieta contesti misti, `n_cpu_moe` duplicati/fuori ordine e finti candidati CPU;
+    ricostruisce in `validate` riserva, rilascio, coerenza VRAM, classe d'origine e vincitore.
+11. Prima del Gate successivo verifica il dominio legale di ogni asse sul modello/motore lock e
+    definisce tramite spike screening, finalisti e trattamento del rumore; il nuovo contratto usa una
+    versione successiva, non altera retroattivamente `calibration/v1`.
+12. Implementa monitoraggio RAM, policy hardware-indipendente, ricerca per modo, record locale
+    atomico, compatibilità, controllo headroom e invalidazione. I dati condivisi possono soltanto
+    ordinare i seed e non vengono passati direttamente a `LaunchPlan`.
 
 **Test obbligatori:** policy assente; sintassi CPU/CUDA; annullamento; ordine candidati; candidato
 valido, crash, OOM simulato, timeout, margine violato, carico concorrente; rilascio lento, entro/fuori
 tolleranza e oltre finestra; deriva fra avvii entro/oltre soglia; processo distinto; warm-up escluso;
 cinque misure; mediana e spareggi; coding/studio/vstudio; interruzione; bundle atomico; digest;
-riferimenti relativi, redazione JSON/log/fallback e scanner privacy POSIX/Windows; nessuna rete o GPU
-reale.
+riferimenti relativi, redazione JSON/log/fallback e scanner privacy POSIX/Windows; contesto misto;
+policy fuori ordine; selezione manomessa; riserva/rilascio incoerenti; dominio e finalisti del nuovo
+protocollo; monitor RAM; record locale valido/obsoleto/senza headroom; seed su hardware differente;
+nessuna rete o GPU reale.
 
-**Definition of Done:** Tommaso può installare la wheel dello Step 5A e avviare la prima calibrazione
-guidata fornendo parametri espliciti; il risultato è una bozza verificabile, non un profilo già
-accettato.
+**Definition of Done:** un utente su qualunque macchina nel perimetro supportato può avviare la
+ricerca senza conoscere flag interni, ottenere una busta locale misurata e riutilizzarla in sicurezza;
+un PC con capacità simili ma componenti diversi non eredita automaticamente il vincitore di un
+report condiviso. Il bundle di contribuzione resta separato e non pubblicato.
 
 **Commit locale suggerito:**
 `feat(calibration): automatizza prove hardware e genera bundle riproducibili`
 
-### Calibration Gate 0.1 — Prima calibrazione 8 GiB / 32 GiB
+### Calibration Gate 0.1 — Prima calibrazione locale e prova di portabilità
 
-Tommaso usa personalmente lo Step 5A sulla macchina dello spike, per tutti i modi e per ciascun OS
-che dovrà ricevere un profilo iniziale. Il gate:
+Tommaso usa personalmente lo Step 5A corretto sulla macchina dello spike. Il run 32/8 è il primo caso
+locale, non il template del prodotto. Il gate:
 
-- confronta più candidati reali, non soltanto `n_cpu_moe=48` dello spike;
-- verifica coding, studio e vstudio con mmproj e MTP;
-- osserva picco VRAM, minimo libero, RAM, stabilità e tok/s;
-- considera il ricordo di circa 7,4–7,6 GiB totali usati soltanto come ipotesi da misurare, non come
-  soglia già approvata;
-- approva o rifiuta VRAM minima per la baseline automatica, riserva minima, tolleranza di rilascio,
-  lista e ordine candidati, contesti, avvii stabili, regola di selezione e finestre nominali RAM/VRAM
-  non sovrapposte;
-- controlla privacy, report, digest e profilo proposto;
-- decide `CALIBRATION-ACCEPTED` oppure `CALIBRATION-REJECTED` separatamente per ogni OS/modo.
+- verifica che dominio e strategia derivino da contratto/spike, non dal confine della RTX 2060 SUPER;
+- mantiene il contesto fisso per confronto e prova separatamente coding, studio e vstudio;
+- osserva RAM e VRAM durante caricamento, workload, benchmark e rilascio;
+- verifica screening, finalisti, avvii stabili, MTP, vision e criterio robusto;
+- crea e riusa il record locale, poi lo invalida simulando cambi di motore, modello, hardware e
+  headroom insufficiente;
+- verifica che un seed 32/8 proveniente da CPU/GPU diverse non diventi direttamente un `LaunchPlan`;
+- esegue almeno un secondo caso reale materialmente diverso oppure mantiene il gate chiuso e dichiara
+  esplicitamente quale classe di hardware non è ancora collaudata;
+- per CPU approva un asse di tuning verificato oppure dichiara onestamente il backend come baseline
+  auto-configurata dal motore, non come optimum prodotto dal launcher;
+- controlla privacy e separazione fra record locale privato e bundle condivisibile;
+- decide `CALIBRATION-ACCEPTED` o `CALIBRATION-REJECTED` per OS, backend e modo provati.
 
-Un esito rifiutato mantiene la baseline e richiede nuova prova o correzione core nello Step 5A. Non
-si trasformano a mano risultati incompleti in profili.
+Un esito rifiutato mantiene la baseline e torna allo Step 5A. Non si trasformano a mano risultati
+incompleti né si allargano finestre per simulare generalizzazione.
 
-### Step 5B — Policy approvata, profili iniziali e flusso pubblico
+### Step 5B — Policy di ricerca approvata, evidenza e flusso pubblico
 
-**Precondizione:** almeno un report del Calibration Gate è `CALIBRATION-ACCEPTED`.
+**Precondizione:** almeno un risultato del Gate corretto è `CALIBRATION-ACCEPTED` e la prova di
+portabilità richiesta sopra è conclusa.
 
-**Perimetro dichiarativo:** policy, report accettati, profili, checksum e documentazione di
-contribuzione. Correzioni al calibratore tornano allo Step 5A e non vengono mescolate nella stessa PR.
+**Perimetro dichiarativo:** policy del nuovo protocollo, report di riferimento, checksum e guida di
+contribuzione. Correzioni core tornano allo Step 5A e non vengono mescolate nella stessa PR.
 
 **Attività:**
 
-1. Crea `calibration-policy.json` con gli esatti valori approvati dal Gate.
-2. Include sotto `content/calibrations/` soltanto report revisionati e privi di dati privati e sotto
-   `docs/calibrations/<id>/` l'evidenza accettata col manifest; ogni profilo punta al proprio report e
-   digest.
-3. Crea profili iniziali 8 GiB VRAM / 32 GiB RAM soltanto per OS e modi accettati. Un OS non provato
-   resta senza profilo e usa la baseline; i risultati Linux non sono riutilizzati su Windows.
-4. Verifica che le finestre nominali includano i valori osservati, non si sovrappongano e non siano
-   presentate come limiti minimi universali del modello.
-5. Attiva il percorso pubblico semplice `qwen-launcher calibrate --mode all` tramite la policy; per
-   una classe ancora non approvata genera report e proposta, ma non inventa né pubblica la finestra.
-6. Quando manca un profilo, CLI e `doctor` distinguono «requisiti non soddisfatti» da «hardware
-   supportato ma non calibrato», mostrano la baseline e il comando esatto per contribuire.
-7. Completa guida, naming del bundle, checklist e testo PR generato. La contribuzione richiede copia,
-   `validate --path`, suite e revisione; nessuna autenticazione o pubblicazione automatica.
-8. Esegue `validate`, build e verifica wheel con policy, report e profili installati.
+1. Crea la policy con gli esatti valori approvati dal Gate e un dominio non costruito su una sola
+   capacità RAM/VRAM.
+2. Include soltanto report revisionati e privi di dati privati come evidenza/seed; nessuna mediana
+   viene presentata come promessa su componenti diversi.
+3. Non pubblica profili `profile/v1` come buste finali. Ogni utente genera il proprio record locale;
+   i seed condivisi possono soltanto modificare l'ordine della stessa ricerca completa.
+4. Attiva `qwen-launcher calibrate --mode <id|all>` tramite la policy senza richiedere conoscenza di
+   flag o candidati interni.
+5. CLI e `doctor` distinguono requisiti non soddisfatti, baseline non ottimizzata, record locale
+   valido, record obsoleto e headroom corrente insufficiente.
+6. Completa guida, naming del bundle, checklist e testo PR. La contribuzione richiede copia,
+   validazione, suite e revisione; nessuna autenticazione o pubblicazione automatica.
+7. Esegue `validate`, build e verifica wheel con policy ed evidenza installate.
 
-**Test obbligatori:** policy approvata; profilo/report/digest coerenti; classi sovrapposte; OS non
-provato; profilo parziale; hardware senza profilo; fallback senza nearest-match; comando suggerito;
-bozza di classe nuova; output contribuzione; risorse dalla wheel.
+**Test obbligatori:** policy e dominio approvati; seed di componenti diversi; ricerca invariata con e
+senza seed; record locale parziale; modello/motore/driver/hardware divergenti; RAM/VRAM corrente
+insufficiente; fallback senza nearest-match; output contribuzione; risorse dalla wheel.
 
-**Verifiche manuali:** ripetizione della busta scelta, profilo selezionato sulla macchina calibrata,
-fallback su hardware simulato senza classe e ispezione del bundle come lo vedrebbe un contributore.
+**Verifiche manuali:** calibrazione e riuso locale sui casi reali del Gate; fallback su hardware senza
+record; ispezione del bundle condivisibile; prova che cancellare il record non altera config o cache
+Hugging Face.
 
-**Definition of Done:** almeno il profilo accettato della macchina 8/32 è distribuito con evidenza;
-un utente idoneo senza profilo può calibrare, validare e preparare un contributo senza conoscere i
-comandi interni di `llama-server`.
+**Definition of Done:** il pacchetto distribuisce un metodo di ricerca, non l'optimum del PC 32/8;
+un utente idoneo calibra e usa localmente la propria busta senza conoscere `llama-server`, mentre il
+contributo resta opzionale e manuale.
 
 **Commit locale suggerito:**
-`feat(content): pubblica policy e primi profili prodotti da calibration/v1`
+`feat(content): pubblica policy portabile ed evidenza per la calibrazione locale`
 
 ### Step 6A — Preparazione locale della release 0.1
 
@@ -1514,9 +1561,9 @@ comandi interni di `llama-server`.
    cache Hugging Face; ricorda come rimuovere il tool con uv.
 3. Completa README, CONTRIBUTING, anatomy di modo/profilo, guida calibrazione e bundle, benchmark,
    troubleshooting, requisiti, privacy, sicurezza e roadmap 0.2.
-4. CONTRIBUTING impone: una PR tocca contenuto oppure core, non entrambi; ogni profilo porta report
-   `calibration/v1`, numeri misurati sulla release lock, bundle validato e approvazione personale del
-   manutentore; branch protection.
+4. CONTRIBUTING impone: una PR tocca contenuto oppure core, non entrambi; ogni evidenza porta il
+   protocollo approvato, numeri misurati sulla release lock, bundle validato e approvazione personale
+   del manutentore; un report condiviso non diventa una busta finale remota; branch protection.
 5. Crea workflow release separato, least privilege, ambiente GitHub `pypi`, Trusted Publishing OIDC,
    actions a SHA completo e artefatti build/testati prima del job di pubblicazione.
 6. Porta la versione a `0.1.0rc1`, aggiorna changelog e costruisce gli artefatti localmente.
@@ -1537,8 +1584,8 @@ finché la versione non esiste su PyPI:
 - Ubuntu 22.04 pulito: installer, `--version`, `doctor`, `validate`, installazione motore compatibile;
 - Windows Sandbox: stesso percorso;
 - test reali dei tre modi;
-- hardware senza profilo: baseline, invito a calibrare, generazione e validazione bundle senza upload;
-- profilo iniziale: selezione deterministica e coerenza col report accettato;
+- hardware senza record locale: baseline, calibrazione, riuso locale e bundle separato senza upload;
+- seed di altro hardware: nessuna applicazione diretta, ricerca locale e selezione deterministica;
 - verifica dati, licenza, nomi progetto e account;
 - creazione/configurazione ambiente GitHub `pypi` con approvatore;
 - configurazione Trusted Publisher PyPI legata a repository, workflow e ambiente corretti;
@@ -1648,27 +1695,26 @@ resistente a contenuto ostile; output sync riproducibile.
 **Obiettivo:** esporre autonomamente il `benchmark/v1` già usato da `calibrate`, confrontare una
 busta attiva con l'evidenza accettata e completare la diagnostica 0.2.
 
-`benchmark --mode <id>` richiede un server vivo e legge dallo stato modo, modello, release, profilo,
-ctx e `n_cpu_moe`. Riusa senza duplicazioni prompt, template, controlli e calcolo introdotti nello
-Step 5A: warm-up escluso, cinque misure esatte da 256 token, nessun client concorrente,
+`benchmark --mode <id>` richiede un server vivo e legge dallo stato modo, modello, release, record
+locale o fallback, ctx e `n_cpu_moe`. Riusa senza duplicazioni prompt, template, controlli e calcolo
+introdotti nello Step 5A: warm-up escluso, cinque misure esatte da 256 token, nessun client concorrente,
 min/mediana/max e metadata completi.
 
-Il comando produce un risultato benchmark conforme e, quando esiste un profilo, mostra la differenza
-rispetto alla sua mediana senza modificare report o profilo. Senza profilo non genera una busta
-calibrata: indirizza a `calibrate`, perché un singolo benchmark non confronta candidati né approva
-una classe hardware.
+Il comando produce un risultato benchmark conforme e, quando esiste un record locale, mostra la
+differenza rispetto alla sua mediana senza modificarlo. Senza record non genera una busta calibrata:
+indirizza a `calibrate`, perché un singolo benchmark non confronta candidati né verifica stabilità.
 
 Completa inoltre:
 
 - `doctor` con stato ✅/⚠️/❌ e rimedio per ogni riga non verde;
 - `docs/benchmarks.md` con distinzione fra benchmark, calibrazione e regressione;
 - verifica di regressione ripetibile per report accettati, senza soglie inventate;
-- template PR profilo basato sul bundle `calibration/v1`;
+- template PR evidenza basato sul bundle del protocollo locale approvato;
 - template PR skill con esempi positivi/negativi e suite verde.
 
 **Test obbligatori:** server assente o stato incompatibile; warm-up escluso; cinque misure; mediana;
-profilo presente/assente; confronto con report; nessuna modifica ai contenuti; nessuna rete reale;
-metodo metriche/fallback; metadata dallo stato.
+record locale presente/assente; confronto con report; nessuna modifica ai contenuti; nessuna rete
+reale; metodo metriche/fallback; metadata dallo stato.
 
 **Commit locale suggerito:**
 `feat(0.2): esponi benchmark autonomo e completa doctor`
@@ -1719,8 +1765,8 @@ Tommaso le esegue oppure le autorizza singolarmente nella sessione corrente.
 - [ ] Config severa, senza side effect o modifiche automatiche.
 - [ ] Schemi, report, digest e controlli semantici verdi.
 - [ ] Nessuna misura di fattibilità dello spike è presentata come profilo ottimizzato.
-- [ ] Profili legati a `calibration/v1`, modello, release, OS, classe hardware e modo.
-- [ ] Finestre nominali approvate, non sovrapposte; nessuna interpolazione o nearest-match.
+- [ ] Record locali legati a modello/artefatto, contratto motore, OS, backend, hardware e modo.
+- [ ] Seed condivisi mai applicati direttamente; nessuna interpolazione o nearest-match.
 - [ ] RAM disponibile considerata; `--force` confinato.
 - [ ] GPU scelta e realmente isolata oppure multi-GPU CUDA bloccato.
 - [ ] Builder CPU/CUDA distinto; tutti i flag coperti dal lock.
@@ -1728,11 +1774,11 @@ Tommaso le esegue oppure le autorizza singolarmente nella sessione corrente.
 - [ ] Lifecycle, lock, stato corrotto, log, timeout e PID riusato coperti da test.
 - [ ] Installazione motore sicura e attivazione atomica via manifest, con checksum e anti path traversal.
 - [ ] `coding`, `studio`, `vstudio`, `stop`, `status`, `doctor`, `validate` verificati.
-- [ ] Hardware idoneo senza profilo usa baseline dichiarata non ottimizzata e riceve un rimedio.
-- [ ] `calibrate` confronta candidati, misura VRAM, riusa `benchmark/v1` e genera un bundle privato e
-  validabile senza pubblicazione automatica.
-- [ ] Calibration Gate eseguito da Tommaso; policy e almeno un profilo 8/32 derivano dal report
-  accettato.
+- [ ] Hardware idoneo senza record locale usa baseline dichiarata non ottimizzata e riceve un rimedio.
+- [ ] `calibrate` cerca localmente nel dominio approvato, misura RAM/VRAM, verifica finalisti con
+  `benchmark/v1`, salva un record compatibile e genera separatamente un bundle condivisibile.
+- [ ] Calibration Gate eseguito da Tommaso e su un secondo caso eterogeneo; la policy governa il
+  metodo e non distribuisce l'optimum 8/32 come busta finale.
 - [ ] Installer provati in Ubuntu pulito e Windows Sandbox.
 - [ ] Release autorizzata tramite cancello umano; nessuna pubblicazione implicita.
 
@@ -1744,7 +1790,7 @@ Tommaso le esegue oppure le autorizza singolarmente nella sessione corrente.
 - [ ] Utente informato che le impostazioni UI non persistono con config non persistente.
 - [ ] Sync produce dati/artefatti locali senza eseguire contenuti contribuiti.
 - [ ] Benchmark autonomo riusa lo stesso `benchmark/v1` già automatizzato dalla calibrazione 0.1 e
-  distingue misura, regressione e profilo calibrato.
+  distingue misura, regressione e record locale calibrato.
 - [ ] Versione 0.2 finalizzata soltanto dopo Human Gate; nessuna pubblicazione implicita.
 
 ---

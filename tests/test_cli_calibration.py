@@ -59,6 +59,7 @@ def test_explicit_policy_free_options_still_require_confirmation(tmp_path, monke
 
     assert result.exit_code == 130
     assert "potentially hours" in result.stdout
+    assert "gate-only" in result.stdout
     assert "cancelled" in result.output
     assert called is False
 

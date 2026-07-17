@@ -107,6 +107,21 @@ def _discarded(progress: _CandidateProgress, error: Exception) -> CandidateTrial
     )
 
 
+def _valid(progress: _CandidateProgress) -> CandidateTrial:
+    """Build one valid candidate only after its final benchmark completed."""
+    if progress.benchmark is None:
+        raise CalibrationError("final stable start produced no benchmark/v1 result")
+    return CandidateTrial(
+        progress.candidate,
+        "valid",
+        None,
+        progress.successful,
+        progress.benchmark,
+        _combine_vram(progress.summaries),
+        _logs(progress.root),
+    )
+
+
 def _run_candidate(context: _TrialContext, mode: Mode, candidate: Candidate) -> CandidateTrial:
     """Run required stable starts, discarding only this candidate on expected failure."""
     target = context.target
@@ -125,17 +140,7 @@ def _run_candidate(context: _TrialContext, mode: Mode, candidate: Candidate) -> 
                 progress.summaries.append(vram)
                 if _baseline_drifted(progress, settings.vram_release_tolerance_gib):
                     raise _drift_error()
-        if progress.benchmark is None:
-            raise CalibrationError("final stable start produced no benchmark/v1 result")
-        return CandidateTrial(
-            candidate,
-            "valid",
-            None,
-            progress.successful,
-            progress.benchmark,
-            _combine_vram(progress.summaries),
-            _logs(root),
-        )
+        return _valid(progress)
     except KeyboardInterrupt:
         raise
     except StartFailure as failure:

@@ -19,8 +19,10 @@ apply here.
 - This is a Python 3.12 launcher for a local, calibrated Qwen model served by an exact, verified
   `llama.cpp` release. It is not a generic model manager or plugin framework.
 - Work one implementation step at a time and do not anticipate later milestones.
-- **Step 2C is complete.** The current mandatory next action is **Step 3**. Do not begin Step 4 or
-  anticipate later milestones.
+- **Steps 3, 4, and 5 are complete; Step 5A is reopened by the portability audit.** Complete the
+  D-034–D-037 local-calibration correction before repeating the Calibration Gate. The Windows Q8
+  smoke may add lock evidence, but does not unlock Step 5B. Do not begin later milestones before a
+  `CALIBRATION-ACCEPTED` result from the corrected local protocol.
 - Never invent engine flags, checksums, source commits, benchmark results, hardware support, profiles,
   health responses, or compatibility claims.
 
