@@ -1,0 +1,8 @@
+os=Ubuntu 24.04.4 LTS
+kernel=6.17.0-40-generic
+architecture=x86_64
+cpu=Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz
+ram_total_bytes=33562128384
+gpu=NVIDIA GeForce RTX 2060 SUPER, 8192, 595.71.05
+cuda_engine_version=version: 10011 (bf2c86ddc0685f580595954056c2e77ebabfab4f) built with GNU 13.3.0 for Linux x86_64
+cpu_engine_version=version: 10011 (bf2c86ddc) built with GNU 11.4.0 for Linux x86_64

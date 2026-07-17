@@ -1,8 +1,9 @@
 # CALIBRATE.md — Analisi del primo run di calibrazione e piano correttivo proposto
 
 > **Stato:** analisi non normativa con decisione parziale approvata. Le correzioni core A/B e il
-> riepilogo CLI sono state recepite in codice e in `IMPLEMENTATION_SPEC.md`; C resta subordinata al
-> mini-spike manuale b10011 con esito GO e D guida soltanto la lista esplicita del prossimo run.
+> riepilogo CLI sono state recepite in codice e in `IMPLEMENTATION_SPEC.md`; C ha ottenuto GO Ubuntu
+> per Q8+mmap e NO-GO per no-mmap, ma resta subordinata allo smoke Windows prima del lock globale; D
+> guida soltanto la lista esplicita del prossimo run.
 > `IMPLEMENTATION_SPEC.md` resta l'unica fonte normativa. Questo documento non anticipa lo Step 5B.
 > **Data:** 16 luglio 2026. **Evidenza di riferimento:** bundle locale
 > `calibration-20260716t142541702536` (run reale `calibrate --mode coding` su Ubuntu 24.04,
@@ -217,14 +218,22 @@ testo nasce già pulito.
    viola il gate RAM di §5.5, e libera VRAM o migliora tok/s in modo misurato. Qualunque
    divergenza ferma l'adozione (§2: una contraddizione non si risolve silenziosamente).
 
-**Aggiornamento del lock (solo dopo GO, PR dichiarativa separata dai fix core):**
+**Esito Ubuntu del 17 luglio 2026:** `GO` per cache K/V Q8 mantenendo `--mmap`; `NO-GO` per
+`--no-mmap`. A `ctx=131072`, Q8+mmap ha aumentato la mediana coding e liberato circa 1,2 GiB di VRAM
+sia a 48 sia a 38; salute, MTP, UI, vision, benchmark, CPU smoke e stop sono passati. No-mmap ha
+richiesto 49–82 secondi di caricamento contro circa 2,2, ha ridotto la RAM disponibile a circa
+8,4–8,7 GiB, ha peggiorato la mediana e non è rientrato entro 0,125 GiB dalla baseline dopo 10 s.
+Evidenza: `docs/mini-spike-kv-q8-ubuntu.md` e directory omonima. La qualità semantica non è misurata
+da `benchmark/v1` e non viene dichiarata invariata.
+
+**Aggiornamento del lock (solo dopo GO anche dello smoke Windows, PR dichiarativa separata dai fix core):**
 
 - `verified_flags` += `--cache-type-k`, `--cache-type-v`, `--no-mmap` (forme lunghe, come
   preferito da §5.7; le forme corte `-ctk`/`-ctv` restano equivalenti ma il lock ne appunta una);
-- `command_contract.fixed_args`: `--mmap` → `--no-mmap`, aggiunta di
+- `command_contract.fixed_args` conserva `--mmap`; `backend_args.cuda` aggiunge
   `--cache-type-k q8_0 --cache-type-v q8_0`;
-- se il backend CPU mostrasse regressioni con la cache quantizzata, l'ambito si restringe
-  spostando i flag cache in `backend_args.cuda` invece che in `fixed_args`, documentandolo;
+- il ramo CPU resta invariato: lo smoke ne conferma la compatibilità, ma il beneficio dimostrato è
+  specificamente la VRAM CUDA e non esiste evidenza comparativa per cambiare il contratto CPU;
 - il test flag-lock esistente copre automaticamente i flag nuovi; si aggiornano i test del builder
   che asseriscono gli argomenti attesi e l'evidenza in `docs/` secondo `docs/engine-lock.md`
   (punti 6-9: matrice sui due OS prima di toccare il lock).
@@ -306,9 +315,9 @@ cambiare gli exit code contrattuali.
    avvii come scarto), §4 (B1+B2+B3) e §7 (riepilogo), con schema, test, specifica e
    `docs/calibration.md` aggiornati. La verifica locale completa è registrata nel commit relativo;
    la matrice CI Ubuntu/Windows resta da eseguire dopo la pubblicazione autorizzata del commit.
-2. **Mini-spike cache Q8 / no-mmap su b10011** (§5, manuale di Tommaso), con evidenza conservata
-   in `docs/` come per lo Spike 0. Decisione GO/NO-GO esplicita.
-3. **PR dichiarativa `engine.lock`** (solo dopo GO): flag verificati, `fixed_args`, evidenza e
+2. **Mini-spike cache Q8 / no-mmap su b10011:** Ubuntu completato con GO Q8+mmap e NO-GO
+   no-mmap; smoke Windows CUDA 13.3 ancora obbligatorio.
+3. **PR dichiarativa `engine.lock`** (solo dopo GO Windows): flag verificati, ramo CUDA, evidenza e
    `docs/engine-lock.md` aggiornati; mai nella stessa PR dei fix core.
 4. **Ricalibrazione:** `calibrate --mode coding` con la scala di §6 e i parametri espliciti
    (riserva e tolleranza inclusi); poi `studio` e `vstudio` con le loro liste.
@@ -325,5 +334,5 @@ evidenza Windows (§ Step 5B, punto 3).
 |---|---|---|
 | A — rilascio VRAM | **implementata:** finestra 10 s a 250 ms + tolleranza esplicita (0 ammesso), stessa soglia per la deriva fra avvii, deriva = scarto non aborto | rispetta «vicino alla baseline» senza soglie inventate e senza perdere la difesa anti-leak |
 | B — privacy report | **implementata:** percorsi relativi nei motivi + redazione di tutti i campi stringa + scanner privacy in `validate --path` | tre strati: report utile, generazione robusta, cancello verificabile |
-| C — cache Q8 / mmap | mini-spike su b10011, poi `fixed_args` con `--cache-type-k q8_0 --cache-type-v q8_0 --no-mmap` | i flag sono proprietà del contratto motore, adottabili solo con evidenza sulla release appuntata |
+| C — cache Q8 / mmap | GO Ubuntu per `--cache-type-k q8_0 --cache-type-v q8_0` nel ramo CUDA con `--mmap`; NO-GO `--no-mmap`; Windows pendente | i flag sono proprietà del contratto motore e il lock globale richiede evidenza sui due OS |
 | D — strategia candidati | scala dichiarata asimmetrica (passo 1 al confine) informata dal mini-spike; un `ctx` per run; liste per modo; `calibration/v2` per lo screening futuro | precisione ±1 dove conta, piena conformità a §5.6.3, costo controllato |

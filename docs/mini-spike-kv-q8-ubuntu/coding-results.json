@@ -1,0 +1,981 @@
+{
+  "schema": "mini-spike-kv-q8-ubuntu/v1",
+  "created_at": "2026-07-17T09:12:21.368305+00:00",
+  "engine": "b10011",
+  "source_commit": "bf2c86ddc0685f580595954056c2e77ebabfab4f",
+  "model": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M",
+  "host": {
+    "os": "Ubuntu",
+    "backend": "cuda",
+    "gpu": "NVIDIA GeForce RTX 2060 SUPER",
+    "vram_total_gib": 8.0,
+    "ram_total_gib": 31.25716781616211,
+    "driver": "595.71.05"
+  },
+  "results": [
+    {
+      "id": "current-ncmoe-48",
+      "configuration": "current",
+      "ctx": 131072,
+      "n_cpu_moe": 48,
+      "started_at": "2026-07-17T09:04:47.298572+00:00",
+      "baseline": {
+        "total_gib": 8.0,
+        "free_gib": 7.359375,
+        "driver": "595.71.05",
+        "compute_pids": []
+      },
+      "command": [
+        "<redacted>/.local/share/qwen-launcher/engine/installations/b10011-cuda-8efe025708bf4176ba3d0be83bda7523/build/bin/llama-server",
+        "-m",
+        "<redacted>/.cache/huggingface/hub/models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF/snapshots/5bc3e238d916f48a861bac2f8a1990a0e9b7e98d/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "-c",
+        "131072",
+        "--temp",
+        "0.6",
+        "--top-p",
+        "0.95",
+        "--top-k",
+        "20",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--metrics",
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--mmap",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps",
+        "--no-webui",
+        "--no-mmproj",
+        "-ngl",
+        "99",
+        "-ncmoe",
+        "48"
+      ],
+      "load_seconds": 2.3213919920000308,
+      "health": "pass",
+      "benchmark": {
+        "warmup_tok_s": 32.01242482238418,
+        "measured_tok_s": [
+          31.666715733582972,
+          31.70030138813886,
+          31.769583155767013,
+          31.750827443926923,
+          31.763847703765393
+        ],
+        "tok_s": {
+          "min": 31.666715733582972,
+          "median": 31.750827443926923,
+          "max": 31.769583155767013
+        },
+        "mtp": [
+          {
+            "draft_n": 214,
+            "draft_n_accepted": 147
+          },
+          {
+            "draft_n": 214,
+            "draft_n_accepted": 147
+          },
+          {
+            "draft_n": 214,
+            "draft_n_accepted": 147
+          },
+          {
+            "draft_n": 214,
+            "draft_n_accepted": 147
+          },
+          {
+            "draft_n": 214,
+            "draft_n_accepted": 147
+          },
+          {
+            "draft_n": 214,
+            "draft_n_accepted": 147
+          }
+        ]
+      },
+      "outcome": "pass",
+      "exit_code": 0,
+      "memory": {
+        "minimum_gpu_free_gib": 1.6376953125,
+        "peak_gpu_used_gib": 6.3623046875,
+        "minimum_ram_available_gib": 27.905059814453125,
+        "peak_process_rss_gib": 21.70751953125
+      },
+      "release": {
+        "samples": [
+          {
+            "at_seconds": 0.03376305999995566,
+            "used_gib": 0.640625
+          }
+        ],
+        "final_used_gib": 0.640625
+      },
+      "log": "logs/current-ncmoe-48.log",
+      "log_sha256": "202633bf1c593960d17cfc2965fd81e65420c476ecc56c0c793e2ab419c0b0a2"
+    },
+    {
+      "id": "current-ncmoe-38",
+      "configuration": "current",
+      "ctx": 131072,
+      "n_cpu_moe": 38,
+      "started_at": "2026-07-17T09:05:40.810226+00:00",
+      "baseline": {
+        "total_gib": 8.0,
+        "free_gib": 7.359375,
+        "driver": "595.71.05",
+        "compute_pids": []
+      },
+      "command": [
+        "<redacted>/.local/share/qwen-launcher/engine/installations/b10011-cuda-8efe025708bf4176ba3d0be83bda7523/build/bin/llama-server",
+        "-m",
+        "<redacted>/.cache/huggingface/hub/models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF/snapshots/5bc3e238d916f48a861bac2f8a1990a0e9b7e98d/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "-c",
+        "131072",
+        "--temp",
+        "0.6",
+        "--top-p",
+        "0.95",
+        "--top-k",
+        "20",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--metrics",
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--mmap",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps",
+        "--no-webui",
+        "--no-mmproj",
+        "-ngl",
+        "99",
+        "-ncmoe",
+        "38"
+      ],
+      "load_seconds": 2.166264425999998,
+      "health": "pass",
+      "benchmark": {
+        "warmup_tok_s": 36.48391408551288,
+        "measured_tok_s": [
+          35.88941685585717,
+          35.96000573112591,
+          35.67415726422691,
+          35.594942348012026,
+          36.207496677325715
+        ],
+        "tok_s": {
+          "min": 35.594942348012026,
+          "median": 35.88941685585717,
+          "max": 36.207496677325715
+        },
+        "mtp": [
+          {
+            "draft_n": 203,
+            "draft_n_accepted": 153
+          },
+          {
+            "draft_n": 203,
+            "draft_n_accepted": 153
+          },
+          {
+            "draft_n": 203,
+            "draft_n_accepted": 153
+          },
+          {
+            "draft_n": 203,
+            "draft_n_accepted": 153
+          },
+          {
+            "draft_n": 203,
+            "draft_n_accepted": 153
+          },
+          {
+            "draft_n": 203,
+            "draft_n_accepted": 153
+          }
+        ]
+      },
+      "outcome": "pass",
+      "exit_code": 0,
+      "memory": {
+        "minimum_gpu_free_gib": 0.2353515625,
+        "peak_gpu_used_gib": 7.7646484375,
+        "minimum_ram_available_gib": 27.931655883789062,
+        "peak_process_rss_gib": 21.388717651367188
+      },
+      "release": {
+        "samples": [
+          {
+            "at_seconds": 0.029938076999997065,
+            "used_gib": 0.6005859375
+          }
+        ],
+        "final_used_gib": 0.6005859375
+      },
+      "log": "logs/current-ncmoe-38.log",
+      "log_sha256": "f516af570390b42776b2a4337a483fd902d9d61f3678a58434fef63fb33f97ca"
+    },
+    {
+      "id": "q8-mmap-ncmoe-48",
+      "configuration": "q8-mmap",
+      "ctx": 131072,
+      "n_cpu_moe": 48,
+      "started_at": "2026-07-17T09:06:28.314059+00:00",
+      "baseline": {
+        "total_gib": 8.0,
+        "free_gib": 7.3994140625,
+        "driver": "595.71.05",
+        "compute_pids": []
+      },
+      "command": [
+        "<redacted>/.local/share/qwen-launcher/engine/installations/b10011-cuda-8efe025708bf4176ba3d0be83bda7523/build/bin/llama-server",
+        "-m",
+        "<redacted>/.cache/huggingface/hub/models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF/snapshots/5bc3e238d916f48a861bac2f8a1990a0e9b7e98d/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "-c",
+        "131072",
+        "--temp",
+        "0.6",
+        "--top-p",
+        "0.95",
+        "--top-k",
+        "20",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--metrics",
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--mmap",
+        "--cache-type-k",
+        "q8_0",
+        "--cache-type-v",
+        "q8_0",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps",
+        "--no-webui",
+        "--no-mmproj",
+        "-ngl",
+        "99",
+        "-ncmoe",
+        "48"
+      ],
+      "load_seconds": 2.2141499360000125,
+      "health": "pass",
+      "benchmark": {
+        "warmup_tok_s": 34.73191708514557,
+        "measured_tok_s": [
+          34.83401726841978,
+          34.834657163699625,
+          34.78957133676346,
+          34.80897081566936,
+          34.78692397575949
+        ],
+        "tok_s": {
+          "min": 34.78692397575949,
+          "median": 34.80897081566936,
+          "max": 34.834657163699625
+        },
+        "mtp": [
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          }
+        ]
+      },
+      "outcome": "pass",
+      "exit_code": 0,
+      "memory": {
+        "minimum_gpu_free_gib": 2.796875,
+        "peak_gpu_used_gib": 5.203125,
+        "minimum_ram_available_gib": 27.960010528564453,
+        "peak_process_rss_gib": 21.7054443359375
+      },
+      "release": {
+        "samples": [
+          {
+            "at_seconds": 0.02973188399994342,
+            "used_gib": 0.6005859375
+          }
+        ],
+        "final_used_gib": 0.6005859375
+      },
+      "log": "logs/q8-mmap-ncmoe-48.log",
+      "log_sha256": "24a9dab317e80640f110fcd651867b28961cbb3e402ae1f27a95d9d9b0c632c7"
+    },
+    {
+      "id": "q8-mmap-ncmoe-38",
+      "configuration": "q8-mmap",
+      "ctx": 131072,
+      "n_cpu_moe": 38,
+      "started_at": "2026-07-17T09:07:17.346340+00:00",
+      "baseline": {
+        "total_gib": 8.0,
+        "free_gib": 7.3994140625,
+        "driver": "595.71.05",
+        "compute_pids": []
+      },
+      "command": [
+        "<redacted>/.local/share/qwen-launcher/engine/installations/b10011-cuda-8efe025708bf4176ba3d0be83bda7523/build/bin/llama-server",
+        "-m",
+        "<redacted>/.cache/huggingface/hub/models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF/snapshots/5bc3e238d916f48a861bac2f8a1990a0e9b7e98d/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "-c",
+        "131072",
+        "--temp",
+        "0.6",
+        "--top-p",
+        "0.95",
+        "--top-k",
+        "20",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--metrics",
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--mmap",
+        "--cache-type-k",
+        "q8_0",
+        "--cache-type-v",
+        "q8_0",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps",
+        "--no-webui",
+        "--no-mmproj",
+        "-ngl",
+        "99",
+        "-ncmoe",
+        "38"
+      ],
+      "load_seconds": 2.1954606450000256,
+      "health": "pass",
+      "benchmark": {
+        "warmup_tok_s": 37.272128615633065,
+        "measured_tok_s": [
+          37.36414629931483,
+          37.41847595716754,
+          37.398824128377306,
+          37.421785179949815,
+          37.33806982306568
+        ],
+        "tok_s": {
+          "min": 37.33806982306568,
+          "median": 37.398824128377306,
+          "max": 37.421785179949815
+        },
+        "mtp": [
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          }
+        ]
+      },
+      "outcome": "pass",
+      "exit_code": 0,
+      "memory": {
+        "minimum_gpu_free_gib": 1.42578125,
+        "peak_gpu_used_gib": 6.57421875,
+        "minimum_ram_available_gib": 27.973255157470703,
+        "peak_process_rss_gib": 21.38888931274414
+      },
+      "release": {
+        "samples": [
+          {
+            "at_seconds": 0.04080422100003034,
+            "used_gib": 0.54296875
+          }
+        ],
+        "final_used_gib": 0.54296875
+      },
+      "log": "logs/q8-mmap-ncmoe-38.log",
+      "log_sha256": "7ff8d9c431d268b4ab822301e15dc99b0e5b377b204d17569d7271dadad4eb91"
+    },
+    {
+      "id": "q8-no-mmap-ncmoe-48",
+      "configuration": "q8-no-mmap",
+      "ctx": 131072,
+      "n_cpu_moe": 48,
+      "started_at": "2026-07-17T09:08:03.276553+00:00",
+      "baseline": {
+        "total_gib": 8.0,
+        "free_gib": 7.45703125,
+        "driver": "595.71.05",
+        "compute_pids": []
+      },
+      "command": [
+        "<redacted>/.local/share/qwen-launcher/engine/installations/b10011-cuda-8efe025708bf4176ba3d0be83bda7523/build/bin/llama-server",
+        "-m",
+        "<redacted>/.cache/huggingface/hub/models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF/snapshots/5bc3e238d916f48a861bac2f8a1990a0e9b7e98d/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "-c",
+        "131072",
+        "--temp",
+        "0.6",
+        "--top-p",
+        "0.95",
+        "--top-k",
+        "20",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--metrics",
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--no-mmap",
+        "--cache-type-k",
+        "q8_0",
+        "--cache-type-v",
+        "q8_0",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps",
+        "--no-webui",
+        "--no-mmproj",
+        "-ngl",
+        "99",
+        "-ncmoe",
+        "48"
+      ],
+      "load_seconds": 81.76687656000001,
+      "health": "pass",
+      "benchmark": {
+        "warmup_tok_s": 25.072094513961286,
+        "measured_tok_s": [
+          33.26175991609721,
+          33.54677029124232,
+          28.481568586787954,
+          30.874262635774393,
+          32.47583182847179
+        ],
+        "tok_s": {
+          "min": 28.481568586787954,
+          "median": 32.47583182847179,
+          "max": 33.54677029124232
+        },
+        "mtp": [
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          }
+        ]
+      },
+      "outcome": "pass",
+      "exit_code": 0,
+      "memory": {
+        "minimum_gpu_free_gib": 2.6083984375,
+        "peak_gpu_used_gib": 5.3916015625,
+        "minimum_ram_available_gib": 8.405689239501953,
+        "peak_process_rss_gib": 19.466781616210938
+      },
+      "release": {
+        "samples": [
+          {
+            "at_seconds": 0.037511870999992425,
+            "used_gib": 0.7529296875
+          },
+          {
+            "at_seconds": 0.35357390299998315,
+            "used_gib": 0.7529296875
+          },
+          {
+            "at_seconds": 0.6670586540000158,
+            "used_gib": 0.751953125
+          },
+          {
+            "at_seconds": 0.9821223889999828,
+            "used_gib": 0.751953125
+          },
+          {
+            "at_seconds": 1.2822200589999966,
+            "used_gib": 0.751953125
+          },
+          {
+            "at_seconds": 1.5980127940000557,
+            "used_gib": 0.7490234375
+          },
+          {
+            "at_seconds": 1.9150517360000094,
+            "used_gib": 0.7470703125
+          },
+          {
+            "at_seconds": 2.2052096129999654,
+            "used_gib": 0.7412109375
+          },
+          {
+            "at_seconds": 2.527269709000052,
+            "used_gib": 0.7451171875
+          },
+          {
+            "at_seconds": 2.855123420000041,
+            "used_gib": 0.7451171875
+          },
+          {
+            "at_seconds": 3.1461892070000204,
+            "used_gib": 0.736328125
+          },
+          {
+            "at_seconds": 3.4609706830000277,
+            "used_gib": 0.7353515625
+          },
+          {
+            "at_seconds": 3.7899303860000373,
+            "used_gib": 0.7353515625
+          },
+          {
+            "at_seconds": 4.111307285000066,
+            "used_gib": 0.7353515625
+          },
+          {
+            "at_seconds": 4.430158140999993,
+            "used_gib": 0.7353515625
+          },
+          {
+            "at_seconds": 4.7574150210000425,
+            "used_gib": 0.734375
+          },
+          {
+            "at_seconds": 5.086193091000041,
+            "used_gib": 0.734375
+          },
+          {
+            "at_seconds": 5.408792343000073,
+            "used_gib": 0.734375
+          },
+          {
+            "at_seconds": 5.7304144690000385,
+            "used_gib": 0.734375
+          },
+          {
+            "at_seconds": 6.0538410489999706,
+            "used_gib": 0.734375
+          },
+          {
+            "at_seconds": 6.3748589560000255,
+            "used_gib": 0.734375
+          },
+          {
+            "at_seconds": 6.685765866999986,
+            "used_gib": 0.736328125
+          },
+          {
+            "at_seconds": 6.985938182000041,
+            "used_gib": 0.736328125
+          },
+          {
+            "at_seconds": 7.300472568000032,
+            "used_gib": 0.7373046875
+          },
+          {
+            "at_seconds": 7.625012597000023,
+            "used_gib": 0.7353515625
+          },
+          {
+            "at_seconds": 7.910583350000024,
+            "used_gib": 0.7353515625
+          },
+          {
+            "at_seconds": 8.195453895000014,
+            "used_gib": 0.7353515625
+          },
+          {
+            "at_seconds": 8.521316084999967,
+            "used_gib": 0.7392578125
+          },
+          {
+            "at_seconds": 8.835569089000046,
+            "used_gib": 0.7392578125
+          },
+          {
+            "at_seconds": 9.126156439000056,
+            "used_gib": 0.7392578125
+          },
+          {
+            "at_seconds": 9.453991858999984,
+            "used_gib": 0.7392578125
+          },
+          {
+            "at_seconds": 9.773120673999983,
+            "used_gib": 0.7392578125
+          },
+          {
+            "at_seconds": 10.09125545300003,
+            "used_gib": 0.7392578125
+          }
+        ],
+        "final_used_gib": 0.7392578125
+      },
+      "log": "logs/q8-no-mmap-ncmoe-48.log",
+      "log_sha256": "6b670f7f9d8b0ca083ec96b7fc0c1fb15a6cbea3cf07c173eaa3b97bd01046e4"
+    },
+    {
+      "id": "q8-no-mmap-ncmoe-38",
+      "configuration": "q8-no-mmap",
+      "ctx": 131072,
+      "n_cpu_moe": 38,
+      "started_at": "2026-07-17T09:10:32.442650+00:00",
+      "baseline": {
+        "total_gib": 8.0,
+        "free_gib": 7.2607421875,
+        "driver": "595.71.05",
+        "compute_pids": []
+      },
+      "command": [
+        "<redacted>/.local/share/qwen-launcher/engine/installations/b10011-cuda-8efe025708bf4176ba3d0be83bda7523/build/bin/llama-server",
+        "-m",
+        "<redacted>/.cache/huggingface/hub/models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF/snapshots/5bc3e238d916f48a861bac2f8a1990a0e9b7e98d/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "-c",
+        "131072",
+        "--temp",
+        "0.6",
+        "--top-p",
+        "0.95",
+        "--top-k",
+        "20",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--metrics",
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--no-mmap",
+        "--cache-type-k",
+        "q8_0",
+        "--cache-type-v",
+        "q8_0",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps",
+        "--no-webui",
+        "--no-mmproj",
+        "-ngl",
+        "99",
+        "-ncmoe",
+        "38"
+      ],
+      "load_seconds": 48.74093600399999,
+      "health": "pass",
+      "benchmark": {
+        "warmup_tok_s": 34.287742466909314,
+        "measured_tok_s": [
+          31.57040181105583,
+          33.13775585162932,
+          33.51367004273255,
+          34.22399497762874,
+          34.17504511506444
+        ],
+        "tok_s": {
+          "min": 31.57040181105583,
+          "median": 33.51367004273255,
+          "max": 34.22399497762874
+        },
+        "mtp": [
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          }
+        ]
+      },
+      "outcome": "pass",
+      "exit_code": 0,
+      "memory": {
+        "minimum_gpu_free_gib": 1.1123046875,
+        "peak_gpu_used_gib": 6.8876953125,
+        "minimum_ram_available_gib": 8.68466567993164,
+        "peak_process_rss_gib": 18.765636444091797
+      },
+      "release": {
+        "samples": [
+          {
+            "at_seconds": 0.030584744000066166,
+            "used_gib": 0.8798828125
+          },
+          {
+            "at_seconds": 0.3546776299999692,
+            "used_gib": 0.87890625
+          },
+          {
+            "at_seconds": 0.6659960350000347,
+            "used_gib": 0.8759765625
+          },
+          {
+            "at_seconds": 0.9574735310000051,
+            "used_gib": 0.873046875
+          },
+          {
+            "at_seconds": 1.2670665250000184,
+            "used_gib": 0.8720703125
+          },
+          {
+            "at_seconds": 1.598589488000016,
+            "used_gib": 0.8720703125
+          },
+          {
+            "at_seconds": 1.9332313380000414,
+            "used_gib": 0.873046875
+          },
+          {
+            "at_seconds": 2.2537097900000163,
+            "used_gib": 0.873046875
+          },
+          {
+            "at_seconds": 2.5586054139999987,
+            "used_gib": 0.8720703125
+          },
+          {
+            "at_seconds": 2.8782503680000673,
+            "used_gib": 0.8671875
+          },
+          {
+            "at_seconds": 3.2026582920000237,
+            "used_gib": 0.8720703125
+          },
+          {
+            "at_seconds": 3.5172362399999884,
+            "used_gib": 0.87890625
+          },
+          {
+            "at_seconds": 3.821485101999997,
+            "used_gib": 0.87890625
+          },
+          {
+            "at_seconds": 4.1495833530000255,
+            "used_gib": 0.87890625
+          },
+          {
+            "at_seconds": 4.479552793000039,
+            "used_gib": 0.87890625
+          },
+          {
+            "at_seconds": 4.8008195730000125,
+            "used_gib": 0.8779296875
+          },
+          {
+            "at_seconds": 5.118325276000064,
+            "used_gib": 0.87890625
+          },
+          {
+            "at_seconds": 5.412020053999981,
+            "used_gib": 0.87890625
+          },
+          {
+            "at_seconds": 5.733708062000005,
+            "used_gib": 0.8876953125
+          },
+          {
+            "at_seconds": 6.027301890999979,
+            "used_gib": 0.8876953125
+          },
+          {
+            "at_seconds": 6.3497844319999786,
+            "used_gib": 0.8876953125
+          },
+          {
+            "at_seconds": 6.648409433999973,
+            "used_gib": 0.8896484375
+          },
+          {
+            "at_seconds": 6.951388595000026,
+            "used_gib": 0.8896484375
+          },
+          {
+            "at_seconds": 7.244317254000066,
+            "used_gib": 0.8896484375
+          },
+          {
+            "at_seconds": 7.555405591000067,
+            "used_gib": 0.888671875
+          },
+          {
+            "at_seconds": 7.871269036000058,
+            "used_gib": 0.888671875
+          },
+          {
+            "at_seconds": 8.161829816000022,
+            "used_gib": 0.8876953125
+          },
+          {
+            "at_seconds": 8.44945692400006,
+            "used_gib": 0.9052734375
+          },
+          {
+            "at_seconds": 8.769700655000065,
+            "used_gib": 0.9052734375
+          },
+          {
+            "at_seconds": 9.101234496000075,
+            "used_gib": 0.9052734375
+          },
+          {
+            "at_seconds": 9.428334735000021,
+            "used_gib": 0.9052734375
+          },
+          {
+            "at_seconds": 9.754398288000061,
+            "used_gib": 0.9052734375
+          },
+          {
+            "at_seconds": 10.075108151999984,
+            "used_gib": 0.91796875
+          }
+        ],
+        "final_used_gib": 0.91796875
+      },
+      "log": "logs/q8-no-mmap-ncmoe-38.log",
+      "log_sha256": "d73925b0ee46ef69ea0318ace832f5f2f75f192744f5444b3a1c38f4744f30ee"
+    }
+  ],
+  "benchmark_protocol": {
+    "id": "benchmark/v1",
+    "prompt_sha256": "1c7182235411da2d4fe6fca130e3effb0b0d965569c52abd8fd45327103ddb2e",
+    "request_sha256": "025dc91aeb61a790d5fd36c27f127e04761ae7f1c3d6b542d0cfd9d37bc5c19f",
+    "warmup_runs": 1,
+    "measured_runs": 5,
+    "completion_tokens": 256
+  }
+}

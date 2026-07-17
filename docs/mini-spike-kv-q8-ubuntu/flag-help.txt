@@ -1,0 +1,13 @@
+CUDA help evidence:
+-ctk,  --cache-type-k TYPE              KV cache data type for K
+-ctv,  --cache-type-v TYPE              KV cache data type for V
+--mmap, --no-mmap                       whether to memory-map model. (if mmap disabled, slower load but may
+--spec-draft-type-k, -ctkd, --cache-type-k-draft TYPE
+--spec-draft-type-v, -ctvd, --cache-type-v-draft TYPE
+
+CPU help evidence:
+-ctk,  --cache-type-k TYPE              KV cache data type for K
+-ctv,  --cache-type-v TYPE              KV cache data type for V
+--mmap, --no-mmap                       whether to memory-map model. (if mmap disabled, slower load but may
+--spec-draft-type-k, -ctkd, --cache-type-k-draft TYPE
+--spec-draft-type-v, -ctvd, --cache-type-v-draft TYPE

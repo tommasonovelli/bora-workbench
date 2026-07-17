@@ -1,0 +1,77 @@
+0.00.187.202 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.299.895 I srv    load_model: loading model '<redacted>/.cache/huggingface/hub/models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF/snapshots/5bc3e238d916f48a861bac2f8a1990a0e9b7e98d/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf'
+0.00.752.099 W llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --no-mmap for better performance
+0.01.278.457 W srv    operator(): (CORS) skip non-localhost origin:
+0.01.958.661 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 131072, kv_unified = 'false'
+0.02.046.271 I srv          init: chat template supports preserving reasoning, consider enabling it via --reasoning-preserve
+0.02.046.281 I srv  llama_server: model loaded
+0.02.046.282 I srv  llama_server: listening on http://127.0.0.1:18080
+0.02.280.950 W srv    operator(): (CORS) skip non-localhost origin:
+0.02.308.991 W srv    operator(): (CORS) skip non-localhost origin:
+0.02.323.570 W srv    operator(): (CORS) skip non-localhost origin:
+0.02.344.901 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
+0.02.344.939 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
+0.06.757.001 I slot print_timing: id  0 | task 0 | n_decoded =    115, tg =  38.09 t/s, tg_3s =  38.09 t/s
+0.09.758.714 I slot print_timing: id  0 | task 0 | n_decoded =    223, tg =  37.04 t/s, tg_3s =  35.98 t/s
+0.10.870.057 I slot print_timing: id  0 | task 0 | prompt eval time =    1392.63 ms /   128 tokens (   10.88 ms per token,    91.91 tokens per second)
+0.10.870.062 I slot print_timing: id  0 | task 0 |        eval time =    7132.32 ms /   256 tokens (   27.86 ms per token,    35.89 tokens per second)
+0.10.870.063 I slot print_timing: id  0 | task 0 |       total time =    8524.95 ms /   384 tokens
+0.10.870.064 I slot print_timing: id  0 | task 0 |    graphs reused =         96
+0.10.870.068 I slot print_timing: id  0 | task 0 | draft acceptance = 0.80513 (  157 accepted /   195 generated), mean len =  2.60
+0.10.870.114 I slot      release: id  0 | task 0 | stop processing: n_tokens = 383, truncated = 0
+0.10.871.208 W srv    operator(): (CORS) skip non-localhost origin:
+0.10.890.636 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.334
+0.10.943.989 I slot launch_slot_: id  0 | task 101 | processing task, is_child = 0
+0.14.142.105 I slot print_timing: id  0 | task 101 | n_decoded =    112, tg =  36.47 t/s, tg_3s =  36.47 t/s
+0.17.204.327 I slot print_timing: id  0 | task 101 | n_decoded =    220, tg =  35.87 t/s, tg_3s =  35.27 t/s
+0.18.359.204 I slot print_timing: id  0 | task 101 | prompt eval time =     127.03 ms /     4 tokens (   31.76 ms per token,    31.49 tokens per second)
+0.18.359.208 I slot print_timing: id  0 | task 101 |        eval time =    7288.02 ms /   256 tokens (   28.47 ms per token,    35.13 tokens per second)
+0.18.359.209 I slot print_timing: id  0 | task 101 |       total time =    7415.04 ms /   260 tokens
+0.18.359.210 I slot print_timing: id  0 | task 101 |    graphs reused =        191
+0.18.359.214 I slot print_timing: id  0 | task 101 | draft acceptance = 0.80513 (  157 accepted /   195 generated), mean len =  2.60
+0.18.359.256 I slot      release: id  0 | task 101 | stop processing: n_tokens = 383, truncated = 0
+0.18.360.212 W srv    operator(): (CORS) skip non-localhost origin:
+0.18.378.306 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.334
+0.18.378.588 I slot launch_slot_: id  0 | task 201 | processing task, is_child = 0
+0.21.547.982 I slot print_timing: id  0 | task 201 | n_decoded =    112, tg =  36.76 t/s, tg_3s =  36.76 t/s
+0.24.614.090 I slot print_timing: id  0 | task 201 | n_decoded =    220, tg =  35.99 t/s, tg_3s =  35.22 t/s
+0.25.786.843 I slot print_timing: id  0 | task 201 | prompt eval time =     122.60 ms /     4 tokens (   30.65 ms per token,    32.63 tokens per second)
+0.25.786.851 I slot print_timing: id  0 | task 201 |        eval time =    7285.36 ms /   256 tokens (   28.46 ms per token,    35.14 tokens per second)
+0.25.786.852 I slot print_timing: id  0 | task 201 |       total time =    7407.96 ms /   260 tokens
+0.25.786.853 I slot print_timing: id  0 | task 201 |    graphs reused =        286
+0.25.786.857 I slot print_timing: id  0 | task 201 | draft acceptance = 0.80513 (  157 accepted /   195 generated), mean len =  2.60
+0.25.786.905 I slot      release: id  0 | task 201 | stop processing: n_tokens = 383, truncated = 0
+0.25.788.076 W srv    operator(): (CORS) skip non-localhost origin:
+0.25.806.763 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.334
+0.25.807.105 I slot launch_slot_: id  0 | task 301 | processing task, is_child = 0
+0.28.992.425 I slot print_timing: id  0 | task 301 | n_decoded =    112, tg =  36.57 t/s, tg_3s =  36.57 t/s
+0.32.011.203 I slot print_timing: id  0 | task 301 | n_decoded =    220, tg =  36.17 t/s, tg_3s =  35.78 t/s
+0.33.181.749 I slot print_timing: id  0 | task 301 | prompt eval time =     122.35 ms /     4 tokens (   30.59 ms per token,    32.69 tokens per second)
+0.33.181.754 I slot print_timing: id  0 | task 301 |        eval time =    7252.12 ms /   256 tokens (   28.33 ms per token,    35.30 tokens per second)
+0.33.181.754 I slot print_timing: id  0 | task 301 |       total time =    7374.47 ms /   260 tokens
+0.33.181.755 I slot print_timing: id  0 | task 301 |    graphs reused =        381
+0.33.181.757 I slot print_timing: id  0 | task 301 | draft acceptance = 0.80513 (  157 accepted /   195 generated), mean len =  2.60
+0.33.181.789 I slot      release: id  0 | task 301 | stop processing: n_tokens = 383, truncated = 0
+0.33.182.911 W srv    operator(): (CORS) skip non-localhost origin:
+0.33.201.411 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.334
+0.33.201.721 I slot launch_slot_: id  0 | task 401 | processing task, is_child = 0
+0.36.325.827 I slot print_timing: id  0 | task 401 | n_decoded =    109, tg =  36.33 t/s, tg_3s =  36.33 t/s
+0.39.346.940 I slot print_timing: id  0 | task 401 | n_decoded =    219, tg =  36.37 t/s, tg_3s =  36.41 t/s
+0.40.574.621 I slot print_timing: id  0 | task 401 | prompt eval time =     123.95 ms /     4 tokens (   30.99 ms per token,    32.27 tokens per second)
+0.40.574.625 I slot print_timing: id  0 | task 401 |        eval time =    7248.78 ms /   256 tokens (   28.32 ms per token,    35.32 tokens per second)
+0.40.574.626 I slot print_timing: id  0 | task 401 |       total time =    7372.73 ms /   260 tokens
+0.40.574.627 I slot print_timing: id  0 | task 401 |    graphs reused =        476
+0.40.574.629 I slot print_timing: id  0 | task 401 | draft acceptance = 0.80513 (  157 accepted /   195 generated), mean len =  2.60
+0.40.574.660 I slot      release: id  0 | task 401 | stop processing: n_tokens = 383, truncated = 0
+0.40.575.687 W srv    operator(): (CORS) skip non-localhost origin:
+0.40.594.709 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.334
+0.40.595.080 I slot launch_slot_: id  0 | task 501 | processing task, is_child = 0
+0.43.781.458 I slot print_timing: id  0 | task 501 | n_decoded =    112, tg =  36.55 t/s, tg_3s =  36.55 t/s
+0.46.850.646 I slot print_timing: id  0 | task 501 | n_decoded =    220, tg =  35.87 t/s, tg_3s =  35.19 t/s
+0.48.002.023 I slot print_timing: id  0 | task 501 | prompt eval time =     121.74 ms /     4 tokens (   30.44 ms per token,    32.86 tokens per second)
+0.48.002.027 I slot print_timing: id  0 | task 501 |        eval time =    7285.03 ms /   256 tokens (   28.46 ms per token,    35.14 tokens per second)
+0.48.002.027 I slot print_timing: id  0 | task 501 |       total time =    7406.77 ms /   260 tokens
+0.48.002.028 I slot print_timing: id  0 | task 501 |    graphs reused =        571
+0.48.002.030 I slot print_timing: id  0 | task 501 | draft acceptance = 0.80513 (  157 accepted /   195 generated), mean len =  2.60
+0.48.002.062 I slot      release: id  0 | task 501 | stop processing: n_tokens = 383, truncated = 0
+0.48.002.734 I srv    operator(): operator(): cleaning up before exit...

@@ -30,8 +30,9 @@ baseline dello spike senza presentarla come profilo ottimizzato. Lo Step 5 è co
 sono collaudate realmente su Ubuntu e Windows CUDA e la matrice CI Ubuntu/Windows è verde. Lo Step
 5A è completo e corretto dopo il primo run reale: automatizza `benchmark/v1`, confronta candidati
 espliciti, stabilizza il rilascio VRAM con tolleranza dichiarata e genera bundle draft atomici,
-redatti e validabili. La prossima attività manuale è il mini-spike cache KV Q8/`--no-mmap`, seguito
-dalla nuova calibrazione e dal Calibration Gate eseguiti personalmente da Tommaso. Il piano
+redatti e validabili. Il mini-spike Ubuntu ha dato GO a cache KV Q8 con `--mmap` e NO-GO a
+`--no-mmap`; la prossima attività manuale è lo smoke Windows dello stesso contratto, seguito dalla
+modifica dichiarativa del lock, dalla nuova calibrazione e dal Calibration Gate. Il piano
 normativo e il tracker sono in
 [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
 [`docs/spike-0/`](docs/spike-0/).
@@ -71,8 +72,9 @@ multi-GPU resta bloccato perché lo Spike 0 ha verificato soltanto una macchina 
 integrata testuale; `vstudio` abilita anche il mmproj verificato. Entrambi mostrano URL UI/API e log
 e aprono la UI dopo READY quando `open_browser=true`. La calibrazione Step 5A richiede candidati,
 riserva e tolleranza di rilascio espliciti finché la policy non è approvata; produce soltanto una
-bozza locale. Il modello resta `UD-Q4_K_M`: la cache KV Q8 proposta non entra in `engine.lock` prima
-del mini-spike b10011 con esito GO. Protocollo, sintassi e privacy sono descritti in
+bozza locale. Il modello resta `UD-Q4_K_M`: la cache KV Q8 ha evidenza GO su Ubuntu ma non entra in
+`engine.lock` prima dello smoke Windows b10011; `--no-mmap` è stato rifiutato dalle misure Ubuntu.
+Protocollo, sintassi e privacy sono descritti in
 [`docs/calibration.md`](docs/calibration.md). Open WebUI non fa parte della 0.1.
 
 Build e verifica isolata:

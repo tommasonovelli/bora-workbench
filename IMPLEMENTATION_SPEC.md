@@ -27,8 +27,9 @@
   multipiattaforma conclusi.
 - [~] **Step 5A — Calibrazione assistita:** core iniziale e precedente matrice CI completati;
   correzioni dal primo run reale implementate e verificate localmente, nuova matrice CI pendente.
-- [~] **Calibration Gate / Step 5B — Prima calibrazione e profili iniziali:** primo run Linux
-  raccolto ma non accettato; mini-spike cache KV Q8/`--no-mmap` e nuova calibrazione obbligatori.
+- [~] **Calibration Gate / Step 5B — Prima calibrazione e profili iniziali:** primo run Linux non
+  accettato; mini-spike Ubuntu GO per Q8+mmap e NO-GO per no-mmap; smoke Windows, lock e nuova
+  calibrazione ancora obbligatori.
 - [ ] **Step 6A / Human Gate / 6B — Release 0.1.**
 - [ ] **Step 7 — Skill e router.**
 - [ ] **Step 8 — Open WebUI e sync.**
@@ -194,12 +195,16 @@
   esplicita; deriva fra avvii oltre tolleranza trasformata in scarto del candidato; campione finale
   registrato; report e fallback redatti; scanner privacy e riepilogo «tutti scartati» coperti da
   test offline. Verifiche locali completate; nuova matrice CI Ubuntu/Windows ancora da eseguire.
+- [x] Mini-spike Ubuntu b10011: cache K/V Q8 con mmap GO su coding/studio/vstudio CUDA e smoke CPU;
+  no-mmap NO-GO per caricamento, RAM, throughput e rilascio. Evidenza sotto
+  `docs/mini-spike-kv-q8-ubuntu/`; nessuna promessa qualitativa deriva da `benchmark/v1`.
 
 ### Prossima azione obbligatoria
 
-Gli Step 3, 4, 5 e la correzione 5A sono conclusi. La prossima azione obbligatoria è il mini-spike
-manuale cache KV Q8/`--no-mmap` su b10011; dopo un GO, una PR dichiarativa separata aggiorna il lock
-e Tommaso ripete la calibrazione con parametri espliciti. Non iniziare lo Step 5B o step successivi
+Gli Step 3, 4, 5 e la correzione 5A sono conclusi; il mini-spike Ubuntu ha approvato Q8+mmap e
+rifiutato no-mmap. La prossima azione obbligatoria è lo smoke Windows CUDA 13.3 sul contratto Q8+mmap;
+dopo un GO, una PR dichiarativa separata aggiorna il solo ramo CUDA del lock e Tommaso ripete la
+calibrazione con parametri espliciti. Non iniziare lo Step 5B o step successivi
 prima di almeno un esito `CALIBRATION-ACCEPTED`.
 
 ---
@@ -872,13 +877,13 @@ un lock prodotto. `docs/spike-0.json` e `engine.lock` devono contenere dati real
 non applicabile usa una sequenza vuota o `null` soltanto dove il contratto lo consente, con la
 motivazione nello spike.
 
-Il contratto attivo mantiene i pesi `UD-Q4_K_M`, la cache predefinita verificata e `--mmap`. Prima
-della nuova calibrazione, Tommaso esegue su b10011 il mini-spike definito in `CALIBRATE.md`,
-confrontando contratto attuale, cache K/V `q8_0` con mmap e cache K/V `q8_0` con `--no-mmap` a parità
-di candidati. Registra RAM, VRAM, avvio, salute, MTP, vision, stop e `benchmark/v1`. Soltanto un GO
-consente di aggiungere `--cache-type-k`, `--cache-type-v` e/o `--no-mmap` ai flag verificati e agli
-argomenti fissi o CUDA del lock; il cambio è dichiarativo, separato dalle correzioni core e ripetuto
-su Windows prima di sostenere compatibilità Windows.
+Il contratto attivo mantiene i pesi `UD-Q4_K_M`, la cache predefinita verificata e `--mmap`. Il
+mini-spike Ubuntu b10011 definito in `CALIBRATE.md` ha confrontato contratto attuale, cache K/V
+`q8_0` con mmap e cache K/V `q8_0` con `--no-mmap`: Q8+mmap è GO, no-mmap è NO-GO. Salute, MTP, UI,
+vision, stop, RAM, VRAM e `benchmark/v1` sono registrati in `docs/mini-spike-kv-q8-ubuntu/`.
+`benchmark/v1` non misura qualità semantica. Il lock globale resta invariato fino allo smoke Windows;
+con GO Windows, la PR dichiarativa aggiunge `--cache-type-k` e `--cache-type-v` soltanto agli
+argomenti CUDA, conserva `--mmap`, lascia il ramo CPU invariato e resta separata dalle correzioni core.
 
 Il modello predefinito viene risolto senza rete e senza scritture alla directory snapshot della
 revisione appuntata, rispettando la precedenza delle directory cache osservata nel sorgente della
