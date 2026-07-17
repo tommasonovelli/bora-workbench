@@ -182,9 +182,14 @@ mancante richiede il nuovo protocollo locale descritto sopra.
 Il precedente invito a ripetere subito la lista 8 GiB viene ritirato come percorso verso una policy
 pubblica. L'ordine corretto è:
 
-1. completare lo smoke Windows Q8+mmap, che resta evidenza indipendente sul lock;
-2. verificare sul modello/engine appuntati il dominio legale degli assi di calibrazione;
-3. definire con evidenza screening, finalisti, monitoraggio RAM e criterio robusto;
+1. ~~completare lo smoke Windows Q8+mmap~~ — **fatto il 17 luglio 2026**
+   (`docs/mini-spike-kv-q8-windows.md`): GO, cache Q8 adottata nel ramo CUDA del lock;
+2. ~~verificare sul modello/engine appuntati il dominio legale degli assi~~ — **fatto**: metadati
+   GGUF `block_count=41` più probe 48/49/41/40; dominio CUDA `[0, 41]`, valori superiori alias del
+   massimo (tre dei sette candidati storici erano la stessa configurazione);
+3. ~~definire con evidenza screening, finalisti, monitoraggio RAM e criterio robusto~~ — **fatto**:
+   progettazione `calibration/v2` in `docs/calibration-v2-design.md` (D-038/D-039), con criterio di
+   dominanza derivato dalla dispersione misurata sui due host invece che da soglie inventate;
 4. implementare e testare il protocollo versionato per la ricerca locale;
 5. implementare record locale, compatibilità, headroom e invalidazione;
 6. eseguire il gate sulla macchina di Tommaso come primo caso reale, senza attribuirgli portabilità;

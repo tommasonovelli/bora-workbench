@@ -1,4 +1,4 @@
-# qwen-launcher — Specifica centrale di implementazione (v3.4)
+# qwen-launcher — Specifica centrale di implementazione (v4.0)
 
 ## 0. Tracker di avanzamento — aggiornato al 17 luglio 2026
 
@@ -27,10 +27,13 @@
   multipiattaforma conclusi.
 - [~] **Step 5A — Calibrazione assistita:** `calibration/v1`, bundle e correzioni del primo run sono
   implementati, ma l'audit di portabilità ha riaperto lo step: il protocollo esplicito è idoneo al
-  laboratorio del Gate, non ancora alla calibrazione generale di PC diversi.
+  laboratorio del Gate, non ancora alla calibrazione generale di PC diversi. Smoke Windows Q8,
+  dominio degli assi e progettazione `calibration/v2` (D-038/D-039) sono completati; resta
+  l'implementazione del v2.
 - [~] **Calibration Gate / Step 5B — Prima calibrazione locale:** primo run Linux non accettato;
-  mini-spike Ubuntu GO per Q8+mmap e NO-GO per no-mmap. Restano obbligatori smoke Windows, contratto
-  Q8, ricerca hardware-indipendente, monitoraggio RAM e record locale prima di qualunque profilo.
+  mini-spike Ubuntu e smoke Windows GO per Q8+mmap (NO-GO per no-mmap) e contratto Q8 adottato nel
+  ramo CUDA del lock. Restano l'implementazione della ricerca hardware-indipendente
+  `calibration/v2` con monitoraggio RAM e record locale, poi il Gate col protocollo corretto.
 - [ ] **Step 6A / Human Gate / 6B — Release 0.1.**
 - [ ] **Step 7 — Skill e router.**
 - [ ] **Step 8 — Open WebUI e sync.**
@@ -205,22 +208,38 @@
   condivisi non entrano più direttamente nel `LaunchPlan`. Verifica locale Windows: sync frozen,
   Ruff, 229 test, `validate`, build e wheel isolata verdi; il primo probe wheel del motore a freddo è
   scaduto, il retry è riuscito. Restano CI, monitoraggio RAM, ricerca versionata e risultato locale.
+- [x] Smoke Windows 11 CUDA 13.3 b10011 con Q8+mmap (17 luglio 2026): GO su coding (48 e 38),
+  studio (38) e vstudio (48 e 38) a ctx 131072 con benchmark/v1, MTP, UI, vision `Rosso`, stop e
+  rilascio entro tolleranza; compatibilità CPU a ctx 8192. Cache Q8 adottata nel ramo CUDA del lock
+  in modifica dichiarativa separata (D-033). Evidenza sotto `docs/mini-spike-kv-q8-windows/`; le
+  misure Windows registrano onestamente il carico ambientale del desktop e la loro dispersione.
+- [x] Dominio `n_cpu_moe` verificato sul modello appuntato: metadati GGUF (`block_count=41`,
+  `expert_count=256`) più probe 48/49/41/40; dominio legale `[0, 41]`, valori superiori alias del
+  massimo. Tre dei sette candidati storici (48, 44, 42) erano la stessa configurazione.
+- [x] Progettazione `calibration/v2` registrata e approvata: D-038/D-039 e
+  `docs/calibration-v2-design.md` (screening adattivo, finalisti, criterio di dominanza dal rumore
+  misurato, record locale `calibration-record/v1`, invalidazione, headroom, seed come solo
+  ordinamento).
 
 ### Prossima azione obbligatoria
 
-Il Calibration Gate resta chiuso. Lo smoke Windows CUDA 13.3 su Q8+mmap può completare l'evidenza del
-lock, ma non autorizza una policy derivata dalla sola macchina 32/8. Prima di ripetere la calibrazione
-vanno verificati il dominio legale degli assi e il protocollo hardware-indipendente, quindi completata
-la correzione Step 5A descritta in D-034–D-037. Non iniziare lo Step 5B o step successivi prima di
-almeno un esito locale `CALIBRATION-ACCEPTED` prodotto dal protocollo corretto.
+Il Calibration Gate resta chiuso. Smoke Windows, contratto Q8, dominio degli assi e progettazione del
+protocollo sono completati; la prossima sessione implementa `calibration/v2` (CALIBRATE.md, sezione
+7, punti 4–5): ricerca adattiva senza input obbligatori, monitoraggio RAM per tutti i backend,
+schema `calibration-record/v1`, riuso con controllo headroom, invalidazione, test offline
+deterministici e matrice CI Ubuntu/Windows. Poi Tommaso esegue il Gate col protocollo corretto,
+compreso almeno un caso hardware materialmente diverso. Non iniziare lo Step 5B o step successivi
+prima di almeno un esito locale `CALIBRATION-ACCEPTED` prodotto dal protocollo implementato.
 
 ---
 
 > **Stato:** documento normativo centrale, pronto a guidare l'implementazione per step.  
-> **Data di consolidamento:** 17 luglio 2026; v3.4 separa evidenza condivisa e calibrazione locale,
-> ritira la portabilità implicita delle classi RAM/VRAM e riapre lo Step 5A.  
-> **Sostituisce:** la v3.1, `PIANO_IMPLEMENTAZIONE_v2.md`, le due revisioni successive e la v3 non
-> corretta.  
+> **Data di consolidamento:** 17 luglio 2026; la v4.0 registra il ridisegno adattivo local-first
+> approvato dal maintainer (D-038/D-039 e `docs/calibration-v2-design.md`), adotta cache KV Q8 nel
+> contratto CUDA dopo il mini-spike Ubuntu e lo smoke Windows e appunta il dominio verificato degli
+> assi. La v3.4 separava evidenza condivisa e calibrazione locale e riapriva lo Step 5A.  
+> **Sostituisce:** la v3.4, la v3.1, `PIANO_IMPLEMENTAZIONE_v2.md`, le due revisioni successive e la
+> v3 non corretta.  
 > **Regola d'uso:** una sessione di sviluppo esegue un solo step, nell'ordine indicato. Prima di
 > modificare il repository, l'esecutore legge comunque l'intero documento e applica tutti i
 > contratti trasversali. Nessuno step autorizza implicitamente push, tag, pubblicazioni o modifiche
@@ -364,6 +383,8 @@ Regole conseguenti:
 | D-035 | report e profili condivisi sono seed/evidenza; il runtime usa come calibrato soltanto un record locale compatibile con modello, contratto motore, modo, backend e hardware correnti | consente a ogni PC supportato di misurare il proprio optimum senza nearest-match o fingerprint distribuiti |
 | D-036 | la policy pubblica governa un dominio di ricerca verificato e indipendente dalla macchina 32/8; ogni confronto mantiene fisso il contesto e misura localmente risorse e prestazioni | impedisce che una lista costruita attorno al confine della RTX 2060 SUPER diventi il dominio implicito del prodotto |
 | D-037 | `calibration/v1` resta protocollo di laboratorio del Gate; prima della calibrazione pubblica 0.1 serve un protocollo successivo con screening, finalisti, monitoraggio RAM, record locale e invalidazione | estendere v1 silenziosamente o inventare limiti/criteri senza spike violerebbe versionamento ed evidenza |
+| D-038 | il protocollo pubblico è `calibration/v2`: ricerca locale adattiva a zero input obbligatori — predizione del dominio dai metadati GGUF e dall'hardware, screening senza benchmark governato dalla riserva misurata, conferma dei finalisti con avvii stabili e `benchmark/v1`, selezione robusta al rumore per dominanza fra misure locali, record locale atomico `calibration-record/v1` usato subito dai lanci | l'utente che ignora i flag interni ottiene l'optimum della propria macchina; nessuna lista curata a mano e nessun valore ereditato da un altro host (progettazione in `docs/calibration-v2-design.md`) |
+| D-039 | le costanti di design del v2 — riserva VRAM 0,5 GiB, tolleranza rilascio/deriva 0,125 GiB, 2 avvii stabili, tetto 12 probe per modo, scala contesti 131072→8192 — hanno provenienza dichiarata (ridisegno local-first approvato dal maintainer il 17 luglio 2026) e vengono validate al Calibration Gate; il dominio di ogni asse deriva dai metadati verificati del modello appuntato (`block_count=41`; valori superiori sono alias del massimo) e mai da liste ricordate | distingue costanti universali dichiarate e verificabili dalle soglie inventate dall'esecutore e àncora il dominio alla misura del modello reale |
 
 Le sole decisioni lasciate allo spike sono: release esatta di `llama.cpp`, nomi esatti dei flag per
 quella release, forma reale della salute, asset ufficiali disponibili, compatibilità della UI e
@@ -431,7 +452,7 @@ qwen-launcher/
 │       │   ├── calibration-report.v1.json      # evidenza storica di laboratorio
 │       │   ├── mode.v1.json
 │       │   ├── profile.v1.json                 # seed condivisi, mai buste finali
-│       │   └── <schemi successivi approvati nello Step 5A>
+│       │   └── calibration-record.v1.json      # record locale v2, aggiunto nello step che implementa D-038
 │       └── content/
 │           ├── calibration-policy.json
 │           ├── calibrations/*.json
@@ -793,6 +814,9 @@ ricordo di prove precedenti. Il run 8/32 produce evidenza sul proprio host, non 
 Una policy pubblica richiede il protocollo successivo previsto da D-037: dominio legale verificato
 nel lock o in contenuto approvato, screening locale, finalisti, RAM e VRAM durante il trial, criterio
 robusto e record atomico compatibile con la macchina corrente. Contesto e modi restano separati.
+Il protocollo successivo è definito da D-038/D-039 come `calibration/v2` e progettato in
+`docs/calibration-v2-design.md`; il dominio di `n_cpu_moe` sul modello appuntato è `[0, 41]`,
+verificato dai metadati GGUF e dai probe del 17 luglio 2026.
 
 Un utente idoneo senza record locale continua con la baseline oppure calibra uno o più modi. Un
 record parziale vale solo per i modi provati. Nessun seed «più vicino» viene usato come busta finale e

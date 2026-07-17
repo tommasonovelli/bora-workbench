@@ -31,10 +31,12 @@ sono collaudate realmente su Ubuntu e Windows CUDA e la matrice CI Ubuntu/Window
 5A ha implementato il protocollo di laboratorio `calibration/v1`, ma l'audit di portabilità lo ha
 riaperto: una busta misurata su un PC non può diventare automaticamente «calibrata» su componenti
 diversi soltanto perché RAM e VRAM nominali coincidono. Sono ora bloccati confronti fra contesti e
-report incoerenti; prima dello Step 5B restano da progettare con evidenza ricerca portabile,
-monitoraggio RAM e risultato locale riutilizzabile. Il mini-spike Ubuntu ha dato GO a cache KV Q8
-con `--mmap` e NO-GO a `--no-mmap`; lo smoke Windows dello stesso contratto resta necessario ma non
-sostituisce la correzione del calibratore. Il piano normativo e il tracker sono in
+report incoerenti. Il mini-spike Ubuntu e lo smoke Windows CUDA 13.3 hanno dato GO a cache KV Q8
+con `--mmap` (NO-GO a `--no-mmap`) e il contratto CUDA del lock ora la imposta; il dominio di
+`n_cpu_moe` sul modello appuntato è verificato (`[0, 41]`) e il protocollo successivo
+`calibration/v2` — ricerca locale adattiva a zero input obbligatori — è progettato in
+[`docs/calibration-v2-design.md`](docs/calibration-v2-design.md) (D-038/D-039). Prima dello Step 5B
+restano l'implementazione del v2 con record locale riutilizzabile e il Calibration Gate. Il piano normativo e il tracker sono in
 [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
 [`docs/spike-0/`](docs/spike-0/).
 
