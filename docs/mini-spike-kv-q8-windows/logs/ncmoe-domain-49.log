@@ -1,0 +1,51 @@
+0.00.149.637 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.223.367 I srv          init: The UI is disabled
+0.00.223.373 I srv          init: Use --ui/--no-ui (or deprecated --webui/--no-webui) to enable/disable
+0.00.230.119 I srv    load_model: loading model '<redacted>\.cache\huggingface\hub\models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF\snapshots\5bc3e238d916f48a861bac2f8a1990a0e9b7e98d\Qwen3.6-35B-A3B-UD-Q4_K_M.gguf'
+0.00.510.942 W srv    operator(): (CORS) skip non-localhost origin: 
+0.00.776.441 W srv    operator(): (CORS) skip non-localhost origin: 
+0.00.790.667 W llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --no-mmap for better performance
+0.01.053.520 W srv    operator(): (CORS) skip non-localhost origin: 
+0.01.323.587 W srv    operator(): (CORS) skip non-localhost origin: 
+0.01.590.417 W srv    operator(): (CORS) skip non-localhost origin: 
+0.01.858.535 W srv    operator(): (CORS) skip non-localhost origin: 
+0.02.110.222 W srv    operator(): (CORS) skip non-localhost origin: 
+0.02.362.582 W srv    operator(): (CORS) skip non-localhost origin: 
+0.02.614.262 W srv    operator(): (CORS) skip non-localhost origin: 
+0.02.866.091 W srv    operator(): (CORS) skip non-localhost origin: 
+0.03.117.938 W srv    operator(): (CORS) skip non-localhost origin: 
+0.03.393.199 W srv    operator(): (CORS) skip non-localhost origin: 
+0.03.658.567 W srv    operator(): (CORS) skip non-localhost origin: 
+0.03.925.620 W srv    operator(): (CORS) skip non-localhost origin: 
+0.04.178.303 W srv    operator(): (CORS) skip non-localhost origin: 
+0.04.430.441 W srv    operator(): (CORS) skip non-localhost origin: 
+0.04.682.594 W srv    operator(): (CORS) skip non-localhost origin: 
+0.04.934.429 W srv    operator(): (CORS) skip non-localhost origin: 
+0.05.210.981 W srv    operator(): (CORS) skip non-localhost origin: 
+0.05.463.160 W srv    operator(): (CORS) skip non-localhost origin: 
+0.05.715.031 W srv    operator(): (CORS) skip non-localhost origin: 
+0.05.990.949 W srv    operator(): (CORS) skip non-localhost origin: 
+0.06.242.543 W srv    operator(): (CORS) skip non-localhost origin: 
+0.06.494.623 W srv    operator(): (CORS) skip non-localhost origin: 
+0.06.762.390 W srv    operator(): (CORS) skip non-localhost origin: 
+0.07.014.443 W srv    operator(): (CORS) skip non-localhost origin: 
+0.07.015.064 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 8192, kv_unified = 'false'
+0.07.115.265 I srv          init: chat template supports preserving reasoning, consider enabling it via --reasoning-preserve
+0.07.115.294 I srv  llama_server: model loaded
+0.07.115.297 I srv  llama_server: listening on http://127.0.0.1:18080
+0.07.281.160 W srv    operator(): (CORS) skip non-localhost origin: 
+0.07.282.476 W srv    operator(): (CORS) skip non-localhost origin: 
+0.07.311.291 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
+0.07.311.341 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
+0.23.665.967 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =    124, progress = 0.97, t =  16.35 s / 7.58 tokens per second
+0.33.487.290 I slot print_timing: id  0 | task 0 | n_decoded =    100, tg =  10.61 t/s, tg_3s =  10.61 t/s
+0.36.539.307 I slot print_timing: id  0 | task 0 | n_decoded =    142, tg =  11.38 t/s, tg_3s =  13.76 t/s
+0.39.720.465 I slot print_timing: id  0 | task 0 | n_decoded =    180, tg =  11.50 t/s, tg_3s =  11.95 t/s
+0.42.729.002 I slot print_timing: id  0 | task 0 | n_decoded =    211, tg =  11.30 t/s, tg_3s =  10.30 t/s
+0.45.878.688 I slot print_timing: id  0 | task 0 | n_decoded =    254, tg =  11.64 t/s, tg_3s =  13.65 t/s
+0.45.988.546 I slot print_timing: id  0 | task 0 | prompt eval time =   16751.26 ms /   128 tokens (  130.87 ms per token,     7.64 tokens per second)
+0.45.988.554 I slot print_timing: id  0 | task 0 |        eval time =   21925.64 ms /   256 tokens (   85.65 ms per token,    11.68 tokens per second)
+0.45.988.555 I slot print_timing: id  0 | task 0 |       total time =   38676.90 ms /   384 tokens
+0.45.988.556 I slot print_timing: id  0 | task 0 |    graphs reused =         97
+0.45.988.560 I slot print_timing: id  0 | task 0 | draft acceptance = 0.79188 (  156 accepted /   197 generated), mean len =  2.58
+0.45.989.194 I slot      release: id  0 | task 0 | stop processing: n_tokens = 383, truncated = 0

@@ -1,0 +1,1584 @@
+{
+  "schema": "mini-spike-kv-q8-windows/v1",
+  "created_at": "2026-07-17T18:11:42.293940+00:00",
+  "engine": "b10011",
+  "source_commit": "bf2c86ddc0685f580595954056c2e77ebabfab4f",
+  "model": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M",
+  "host": {
+    "os": "Windows 11",
+    "backend": "cuda",
+    "gpu": "NVIDIA GeForce RTX 2060 SUPER",
+    "vram_total_gib": 8.0,
+    "ram_total_gib": 31.916213989257812,
+    "driver": "610.47",
+    "ambient_gpu_used_gib": 1.4296875
+  },
+  "benchmark_protocol": {
+    "id": "benchmark/v1",
+    "prompt_sha256": "1c7182235411da2d4fe6fca130e3effb0b0d965569c52abd8fd45327103ddb2e",
+    "request_sha256": "025dc91aeb61a790d5fd36c27f127e04761ae7f1c3d6b542d0cfd9d37bc5c19f",
+    "warmup_runs": 1,
+    "measured_runs": 5,
+    "completion_tokens": 256
+  },
+  "results": [
+    {
+      "id": "ncmoe-domain-48",
+      "configuration": "domain-probe",
+      "mode": "coding",
+      "backend": "cuda",
+      "ctx": 8192,
+      "n_cpu_moe": 48,
+      "started_at": "2026-07-17T18:02:52.206300+00:00",
+      "baseline": {
+        "total_gib": 8.0,
+        "used_gib": 1.546875,
+        "free_gib": 6.2724609375,
+        "driver": "610.47",
+        "compute_pids": [
+          1740,
+          7380,
+          3924,
+          8388,
+          6272,
+          9700,
+          9692,
+          11912,
+          1732,
+          11484,
+          15656,
+          15748,
+          6004,
+          8600,
+          18144,
+          17452,
+          9912,
+          17488,
+          5224,
+          6176,
+          16836,
+          17868,
+          17320,
+          18504,
+          6604,
+          8988
+        ]
+      },
+      "command": [
+        "<redacted>\\AppData\\Local\\qwen-launcher\\data\\engine\\installations\\b10011-cuda-29f8abc0fde94a8382471d357ab0d346\\llama-server.exe",
+        "-m",
+        "<redacted>\\.cache\\huggingface\\hub\\models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF\\snapshots\\5bc3e238d916f48a861bac2f8a1990a0e9b7e98d\\Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "-c",
+        "8192",
+        "--temp",
+        "0.6",
+        "--top-p",
+        "0.95",
+        "--top-k",
+        "20",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--metrics",
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--mmap",
+        "--cache-type-k",
+        "q8_0",
+        "--cache-type-v",
+        "q8_0",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps",
+        "--no-webui",
+        "--no-mmproj",
+        "-ngl",
+        "99",
+        "-ncmoe",
+        "48"
+      ],
+      "load_seconds": 10.04716869999993,
+      "health": "pass",
+      "probe": {
+        "tok_s": 14.988500131822688,
+        "mtp": {
+          "draft_n": 197,
+          "draft_n_accepted": 156
+        }
+      },
+      "outcome": "pass",
+      "memory": {
+        "minimum_gpu_free_gib": 3.3408203125,
+        "peak_gpu_used_gib": 4.478515625,
+        "minimum_ram_available_gib": 4.359169006347656,
+        "peak_process_rss_gib": 15.70913314819336
+      },
+      "release": {
+        "samples": [
+          {
+            "at_seconds": 0.060069600000133505,
+            "used_gib": 4.453125
+          },
+          {
+            "at_seconds": 0.3688713000001371,
+            "used_gib": 1.5087890625
+          }
+        ],
+        "final_used_gib": 1.5087890625
+      },
+      "stop_method": "ctrl-break",
+      "exit_code": 3221225786,
+      "log": "logs/ncmoe-domain-48.log",
+      "log_sha256": "f88701985cc65552f07f3e3832af06ee522fc88ea7e706aaf6c6fdc6835ee4d7"
+    },
+    {
+      "id": "ncmoe-domain-49",
+      "configuration": "domain-probe",
+      "mode": "coding",
+      "backend": "cuda",
+      "ctx": 8192,
+      "n_cpu_moe": 49,
+      "started_at": "2026-07-17T18:03:30.498771+00:00",
+      "baseline": {
+        "total_gib": 8.0,
+        "used_gib": 1.4765625,
+        "free_gib": 6.3427734375,
+        "driver": "610.47",
+        "compute_pids": [
+          1740,
+          7380,
+          3924,
+          8388,
+          6272,
+          9700,
+          9692,
+          11912,
+          1732,
+          11484,
+          15748,
+          6004,
+          8600,
+          18144,
+          17452,
+          9912,
+          17488,
+          5224,
+          6176,
+          16836,
+          17868,
+          17320,
+          18504,
+          6604,
+          8988
+        ]
+      },
+      "command": [
+        "<redacted>\\AppData\\Local\\qwen-launcher\\data\\engine\\installations\\b10011-cuda-29f8abc0fde94a8382471d357ab0d346\\llama-server.exe",
+        "-m",
+        "<redacted>\\.cache\\huggingface\\hub\\models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF\\snapshots\\5bc3e238d916f48a861bac2f8a1990a0e9b7e98d\\Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "-c",
+        "8192",
+        "--temp",
+        "0.6",
+        "--top-p",
+        "0.95",
+        "--top-k",
+        "20",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--metrics",
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--mmap",
+        "--cache-type-k",
+        "q8_0",
+        "--cache-type-v",
+        "q8_0",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps",
+        "--no-webui",
+        "--no-mmproj",
+        "-ngl",
+        "99",
+        "-ncmoe",
+        "49"
+      ],
+      "load_seconds": 7.298268499999722,
+      "health": "pass",
+      "probe": {
+        "tok_s": 11.675828999822036,
+        "mtp": {
+          "draft_n": 197,
+          "draft_n_accepted": 156
+        }
+      },
+      "outcome": "pass",
+      "memory": {
+        "minimum_gpu_free_gib": 3.333984375,
+        "peak_gpu_used_gib": 4.4853515625,
+        "minimum_ram_available_gib": 5.4080963134765625,
+        "peak_process_rss_gib": 15.724018096923828
+      },
+      "release": {
+        "samples": [
+          {
+            "at_seconds": 0.05826429999979155,
+            "used_gib": 4.453125
+          },
+          {
+            "at_seconds": 0.3704358000004504,
+            "used_gib": 1.5146484375
+          }
+        ],
+        "final_used_gib": 1.5146484375
+      },
+      "stop_method": "ctrl-break",
+      "exit_code": 3221225786,
+      "log": "logs/ncmoe-domain-49.log",
+      "log_sha256": "c28c7eb0f2a6a0b024ab9578e07c1d79a55a149e84a9093fa69f97b3dd622afe"
+    },
+    {
+      "id": "current-ncmoe-48",
+      "configuration": "current",
+      "mode": "coding",
+      "backend": "cuda",
+      "ctx": 131072,
+      "n_cpu_moe": 48,
+      "started_at": "2026-07-17T18:04:19.146728+00:00",
+      "baseline": {
+        "total_gib": 8.0,
+        "used_gib": 1.50390625,
+        "free_gib": 6.3154296875,
+        "driver": "610.47",
+        "compute_pids": [
+          1740,
+          7380,
+          3924,
+          8388,
+          6272,
+          9700,
+          9692,
+          11912,
+          1732,
+          11484,
+          15748,
+          6004,
+          8600,
+          18144,
+          17452,
+          9912,
+          17488,
+          5224,
+          6176,
+          16836,
+          17868,
+          17320,
+          18504,
+          6604,
+          8988
+        ]
+      },
+      "command": [
+        "<redacted>\\AppData\\Local\\qwen-launcher\\data\\engine\\installations\\b10011-cuda-29f8abc0fde94a8382471d357ab0d346\\llama-server.exe",
+        "-m",
+        "<redacted>\\.cache\\huggingface\\hub\\models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF\\snapshots\\5bc3e238d916f48a861bac2f8a1990a0e9b7e98d\\Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "-c",
+        "131072",
+        "--temp",
+        "0.6",
+        "--top-p",
+        "0.95",
+        "--top-k",
+        "20",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--metrics",
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--mmap",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps",
+        "--no-webui",
+        "--no-mmproj",
+        "-ngl",
+        "99",
+        "-ncmoe",
+        "48"
+      ],
+      "load_seconds": 5.278151699999398,
+      "health": "pass",
+      "benchmark": {
+        "warmup_tok_s": 18.363806372312546,
+        "measured_tok_s": [
+          20.085312364267224,
+          17.909393161899867,
+          18.27306410447853,
+          20.248054486249117,
+          20.010879352297863
+        ],
+        "tok_s": {
+          "min": 17.909393161899867,
+          "median": 20.010879352297863,
+          "max": 20.248054486249117
+        },
+        "mtp": [
+          {
+            "draft_n": 214,
+            "draft_n_accepted": 147
+          },
+          {
+            "draft_n": 214,
+            "draft_n_accepted": 147
+          },
+          {
+            "draft_n": 214,
+            "draft_n_accepted": 147
+          },
+          {
+            "draft_n": 214,
+            "draft_n_accepted": 147
+          },
+          {
+            "draft_n": 214,
+            "draft_n_accepted": 147
+          },
+          {
+            "draft_n": 214,
+            "draft_n_accepted": 147
+          }
+        ]
+      },
+      "outcome": "pass",
+      "memory": {
+        "minimum_gpu_free_gib": 0.5048828125,
+        "peak_gpu_used_gib": 7.314453125,
+        "minimum_ram_available_gib": 4.973930358886719,
+        "peak_process_rss_gib": 16.5704345703125
+      },
+      "release": {
+        "samples": [
+          {
+            "at_seconds": 0.055570099999386,
+            "used_gib": 7.1611328125
+          },
+          {
+            "at_seconds": 0.35471700000016426,
+            "used_gib": 1.455078125
+          }
+        ],
+        "final_used_gib": 1.455078125
+      },
+      "stop_method": "ctrl-break",
+      "exit_code": 3221225786,
+      "log": "logs/current-ncmoe-48.log",
+      "log_sha256": "fdb2ee22606669dbeeec60682e457a893ecb6762b8b00bf89a7fe853bc403c6f"
+    },
+    {
+      "id": "q8-mmap-ncmoe-48",
+      "configuration": "q8-mmap",
+      "mode": "coding",
+      "backend": "cuda",
+      "ctx": 131072,
+      "n_cpu_moe": 48,
+      "started_at": "2026-07-17T18:05:52.849629+00:00",
+      "baseline": {
+        "total_gib": 8.0,
+        "used_gib": 1.462890625,
+        "free_gib": 6.3564453125,
+        "driver": "610.47",
+        "compute_pids": [
+          1740,
+          7380,
+          3924,
+          8388,
+          6272,
+          9700,
+          9692,
+          11912,
+          1732,
+          11484,
+          15748,
+          6004,
+          8600,
+          18144,
+          17452,
+          9912,
+          17488,
+          5224,
+          6176,
+          16836,
+          17868,
+          17320,
+          18504,
+          6604,
+          8988
+        ]
+      },
+      "command": [
+        "<redacted>\\AppData\\Local\\qwen-launcher\\data\\engine\\installations\\b10011-cuda-29f8abc0fde94a8382471d357ab0d346\\llama-server.exe",
+        "-m",
+        "<redacted>\\.cache\\huggingface\\hub\\models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF\\snapshots\\5bc3e238d916f48a861bac2f8a1990a0e9b7e98d\\Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "-c",
+        "131072",
+        "--temp",
+        "0.6",
+        "--top-p",
+        "0.95",
+        "--top-k",
+        "20",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--metrics",
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--mmap",
+        "--cache-type-k",
+        "q8_0",
+        "--cache-type-v",
+        "q8_0",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps",
+        "--no-webui",
+        "--no-mmproj",
+        "-ngl",
+        "99",
+        "-ncmoe",
+        "48"
+      ],
+      "load_seconds": 5.5352670000002036,
+      "health": "pass",
+      "benchmark": {
+        "warmup_tok_s": 19.89943787974599,
+        "measured_tok_s": [
+          18.99197284978781,
+          20.15468405092144,
+          20.374145718436946,
+          19.803921068068785,
+          21.301861607962703
+        ],
+        "tok_s": {
+          "min": 18.99197284978781,
+          "median": 20.15468405092144,
+          "max": 21.301861607962703
+        },
+        "mtp": [
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 197,
+            "draft_n_accepted": 156
+          }
+        ]
+      },
+      "outcome": "pass",
+      "memory": {
+        "minimum_gpu_free_gib": 1.6865234375,
+        "peak_gpu_used_gib": 6.1328125,
+        "minimum_ram_available_gib": 5.105751037597656,
+        "peak_process_rss_gib": 16.171024322509766
+      },
+      "release": {
+        "samples": [
+          {
+            "at_seconds": 0.046205100000406674,
+            "used_gib": 6.0810546875
+          },
+          {
+            "at_seconds": 0.34469090000038705,
+            "used_gib": 1.4921875
+          }
+        ],
+        "final_used_gib": 1.4921875
+      },
+      "stop_method": "ctrl-break",
+      "exit_code": 3221225786,
+      "log": "logs/q8-mmap-ncmoe-48.log",
+      "log_sha256": "5d16077661f3ca70959f8e74f2969acce421778ebad0d818aabd43f289d3ad9e"
+    },
+    {
+      "id": "ncmoe-domain-41",
+      "configuration": "domain-probe",
+      "mode": "coding",
+      "backend": "cuda",
+      "ctx": 8192,
+      "n_cpu_moe": 41,
+      "started_at": "2026-07-17T18:07:40.525015+00:00",
+      "baseline": {
+        "total_gib": 8.0,
+        "used_gib": 1.44921875,
+        "free_gib": 6.3701171875,
+        "driver": "610.47",
+        "compute_pids": [
+          1740,
+          7380,
+          3924,
+          8388,
+          6272,
+          9700,
+          9692,
+          11912,
+          1732,
+          11484,
+          15748,
+          6004,
+          8600,
+          18144,
+          17452,
+          9912,
+          17488,
+          5224,
+          6176,
+          16836,
+          17868,
+          17320,
+          18504,
+          6604,
+          8988,
+          10368
+        ]
+      },
+      "command": [
+        "<redacted>\\AppData\\Local\\qwen-launcher\\data\\engine\\installations\\b10011-cuda-29f8abc0fde94a8382471d357ab0d346\\llama-server.exe",
+        "-m",
+        "<redacted>\\.cache\\huggingface\\hub\\models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF\\snapshots\\5bc3e238d916f48a861bac2f8a1990a0e9b7e98d\\Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "-c",
+        "8192",
+        "--temp",
+        "0.6",
+        "--top-p",
+        "0.95",
+        "--top-k",
+        "20",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--metrics",
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--mmap",
+        "--cache-type-k",
+        "q8_0",
+        "--cache-type-v",
+        "q8_0",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps",
+        "--no-webui",
+        "--no-mmproj",
+        "-ngl",
+        "99",
+        "-ncmoe",
+        "41"
+      ],
+      "load_seconds": 5.214382900000601,
+      "health": "pass",
+      "probe": {
+        "tok_s": 19.06720691412674,
+        "mtp": {
+          "draft_n": 197,
+          "draft_n_accepted": 156
+        }
+      },
+      "outcome": "pass",
+      "memory": {
+        "minimum_gpu_free_gib": 3.3427734375,
+        "peak_gpu_used_gib": 4.4765625,
+        "minimum_ram_available_gib": 5.595508575439453,
+        "peak_process_rss_gib": 15.688400268554688
+      },
+      "release": {
+        "samples": [
+          {
+            "at_seconds": 0.05944230000022799,
+            "used_gib": 4.46484375
+          },
+          {
+            "at_seconds": 0.3559423999995488,
+            "used_gib": 1.5302734375
+          }
+        ],
+        "final_used_gib": 1.5302734375
+      },
+      "stop_method": "ctrl-break",
+      "exit_code": 3221225786,
+      "log": "logs/ncmoe-domain-41.log",
+      "log_sha256": "bdc620dd4a32707108e9c03c98051122efdd4d0a328624465670a1de6ee4b4bf"
+    },
+    {
+      "id": "ncmoe-domain-40",
+      "configuration": "domain-probe",
+      "mode": "coding",
+      "backend": "cuda",
+      "ctx": 8192,
+      "n_cpu_moe": 40,
+      "started_at": "2026-07-17T18:08:06.242566+00:00",
+      "baseline": {
+        "total_gib": 8.0,
+        "used_gib": 1.46875,
+        "free_gib": 6.3505859375,
+        "driver": "610.47",
+        "compute_pids": [
+          1740,
+          7380,
+          3924,
+          8388,
+          6272,
+          9700,
+          9692,
+          11912,
+          1732,
+          11484,
+          15748,
+          6004,
+          8600,
+          18144,
+          17452,
+          9912,
+          17488,
+          5224,
+          6176,
+          16836,
+          17868,
+          17320,
+          18504,
+          6604,
+          8988,
+          10368
+        ]
+      },
+      "command": [
+        "<redacted>\\AppData\\Local\\qwen-launcher\\data\\engine\\installations\\b10011-cuda-29f8abc0fde94a8382471d357ab0d346\\llama-server.exe",
+        "-m",
+        "<redacted>\\.cache\\huggingface\\hub\\models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF\\snapshots\\5bc3e238d916f48a861bac2f8a1990a0e9b7e98d\\Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "-c",
+        "8192",
+        "--temp",
+        "0.6",
+        "--top-p",
+        "0.95",
+        "--top-k",
+        "20",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--metrics",
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--mmap",
+        "--cache-type-k",
+        "q8_0",
+        "--cache-type-v",
+        "q8_0",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps",
+        "--no-webui",
+        "--no-mmproj",
+        "-ngl",
+        "99",
+        "-ncmoe",
+        "40"
+      ],
+      "load_seconds": 5.756836900000053,
+      "health": "pass",
+      "probe": {
+        "tok_s": 21.601038604937425,
+        "mtp": {
+          "draft_n": 197,
+          "draft_n_accepted": 156
+        }
+      },
+      "outcome": "pass",
+      "memory": {
+        "minimum_gpu_free_gib": 3.087890625,
+        "peak_gpu_used_gib": 4.7314453125,
+        "minimum_ram_available_gib": 5.521587371826172,
+        "peak_process_rss_gib": 15.793846130371094
+      },
+      "release": {
+        "samples": [
+          {
+            "at_seconds": 0.05953869999939343,
+            "used_gib": 4.7236328125
+          },
+          {
+            "at_seconds": 0.3592933999998422,
+            "used_gib": 1.486328125
+          }
+        ],
+        "final_used_gib": 1.486328125
+      },
+      "stop_method": "ctrl-break",
+      "exit_code": 3221225786,
+      "log": "logs/ncmoe-domain-40.log",
+      "log_sha256": "34f2c37077fec5ab6c85bd0d172429a28c2161b82143a25c18c505b929eade0a"
+    },
+    {
+      "id": "q8-mmap-ncmoe-38",
+      "configuration": "q8-mmap",
+      "mode": "coding",
+      "backend": "cuda",
+      "ctx": 131072,
+      "n_cpu_moe": 38,
+      "started_at": "2026-07-17T18:08:30.886291+00:00",
+      "baseline": {
+        "total_gib": 8.0,
+        "used_gib": 1.486328125,
+        "free_gib": 6.3330078125,
+        "driver": "610.47",
+        "compute_pids": [
+          1740,
+          7380,
+          3924,
+          8388,
+          6272,
+          9700,
+          9692,
+          11912,
+          1732,
+          11484,
+          15748,
+          6004,
+          8600,
+          18144,
+          17452,
+          9912,
+          17488,
+          5224,
+          6176,
+          16836,
+          17868,
+          17320,
+          18504,
+          6604,
+          8988,
+          10368
+        ]
+      },
+      "command": [
+        "<redacted>\\AppData\\Local\\qwen-launcher\\data\\engine\\installations\\b10011-cuda-29f8abc0fde94a8382471d357ab0d346\\llama-server.exe",
+        "-m",
+        "<redacted>\\.cache\\huggingface\\hub\\models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF\\snapshots\\5bc3e238d916f48a861bac2f8a1990a0e9b7e98d\\Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "-c",
+        "131072",
+        "--temp",
+        "0.6",
+        "--top-p",
+        "0.95",
+        "--top-k",
+        "20",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--metrics",
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--mmap",
+        "--cache-type-k",
+        "q8_0",
+        "--cache-type-v",
+        "q8_0",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps",
+        "--no-webui",
+        "--no-mmproj",
+        "-ngl",
+        "99",
+        "-ncmoe",
+        "38"
+      ],
+      "load_seconds": 6.064011700000265,
+      "health": "pass",
+      "benchmark": {
+        "warmup_tok_s": 20.20799872058108,
+        "measured_tok_s": [
+          21.175873070493324,
+          21.796202948191873,
+          22.45661903144076,
+          21.439352719142217,
+          23.273637060357814
+        ],
+        "tok_s": {
+          "min": 21.175873070493324,
+          "median": 21.796202948191873,
+          "max": 23.273637060357814
+        },
+        "mtp": [
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          },
+          {
+            "draft_n": 196,
+            "draft_n_accepted": 156
+          }
+        ]
+      },
+      "outcome": "pass",
+      "memory": {
+        "minimum_gpu_free_gib": 0.248046875,
+        "peak_gpu_used_gib": 7.5712890625,
+        "minimum_ram_available_gib": 4.896232604980469,
+        "peak_process_rss_gib": 16.38689422607422
+      },
+      "release": {
+        "samples": [
+          {
+            "at_seconds": 0.07614970000031462,
+            "used_gib": 7.404296875
+          },
+          {
+            "at_seconds": 0.3887125000001106,
+            "used_gib": 1.4736328125
+          }
+        ],
+        "final_used_gib": 1.4736328125
+      },
+      "stop_method": "ctrl-break",
+      "exit_code": 3221225786,
+      "log": "logs/q8-mmap-ncmoe-38.log",
+      "log_sha256": "c951fcf364512a73d5d7bb6ecbffe12e8769060313dae3acd275c33301bd2281"
+    },
+    {
+      "id": "q8-mmap-studio-ncmoe-38",
+      "configuration": "q8-mmap",
+      "mode": "studio",
+      "backend": "cuda",
+      "ctx": 131072,
+      "n_cpu_moe": 38,
+      "started_at": "2026-07-17T18:09:55.928539+00:00",
+      "baseline": {
+        "total_gib": 8.0,
+        "used_gib": 1.4736328125,
+        "free_gib": 6.345703125,
+        "driver": "610.47",
+        "compute_pids": [
+          1740,
+          7380,
+          3924,
+          8388,
+          6272,
+          9700,
+          9692,
+          11912,
+          1732,
+          11484,
+          15748,
+          6004,
+          8600,
+          18144,
+          17452,
+          9912,
+          17488,
+          5224,
+          6176,
+          16836,
+          17868,
+          17320,
+          18504,
+          6604,
+          8988,
+          10368
+        ]
+      },
+      "command": [
+        "<redacted>\\AppData\\Local\\qwen-launcher\\data\\engine\\installations\\b10011-cuda-29f8abc0fde94a8382471d357ab0d346\\llama-server.exe",
+        "-m",
+        "<redacted>\\.cache\\huggingface\\hub\\models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF\\snapshots\\5bc3e238d916f48a861bac2f8a1990a0e9b7e98d\\Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "-c",
+        "131072",
+        "--temp",
+        "0.7",
+        "--top-p",
+        "0.8",
+        "--top-k",
+        "20",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--metrics",
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--mmap",
+        "--cache-type-k",
+        "q8_0",
+        "--cache-type-v",
+        "q8_0",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps",
+        "--webui",
+        "--no-mmproj",
+        "-ngl",
+        "99",
+        "-ncmoe",
+        "38"
+      ],
+      "load_seconds": 6.083445100000063,
+      "health": "pass",
+      "ui_status": 200,
+      "benchmark": {
+        "warmup_tok_s": 21.67238882635972,
+        "measured_tok_s": [
+          21.272407385879557,
+          20.11065416108681,
+          22.153268251761855,
+          23.48820593871762,
+          24.093221946101767
+        ],
+        "tok_s": {
+          "min": 20.11065416108681,
+          "median": 22.153268251761855,
+          "max": 24.093221946101767
+        },
+        "mtp": [
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          },
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          },
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          },
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          },
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          },
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          }
+        ]
+      },
+      "outcome": "pass",
+      "memory": {
+        "minimum_gpu_free_gib": 0.306640625,
+        "peak_gpu_used_gib": 7.5126953125,
+        "minimum_ram_available_gib": 5.211132049560547,
+        "peak_process_rss_gib": 16.62704086303711
+      },
+      "release": {
+        "samples": [
+          {
+            "at_seconds": 0.055213800000274205,
+            "used_gib": 7.3427734375
+          },
+          {
+            "at_seconds": 0.3557746999995288,
+            "used_gib": 1.38671875
+          }
+        ],
+        "final_used_gib": 1.38671875
+      },
+      "stop_method": "ctrl-break",
+      "exit_code": 3221225786,
+      "log": "logs/q8-mmap-studio-ncmoe-38.log",
+      "log_sha256": "a6ea3cf479c743a4f4a7543634d3f1a2524b0611c0adea33d31cd4e9d9166623"
+    },
+    {
+      "id": "q8-mmap-vstudio-ncmoe-48",
+      "configuration": "q8-mmap",
+      "mode": "vstudio",
+      "backend": "cuda",
+      "ctx": 131072,
+      "n_cpu_moe": 48,
+      "started_at": "2026-07-17T18:11:42.420932+00:00",
+      "baseline": {
+        "total_gib": 8.0,
+        "used_gib": 1.4296875,
+        "free_gib": 6.3896484375,
+        "driver": "610.47",
+        "compute_pids": [
+          1740,
+          7380,
+          3924,
+          8388,
+          6272,
+          9700,
+          9692,
+          11912,
+          1732,
+          11484,
+          15748,
+          6004,
+          8600,
+          18144,
+          17452,
+          9912,
+          17488,
+          5224,
+          6176,
+          16836,
+          17868,
+          17320,
+          18504,
+          6604,
+          8988,
+          10368,
+          2288
+        ]
+      },
+      "command": [
+        "<redacted>\\AppData\\Local\\qwen-launcher\\data\\engine\\installations\\b10011-cuda-29f8abc0fde94a8382471d357ab0d346\\llama-server.exe",
+        "-m",
+        "<redacted>\\.cache\\huggingface\\hub\\models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF\\snapshots\\5bc3e238d916f48a861bac2f8a1990a0e9b7e98d\\Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "-c",
+        "131072",
+        "--temp",
+        "0.7",
+        "--top-p",
+        "0.8",
+        "--top-k",
+        "20",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--metrics",
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--mmap",
+        "--cache-type-k",
+        "q8_0",
+        "--cache-type-v",
+        "q8_0",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps",
+        "--webui",
+        "--mmproj",
+        "<redacted>\\.cache\\huggingface\\hub\\models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF\\snapshots\\5bc3e238d916f48a861bac2f8a1990a0e9b7e98d\\mmproj-BF16.gguf",
+        "-ngl",
+        "99",
+        "-ncmoe",
+        "48"
+      ],
+      "load_seconds": 11.59112339999956,
+      "health": "pass",
+      "ui_status": 200,
+      "vision": "pass",
+      "benchmark": {
+        "warmup_tok_s": 20.30799453556291,
+        "measured_tok_s": [
+          22.10981148794713,
+          20.664922956162435,
+          20.768686402489518,
+          22.386976376492978,
+          22.993892875944088
+        ],
+        "tok_s": {
+          "min": 20.664922956162435,
+          "median": 22.10981148794713,
+          "max": 22.993892875944088
+        },
+        "mtp": [
+          {
+            "draft_n": 194,
+            "draft_n_accepted": 157
+          },
+          {
+            "draft_n": 192,
+            "draft_n_accepted": 158
+          },
+          {
+            "draft_n": 192,
+            "draft_n_accepted": 158
+          },
+          {
+            "draft_n": 192,
+            "draft_n_accepted": 158
+          },
+          {
+            "draft_n": 192,
+            "draft_n_accepted": 158
+          },
+          {
+            "draft_n": 192,
+            "draft_n_accepted": 158
+          }
+        ]
+      },
+      "outcome": "pass",
+      "memory": {
+        "minimum_gpu_free_gib": 0.3779296875,
+        "peak_gpu_used_gib": 7.44140625,
+        "minimum_ram_available_gib": 4.255073547363281,
+        "peak_process_rss_gib": 17.646278381347656
+      },
+      "release": {
+        "samples": [
+          {
+            "at_seconds": 0.05283199999939825,
+            "used_gib": 7.189453125
+          },
+          {
+            "at_seconds": 0.35523079999984475,
+            "used_gib": 1.5048828125
+          }
+        ],
+        "final_used_gib": 1.5048828125
+      },
+      "stop_method": "ctrl-break",
+      "exit_code": 3221225786,
+      "log": "logs/q8-mmap-vstudio-ncmoe-48.log",
+      "log_sha256": "d3f823d6de924438ac1318222fcd6adc736f66f4c82b112168396a825a13492d"
+    },
+    {
+      "id": "q8-mmap-vstudio-ncmoe-38",
+      "configuration": "q8-mmap",
+      "mode": "vstudio",
+      "backend": "cuda",
+      "ctx": 131072,
+      "n_cpu_moe": 38,
+      "started_at": "2026-07-17T18:13:15.962156+00:00",
+      "baseline": {
+        "total_gib": 8.0,
+        "used_gib": 1.5029296875,
+        "free_gib": 6.31640625,
+        "driver": "610.47",
+        "compute_pids": [
+          1740,
+          7380,
+          3924,
+          8388,
+          6272,
+          9700,
+          9692,
+          11912,
+          1732,
+          11484,
+          15748,
+          6004,
+          8600,
+          18144,
+          17452,
+          9912,
+          17488,
+          5224,
+          6176,
+          16836,
+          17868,
+          17320,
+          18504,
+          6604,
+          8988,
+          10368,
+          2288
+        ]
+      },
+      "command": [
+        "<redacted>\\AppData\\Local\\qwen-launcher\\data\\engine\\installations\\b10011-cuda-29f8abc0fde94a8382471d357ab0d346\\llama-server.exe",
+        "-m",
+        "<redacted>\\.cache\\huggingface\\hub\\models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF\\snapshots\\5bc3e238d916f48a861bac2f8a1990a0e9b7e98d\\Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "-c",
+        "131072",
+        "--temp",
+        "0.7",
+        "--top-p",
+        "0.8",
+        "--top-k",
+        "20",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--metrics",
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--mmap",
+        "--cache-type-k",
+        "q8_0",
+        "--cache-type-v",
+        "q8_0",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps",
+        "--webui",
+        "--mmproj",
+        "<redacted>\\.cache\\huggingface\\hub\\models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF\\snapshots\\5bc3e238d916f48a861bac2f8a1990a0e9b7e98d\\mmproj-BF16.gguf",
+        "-ngl",
+        "99",
+        "-ncmoe",
+        "38"
+      ],
+      "load_seconds": 7.776690199999393,
+      "health": "pass",
+      "ui_status": 200,
+      "vision": "pass",
+      "benchmark": {
+        "warmup_tok_s": 21.163650240257034,
+        "measured_tok_s": [
+          23.47124923248557,
+          19.21292453433425,
+          19.86220286416069,
+          22.66826159138457,
+          23.012241253865113
+        ],
+        "tok_s": {
+          "min": 19.21292453433425,
+          "median": 22.66826159138457,
+          "max": 23.47124923248557
+        },
+        "mtp": [
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          },
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          },
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          },
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          },
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          },
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          }
+        ]
+      },
+      "outcome": "pass",
+      "memory": {
+        "minimum_gpu_free_gib": 0.072265625,
+        "peak_gpu_used_gib": 7.7470703125,
+        "minimum_ram_available_gib": 3.2944564819335938,
+        "peak_process_rss_gib": 18.333885192871094
+      },
+      "release": {
+        "samples": [
+          {
+            "at_seconds": 0.05397499999980937,
+            "used_gib": 7.6865234375
+          },
+          {
+            "at_seconds": 0.3553111000001081,
+            "used_gib": 0.81640625
+          }
+        ],
+        "final_used_gib": 0.81640625
+      },
+      "stop_method": "ctrl-break",
+      "exit_code": 3221225786,
+      "log": "logs/q8-mmap-vstudio-ncmoe-38.log",
+      "log_sha256": "13e013783f4725758f80b486b8cec2370942e5994b0ddca27ad14b249b6704f1"
+    },
+    {
+      "id": "q8-mmap-cpu-coding",
+      "configuration": "q8-mmap",
+      "mode": "coding",
+      "backend": "cpu",
+      "ctx": 8192,
+      "n_cpu_moe": null,
+      "started_at": "2026-07-17T18:14:44.700527+00:00",
+      "baseline": {
+        "total_gib": 8.0,
+        "used_gib": 0.81640625,
+        "free_gib": 7.0029296875,
+        "driver": "610.47",
+        "compute_pids": [
+          1740,
+          7380,
+          3924,
+          8388,
+          6272,
+          9700,
+          9692,
+          11912,
+          1732,
+          11484,
+          15748,
+          6004,
+          8600,
+          18144,
+          17452,
+          9912,
+          17488,
+          5224,
+          6176,
+          16836,
+          17868,
+          17320,
+          18504,
+          6604,
+          8988,
+          10368,
+          2288
+        ]
+      },
+      "command": [
+        "<redacted>\\AppData\\Local\\qwen-launcher\\data\\engine\\installations\\b10011-cpu-e54fb2dfd68b44aea82084c21f49a61b\\llama-server.exe",
+        "-m",
+        "<redacted>\\.cache\\huggingface\\hub\\models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF\\snapshots\\5bc3e238d916f48a861bac2f8a1990a0e9b7e98d\\Qwen3.6-35B-A3B-UD-Q4_K_M.gguf",
+        "-c",
+        "8192",
+        "--temp",
+        "0.6",
+        "--top-p",
+        "0.95",
+        "--top-k",
+        "20",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "18080",
+        "--metrics",
+        "--fit",
+        "off",
+        "-fa",
+        "on",
+        "--mmap",
+        "--cache-type-k",
+        "q8_0",
+        "--cache-type-v",
+        "q8_0",
+        "-np",
+        "1",
+        "--jinja",
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2",
+        "--cors-origins",
+        "localhost",
+        "--log-timestamps",
+        "--no-webui",
+        "--no-mmproj"
+      ],
+      "load_seconds": 38.842732299999625,
+      "health": "pass",
+      "benchmark": {
+        "warmup_tok_s": 6.501099574650324,
+        "measured_tok_s": [
+          8.44350680474087,
+          8.88459775157207,
+          9.005163370724109,
+          8.960833491927252,
+          8.635955835856793
+        ],
+        "tok_s": {
+          "min": 8.44350680474087,
+          "median": 8.88459775157207,
+          "max": 9.005163370724109
+        },
+        "mtp": [
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          },
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          },
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          },
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          },
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          },
+          {
+            "draft_n": 195,
+            "draft_n_accepted": 157
+          }
+        ]
+      },
+      "outcome": "pass",
+      "memory": {
+        "minimum_gpu_free_gib": 6.7333984375,
+        "peak_gpu_used_gib": 1.0859375,
+        "minimum_ram_available_gib": 0.00905609130859375,
+        "peak_process_rss_gib": 24.52297592163086
+      },
+      "release": {
+        "samples": [
+          {
+            "at_seconds": 0.05771900000036112,
+            "used_gib": 0.9560546875
+          },
+          {
+            "at_seconds": 0.36636929999986023,
+            "used_gib": 0.9560546875
+          },
+          {
+            "at_seconds": 0.6641406999997344,
+            "used_gib": 0.9560546875
+          },
+          {
+            "at_seconds": 0.9632547000001068,
+            "used_gib": 0.955078125
+          },
+          {
+            "at_seconds": 1.262007100000119,
+            "used_gib": 0.9365234375
+          }
+        ],
+        "final_used_gib": 0.9365234375
+      },
+      "stop_method": "ctrl-break",
+      "exit_code": 3221225786,
+      "log": "logs/q8-mmap-cpu-coding.log",
+      "log_sha256": "2327acbf22ae0f86624dd9b162314c223b2b3548e223402d5ed20082ca6b1873"
+    }
+  ]
+}

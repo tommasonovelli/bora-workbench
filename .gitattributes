@@ -5,6 +5,8 @@
 /docs/spike-0/SHA256SUMS -text
 # Preserve benchmark/calibration protocol evidence byte-for-byte on Windows checkouts.
 /docs/spike-0/benchmark-v1-* -text
+/docs/mini-spike-kv-q8-ubuntu/** -text -diff
+/docs/mini-spike-kv-q8-windows/** -text -diff
 /src/qwen_launcher/resources/benchmark-v1/** -text
 /src/qwen_launcher/resources/calibration-v1/** -text
 # Preserve the exact NVIDIA notice bytes verified by the Spike 0 digest.

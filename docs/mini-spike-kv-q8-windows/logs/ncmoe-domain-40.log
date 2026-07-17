@@ -1,0 +1,43 @@
+0.00.144.962 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.224.436 I srv          init: The UI is disabled
+0.00.224.442 I srv          init: Use --ui/--no-ui (or deprecated --webui/--no-webui) to enable/disable
+0.00.240.543 I srv    load_model: loading model '<redacted>\.cache\huggingface\hub\models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF\snapshots\5bc3e238d916f48a861bac2f8a1990a0e9b7e98d\Qwen3.6-35B-A3B-UD-Q4_K_M.gguf'
+0.00.523.627 W srv    operator(): (CORS) skip non-localhost origin: 
+0.00.787.572 W srv    operator(): (CORS) skip non-localhost origin: 
+0.00.788.014 W llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --no-mmap for better performance
+0.01.055.258 W srv    operator(): (CORS) skip non-localhost origin: 
+0.01.323.318 W srv    operator(): (CORS) skip non-localhost origin: 
+0.01.591.139 W srv    operator(): (CORS) skip non-localhost origin: 
+0.01.842.841 W srv    operator(): (CORS) skip non-localhost origin: 
+0.02.106.864 W srv    operator(): (CORS) skip non-localhost origin: 
+0.02.358.817 W srv    operator(): (CORS) skip non-localhost origin: 
+0.02.623.158 W srv    operator(): (CORS) skip non-localhost origin: 
+0.02.875.077 W srv    operator(): (CORS) skip non-localhost origin: 
+0.03.138.945 W srv    operator(): (CORS) skip non-localhost origin: 
+0.03.404.779 W srv    operator(): (CORS) skip non-localhost origin: 
+0.03.656.773 W srv    operator(): (CORS) skip non-localhost origin: 
+0.03.922.558 W srv    operator(): (CORS) skip non-localhost origin: 
+0.04.185.768 W srv    operator(): (CORS) skip non-localhost origin: 
+0.04.451.575 W srv    operator(): (CORS) skip non-localhost origin: 
+0.04.703.322 W srv    operator(): (CORS) skip non-localhost origin: 
+0.04.968.459 W srv    operator(): (CORS) skip non-localhost origin: 
+0.05.220.459 W srv    operator(): (CORS) skip non-localhost origin: 
+0.05.427.985 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 8192, kv_unified = 'false'
+0.05.485.361 W srv    operator(): (CORS) skip non-localhost origin: 
+0.05.494.828 I srv          init: chat template supports preserving reasoning, consider enabling it via --reasoning-preserve
+0.05.494.858 I srv  llama_server: model loaded
+0.05.494.861 I srv  llama_server: listening on http://127.0.0.1:18080
+0.05.749.911 W srv    operator(): (CORS) skip non-localhost origin: 
+0.05.751.175 W srv    operator(): (CORS) skip non-localhost origin: 
+0.05.781.315 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
+0.05.781.361 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
+0.10.017.843 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =    124, progress = 0.97, t =   4.24 s / 29.27 tokens per second
+0.14.811.619 I slot print_timing: id  0 | task 0 | n_decoded =    100, tg =  21.67 t/s, tg_3s =  21.67 t/s
+0.17.864.594 I slot print_timing: id  0 | task 0 | n_decoded =    170, tg =  22.17 t/s, tg_3s =  22.93 t/s
+0.20.987.346 I slot print_timing: id  0 | task 0 | n_decoded =    238, tg =  22.06 t/s, tg_3s =  21.78 t/s
+0.22.048.769 I slot print_timing: id  0 | task 0 | prompt eval time =    4416.06 ms /   128 tokens (   34.50 ms per token,    28.99 tokens per second)
+0.22.048.778 I slot print_timing: id  0 | task 0 |        eval time =   11851.28 ms /   256 tokens (   46.29 ms per token,    21.60 tokens per second)
+0.22.048.779 I slot print_timing: id  0 | task 0 |       total time =   16267.35 ms /   384 tokens
+0.22.048.780 I slot print_timing: id  0 | task 0 |    graphs reused =         97
+0.22.048.786 I slot print_timing: id  0 | task 0 | draft acceptance = 0.79188 (  156 accepted /   197 generated), mean len =  2.58
+0.22.048.892 I slot      release: id  0 | task 0 | stop processing: n_tokens = 383, truncated = 0

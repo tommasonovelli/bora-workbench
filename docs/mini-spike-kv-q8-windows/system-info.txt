@@ -1,0 +1,9 @@
+os=Microsoft Windows 11 Pro build 26200
+architecture=x86_64
+cpu=Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz
+ram_total_bytes=34269773824
+gpu=NVIDIA GeForce RTX 2060 SUPER, 8192 MiB, 610.47
+cuda_engine_version=version: 10011 (bf2c86ddc) built with Clang 20.1.8 for Windows x86_64 
+cpu_engine_version=version: 10011 (bf2c86ddc) built with Clang 20.1.8 for Windows x86_64 
+model_gguf_sha256=0b21525e972670ed59e1812e170b27c26355381f0656ecc4e25617ece7dac58b
+mmproj_sha256=da63cb47a76763c712393f8a017070188a304fa39f8aeea6edc629ed7b975cfa

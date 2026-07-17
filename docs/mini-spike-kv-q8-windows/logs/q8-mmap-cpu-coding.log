@@ -1,0 +1,247 @@
+0.00.046.474 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+0.00.050.996 I srv          init: The UI is disabled
+0.00.051.001 I srv          init: Use --ui/--no-ui (or deprecated --webui/--no-webui) to enable/disable
+0.00.075.072 I srv    load_model: loading model '<redacted>\.cache\huggingface\hub\models--unsloth--Qwen3.6-35B-A3B-MTP-GGUF\snapshots\5bc3e238d916f48a861bac2f8a1990a0e9b7e98d\Qwen3.6-35B-A3B-UD-Q4_K_M.gguf'
+0.00.482.376 W srv    operator(): (CORS) skip non-localhost origin: 
+0.00.751.702 W srv    operator(): (CORS) skip non-localhost origin: 
+0.01.020.802 W srv    operator(): (CORS) skip non-localhost origin: 
+0.01.286.061 W srv    operator(): (CORS) skip non-localhost origin: 
+0.01.537.725 W srv    operator(): (CORS) skip non-localhost origin: 
+0.01.808.360 W srv    operator(): (CORS) skip non-localhost origin: 
+0.02.080.100 W srv    operator(): (CORS) skip non-localhost origin: 
+0.02.348.843 W srv    operator(): (CORS) skip non-localhost origin: 
+0.02.617.021 W srv    operator(): (CORS) skip non-localhost origin: 
+0.02.885.695 W srv    operator(): (CORS) skip non-localhost origin: 
+0.03.152.580 W srv    operator(): (CORS) skip non-localhost origin: 
+0.03.421.050 W srv    operator(): (CORS) skip non-localhost origin: 
+0.03.688.155 W srv    operator(): (CORS) skip non-localhost origin: 
+0.03.959.621 W srv    operator(): (CORS) skip non-localhost origin: 
+0.04.226.857 W srv    operator(): (CORS) skip non-localhost origin: 
+0.04.491.164 W srv    operator(): (CORS) skip non-localhost origin: 
+0.04.757.707 W srv    operator(): (CORS) skip non-localhost origin: 
+0.05.024.855 W srv    operator(): (CORS) skip non-localhost origin: 
+0.05.291.620 W srv    operator(): (CORS) skip non-localhost origin: 
+0.05.556.226 W srv    operator(): (CORS) skip non-localhost origin: 
+0.05.824.420 W srv    operator(): (CORS) skip non-localhost origin: 
+0.06.076.463 W srv    operator(): (CORS) skip non-localhost origin: 
+0.06.342.473 W srv    operator(): (CORS) skip non-localhost origin: 
+0.06.605.070 W srv    operator(): (CORS) skip non-localhost origin: 
+0.06.872.066 W srv    operator(): (CORS) skip non-localhost origin: 
+0.07.138.271 W srv    operator(): (CORS) skip non-localhost origin: 
+0.07.404.964 W srv    operator(): (CORS) skip non-localhost origin: 
+0.07.657.011 W srv    operator(): (CORS) skip non-localhost origin: 
+0.07.923.842 W srv    operator(): (CORS) skip non-localhost origin: 
+0.08.193.384 W srv    operator(): (CORS) skip non-localhost origin: 
+0.08.461.835 W srv    operator(): (CORS) skip non-localhost origin: 
+0.08.728.287 W srv    operator(): (CORS) skip non-localhost origin: 
+0.08.995.496 W srv    operator(): (CORS) skip non-localhost origin: 
+0.09.263.132 W srv    operator(): (CORS) skip non-localhost origin: 
+0.09.529.850 W srv    operator(): (CORS) skip non-localhost origin: 
+0.09.781.074 W srv    operator(): (CORS) skip non-localhost origin: 
+0.10.044.969 W srv    operator(): (CORS) skip non-localhost origin: 
+0.10.313.150 W srv    operator(): (CORS) skip non-localhost origin: 
+0.10.581.419 W srv    operator(): (CORS) skip non-localhost origin: 
+0.10.833.174 W srv    operator(): (CORS) skip non-localhost origin: 
+0.11.101.871 W srv    operator(): (CORS) skip non-localhost origin: 
+0.11.367.794 W srv    operator(): (CORS) skip non-localhost origin: 
+0.11.636.698 W srv    operator(): (CORS) skip non-localhost origin: 
+0.11.904.185 W srv    operator(): (CORS) skip non-localhost origin: 
+0.12.168.516 W srv    operator(): (CORS) skip non-localhost origin: 
+0.12.435.269 W srv    operator(): (CORS) skip non-localhost origin: 
+0.12.705.315 W srv    operator(): (CORS) skip non-localhost origin: 
+0.12.957.237 W srv    operator(): (CORS) skip non-localhost origin: 
+0.13.223.862 W srv    operator(): (CORS) skip non-localhost origin: 
+0.13.489.691 W srv    operator(): (CORS) skip non-localhost origin: 
+0.13.741.464 W srv    operator(): (CORS) skip non-localhost origin: 
+0.14.010.882 W srv    operator(): (CORS) skip non-localhost origin: 
+0.14.278.353 W srv    operator(): (CORS) skip non-localhost origin: 
+0.14.546.489 W srv    operator(): (CORS) skip non-localhost origin: 
+0.14.813.592 W srv    operator(): (CORS) skip non-localhost origin: 
+0.15.078.493 W srv    operator(): (CORS) skip non-localhost origin: 
+0.15.345.696 W srv    operator(): (CORS) skip non-localhost origin: 
+0.15.612.401 W srv    operator(): (CORS) skip non-localhost origin: 
+0.15.864.320 W srv    operator(): (CORS) skip non-localhost origin: 
+0.16.132.564 W srv    operator(): (CORS) skip non-localhost origin: 
+0.16.401.591 W srv    operator(): (CORS) skip non-localhost origin: 
+0.16.672.239 W srv    operator(): (CORS) skip non-localhost origin: 
+0.16.944.253 W srv    operator(): (CORS) skip non-localhost origin: 
+0.17.212.367 W srv    operator(): (CORS) skip non-localhost origin: 
+0.17.464.875 W srv    operator(): (CORS) skip non-localhost origin: 
+0.17.732.786 W srv    operator(): (CORS) skip non-localhost origin: 
+0.17.984.194 W srv    operator(): (CORS) skip non-localhost origin: 
+0.18.251.971 W srv    operator(): (CORS) skip non-localhost origin: 
+0.18.519.052 W srv    operator(): (CORS) skip non-localhost origin: 
+0.18.785.823 W srv    operator(): (CORS) skip non-localhost origin: 
+0.19.037.551 W srv    operator(): (CORS) skip non-localhost origin: 
+0.19.302.762 W srv    operator(): (CORS) skip non-localhost origin: 
+0.19.566.760 W srv    operator(): (CORS) skip non-localhost origin: 
+0.19.836.092 W srv    operator(): (CORS) skip non-localhost origin: 
+0.20.105.249 W srv    operator(): (CORS) skip non-localhost origin: 
+0.20.357.220 W srv    operator(): (CORS) skip non-localhost origin: 
+0.20.625.344 W srv    operator(): (CORS) skip non-localhost origin: 
+0.20.890.468 W srv    operator(): (CORS) skip non-localhost origin: 
+0.21.157.805 W srv    operator(): (CORS) skip non-localhost origin: 
+0.21.422.358 W srv    operator(): (CORS) skip non-localhost origin: 
+0.21.674.447 W srv    operator(): (CORS) skip non-localhost origin: 
+0.21.938.206 W srv    operator(): (CORS) skip non-localhost origin: 
+0.22.205.462 W srv    operator(): (CORS) skip non-localhost origin: 
+0.22.471.460 W srv    operator(): (CORS) skip non-localhost origin: 
+0.22.736.188 W srv    operator(): (CORS) skip non-localhost origin: 
+0.22.988.394 W srv    operator(): (CORS) skip non-localhost origin: 
+0.23.251.133 W srv    operator(): (CORS) skip non-localhost origin: 
+0.23.516.231 W srv    operator(): (CORS) skip non-localhost origin: 
+0.23.796.743 W srv    operator(): (CORS) skip non-localhost origin: 
+0.24.060.962 W srv    operator(): (CORS) skip non-localhost origin: 
+0.24.328.217 W srv    operator(): (CORS) skip non-localhost origin: 
+0.24.580.169 W srv    operator(): (CORS) skip non-localhost origin: 
+0.24.845.320 W srv    operator(): (CORS) skip non-localhost origin: 
+0.25.110.774 W srv    operator(): (CORS) skip non-localhost origin: 
+0.25.362.143 W srv    operator(): (CORS) skip non-localhost origin: 
+0.25.630.034 W srv    operator(): (CORS) skip non-localhost origin: 
+0.25.894.204 W srv    operator(): (CORS) skip non-localhost origin: 
+0.26.159.670 W srv    operator(): (CORS) skip non-localhost origin: 
+0.26.426.747 W srv    operator(): (CORS) skip non-localhost origin: 
+0.26.678.091 W srv    operator(): (CORS) skip non-localhost origin: 
+0.26.943.485 W srv    operator(): (CORS) skip non-localhost origin: 
+0.27.207.440 W srv    operator(): (CORS) skip non-localhost origin: 
+0.27.459.059 W srv    operator(): (CORS) skip non-localhost origin: 
+0.27.726.974 W srv    operator(): (CORS) skip non-localhost origin: 
+0.27.994.865 W srv    operator(): (CORS) skip non-localhost origin: 
+0.28.261.702 W srv    operator(): (CORS) skip non-localhost origin: 
+0.28.529.938 W srv    operator(): (CORS) skip non-localhost origin: 
+0.28.797.218 W srv    operator(): (CORS) skip non-localhost origin: 
+0.29.061.959 W srv    operator(): (CORS) skip non-localhost origin: 
+0.29.329.019 W srv    operator(): (CORS) skip non-localhost origin: 
+0.29.580.983 W srv    operator(): (CORS) skip non-localhost origin: 
+0.29.845.638 W srv    operator(): (CORS) skip non-localhost origin: 
+0.30.097.473 W srv    operator(): (CORS) skip non-localhost origin: 
+0.30.368.639 W srv    operator(): (CORS) skip non-localhost origin: 
+0.30.636.801 W srv    operator(): (CORS) skip non-localhost origin: 
+0.30.903.552 W srv    operator(): (CORS) skip non-localhost origin: 
+0.31.172.028 W srv    operator(): (CORS) skip non-localhost origin: 
+0.31.441.555 W srv    operator(): (CORS) skip non-localhost origin: 
+0.31.710.944 W srv    operator(): (CORS) skip non-localhost origin: 
+0.31.979.488 W srv    operator(): (CORS) skip non-localhost origin: 
+0.32.247.248 W srv    operator(): (CORS) skip non-localhost origin: 
+0.32.518.652 W srv    operator(): (CORS) skip non-localhost origin: 
+0.32.773.227 W srv    operator(): (CORS) skip non-localhost origin: 
+0.33.042.917 W srv    operator(): (CORS) skip non-localhost origin: 
+0.33.313.321 W srv    operator(): (CORS) skip non-localhost origin: 
+0.33.565.232 W srv    operator(): (CORS) skip non-localhost origin: 
+0.33.833.256 W srv    operator(): (CORS) skip non-localhost origin: 
+0.34.085.540 W srv    operator(): (CORS) skip non-localhost origin: 
+0.34.337.685 W srv    operator(): (CORS) skip non-localhost origin: 
+0.34.603.227 W srv    operator(): (CORS) skip non-localhost origin: 
+0.34.855.723 W srv    operator(): (CORS) skip non-localhost origin: 
+0.35.125.167 W srv    operator(): (CORS) skip non-localhost origin: 
+0.35.393.623 W srv    operator(): (CORS) skip non-localhost origin: 
+0.35.663.270 W srv    operator(): (CORS) skip non-localhost origin: 
+0.35.932.678 W srv    operator(): (CORS) skip non-localhost origin: 
+0.36.194.661 W srv    operator(): (CORS) skip non-localhost origin: 
+0.36.447.059 W srv    operator(): (CORS) skip non-localhost origin: 
+0.36.699.100 W srv    operator(): (CORS) skip non-localhost origin: 
+0.36.951.087 W srv    operator(): (CORS) skip non-localhost origin: 
+0.37.203.611 W srv    operator(): (CORS) skip non-localhost origin: 
+0.37.482.898 W srv    operator(): (CORS) skip non-localhost origin: 
+0.37.734.915 W srv    operator(): (CORS) skip non-localhost origin: 
+0.37.986.848 W srv    operator(): (CORS) skip non-localhost origin: 
+0.38.258.509 W srv    operator(): (CORS) skip non-localhost origin: 
+0.38.412.677 I srv    load_model: initializing, n_slots = 1, n_ctx_slot = 8192, kv_unified = 'false'
+0.38.525.798 W srv    operator(): (CORS) skip non-localhost origin: 
+0.38.630.995 I srv          init: chat template supports preserving reasoning, consider enabling it via --reasoning-preserve
+0.38.632.245 I srv  llama_server: model loaded
+0.38.632.260 I srv  llama_server: listening on http://127.0.0.1:18080
+0.38.797.108 W srv    operator(): (CORS) skip non-localhost origin: 
+0.38.806.172 W srv    operator(): (CORS) skip non-localhost origin: 
+0.38.891.803 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = -1
+0.38.892.489 I slot launch_slot_: id  0 | task 0 | processing task, is_child = 0
+0.56.124.485 I slot print_timing: id  0 | task 0 | prompt processing, n_tokens =    124, progress = 0.97, t =  17.23 s / 7.20 tokens per second
+1.13.698.914 I slot print_timing: id  0 | task 0 | n_decoded =    100, tg =   5.92 t/s, tg_3s =   5.92 t/s
+1.16.889.971 I slot print_timing: id  0 | task 0 | n_decoded =    124, tg =   6.18 t/s, tg_3s =   7.52 t/s
+1.19.906.619 I slot print_timing: id  0 | task 0 | n_decoded =    145, tg =   6.28 t/s, tg_3s =   6.96 t/s
+1.23.151.754 I slot print_timing: id  0 | task 0 | n_decoded =    169, tg =   6.42 t/s, tg_3s =   7.40 t/s
+1.26.380.392 I slot print_timing: id  0 | task 0 | n_decoded =    187, tg =   6.32 t/s, tg_3s =   5.58 t/s
+1.29.728.959 I slot print_timing: id  0 | task 0 | n_decoded =    211, tg =   6.41 t/s, tg_3s =   7.17 t/s
+1.32.755.194 I slot print_timing: id  0 | task 0 | n_decoded =    233, tg =   6.48 t/s, tg_3s =   7.27 t/s
+1.35.904.782 I slot print_timing: id  0 | task 0 | n_decoded =    254, tg =   6.50 t/s, tg_3s =   6.67 t/s
+1.36.187.611 I slot print_timing: id  0 | task 0 | prompt eval time =   17916.70 ms /   128 tokens (  139.97 ms per token,     7.14 tokens per second)
+1.36.187.623 I slot print_timing: id  0 | task 0 |        eval time =   39377.95 ms /   256 tokens (  153.82 ms per token,     6.50 tokens per second)
+1.36.187.883 I slot print_timing: id  0 | task 0 |       total time =   57294.66 ms /   384 tokens
+1.36.187.892 I slot print_timing: id  0 | task 0 |    graphs reused =         96
+1.36.188.242 I slot print_timing: id  0 | task 0 | draft acceptance = 0.80513 (  157 accepted /   195 generated), mean len =  2.60
+1.36.205.965 I slot      release: id  0 | task 0 | stop processing: n_tokens = 383, truncated = 0
+1.36.217.896 W srv    operator(): (CORS) skip non-localhost origin: 
+1.36.261.476 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.334
+1.36.321.797 I slot launch_slot_: id  0 | task 101 | processing task, is_child = 0
+1.48.769.673 I slot print_timing: id  0 | task 101 | n_decoded =    100, tg =   8.22 t/s, tg_3s =   8.22 t/s
+1.51.969.136 I slot print_timing: id  0 | task 101 | n_decoded =    130, tg =   8.46 t/s, tg_3s =   9.38 t/s
+1.55.196.197 I slot print_timing: id  0 | task 101 | n_decoded =    159, tg =   8.55 t/s, tg_3s =   8.99 t/s
+1.58.363.525 I slot print_timing: id  0 | task 101 | n_decoded =    184, tg =   8.46 t/s, tg_3s =   7.89 t/s
+2.01.549.483 I slot print_timing: id  0 | task 101 | n_decoded =    215, tg =   8.62 t/s, tg_3s =   9.73 t/s
+2.04.858.427 I slot print_timing: id  0 | task 101 | n_decoded =    241, tg =   8.53 t/s, tg_3s =   7.86 t/s
+2.06.921.479 I slot print_timing: id  0 | task 101 | prompt eval time =     280.47 ms /     4 tokens (   70.12 ms per token,    14.26 tokens per second)
+2.06.921.489 I slot print_timing: id  0 | task 101 |        eval time =   30319.16 ms /   256 tokens (  118.43 ms per token,     8.44 tokens per second)
+2.06.921.490 I slot print_timing: id  0 | task 101 |       total time =   30599.62 ms /   260 tokens
+2.06.921.491 I slot print_timing: id  0 | task 101 |    graphs reused =        191
+2.06.921.541 I slot print_timing: id  0 | task 101 | draft acceptance = 0.80513 (  157 accepted /   195 generated), mean len =  2.60
+2.06.921.635 I slot      release: id  0 | task 101 | stop processing: n_tokens = 383, truncated = 0
+2.06.925.005 W srv    operator(): (CORS) skip non-localhost origin: 
+2.06.956.395 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.334
+2.06.956.787 I slot launch_slot_: id  0 | task 201 | processing task, is_child = 0
+2.18.292.715 I slot print_timing: id  0 | task 201 | n_decoded =    100, tg =   9.04 t/s, tg_3s =   9.04 t/s
+2.21.346.037 I slot print_timing: id  0 | task 201 | n_decoded =    130, tg =   9.21 t/s, tg_3s =   9.83 t/s
+2.24.390.580 I slot print_timing: id  0 | task 201 | n_decoded =    156, tg =   9.09 t/s, tg_3s =   8.54 t/s
+2.27.626.603 I slot print_timing: id  0 | task 201 | n_decoded =    183, tg =   8.97 t/s, tg_3s =   8.34 t/s
+2.30.873.764 I slot print_timing: id  0 | task 201 | n_decoded =    212, tg =   8.97 t/s, tg_3s =   8.93 t/s
+2.34.066.021 I slot print_timing: id  0 | task 201 | n_decoded =    241, tg =   8.98 t/s, tg_3s =   9.08 t/s
+2.36.049.386 I slot print_timing: id  0 | task 201 | prompt eval time =     278.65 ms /     4 tokens (   69.66 ms per token,    14.36 tokens per second)
+2.36.049.424 I slot print_timing: id  0 | task 201 |        eval time =   28813.91 ms /   256 tokens (  112.55 ms per token,     8.88 tokens per second)
+2.36.049.428 I slot print_timing: id  0 | task 201 |       total time =   29092.56 ms /   260 tokens
+2.36.049.432 I slot print_timing: id  0 | task 201 |    graphs reused =        286
+2.36.049.437 I slot print_timing: id  0 | task 201 | draft acceptance = 0.80513 (  157 accepted /   195 generated), mean len =  2.60
+2.36.049.480 I slot      release: id  0 | task 201 | stop processing: n_tokens = 383, truncated = 0
+2.36.051.775 W srv    operator(): (CORS) skip non-localhost origin: 
+2.36.082.735 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.334
+2.36.083.157 I slot launch_slot_: id  0 | task 301 | processing task, is_child = 0
+2.47.379.904 I slot print_timing: id  0 | task 301 | n_decoded =    100, tg =   9.07 t/s, tg_3s =   9.07 t/s
+2.50.558.081 I slot print_timing: id  0 | task 301 | n_decoded =    133, tg =   9.36 t/s, tg_3s =  10.38 t/s
+2.53.776.804 I slot print_timing: id  0 | task 301 | n_decoded =    162, tg =   9.30 t/s, tg_3s =   9.01 t/s
+2.57.026.779 I slot print_timing: id  0 | task 301 | n_decoded =    187, tg =   9.05 t/s, tg_3s =   7.69 t/s
+3.00.187.827 I slot print_timing: id  0 | task 301 | n_decoded =    218, tg =   9.15 t/s, tg_3s =   9.81 t/s
+3.03.418.485 I slot print_timing: id  0 | task 301 | n_decoded =    244, tg =   9.02 t/s, tg_3s =   8.05 t/s
+3.04.781.246 I slot print_timing: id  0 | task 301 | prompt eval time =     269.88 ms /     4 tokens (   67.47 ms per token,    14.82 tokens per second)
+3.04.781.256 I slot print_timing: id  0 | task 301 |        eval time =   28428.13 ms /   256 tokens (  111.05 ms per token,     9.01 tokens per second)
+3.04.781.258 I slot print_timing: id  0 | task 301 |       total time =   28698.01 ms /   260 tokens
+3.04.784.788 I slot print_timing: id  0 | task 301 |    graphs reused =        381
+3.04.784.806 I slot print_timing: id  0 | task 301 | draft acceptance = 0.80513 (  157 accepted /   195 generated), mean len =  2.60
+3.04.784.872 I slot      release: id  0 | task 301 | stop processing: n_tokens = 383, truncated = 0
+3.04.786.420 W srv    operator(): (CORS) skip non-localhost origin: 
+3.04.820.909 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.334
+3.04.821.352 I slot launch_slot_: id  0 | task 401 | processing task, is_child = 0
+3.16.168.444 I slot print_timing: id  0 | task 401 | n_decoded =    100, tg =   9.02 t/s, tg_3s =   9.02 t/s
+3.19.385.522 I slot print_timing: id  0 | task 401 | n_decoded =    133, tg =   9.30 t/s, tg_3s =  10.26 t/s
+3.22.551.887 I slot print_timing: id  0 | task 401 | n_decoded =    162, tg =   9.27 t/s, tg_3s =   9.16 t/s
+3.25.766.746 I slot print_timing: id  0 | task 401 | n_decoded =    187, tg =   9.04 t/s, tg_3s =   7.78 t/s
+3.28.825.000 I slot print_timing: id  0 | task 401 | n_decoded =    215, tg =   9.05 t/s, tg_3s =   9.16 t/s
+3.31.999.634 I slot print_timing: id  0 | task 401 | n_decoded =    243, tg =   9.03 t/s, tg_3s =   8.82 t/s
+3.33.652.932 I slot print_timing: id  0 | task 401 | prompt eval time =     259.36 ms /     4 tokens (   64.84 ms per token,    15.42 tokens per second)
+3.33.652.941 I slot print_timing: id  0 | task 401 |        eval time =   28568.77 ms /   256 tokens (  111.60 ms per token,     8.96 tokens per second)
+3.33.652.946 I slot print_timing: id  0 | task 401 |       total time =   28828.13 ms /   260 tokens
+3.33.652.948 I slot print_timing: id  0 | task 401 |    graphs reused =        476
+3.33.652.954 I slot print_timing: id  0 | task 401 | draft acceptance = 0.80513 (  157 accepted /   195 generated), mean len =  2.60
+3.33.652.998 I slot      release: id  0 | task 401 | stop processing: n_tokens = 383, truncated = 0
+3.33.655.099 W srv    operator(): (CORS) skip non-localhost origin: 
+3.33.684.895 I slot get_availabl: id  0 | task -1 | selected slot by LCP similarity, sim_best = 1.000 (> 0.100 thold), f_keep = 0.334
+3.33.685.305 I slot launch_slot_: id  0 | task 501 | processing task, is_child = 0
+3.45.634.267 I slot print_timing: id  0 | task 501 | n_decoded =    100, tg =   8.56 t/s, tg_3s =   8.56 t/s
+3.48.903.807 I slot print_timing: id  0 | task 501 | n_decoded =    133, tg =   8.89 t/s, tg_3s =  10.09 t/s
+3.51.912.562 I slot print_timing: id  0 | task 501 | n_decoded =    159, tg =   8.85 t/s, tg_3s =   8.64 t/s
+3.55.091.801 I slot print_timing: id  0 | task 501 | n_decoded =    184, tg =   8.70 t/s, tg_3s =   7.86 t/s
+3.58.363.405 I slot print_timing: id  0 | task 501 | n_decoded =    215, tg =   8.81 t/s, tg_3s =   9.48 t/s
+4.01.579.226 I slot print_timing: id  0 | task 501 | n_decoded =    241, tg =   8.72 t/s, tg_3s =   8.09 t/s
+4.03.592.544 I slot print_timing: id  0 | task 501 | prompt eval time =     263.69 ms /     4 tokens (   65.92 ms per token,    15.17 tokens per second)
+4.03.592.554 I slot print_timing: id  0 | task 501 |        eval time =   29643.51 ms /   256 tokens (  115.79 ms per token,     8.64 tokens per second)
+4.03.592.555 I slot print_timing: id  0 | task 501 |       total time =   29907.20 ms /   260 tokens
+4.03.592.556 I slot print_timing: id  0 | task 501 |    graphs reused =        571
+4.03.592.562 I slot print_timing: id  0 | task 501 | draft acceptance = 0.80513 (  157 accepted /   195 generated), mean len =  2.60
+4.03.592.626 I slot      release: id  0 | task 501 | stop processing: n_tokens = 383, truncated = 0
