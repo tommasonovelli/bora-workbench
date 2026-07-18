@@ -10,13 +10,18 @@ import pytest
 
 import qwen_launcher._calibration_vram as vram_module
 import qwen_launcher._hardware_monitoring as monitoring
-from qwen_launcher._calibration_vram import VramError, VramMonitor, VramThresholds
+from qwen_launcher._calibration_vram import (
+    VramEnvironmentError,
+    VramError,
+    VramMonitor,
+    VramThresholds,
+)
 from qwen_launcher._hardware_monitoring import GpuSnapshot
 
 
-def snapshot(free: float, pids: tuple[int, ...] = ()) -> GpuSnapshot:
+def snapshot(free: float, pids: tuple[int, ...] = (), driver: str = "610.47") -> GpuSnapshot:
     """Build one fixed 8 GiB aggregate GPU observation."""
-    return GpuSnapshot(8, free, "610.47", pids)
+    return GpuSnapshot(8, free, driver, pids)
 
 
 def query_sequence(polled: GpuSnapshot, releases: tuple[GpuSnapshot, ...]):
@@ -107,6 +112,25 @@ def test_concurrent_compute_load_blocks_before_candidate_start() -> None:
 
     with pytest.raises(VramError, match="concurrent"):
         monitor.start()
+
+
+def test_monitor_query_failure_invalidates_the_run() -> None:
+    """Classify a failed baseline query as unreliable environmental evidence."""
+    monitor = monitor_for(lambda index: (_ for _ in ()).throw(OSError("query failed")))
+
+    with pytest.raises(VramEnvironmentError, match="GPU monitoring failed"):
+        monitor.start()
+
+
+def test_driver_change_during_trial_invalidates_the_run() -> None:
+    """Reject a driver identity that changes between baseline and workload samples."""
+    query, observed = query_sequence(snapshot(2, (42,), "620.00"), (snapshot(7),))
+    monitor = monitor_for(query)
+    monitor.start()
+    assert observed.wait(timeout=1)
+
+    with pytest.raises(VramEnvironmentError, match="driver version changed"):
+        monitor.finish(42)
 
 
 def test_reserve_violation_retains_measured_summary() -> None:

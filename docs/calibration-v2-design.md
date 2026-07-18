@@ -1,9 +1,8 @@
 # Progettazione di `calibration/v2` — ricerca locale adattiva
 
-> **Stato:** progettazione approvata dello Step 5A che completa il punto 3 del percorso correttivo di
-> `CALIBRATE.md`, sezione 7. La specifica normativa resta `IMPLEMENTATION_SPEC.md` (decisioni D-038 e
-> D-039). Questo documento non implementa nulla: l'implementazione è il passo successivo dello
-> Step 5A e lo Step 5B resta chiuso.
+> **Stato:** progettazione approvata e implementata nello Step 5A, punti 4–5 del percorso correttivo
+> di `CALIBRATE.md`, sezione 7. La specifica normativa resta `IMPLEMENTATION_SPEC.md` (decisioni
+> D-038 e D-039). Lo Step 5B resta chiuso fino a un esito reale `CALIBRATION-ACCEPTED`.
 > **Data:** 17 luglio 2026. **Evidenza citata:** `docs/mini-spike-kv-q8-ubuntu/`,
 > `docs/mini-spike-kv-q8-windows/`, primo bundle reale `calibration-20260716t142541702536`.
 
@@ -121,19 +120,18 @@ Nessuna di queste costanti è una soglia per-macchina: valgono identiche su ogni
 effetto passa sempre dalla misura locale. Il Gate le valida o le corregge con evidenza; il codice
 non ne introduce altre.
 
-## 5. Contratti da implementare (passo successivo dello Step 5A)
+## 5. Contratti implementati nello Step 5A
 
-- protocollo `calibration/v2` nel codice (`calibration.py` e moduli dedicati), senza input
-  obbligatori; `calibration/v1` resta storicizzato come protocollo di laboratorio e i suoi contratti
-  non vengono alterati retroattivamente;
-- schema versionato `calibration-record/v1` per il record locale nella directory dati (fuori dalla
-  wheel), con validazione e ricostruzione della selezione;
-- monitoraggio RAM disponibile durante caricamento, workload e benchmark per tutti i backend;
-- riuso, controllo headroom e invalidazione nel percorso di lancio (`profiles.py`, `doctor`);
-- seed condivisi come solo ordinamento dei probe;
-- test offline deterministici (fake server e fake monitor) per screening, bisezione degradata,
-  dominanza/equivalenza, record, invalidazione e headroom; matrice CI Ubuntu/Windows.
+- `calibration/v2` è il protocollo predefinito senza input tecnici obbligatori; `--protocol v1`
+  conserva il laboratorio storico senza alterarne retroattivamente i contratti;
+- `calibration-record/v1` è uno schema versionato incluso nella wheel; i record privati vivono nella
+  directory dati, sono scritti atomicamente e rivalidano selezione ed evidenza a ogni caricamento;
+- RAM disponibile è monitorata durante caricamento, workload e benchmark su tutti i backend;
+- riuso, headroom, invalidazione e diagnostica per modo sono integrati nei lanci e in `doctor`;
+- seed condivisi possono soltanto riordinare probe della stessa ricerca completa;
+- test offline deterministici coprono screening, tetto probe, degradazione, dominanza/equivalenza,
+  monitor, record, invalidazione e headroom.
 
-Dopo l'implementazione: Calibration Gate sulla macchina del maintainer come primo caso locale, più
+Il passo successivo è il Calibration Gate sulla macchina del maintainer come primo caso locale, più
 almeno un caso materialmente diverso, come richiesto da `CALIBRATE.md`, sezione 7. Solo un esito
 `CALIBRATION-ACCEPTED` apre lo Step 5B.

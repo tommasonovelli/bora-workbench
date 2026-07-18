@@ -190,8 +190,10 @@ pubblica. L'ordine corretto è:
 3. ~~definire con evidenza screening, finalisti, monitoraggio RAM e criterio robusto~~ — **fatto**:
    progettazione `calibration/v2` in `docs/calibration-v2-design.md` (D-038/D-039), con criterio di
    dominanza derivato dalla dispersione misurata sui due host invece che da soglie inventate;
-4. implementare e testare il protocollo versionato per la ricerca locale;
-5. implementare record locale, compatibilità, headroom e invalidazione;
+4. ~~implementare e testare il protocollo versionato per la ricerca locale~~ — **fatto il 18
+   luglio 2026**: `calibration/v2`, screening adattivo, finalisti, RAM/VRAM e test offline;
+5. ~~implementare record locale, compatibilità, headroom e invalidazione~~ — **fatto**:
+   `calibration-record/v1`, scrittura atomica, ricostruzione, riuso e diagnostica per modo;
 6. eseguire il gate sulla macchina di Tommaso come primo caso reale, senza attribuirgli portabilità;
 7. provare almeno casi hardware eterogenei o fixture che ne riproducano confini differenti;
 8. aprire lo Step 5B solo dopo almeno un risultato locale accettato e dopo aver dimostrato che un PC

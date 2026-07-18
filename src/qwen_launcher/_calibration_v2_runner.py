@@ -16,7 +16,7 @@ from uuid import uuid4
 
 from qwen_launcher._calibration_gguf import GgufError, read_block_count
 from qwen_launcher._calibration_ram import RamError
-from qwen_launcher._calibration_record import build_record, write_record
+from qwen_launcher._calibration_record import RecordError, build_record, write_record
 from qwen_launcher._calibration_v2_confirm import build_plan, confirm_finalist
 from qwen_launcher._calibration_v2_process import TrialFailure, TrialSpec, run_trial
 from qwen_launcher._calibration_v2_search import (
@@ -38,7 +38,7 @@ from qwen_launcher._calibration_v2_types import (
     V2Outcome,
 )
 from qwen_launcher._calibration_vram import VramEnvironmentError
-from qwen_launcher.calibration import CalibrationError, CalibrationTarget
+from qwen_launcher.calibration import CalibrationRunError, CalibrationTarget
 from qwen_launcher.paths import data_dir
 from qwen_launcher.profiles import Mode
 
@@ -93,7 +93,7 @@ def _screen_context(run: _ModeRun) -> tuple[int, ScreeningResult]:
         budget = MODE_PROBE_CAP - len(run.probes)
         plan = ScreeningPlan(run.domain_maximum, prudent.peak_used_gib, run.seed, budget)
         return ctx, screen(partial(run_probe, run, ctx), plan)
-    raise CalibrationError(
+    raise CalibrationRunError(
         f"mode {run.mode.id}: no feasible envelope found within {MODE_PROBE_CAP} probes on the "
         "approved context scale; free VRAM or stop concurrent workloads, then retry"
     )
@@ -114,6 +114,11 @@ def _selection_candidate(finalist: FinalistEvidence) -> SelectionCandidate:
 def _cuda_mode(run: _ModeRun) -> ModeCalibration:
     """Screen, confirm, and select one CUDA mode at a single comparable context."""
     ctx, screening = _screen_context(run)
+    if screening.is_budget_exhausted:
+        raise CalibrationRunError(
+            f"mode {run.mode.id}: screening exhausted the {MODE_PROBE_CAP}-probe cap before "
+            "proving the feasibility boundary; the non-optimized baseline remains active"
+        )
     values = [screening.boundary]
     if screening.boundary < run.domain_maximum:
         values.append(screening.boundary + 1)
@@ -121,7 +126,7 @@ def _cuda_mode(run: _ModeRun) -> ModeCalibration:
     valid = tuple(finalist for finalist in finalists if finalist.outcome == "valid")
     if not valid:
         reasons = "; ".join(finalist.discard_reason or "unknown" for finalist in finalists)
-        raise CalibrationError(
+        raise CalibrationRunError(
             f"mode {run.mode.id}: no finalist passed confirmation ({reasons}); "
             "the non-optimized baseline remains active"
         )
@@ -135,7 +140,7 @@ def _cpu_mode(run: _ModeRun) -> ModeCalibration:
     """Confirm the engine's auto-configured CPU baseline honestly (design §3, step 8)."""
     finalist = confirm_finalist(run, CPU_BASELINE_CTX, None)
     if finalist.outcome != "valid":
-        raise CalibrationError(
+        raise CalibrationRunError(
             f"mode {run.mode.id}: the CPU baseline failed confirmation "
             f"({finalist.discard_reason}); the non-optimized baseline remains active"
         )
@@ -151,7 +156,7 @@ def _mode_run(target: CalibrationTarget, mode: Mode, runtime_root: Path) -> _Mod
     try:
         block_count = read_block_count(target.model_path)
     except GgufError as error:
-        raise CalibrationError(str(error)) from error
+        raise CalibrationRunError(str(error)) from error
     from qwen_launcher._calibration_v2_seed import seed_probe_value
 
     return _ModeRun(target, mode, runtime_root, block_count, seed_probe_value(target, mode))
@@ -164,7 +169,7 @@ def run_calibration_v2(
     root = (data_dir() / "calibration") if destination_root is None else destination_root
     runtime_root = root / f".runtime-{uuid4().hex}"
     calibrations: list[ModeCalibration] = []
-    paths: list[Path] = []
+    pending_records: list[tuple[dict[str, object], Path]] = []
     drivers: set[str] = set()
     try:
         for mode in target.modes:
@@ -173,14 +178,15 @@ def run_calibration_v2(
             calibration = _cpu_mode(run) if is_cpu else _cuda_mode(run)
             drivers |= run.drivers
             if len(drivers) > 1:
-                raise CalibrationError("GPU driver version changed during calibration")
-            document = build_record(target, calibration)
-            paths.append(write_record(document, root / "records" / f"{mode.id}.json"))
+                raise CalibrationRunError("GPU driver version changed during calibration")
+            path = root / "records" / f"{mode.id}.json"
+            pending_records.append((build_record(target, calibration), path))
             calibrations.append(calibration)
-        return V2Outcome(tuple(calibrations), tuple(paths))
+        paths = tuple(write_record(document, path) for document, path in pending_records)
+        return V2Outcome(tuple(calibrations), paths)
     except (VramEnvironmentError, RamError) as error:
-        raise CalibrationError(f"calibration run invalidated: {error}") from error
-    except OSError as error:
-        raise CalibrationError(str(error)) from error
+        raise CalibrationRunError(f"calibration run invalidated: {error}") from error
+    except (OSError, RecordError) as error:
+        raise CalibrationRunError(str(error)) from error
     finally:
         shutil.rmtree(runtime_root, ignore_errors=True)

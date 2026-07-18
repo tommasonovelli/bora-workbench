@@ -40,6 +40,9 @@ All notable changes to this project will be documented in this file.
   future compatible local calibration record.
 - Calibration v1 now rejects mixed contexts, duplicate or unsafe candidate ordering, and validators
   recompute resource constraints, policy provenance and deterministic accepted selections.
+- Calibration v2 refuses an exhausted screening instead of claiming an unproven optimum, treats
+  monitor and driver failures as run-invalidating, combines stable-start headroom conservatively,
+  and ties the reusable context and resource needs to revalidated finalist evidence.
 - The 0.1 plan now requires hardware-independent local search instead of exporting the 32/8 host's
   optimum through nominal RAM/VRAM classes.
 - The engine command contract now pins KV-cache Q8 (`--cache-type-k q8_0 --cache-type-v q8_0`) on

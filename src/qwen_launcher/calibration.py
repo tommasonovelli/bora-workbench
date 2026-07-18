@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, cast
 
+from qwen_launcher._calibration_errors import CalibrationError, CalibrationRunError
 from qwen_launcher.config import DEFAULT_MODEL, Config, load_config
 from qwen_launcher.engine import JsonObject, load_engine_lock, locate, resolve_model
 from qwen_launcher.hardware import HardwareInfo, detect_hardware, ensure_launch_supported
@@ -22,10 +23,6 @@ from qwen_launcher.profiles import (
 
 _ID_PATTERN = re.compile(r"^[a-z0-9-]+$")
 Backend = Literal["cuda", "cpu"]
-
-
-class CalibrationError(RuntimeError):
-    """Report an expected preflight, candidate, evidence, or bundle failure."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -154,10 +151,10 @@ def prepare_target(mode_value: str) -> CalibrationTarget:
     enforce_memory_gate(config, hardware, force=False)
     ensure_launch_supported(hardware)
     if config.model != DEFAULT_MODEL:
-        raise CalibrationError("calibration supports only the pinned default model")
+        raise CalibrationRunError("calibration supports only the pinned default model")
     report = status_services()
     if report.services:
-        raise CalibrationError("a managed service is running; stop it before calibration")
+        raise CalibrationRunError("a managed service is running; stop it before calibration")
     catalog = load_catalog()
     modes = _selected_modes(mode_value, catalog)
     lock = load_engine_lock()
@@ -193,7 +190,7 @@ def run_calibration(
         return workspace.finalize(target, settings, trial)
     except (OSError, PlanError) as error:
         workspace.abort()
-        raise CalibrationError(str(error)) from error
+        raise CalibrationRunError(str(error)) from error
     except BaseException:
         workspace.abort()
         raise

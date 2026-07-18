@@ -7,6 +7,7 @@ protocol interval used for VRAM, so the two evidence streams stay comparable.
 
 from __future__ import annotations
 
+import math
 import threading
 import time
 from collections.abc import Callable
@@ -53,9 +54,21 @@ class RamMonitor:
     _stop_event: threading.Event = field(default_factory=threading.Event, init=False)
     _thread: threading.Thread | None = field(default=None, init=False)
 
+    def _sample(self) -> float:
+        """Read one finite non-negative sample or invalidate unreliable monitoring."""
+        try:
+            available_gib = self.query()
+        except RamError:
+            raise
+        except Exception as error:
+            raise RamError(f"RAM monitoring failed: {error}") from error
+        if not math.isfinite(available_gib) or available_gib < 0:
+            raise RamError("RAM monitoring returned an invalid available-memory value")
+        return available_gib
+
     def start(self) -> None:
         """Capture the pre-trial baseline and begin 250 ms polling."""
-        baseline = self.query()
+        baseline = self._sample()
         self._baseline_gib = baseline
         self._samples.append(baseline)
         self._thread = threading.Thread(target=self._poll, name="qwen-calibration-ram", daemon=True)
@@ -67,7 +80,7 @@ class RamMonitor:
         while not self._stop_event.is_set():
             deadline += _POLL_INTERVAL_SECONDS
             try:
-                self._samples.append(self.query())
+                self._samples.append(self._sample())
             except Exception as error:  # The owning thread re-raises with calibration context.
                 self._error = error
                 return
@@ -79,6 +92,8 @@ class RamMonitor:
         if self._thread is not None:
             self._thread.join()
         if self._error is not None:
+            if isinstance(self._error, RamError):
+                raise self._error
             raise RamError(f"RAM monitoring failed: {self._error}") from self._error
         if self._baseline_gib is None:
             raise RamError("RAM monitor was not started")

@@ -56,6 +56,14 @@ def test_query_failure_invalidates_the_run() -> None:
         monitor.finish()
 
 
+def test_baseline_query_failure_invalidates_the_run() -> None:
+    """Classify a baseline monitor failure as unreliable environment evidence."""
+    monitor = RamMonitor(lambda: (_ for _ in ()).throw(OSError("psutil failed")))
+
+    with pytest.raises(RamError, match="RAM monitoring failed"):
+        monitor.start()
+
+
 def test_unstarted_monitor_is_rejected() -> None:
     """Refuse to fabricate a summary for a monitor that never sampled."""
     with pytest.raises(RamError, match="not started"):

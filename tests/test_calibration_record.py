@@ -67,6 +67,24 @@ def test_envelope_must_repeat_the_selected_finalist(tmp_path) -> None:
         load_record(path)
 
 
+def test_context_must_repeat_the_finalists(tmp_path) -> None:
+    """Reject a record whose launch context was edited away from finalist evidence."""
+    path = written_record(tmp_path, cuda_calibration, cuda_hardware())
+    rewrite(path, lambda record: record["envelope"].update(ctx=65536))
+
+    with pytest.raises(RecordError, match="finalists must use"):
+        load_record(path)
+
+
+def test_headroom_must_repeat_the_selected_finalist(tmp_path) -> None:
+    """Reject edited headroom values that could make an unsafe record look reusable."""
+    path = written_record(tmp_path, cuda_calibration, cuda_hardware())
+    rewrite(path, lambda record: record["observed"].update(vram_needed_gib=0.0))
+
+    with pytest.raises(RecordError, match="observed vram_needed_gib"):
+        load_record(path)
+
+
 def test_selection_must_follow_the_dominance_rule(tmp_path) -> None:
     """Reject a record whose selected finalist contradicts the reconstruction."""
     path = written_record(tmp_path, cuda_calibration, cuda_hardware())

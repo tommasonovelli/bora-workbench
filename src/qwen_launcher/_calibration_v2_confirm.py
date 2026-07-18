@@ -46,25 +46,24 @@ def build_plan(run: _ModeRun, ctx: int, n_cpu_moe: int | None) -> LaunchPlan:
 
 
 def _combine_vram(summaries: list[VramSummary]) -> VramSummary | None:
-    """Combine all stable-start measurements into conservative finalist evidence."""
+    """Combine stable starts without understating peak use or the incremental need."""
     if not summaries:
         return None
-    baseline = summaries[0]
     return VramSummary(
-        baseline.baseline_used_gib,
+        min(item.baseline_used_gib for item in summaries),
         max(item.peak_used_gib for item in summaries),
         min(item.minimum_free_gib for item in summaries),
         max(item.release_used_gib for item in summaries),
-        baseline.driver_version,
+        summaries[0].driver_version,
     )
 
 
 def _combine_ram(summaries: list[RamSummary]) -> RamSummary | None:
-    """Combine all stable-start RAM measurements into conservative finalist evidence."""
+    """Combine stable starts without understating the observed RAM range."""
     if not summaries:
         return None
     return RamSummary(
-        summaries[0].baseline_available_gib,
+        max(item.baseline_available_gib for item in summaries),
         min(item.minimum_available_gib for item in summaries),
     )
 

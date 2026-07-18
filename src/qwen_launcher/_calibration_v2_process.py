@@ -21,7 +21,7 @@ from qwen_launcher._calibration_vram import (
     VramThresholds,
 )
 from qwen_launcher.benchmark import BenchmarkResult, run_benchmark, run_probe, run_vision_probe
-from qwen_launcher.calibration import CalibrationError, CalibrationTarget
+from qwen_launcher.calibration import CalibrationRunError, CalibrationTarget
 from qwen_launcher.engine import build_command
 from qwen_launcher.process import RunningService, StartRequest, start_service, stop_services
 from qwen_launcher.profiles import LaunchPlan, Mode
@@ -82,7 +82,7 @@ def _monitors(target: CalibrationTarget) -> tuple[VramMonitor | None, RamMonitor
     if target.hardware.backend == "cpu":
         return None, RamMonitor()
     if target.hardware.gpu_index is None:
-        raise CalibrationError("CUDA calibration requires a selected GPU index")
+        raise CalibrationRunError("CUDA calibration requires a selected GPU index")
     thresholds = VramThresholds(VRAM_RESERVE_GIB, RELEASE_TOLERANCE_GIB)
     return VramMonitor(target.hardware.gpu_index, thresholds), RamMonitor()
 
@@ -109,25 +109,37 @@ def _execute(target: CalibrationTarget, spec: TrialSpec, state: _TrialState) -> 
     state.benchmark = _workload(spec.plan.mode, base_url, spec.with_benchmark)
 
 
+def _prefer_cleanup_error(current: BaseException | None, new: BaseException) -> BaseException:
+    """Prefer run-invalidating monitor failures over other cleanup diagnostics."""
+    if isinstance(current, (VramEnvironmentError, RamError)):
+        return current
+    if isinstance(new, (VramEnvironmentError, RamError)):
+        return new
+    return new if current is None else current
+
+
 def _finish(
     state: _TrialState, root: Path
 ) -> tuple[VramSummary | None, RamSummary | None, BaseException | None]:
-    """Stop the managed process and finalize both monitors, preserving the first failure."""
+    """Stop the process and always finalize both monitors without dropping failures."""
     cleanup_error: BaseException | None = None
     vram: VramSummary | None = None
     ram: RamSummary | None = None
-    try:
-        if state.running is not None:
+    if state.running is not None:
+        try:
             stop_services(root)
-        if state.vram_monitor is not None:
-            pid = state.spawned.pid if state.running is None else state.running.process.pid
+        except BaseException as error:
+            cleanup_error = _prefer_cleanup_error(cleanup_error, error)
+    if state.vram_monitor is not None:
+        pid = state.spawned.pid if state.running is None else state.running.process.pid
+        try:
             vram = state.vram_monitor.finish(pid)
-    except BaseException as error:
-        cleanup_error = error
+        except BaseException as error:
+            cleanup_error = _prefer_cleanup_error(cleanup_error, error)
     try:
         ram = state.ram_monitor.finish()
     except BaseException as error:
-        cleanup_error = cleanup_error or error
+        cleanup_error = _prefer_cleanup_error(cleanup_error, error)
     return vram, ram, cleanup_error
 
 
@@ -140,6 +152,10 @@ def run_trial(target: CalibrationTarget, spec: TrialSpec) -> TrialMeasurement:
     except BaseException as error:
         failure = error
     vram, ram, cleanup_error = _finish(state, spec.root)
+    if failure is not None and not isinstance(failure, Exception):
+        raise failure
+    if isinstance(failure, (VramEnvironmentError, RamError)):
+        raise failure
     if isinstance(cleanup_error, (VramEnvironmentError, RamError)):
         # Contaminated or unreliable monitoring invalidates the whole run (design §3, step 10).
         raise cleanup_error
@@ -147,7 +163,7 @@ def run_trial(target: CalibrationTarget, spec: TrialSpec) -> TrialMeasurement:
     if failure is None:
         assert ram is not None
         return TrialMeasurement(state.benchmark, vram, ram)
-    if not isinstance(failure, Exception) or isinstance(failure, (VramEnvironmentError, RamError)):
+    if not isinstance(failure, Exception):
         raise failure
     if isinstance(failure, VramError) and failure.summary is not None:
         vram = failure.summary

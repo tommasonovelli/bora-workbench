@@ -234,9 +234,13 @@
   backend, hardware stabile, driver) e headroom misurato; ogni divergenza ripiega sulla baseline
   con diagnostica azionabile. `doctor` distingue record valido, assente, invalido, obsoleto e
   headroom insufficiente; `calibrate` esegue v2 a zero input e `--protocol v1` conserva il
-  laboratorio esplicito. Verifica locale Linux: Ruff, 279 test offline deterministici, `validate`,
-  build e wheel isolata verdi (CPython 3.12.3 di sistema: il download del 3.12.13 appuntato è
-  bloccato dal proxy dell'ambiente; la CI usa il 3.12.13).
+  laboratorio esplicito. Verifica locale Linux iniziale: Ruff, 279 test offline deterministici,
+  `validate`, build e wheel isolata verdi (CPython 3.12.3 di sistema: il download del 3.12.13
+  appuntato era bloccato dal proxy). Revisione locale Windows con uv 0.11.28 e CPython 3.12.13:
+  sync frozen, Ruff, 288 test, `validate`, build e wheel isolata verdi; la revisione ha inoltre reso
+  conservativi i fabbisogni fra avvii, impedito selezioni dopo esaurimento del tetto, classificato i
+  guasti monitor come invalidazione e legato contesto/headroom del record all'evidenza dei
+  finalisti. Resta la matrice CI del commit finale.
 
 ### Prossima azione obbligatoria
 
@@ -250,7 +254,7 @@ implementato.
 ---
 
 > **Stato:** documento normativo centrale, pronto a guidare l'implementazione per step.  
-> **Data di consolidamento:** 17 luglio 2026; la v4.0 registra il ridisegno adattivo local-first
+> **Data di consolidamento:** 18 luglio 2026; la v4.0 registra il ridisegno adattivo local-first
 > approvato dal maintainer (D-038/D-039 e `docs/calibration-v2-design.md`), adotta cache KV Q8 nel
 > contratto CUDA dopo il mini-spike Ubuntu e lo smoke Windows e appunta il dominio verificato degli
 > assi. La v3.4 separava evidenza condivisa e calibrazione locale e riapriva lo Step 5A.  

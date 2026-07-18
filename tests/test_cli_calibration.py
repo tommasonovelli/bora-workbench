@@ -9,12 +9,8 @@ import pytest
 from typer.testing import CliRunner
 
 import qwen_launcher._cli_calibration as calibration_cli
-import qwen_launcher._cli_calibration_v2 as calibration_v2_cli
-from qwen_launcher._calibration_v2_types import V2Outcome
 from qwen_launcher.calibration import CalibrationOutcome
 from qwen_launcher.cli import app
-from qwen_launcher.profiles import load_catalog
-from tests.record_fixtures import cuda_calibration
 from tests.test_calibration import cpu_target
 from tests.test_calibration_drift import cuda_target
 
@@ -150,47 +146,6 @@ def test_invalid_candidate_is_cli_input_error(monkeypatch) -> None:
     assert result.exit_code == 2
     assert "Calibration input error" in result.output
     assert "Traceback" not in result.output
-
-
-def test_default_calibrate_runs_v2_and_shows_records(tmp_path, monkeypatch) -> None:
-    """Run the zero-input adaptive protocol by default and present its record paths."""
-    mode = load_catalog().mode("coding")
-    assert mode is not None
-    outcome = V2Outcome((cuda_calibration(mode),), (tmp_path / "records" / "coding.json",))
-    monkeypatch.setattr(calibration_v2_cli, "prepare_target", lambda mode_value: cpu_target())
-    monkeypatch.setattr(calibration_v2_cli, "run_calibration_v2", lambda target: outcome)
-
-    result = runner.invoke(app, ["calibrate", "--mode", "coding"], input="y\n")
-
-    assert result.exit_code == 0
-    assert "calibration/v2" in result.stdout
-    assert "zero mandatory inputs" in result.stdout
-    assert "ctx=131072, n_cpu_moe=38" in result.stdout
-    assert "Record:" in result.stdout
-
-
-def test_v2_refusal_cancels_before_any_process(monkeypatch) -> None:
-    """Map a clean operator refusal of the adaptive preflight to exit code 130."""
-    monkeypatch.setattr(calibration_v2_cli, "prepare_target", lambda mode_value: cpu_target())
-
-    def forbidden(target):
-        """Prove no probe process starts before explicit confirmation."""
-        raise AssertionError("calibration must not start")
-
-    monkeypatch.setattr(calibration_v2_cli, "run_calibration_v2", forbidden)
-
-    result = runner.invoke(app, ["calibrate", "--mode", "coding"], input="n\n")
-
-    assert result.exit_code == 130
-    assert "cancelled" in result.output
-
-
-def test_explicit_candidates_require_the_v1_protocol() -> None:
-    """Keep manual candidate lists out of the adaptive zero-input protocol."""
-    result = runner.invoke(app, ["calibrate", "--mode", "coding", "--candidate", "safe:8192"])
-
-    assert result.exit_code == 2
-    assert "--protocol v1" in result.output
 
 
 def test_validate_path_does_not_replace_default_resource_validation(tmp_path) -> None:

@@ -10,6 +10,7 @@ from rich.console import Console
 from qwen_launcher.calibration import (
     CalibrationError,
     CalibrationOutcome,
+    CalibrationRunError,
     CalibrationSettings,
     CalibrationTarget,
     parse_candidate,
@@ -174,6 +175,9 @@ def run_calibrate(options: CalibrationCliInput, output: CalibrationCliOutput) ->
     except (KeyboardInterrupt, typer.Abort, CalibrationCancelled) as error:
         output.stderr.print(f"[yellow]Calibration cancelled:[/yellow] {error}")
         raise typer.Exit(code=130) from error
+    except CalibrationRunError as error:
+        output.stderr.print(f"[red]Calibration error:[/red] {error}")
+        raise typer.Exit(code=1) from error
     except (ConfigError, CalibrationError, ValueError) as error:
         output.stderr.print(f"[red]Calibration input error:[/red] {error}")
         raise typer.Exit(code=2) from error

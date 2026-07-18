@@ -1,11 +1,12 @@
-# Calibrazione assistita (`calibration/v1`)
+# Calibrazione locale (`calibration/v2`) e laboratorio v1
 
-La calibrazione confronta buste esplicite sulla macchina corrente; non è un normale avvio e non
-equivale a un singolo benchmark. L'attuale `calibration/v1` è un protocollo di laboratorio per il
-Gate: non è ancora il calibratore pubblico generale. Lo Step 5A non distribuisce policy o profili e
-ogni risultato resta una bozza locale. Una classe RAM/VRAM non rende portabile il vincitore su CPU e
-GPU diverse: per questo i profili v1 condivisi sono ora reference-only e non entrano direttamente nel
-`LaunchPlan`. L'audit e il percorso correttivo sono in `CALIBRATE.md`.
+La calibrazione non è un normale avvio e non equivale a un singolo benchmark. Il comando usa per
+default `calibration/v2`: cerca e conferma una busta sulla macchina corrente, poi salva un record
+privato riutilizzabile soltanto finché identità e headroom coincidono. `calibration/v1` resta
+selezionabile con `--protocol v1` per riprodurre il laboratorio e genera soltanto una bozza di
+contribuzione. Una classe RAM/VRAM non rende portabile il vincitore su CPU e GPU diverse: i profili
+condivisi sono reference-only e possono soltanto ordinare i probe. L'audit è in `CALIBRATE.md` e la
+progettazione approvata è in `docs/calibration-v2-design.md`.
 
 ## Prerequisiti
 
@@ -20,7 +21,37 @@ Prima di iniziare:
 Il comando non scarica il modello, non installa il motore, non modifica `config.toml`, non crea
 commit e non effettua upload.
 
-## Primo run senza policy
+## Protocollo predefinito `calibration/v2`
+
+L'utente sceglie soltanto uno dei modi installati oppure `all`; asse CUDA, candidati, contesti,
+riserva e criterio di selezione derivano dal protocollo versionato e dalle misure locali:
+
+```console
+qwen-launcher calibrate --mode <coding|studio|vstudio|all>
+```
+
+Dopo il preflight e la conferma esplicita, per ogni modo il v2:
+
+1. legge dai metadati GGUF il dominio CUDA `[0, block_count]`; su CPU conferma onestamente la sola
+   baseline del motore perché non esiste ancora un asse CPU verificato;
+2. prova la busta più prudente sulla scala `131072 → 65536 → 32768 → 16384 → 8192`, scendendo di
+   contesto soltanto quando quella busta non è fattibile;
+3. cerca il confine di fattibilità con processi freschi, al massimo 12 probe e degradazione lineare
+   quando i picchi VRAM contraddicono la monotonia; il tetto esaurito non produce un falso optimum;
+4. monitora RAM su tutti i backend e VRAM aggregata su CUDA ogni 250 ms durante caricamento,
+   workload e benchmark;
+5. conferma il confine e il vicino prudente con due avvii stabili e `benchmark/v1`, poi applica la
+   dominanza fra misure locali o, senza dominanza, preferisce margine VRAM e prudenza;
+6. scrive atomicamente `data_dir()/calibration/records/<modo>.json` conforme a
+   `calibration-record/v1`.
+
+Ogni lancio rivalida schema, selezione, modello/digest, release/commit/contratto motore, OS, backend,
+hardware, driver e headroom corrente. Una divergenza ignora il record con diagnostica e usa la
+baseline non ottimizzata; non esistono nearest-match o upload automatici. `doctor` mostra per modo
+record valido, assente, invalido, obsoleto o temporaneamente privo di headroom. Il Calibration Gate
+reale deve ancora validare le costanti D-039; fino a `CALIBRATION-ACCEPTED` lo Step 5B resta chiuso.
+
+## Laboratorio `calibration/v1` senza policy
 
 Finché `calibration-policy.json` è assente, candidati e criteri devono essere forniti senza default
 nascosti. Un candidato CUDA usa `ID:CTX:N_CPU_MOE`; un candidato CPU usa `ID:CTX`. L'opzione
@@ -32,6 +63,7 @@ Esempio puramente sintattico, **non** policy consigliata:
 ```console
 qwen-launcher calibrate \
   --mode coding \
+  --protocol v1 \
   --candidate <id-1>:<ctx>:<n-cpu-moe-1> \
   --candidate <id-2>:<ctx>:<n-cpu-moe-2> \
   --settings <avvii-stabili>:<riserva-vram-gib>:<tolleranza-rilascio-gib>
@@ -71,9 +103,9 @@ Per ogni modo e candidato, nell'ordine dichiarato, il launcher:
 Il report conserva finestra, tolleranza e campione finale di rilascio. `validate` ricostruisce anche
 riserva, rilascio, coerenza della VRAM e vincitore deterministico di un eventuale report accettato.
 Se tutti i candidati sono scartati, il comando termina correttamente dopo aver dichiarato che il
-bundle contiene solo scarti. La RAM disponibile durante il trial e l'attivazione locale restano
-requisiti aperti del protocollo successivo: `v1` non deve essere presentato come ottimizzazione
-portabile.
+bundle contiene solo scarti. `v1` non monitora la RAM durante il trial e non attiva localmente il
+risultato: resta un protocollo storico di laboratorio e non deve essere presentato come
+ottimizzazione portabile.
 
 ## Cache KV Q8: attiva nel ramo CUDA
 

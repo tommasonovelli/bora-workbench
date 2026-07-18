@@ -66,9 +66,18 @@ class VramMonitor:
     _stop_event: threading.Event = field(default_factory=threading.Event, init=False)
     _thread: threading.Thread | None = field(default=None, init=False)
 
+    def _query_snapshot(self) -> GpuSnapshot:
+        """Read one snapshot or classify the monitor failure as run-invalidating."""
+        try:
+            return self.query(self.gpu_index)
+        except VramEnvironmentError:
+            raise
+        except Exception as error:
+            raise VramEnvironmentError(f"GPU monitoring failed: {error}") from error
+
     def start(self) -> None:
         """Capture an uncontaminated baseline and begin 250 ms aggregate polling."""
-        baseline = self.query(self.gpu_index)
+        baseline = self._query_snapshot()
         if baseline.compute_pids:
             raise VramEnvironmentError(
                 "concurrent GPU compute workload detected before calibration; stop it and retry"
@@ -86,7 +95,7 @@ class VramMonitor:
         while not self._stop_event.is_set():
             deadline += _POLL_INTERVAL_SECONDS
             try:
-                self._samples.append(self.query(self.gpu_index))
+                self._samples.append(self._query_snapshot())
             except Exception as error:  # The owning thread re-raises with calibration context.
                 self._error = error
                 return
@@ -111,6 +120,8 @@ class VramMonitor:
         if self._thread is not None:
             self._thread.join()
         if self._error is not None:
+            if isinstance(self._error, VramEnvironmentError):
+                raise self._error
             raise VramEnvironmentError(f"GPU monitoring failed: {self._error}") from self._error
 
     def _wait_for_release(self, baseline: GpuSnapshot) -> GpuSnapshot:
@@ -119,7 +130,7 @@ class VramMonitor:
         limit = baseline_used + self.thresholds.release_tolerance_gib
         deadline = time.monotonic() + _RELEASE_STABILIZATION_SECONDS
         while True:
-            release = self.query(self.gpu_index)
+            release = self._query_snapshot()
             self._samples.append(release)
             if release.compute_pids or release.vram_total_gib != baseline.vram_total_gib:
                 return release
@@ -165,6 +176,8 @@ class VramMonitor:
             )
         if any(sample.vram_total_gib != baseline.vram_total_gib for sample in self._samples):
             raise VramEnvironmentError("reported total VRAM changed during calibration")
+        if any(sample.driver_version != baseline.driver_version for sample in self._samples):
+            raise VramEnvironmentError("GPU driver version changed during calibration")
         if any(sample.vram_free_gib < self.thresholds.minimum_free_gib for sample in self._samples):
             raise VramError("minimum free VRAM reserve was violated")
         release_limit = self._used_gib(baseline) + self.thresholds.release_tolerance_gib

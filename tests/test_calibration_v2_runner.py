@@ -10,6 +10,7 @@ import qwen_launcher._calibration_v2_confirm as confirm_module
 import qwen_launcher._calibration_v2_runner as runner_module
 from qwen_launcher._calibration_ram import RamSummary
 from qwen_launcher._calibration_record import load_record
+from qwen_launcher._calibration_v2_confirm import _combine_ram, _combine_vram
 from qwen_launcher._calibration_v2_process import TrialFailure, TrialMeasurement
 from qwen_launcher._calibration_v2_runner import run_calibration_v2
 from qwen_launcher._calibration_vram import VramEnvironmentError, VramSummary
@@ -109,6 +110,21 @@ def test_cpu_backend_confirms_the_baseline_without_a_fake_search(tmp_path, monke
     assert outcome.calibrations[0].probes == ()
 
 
+def test_stable_start_summaries_keep_conservative_resource_needs() -> None:
+    """Never understate headroom when monitor baselines differ between stable starts."""
+    vram = _combine_vram(
+        [
+            VramSummary(1.0, 6.0, 2.0, 1.0, "driver"),
+            VramSummary(0.9, 6.1, 1.9, 0.9, "driver"),
+        ]
+    )
+    ram = _combine_ram([RamSummary(24.0, 20.0), RamSummary(25.0, 19.0)])
+
+    assert vram is not None
+    assert vram.peak_used_gib - vram.baseline_used_gib == pytest.approx(5.2)
+    assert ram is not None and ram.needed_gib == 6.0
+
+
 def test_all_discarded_finalists_keep_the_baseline_active(tmp_path, monkeypatch) -> None:
     """Fail honestly instead of recording an envelope no finalist confirmed."""
 
@@ -119,6 +135,21 @@ def test_all_discarded_finalists_keep_the_baseline_active(tmp_path, monkeypatch)
     install_fakes(monkeypatch, fake_trial(is_feasible))
 
     with pytest.raises(CalibrationError, match="no finalist passed confirmation"):
+        run_calibration_v2(cuda_target(), tmp_path)
+    assert not (tmp_path / "records" / "coding.json").exists()
+
+
+def test_exhausted_screening_does_not_claim_an_optimum(tmp_path, monkeypatch) -> None:
+    """Keep the baseline when adaptive screening reaches its cap before the boundary."""
+
+    def is_feasible(spec) -> bool:
+        """Place the boundary beyond the deliberately reduced test budget."""
+        return (spec.plan.n_cpu_moe or 0) >= 10
+
+    install_fakes(monkeypatch, fake_trial(is_feasible), block_count=41)
+    monkeypatch.setattr(runner_module, "MODE_PROBE_CAP", 3)
+
+    with pytest.raises(CalibrationError, match="before proving the feasibility boundary"):
         run_calibration_v2(cuda_target(), tmp_path)
     assert not (tmp_path / "records" / "coding.json").exists()
 

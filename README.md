@@ -28,15 +28,15 @@ Gli Step 1–4 sono completi. Suite, build, wheel isolata, matrice CI Ubuntu/Win
 previsti dai relativi gate sono verdi. Il catalogo profili vuoto è valido: i tre modi usano la
 baseline dello spike senza presentarla come profilo ottimizzato. Lo Step 5 è completo: chat e vision
 sono collaudate realmente su Ubuntu e Windows CUDA e la matrice CI Ubuntu/Windows è verde. Lo Step
-5A ha implementato il protocollo di laboratorio `calibration/v1`, ma l'audit di portabilità lo ha
-riaperto: una busta misurata su un PC non può diventare automaticamente «calibrata» su componenti
-diversi soltanto perché RAM e VRAM nominali coincidono. Sono ora bloccati confronti fra contesti e
-report incoerenti. Il mini-spike Ubuntu e lo smoke Windows CUDA 13.3 hanno dato GO a cache KV Q8
-con `--mmap` (NO-GO a `--no-mmap`) e il contratto CUDA del lock ora la imposta; il dominio di
-`n_cpu_moe` sul modello appuntato è verificato (`[0, 41]`) e il protocollo successivo
-`calibration/v2` — ricerca locale adattiva a zero input obbligatori — è progettato in
-[`docs/calibration-v2-design.md`](docs/calibration-v2-design.md) (D-038/D-039). Prima dello Step 5B
-restano l'implementazione del v2 con record locale riutilizzabile e il Calibration Gate. Il piano normativo e il tracker sono in
+5A conserva il protocollo di laboratorio `calibration/v1` e implementa ora `calibration/v2`: ricerca
+locale adattiva a zero input tecnici obbligatori, monitoraggio RAM/VRAM, conferma dei finalisti e
+record locale riutilizzabile soltanto sulla macchina e sui contratti che lo hanno misurato. Il
+mini-spike Ubuntu e lo smoke Windows CUDA 13.3 hanno dato GO a cache KV Q8 con `--mmap` (NO-GO a
+`--no-mmap`) e il contratto CUDA del lock ora la imposta; il dominio di `n_cpu_moe` sul modello
+appuntato è verificato (`[0, 41]`). Progettazione e vincoli del v2 sono in
+[`docs/calibration-v2-design.md`](docs/calibration-v2-design.md) (D-038/D-039). Lo Step 5B resta
+chiuso fino al Calibration Gate reale e ad almeno un esito `CALIBRATION-ACCEPTED`. Il piano
+normativo e il tracker sono in
 [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
 [`docs/spike-0/`](docs/spike-0/).
 
@@ -57,7 +57,7 @@ uv run --frozen qwen-launcher engine status
 uv run --frozen qwen-launcher coding
 uv run --frozen qwen-launcher studio
 uv run --frozen qwen-launcher vstudio
-uv run --frozen qwen-launcher calibrate --help
+uv run --frozen qwen-launcher calibrate --mode coding
 uv run --frozen qwen-launcher validate --path <bundle>
 uv run --frozen qwen-launcher status
 uv run --frozen qwen-launcher stop
@@ -73,13 +73,12 @@ per nome, dimensione e SHA-256. Un modello diverso richiede `model_path` esplici
 multi-GPU resta bloccato perché lo Spike 0 ha verificato soltanto una macchina a GPU singola.
 `--force` bypassa esclusivamente le soglie RAM del modello predefinito. `studio` abilita la UI
 integrata testuale; `vstudio` abilita anche il mmproj verificato. Entrambi mostrano URL UI/API e log
-e aprono la UI dopo READY quando `open_browser=true`. La calibrazione Step 5A richiede candidati,
-riserva e tolleranza di rilascio espliciti e produce soltanto una bozza locale. `calibration/v1` è
-riservato al Gate: il percorso pubblico dovrà cercare e verificare sulla macchina dell'utente, mentre
-i dati condivisi potranno essere soltanto seed o evidenza, non una busta finale trasferita per classe.
-Il modello resta `UD-Q4_K_M`: la cache KV Q8 ha evidenza GO su Ubuntu ma non entra in
-`engine.lock` prima dello smoke Windows b10011; `--no-mmap` è stato rifiutato dalle misure Ubuntu.
-Protocollo, sintassi e privacy sono descritti in
+e aprono la UI dopo READY quando `open_browser=true`. `calibrate --mode <id|all>` usa per default
+`calibration/v2`, cerca localmente e salva un record privato per modo; `--protocol v1` mantiene il
+laboratorio con candidati e criteri espliciti e genera soltanto una bozza condivisibile. I dati
+condivisi restano seed o evidenza, mai una busta finale trasferita per classe. Il modello resta
+`UD-Q4_K_M`: il ramo CUDA del lock usa cache KV Q8 con mmap dopo i GO Ubuntu e Windows;
+`--no-mmap` è stato rifiutato dalle misure. Protocollo, sintassi, record e privacy sono descritti in
 [`docs/calibration.md`](docs/calibration.md). Open WebUI non fa parte della 0.1.
 
 Build e verifica isolata:
