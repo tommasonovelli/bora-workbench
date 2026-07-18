@@ -28,8 +28,8 @@
 - [~] **Step 5A — Calibrazione assistita:** `calibration/v1`, bundle e correzioni del primo run sono
   implementati; l'audit di portabilità aveva riaperto lo step. Smoke Windows Q8, dominio degli
   assi, progettazione `calibration/v2` (D-038/D-039) e implementazione del protocollo v2 con
-  record locale, riuso, invalidazione e test offline sono completati; resta la matrice CI
-  Ubuntu/Windows verde sul push e la validazione delle costanti al Gate.
+  record locale, riuso, invalidazione, test offline e matrice CI Ubuntu/Windows sono completati;
+  resta la validazione delle costanti al Gate.
 - [~] **Calibration Gate / Step 5B — Prima calibrazione locale:** primo run Linux non accettato;
   mini-spike Ubuntu e smoke Windows GO per Q8+mmap (NO-GO per no-mmap) e contratto Q8 adottato nel
   ramo CUDA del lock. La ricerca hardware-indipendente `calibration/v2` con monitoraggio RAM,
@@ -197,10 +197,10 @@
   `29505535712`), inclusi 210 test, `validate`, build e verifica wheel isolata. Il primo run ha
   rilevato correttamente la conversione CRLF dei protocolli su Windows; `.gitattributes` ora ne
   preserva i byte e i digest appuntati su entrambi gli OS.
-- [~] Correzione dal primo run reale: rilascio VRAM ricampionato fino a 10 s con tolleranza
+- [x] Correzione dal primo run reale: rilascio VRAM ricampionato fino a 10 s con tolleranza
   esplicita; deriva fra avvii oltre tolleranza trasformata in scarto del candidato; campione finale
   registrato; report e fallback redatti; scanner privacy e riepilogo «tutti scartati» coperti da
-  test offline. Verifiche locali completate; nuova matrice CI Ubuntu/Windows ancora da eseguire.
+  test offline e dalla matrice CI Ubuntu/Windows conclusiva dello Step 5A.
 - [x] Mini-spike Ubuntu b10011: cache K/V Q8 con mmap GO su coding/studio/vstudio CUDA e smoke CPU;
   no-mmap NO-GO per caricamento, RAM, throughput e rilascio. Evidenza sotto
   `docs/mini-spike-kv-q8-ubuntu/`; nessuna promessa qualitativa deriva da `benchmark/v1`.
@@ -209,7 +209,7 @@
   condivisi non entrano più direttamente nel `LaunchPlan`. Verifica locale Windows: sync frozen,
   Ruff, 229 test, `validate`, build e wheel isolata verdi; il primo probe wheel del motore a freddo è
   scaduto, il retry è riuscito. Monitoraggio RAM e ricerca versionata sono ora implementati dal
-  v2; restano la matrice CI sul push e il risultato locale del Gate.
+  v2 e la matrice CI è verde; resta il risultato locale del Gate.
 - [x] Smoke Windows 11 CUDA 13.3 b10011 con Q8+mmap (17 luglio 2026): GO su coding (48 e 38),
   studio (38) e vstudio (48 e 38) a ctx 131072 con benchmark/v1, MTP, UI, vision `Rosso`, stop e
   rilascio entro tolleranza; compatibilità CPU a ctx 8192. Cache Q8 adottata nel ramo CUDA del lock
@@ -240,16 +240,16 @@
   sync frozen, Ruff, 288 test, `validate`, build e wheel isolata verdi; la revisione ha inoltre reso
   conservativi i fabbisogni fra avvii, impedito selezioni dopo esaurimento del tetto, classificato i
   guasti monitor come invalidazione e legato contesto/headroom del record all'evidenza dei
-  finalisti. Resta la matrice CI del commit finale.
+  finalisti. Matrice CI GitHub Ubuntu 22.04/Windows Server 2022 verde sul commit `689c1d1` (run
+  `29647535746`), inclusi 288 test, `validate`, build e verifica wheel isolata.
 
 ### Prossima azione obbligatoria
 
-Il Calibration Gate resta chiuso. Il protocollo `calibration/v2` è implementato con test offline
-deterministici; la matrice CI Ubuntu/Windows deve risultare verde sul push del ramo. Poi Tommaso
-esegue il Gate col protocollo implementato, compreso almeno un caso hardware materialmente diverso,
-validando o correggendo con evidenza le costanti di design D-039. Non iniziare lo Step 5B o step
-successivi prima di almeno un esito locale `CALIBRATION-ACCEPTED` prodotto dal protocollo
-implementato.
+Il Calibration Gate resta chiuso. Il protocollo `calibration/v2` è implementato, verificato offline
+e coperto dalla matrice CI Ubuntu/Windows verde. La prossima azione è Tommaso che esegue il Gate col
+protocollo implementato, compreso almeno un caso hardware materialmente diverso, validando o
+correggendo con evidenza le costanti di design D-039. Non iniziare lo Step 5B o step successivi prima
+di almeno un esito locale `CALIBRATION-ACCEPTED` prodotto dal protocollo implementato.
 
 ---
 
