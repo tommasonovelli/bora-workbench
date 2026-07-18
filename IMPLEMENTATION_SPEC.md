@@ -1,6 +1,6 @@
 # qwen-launcher — Specifica centrale di implementazione (v4.0)
 
-## 0. Tracker di avanzamento — aggiornato al 17 luglio 2026
+## 0. Tracker di avanzamento — aggiornato al 18 luglio 2026
 
 > Questo blocco registra lo stato reale del repository. Questo è il documento normativo
 > `IMPLEMENTATION_SPEC.md` alla radice, unica copia normativa nel repository come previsto dallo
@@ -26,14 +26,15 @@
 - [x] **Step 5 — `studio` e `vstudio`:** implementazione, collaudi reali Ubuntu/Windows e matrice CI
   multipiattaforma conclusi.
 - [~] **Step 5A — Calibrazione assistita:** `calibration/v1`, bundle e correzioni del primo run sono
-  implementati, ma l'audit di portabilità ha riaperto lo step: il protocollo esplicito è idoneo al
-  laboratorio del Gate, non ancora alla calibrazione generale di PC diversi. Smoke Windows Q8,
-  dominio degli assi e progettazione `calibration/v2` (D-038/D-039) sono completati; resta
-  l'implementazione del v2.
+  implementati; l'audit di portabilità aveva riaperto lo step. Smoke Windows Q8, dominio degli
+  assi, progettazione `calibration/v2` (D-038/D-039) e implementazione del protocollo v2 con
+  record locale, riuso, invalidazione e test offline sono completati; resta la matrice CI
+  Ubuntu/Windows verde sul push e la validazione delle costanti al Gate.
 - [~] **Calibration Gate / Step 5B — Prima calibrazione locale:** primo run Linux non accettato;
   mini-spike Ubuntu e smoke Windows GO per Q8+mmap (NO-GO per no-mmap) e contratto Q8 adottato nel
-  ramo CUDA del lock. Restano l'implementazione della ricerca hardware-indipendente
-  `calibration/v2` con monitoraggio RAM e record locale, poi il Gate col protocollo corretto.
+  ramo CUDA del lock. La ricerca hardware-indipendente `calibration/v2` con monitoraggio RAM,
+  record locale `calibration-record/v1`, riuso con headroom e invalidazione è implementata;
+  resta il Gate col protocollo corretto.
 - [ ] **Step 6A / Human Gate / 6B — Release 0.1.**
 - [ ] **Step 7 — Skill e router.**
 - [ ] **Step 8 — Open WebUI e sync.**
@@ -207,7 +208,8 @@
   ordine; `validate` ricostruisce riserva, rilascio, classe d'origine e selezione; i profili v1
   condivisi non entrano più direttamente nel `LaunchPlan`. Verifica locale Windows: sync frozen,
   Ruff, 229 test, `validate`, build e wheel isolata verdi; il primo probe wheel del motore a freddo è
-  scaduto, il retry è riuscito. Restano CI, monitoraggio RAM, ricerca versionata e risultato locale.
+  scaduto, il retry è riuscito. Monitoraggio RAM e ricerca versionata sono ora implementati dal
+  v2; restano la matrice CI sul push e il risultato locale del Gate.
 - [x] Smoke Windows 11 CUDA 13.3 b10011 con Q8+mmap (17 luglio 2026): GO su coding (48 e 38),
   studio (38) e vstudio (48 e 38) a ctx 131072 con benchmark/v1, MTP, UI, vision `Rosso`, stop e
   rilascio entro tolleranza; compatibilità CPU a ctx 8192. Cache Q8 adottata nel ramo CUDA del lock
@@ -220,16 +222,30 @@
   `docs/calibration-v2-design.md` (screening adattivo, finalisti, criterio di dominanza dal rumore
   misurato, record locale `calibration-record/v1`, invalidazione, headroom, seed come solo
   ordinamento).
+- [x] Protocollo `calibration/v2` implementato (18 luglio 2026, CALIBRATE.md sezione 7, punti
+  4–5): dominio predetto dai metadati GGUF del modello appuntato, screening adattivo per bisezione
+  con verifica misurata della monotonia VRAM e degradazione lineare onesta, monitoraggio RAM a
+  250 ms per tutti i backend, conferma dei finalisti con 2 avvii stabili, deriva limitata e
+  `benchmark/v1`, selezione robusta per dominanza, scala contesti 131072→8192, conferma onesta
+  della baseline CPU e seed condivisi come solo ordinamento dei probe. Il record locale
+  `calibration-record/v1` (schema versionato nella wheel, record nella directory dati) è scritto
+  atomicamente, rivalidato a ogni caricamento con ricostruzione della selezione e riusato dai
+  lanci solo con identità coincidente (modello/digest, release/commit/contratto motore, OS,
+  backend, hardware stabile, driver) e headroom misurato; ogni divergenza ripiega sulla baseline
+  con diagnostica azionabile. `doctor` distingue record valido, assente, invalido, obsoleto e
+  headroom insufficiente; `calibrate` esegue v2 a zero input e `--protocol v1` conserva il
+  laboratorio esplicito. Verifica locale Linux: Ruff, 279 test offline deterministici, `validate`,
+  build e wheel isolata verdi (CPython 3.12.3 di sistema: il download del 3.12.13 appuntato è
+  bloccato dal proxy dell'ambiente; la CI usa il 3.12.13).
 
 ### Prossima azione obbligatoria
 
-Il Calibration Gate resta chiuso. Smoke Windows, contratto Q8, dominio degli assi e progettazione del
-protocollo sono completati; la prossima sessione implementa `calibration/v2` (CALIBRATE.md, sezione
-7, punti 4–5): ricerca adattiva senza input obbligatori, monitoraggio RAM per tutti i backend,
-schema `calibration-record/v1`, riuso con controllo headroom, invalidazione, test offline
-deterministici e matrice CI Ubuntu/Windows. Poi Tommaso esegue il Gate col protocollo corretto,
-compreso almeno un caso hardware materialmente diverso. Non iniziare lo Step 5B o step successivi
-prima di almeno un esito locale `CALIBRATION-ACCEPTED` prodotto dal protocollo implementato.
+Il Calibration Gate resta chiuso. Il protocollo `calibration/v2` è implementato con test offline
+deterministici; la matrice CI Ubuntu/Windows deve risultare verde sul push del ramo. Poi Tommaso
+esegue il Gate col protocollo implementato, compreso almeno un caso hardware materialmente diverso,
+validando o correggendo con evidenza le costanti di design D-039. Non iniziare lo Step 5B o step
+successivi prima di almeno un esito locale `CALIBRATION-ACCEPTED` prodotto dal protocollo
+implementato.
 
 ---
 

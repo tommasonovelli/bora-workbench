@@ -22,6 +22,13 @@ All notable changes to this project will be documented in this file.
   atomic draft bundles, privacy redaction and explicit bundle validation.
 - Post-stop VRAM stabilization with an explicit release tolerance and final release evidence.
 - Recursive JSON redaction, relative discard-log references and privacy scanning for shared bundles.
+- Adaptive zero-input `calibration/v2`: GGUF-predicted axis domain, measured bisection screening
+  with honest linear degradation, RAM monitoring for every backend, finalist confirmation with
+  stable starts and `benchmark/v1`, noise-robust dominance selection, and an approved-scale
+  context descent.
+- Versioned `calibration-record/v1` local records written atomically in the managed data
+  directory, revalidated with selection reconstruction on every load, and reused by launches only
+  with matching identity and measured headroom; `doctor` now reports the per-mode record state.
 
 ### Changed
 
