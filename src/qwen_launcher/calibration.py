@@ -154,7 +154,7 @@ def prepare_target(mode_value: str) -> CalibrationTarget:
     enforce_memory_gate(config, hardware, force=False)
     ensure_launch_supported(hardware)
     if config.model != DEFAULT_MODEL:
-        raise CalibrationError("calibration/v1 Step 5A supports only the pinned default model")
+        raise CalibrationError("calibration supports only the pinned default model")
     report = status_services()
     if report.services:
         raise CalibrationError("a managed service is running; stop it before calibration")

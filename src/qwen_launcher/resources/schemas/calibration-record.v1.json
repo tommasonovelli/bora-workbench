@@ -1,0 +1,324 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-launcher.dev/schemas/calibration-record.v1.json",
+  "title": "qwen-launcher calibration-record/v1",
+  "description": "Private local record produced by calibration/v2 and reused only on the machine and contracts that measured it.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "mode",
+    "created_at",
+    "launcher_version",
+    "calibration_protocol",
+    "benchmark_protocol",
+    "model",
+    "model_sha256",
+    "engine_release",
+    "engine_source_commit",
+    "command_contract_sha256",
+    "os_name",
+    "backend",
+    "hardware",
+    "envelope",
+    "observed",
+    "benchmark",
+    "search",
+    "selection_rule"
+  ],
+  "properties": {
+    "schema": {
+      "description": "Versioned schema identifier for this local record.",
+      "const": "calibration-record/v1"
+    },
+    "mode": {
+      "description": "Packaged mode this record calibrates, equal to the file name without extension.",
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "created_at": {
+      "description": "UTC date and time when the record was generated.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "launcher_version": {
+      "description": "Exact qwen-launcher version that generated the record.",
+      "type": "string",
+      "minLength": 1
+    },
+    "calibration_protocol": {
+      "description": "Versioned search algorithm that produced this record.",
+      "const": "calibration/v2"
+    },
+    "benchmark_protocol": {
+      "description": "Benchmark protocol used to confirm every finalist.",
+      "const": "benchmark/v1"
+    },
+    "model": {
+      "description": "Complete calibrated model identifier.",
+      "type": "string",
+      "minLength": 1
+    },
+    "model_sha256": {
+      "description": "SHA-256 of the pinned model artifact the record was measured against.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "engine_release": {
+      "description": "Exact llama.cpp release used for calibration.",
+      "type": "string",
+      "minLength": 1
+    },
+    "engine_source_commit": {
+      "description": "Full source commit of the calibrated llama.cpp release.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "command_contract_sha256": {
+      "description": "SHA-256 of the canonical engine.lock command contract used for calibration.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "os_name": {
+      "description": "Operating system the record was measured on.",
+      "enum": ["linux", "windows"]
+    },
+    "backend": {
+      "description": "Backend the record was measured on.",
+      "enum": ["cuda", "cpu"]
+    },
+    "hardware": {
+      "description": "Stable hardware identity that must match exactly for reuse.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cpu_name",
+        "cpu_cores",
+        "ram_total_gib",
+        "gpu_count",
+        "gpu_name",
+        "gpu_driver",
+        "vram_total_gib"
+      ],
+      "properties": {
+        "cpu_name": { "type": "string", "minLength": 1 },
+        "cpu_cores": { "type": "integer", "minimum": 1 },
+        "ram_total_gib": { "type": "number", "exclusiveMinimum": 0 },
+        "gpu_count": { "type": "integer", "minimum": 0 },
+        "gpu_name": { "type": ["string", "null"], "minLength": 1 },
+        "gpu_driver": { "type": ["string", "null"], "minLength": 1 },
+        "vram_total_gib": { "type": ["number", "null"], "exclusiveMinimum": 0 }
+      }
+    },
+    "envelope": {
+      "description": "Locally selected launch envelope for this mode.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ctx", "n_cpu_moe"],
+      "properties": {
+        "ctx": { "type": "integer", "minimum": 1024 },
+        "n_cpu_moe": { "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "observed": {
+      "description": "Measured resource needs and minima used by the launch headroom check.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ram_needed_gib",
+        "minimum_ram_available_gib",
+        "vram_needed_gib",
+        "minimum_vram_free_gib"
+      ],
+      "properties": {
+        "ram_needed_gib": { "type": "number", "minimum": 0 },
+        "minimum_ram_available_gib": { "type": "number", "minimum": 0 },
+        "vram_needed_gib": { "type": ["number", "null"], "minimum": 0 },
+        "minimum_vram_free_gib": { "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+    "benchmark": {
+      "description": "benchmark/v1 evidence of the selected finalist.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["warmup_tok_s", "measured_tok_s", "tok_s"],
+      "properties": {
+        "warmup_tok_s": { "type": "number", "minimum": 0 },
+        "measured_tok_s": { "$ref": "#/$defs/five_measures" },
+        "tok_s": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min", "median", "max"],
+          "properties": {
+            "min": { "type": "number", "minimum": 0 },
+            "median": { "type": "number", "minimum": 0 },
+            "max": { "type": "number", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "search": {
+      "description": "Versioned algorithm constants and the exact measured search evidence.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "context_scale",
+        "probe_cap",
+        "vram_reserve_gib",
+        "release_tolerance_gib",
+        "stable_start_runs",
+        "did_degrade",
+        "probes",
+        "finalists"
+      ],
+      "properties": {
+        "context_scale": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "integer", "minimum": 1024 }
+        },
+        "probe_cap": { "const": 12 },
+        "vram_reserve_gib": { "const": 0.5 },
+        "release_tolerance_gib": { "const": 0.125 },
+        "stable_start_runs": { "const": 2 },
+        "did_degrade": { "type": "boolean" },
+        "probes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["ctx", "n_cpu_moe", "is_feasible", "reason"],
+            "properties": {
+              "ctx": { "type": "integer", "minimum": 1024 },
+              "n_cpu_moe": { "type": "integer", "minimum": 0 },
+              "is_feasible": { "type": "boolean" },
+              "reason": { "type": ["string", "null"], "minLength": 1 }
+            }
+          }
+        },
+        "finalists": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": { "$ref": "#/$defs/finalist" }
+        }
+      }
+    },
+    "selection_rule": {
+      "description": "Deterministic rule that produced the recorded envelope.",
+      "enum": [
+        "dominance-median-over-maximum",
+        "equivalent-prefer-minimum-free-vram",
+        "equivalent-prefer-prudent",
+        "single-finalist",
+        "cpu-baseline-confirmation"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "backend": { "const": "cpu" } } },
+      "then": {
+        "properties": {
+          "envelope": { "properties": { "n_cpu_moe": { "type": "null" } } },
+          "hardware": {
+            "properties": {
+              "gpu_count": { "const": 0 },
+              "gpu_name": { "type": "null" },
+              "gpu_driver": { "type": "null" },
+              "vram_total_gib": { "type": "null" }
+            }
+          },
+          "observed": {
+            "properties": {
+              "vram_needed_gib": { "type": "null" },
+              "minimum_vram_free_gib": { "type": "null" }
+            }
+          },
+          "search": {
+            "properties": {
+              "probes": { "maxItems": 0 },
+              "finalists": { "maxItems": 1 }
+            }
+          },
+          "selection_rule": { "const": "cpu-baseline-confirmation" }
+        }
+      },
+      "else": {
+        "properties": {
+          "envelope": { "properties": { "n_cpu_moe": { "type": "integer" } } },
+          "hardware": {
+            "properties": {
+              "gpu_count": { "type": "integer", "minimum": 1 },
+              "gpu_name": { "type": "string" },
+              "gpu_driver": { "type": "string" },
+              "vram_total_gib": { "type": "number" }
+            }
+          },
+          "observed": {
+            "properties": {
+              "vram_needed_gib": { "type": "number" },
+              "minimum_vram_free_gib": { "type": "number" }
+            }
+          },
+          "selection_rule": {
+            "enum": [
+              "dominance-median-over-maximum",
+              "equivalent-prefer-minimum-free-vram",
+              "equivalent-prefer-prudent",
+              "single-finalist"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "five_measures": {
+      "description": "Exactly five valid benchmark/v1 measurements.",
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "type": "number", "minimum": 0 }
+    },
+    "finalist": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "n_cpu_moe",
+        "outcome",
+        "discard_reason",
+        "measured_tok_s",
+        "minimum_free_vram_gib",
+        "is_selected"
+      ],
+      "properties": {
+        "n_cpu_moe": { "type": ["integer", "null"], "minimum": 0 },
+        "outcome": { "enum": ["valid", "discarded"] },
+        "discard_reason": { "type": ["string", "null"], "minLength": 1 },
+        "measured_tok_s": {
+          "anyOf": [{ "$ref": "#/$defs/five_measures" }, { "type": "null" }]
+        },
+        "minimum_free_vram_gib": { "type": ["number", "null"], "minimum": 0 },
+        "is_selected": { "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "outcome": { "const": "valid" } } },
+          "then": {
+            "properties": {
+              "discard_reason": { "type": "null" },
+              "measured_tok_s": { "$ref": "#/$defs/five_measures" }
+            }
+          },
+          "else": {
+            "properties": {
+              "measured_tok_s": { "type": "null" },
+              "is_selected": { "const": false }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

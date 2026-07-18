@@ -1,0 +1,85 @@
+"""Sample available RAM around one calibration trial for every backend.
+
+calibration/v2 must observe the minimum available RAM during load, workload, and benchmark on CPU
+and CUDA alike (D-038; design document section 3, step 2). The sampling interval is the same 250 ms
+protocol interval used for VRAM, so the two evidence streams stay comparable.
+"""
+
+from __future__ import annotations
+
+import threading
+import time
+from collections.abc import Callable
+from dataclasses import dataclass, field
+
+import psutil
+
+from qwen_launcher._calibration_vram import GPU_POLL_INTERVAL_MS
+from qwen_launcher.hardware import bytes_to_gib
+
+_POLL_INTERVAL_SECONDS = GPU_POLL_INTERVAL_MS / 1000
+
+
+class RamError(RuntimeError):
+    """Report RAM evidence that cannot be trusted, invalidating the current run."""
+
+
+@dataclass(frozen=True, slots=True)
+class RamSummary:
+    """Hold the pre-trial baseline and the minimum available RAM observed during a trial."""
+
+    baseline_available_gib: float
+    minimum_available_gib: float
+
+    @property
+    def needed_gib(self) -> float:
+        """Return the measured RAM consumption used by the record headroom check (spec 5.5)."""
+        return max(0.0, self.baseline_available_gib - self.minimum_available_gib)
+
+
+def query_ram_available_gib() -> float:
+    """Read currently available RAM in exact GiB via the section 5.4 conversion."""
+    return bytes_to_gib(psutil.virtual_memory().available)
+
+
+@dataclass(slots=True)
+class RamMonitor:
+    """Collect fixed-interval available-RAM samples around one fresh server process."""
+
+    query: Callable[[], float] = query_ram_available_gib
+    _baseline_gib: float | None = field(default=None, init=False)
+    _samples: list[float] = field(default_factory=list, init=False)
+    _error: Exception | None = field(default=None, init=False)
+    _stop_event: threading.Event = field(default_factory=threading.Event, init=False)
+    _thread: threading.Thread | None = field(default=None, init=False)
+
+    def start(self) -> None:
+        """Capture the pre-trial baseline and begin 250 ms polling."""
+        baseline = self.query()
+        self._baseline_gib = baseline
+        self._samples.append(baseline)
+        self._thread = threading.Thread(target=self._poll, name="qwen-calibration-ram", daemon=True)
+        self._thread.start()
+
+    def _poll(self) -> None:
+        """Poll on a monotonic schedule and retain the first operational query error."""
+        deadline = time.monotonic()
+        while not self._stop_event.is_set():
+            deadline += _POLL_INTERVAL_SECONDS
+            try:
+                self._samples.append(self.query())
+            except Exception as error:  # The owning thread re-raises with calibration context.
+                self._error = error
+                return
+            self._stop_event.wait(max(0.0, deadline - time.monotonic()))
+
+    def finish(self) -> RamSummary:
+        """Stop polling and aggregate the observed minimum into reproducible evidence."""
+        self._stop_event.set()
+        if self._thread is not None:
+            self._thread.join()
+        if self._error is not None:
+            raise RamError(f"RAM monitoring failed: {self._error}") from self._error
+        if self._baseline_gib is None:
+            raise RamError("RAM monitor was not started")
+        return RamSummary(self._baseline_gib, min(self._samples))

@@ -15,15 +15,10 @@ from qwen_launcher._cli_calibration import (
     run_calibrate,
 )
 from qwen_launcher._cli_control import run_stop, show_status
-from qwen_launcher._cli_doctor import DoctorData, build_doctor_table
+from qwen_launcher._cli_doctor import run_doctor
 from qwen_launcher._cli_engine import run_engine_install, show_engine_status
 from qwen_launcher._cli_services import run_coding, run_studio, run_vstudio
-from qwen_launcher._cli_validation import run_validate, show_validation
-from qwen_launcher.config import Config, ConfigError, load_config
-from qwen_launcher.engine import engine_status
-from qwen_launcher.hardware import HardwareError, HardwareInfo, detect_hardware
-from qwen_launcher.paths import cache_dir, config_dir, data_dir, state_dir
-from qwen_launcher.profiles import load_catalog
+from qwen_launcher._cli_validation import run_validate
 from qwen_launcher.validation import validate_resources
 
 app = typer.Typer(
@@ -78,54 +73,10 @@ def validate_command(
     run_validate(source, _stdout, _stderr)
 
 
-def _load_doctor_config() -> Config:
-    """Load configuration and map expected input errors to CLI exit code 2."""
-    try:
-        return load_config()
-    except ConfigError as error:
-        _stderr.print(f"[red]Configuration error:[/red] {error}")
-        raise typer.Exit(code=2) from error
-
-
-def _detect_for_doctor() -> HardwareInfo:
-    """Detect hardware and map missing required facts to operational exit code 1."""
-    try:
-        return detect_hardware()
-    except HardwareError as error:
-        _stderr.print(f"[red]Hardware error:[/red] {error}")
-        raise typer.Exit(code=1) from error
-
-
 @app.command()
 def doctor() -> None:
-    """Describe configuration, hardware, content, and paths without modifying the machine."""
-    config = _load_doctor_config()
-    hardware = _detect_for_doctor()
-    validation = validate_resources()
-    shared_seeds = 0
-    if not validation.errors:
-        catalog = load_catalog()
-        shared_seeds = sum(profile.is_engine_compatible for profile in catalog.profiles)
-    directories = (config_dir(), data_dir(), cache_dir(), state_dir())
-    managed_engine = engine_status()
-    data = DoctorData(
-        config,
-        hardware,
-        shared_seeds,
-        package_version(),
-        directories,
-        managed_engine,
-    )
-    _stdout.print(build_doctor_table(data))
-    for warning in hardware.warnings:
-        _stdout.print(f"[yellow]WARNING[/yellow] {warning}")
-    message = "No local calibration record is installed; shared profiles are reference-only."
-    _stdout.print(f"[yellow]WARNING[/yellow] {message}")
-    for difference in managed_engine.differences:
-        _stdout.print(f"[yellow]Engine:[/yellow] {difference}")
-    show_validation(validation, _stdout, _stderr)
-    if validation.errors:
-        raise typer.Exit(code=1)
+    """Describe configuration, hardware, content, records, and paths without modifying anything."""
+    run_doctor(package_version(), _stdout, _stderr)
 
 
 @engine_app.command("install")
@@ -169,17 +120,24 @@ def vstudio(
 @app.command()
 def calibrate(
     mode: Annotated[str, typer.Option("--mode", help="Packaged mode id or 'all'.")],
+    protocol: Annotated[
+        str,
+        typer.Option(
+            "--protocol",
+            help="calibration protocol: adaptive zero-input 'v2' or gate-only lab 'v1'.",
+        ),
+    ] = "v2",
     candidate: Annotated[
         list[str] | None,
-        typer.Option("--candidate", help="Repeat explicit ID:CTX[:N_CPU_MOE] candidates."),
+        typer.Option("--candidate", help="v1 only: repeat explicit ID:CTX[:N_CPU_MOE] candidates."),
     ] = None,
     settings: Annotated[
         str | None,
-        typer.Option("--settings", help="Explicit RUNS[:MIN_FREE_GIB:RELEASE_TOLERANCE_GIB]."),
+        typer.Option("--settings", help="v1 only: RUNS[:MIN_FREE_GIB:RELEASE_TOLERANCE_GIB]."),
     ] = None,
 ) -> None:
-    """Run gate-only calibration/v1 and generate a local unaccepted evidence bundle."""
-    options = CalibrationCliInput(mode, tuple(candidate or ()), settings)
+    """Run the adaptive local calibration/v2 search, or gate-only calibration/v1 on request."""
+    options = CalibrationCliInput(mode, tuple(candidate or ()), settings, protocol)
     run_calibrate(options, CalibrationCliOutput(_stdout, _stderr))
 
 

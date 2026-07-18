@@ -1,15 +1,17 @@
-"""Build the Rich doctor table while keeping the command boundary concise."""
+"""Run the read-only doctor command and build its Rich diagnostics presentation."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
 
+import typer
+from rich.console import Console
 from rich.table import Table
 
 from qwen_launcher._engine_types import EngineStatus
-from qwen_launcher.config import Config
-from qwen_launcher.hardware import HardwareInfo
+from qwen_launcher.config import Config, ConfigError, load_config
+from qwen_launcher.hardware import HardwareError, HardwareInfo, detect_hardware
 
 
 @dataclass(frozen=True, slots=True)
@@ -69,3 +71,77 @@ def build_doctor_table(data: DoctorData) -> Table:
     for label, value in rows:
         table.add_row(label, value)
     return table
+
+
+def _record_line(mode_id: str, status: str, diagnostics: tuple[str, ...]) -> str:
+    """Describe one mode's local-record state in the five contractual categories.
+
+    The launcher must distinguish a valid record, a missing one (baseline not optimized), a stale
+    or invalid record, and insufficient current headroom (design document section 5).
+    """
+    detail = diagnostics[0] if diagnostics else ""
+    if status == "valid":
+        return f"[green]Calibration[/green] {mode_id}: local record valid and usable now."
+    if status == "missing":
+        return (
+            f"[yellow]Calibration[/yellow] {mode_id}: No local calibration record; "
+            "the baseline is not optimized. Run `qwen-launcher calibrate`."
+        )
+    if status == "insufficient-headroom":
+        return f"[yellow]Calibration[/yellow] {mode_id}: {detail}"
+    label = "invalid" if status == "invalid" else "stale"
+    return f"[yellow]Calibration[/yellow] {mode_id}: local record is {label}: {detail}"
+
+
+def _record_lines(config: Config, hardware: HardwareInfo) -> tuple[str, ...]:
+    """Evaluate every packaged mode's local record against the current machine."""
+    from qwen_launcher._calibration_reuse import ReuseQuery, evaluate_record
+    from qwen_launcher.engine import load_engine_lock
+    from qwen_launcher.profiles import load_catalog
+
+    lock = load_engine_lock()
+    lines = []
+    for mode in load_catalog().modes:
+        evaluation = evaluate_record(ReuseQuery(config, mode.id, hardware, lock))
+        lines.append(_record_line(mode.id, evaluation.status, evaluation.diagnostics))
+    return tuple(lines)
+
+
+def run_doctor(version: str, stdout: Console, stderr: Console) -> None:
+    """Describe configuration, hardware, content, records, and paths without modifying anything."""
+    from qwen_launcher._cli_validation import show_validation
+    from qwen_launcher.engine import engine_status
+    from qwen_launcher.paths import cache_dir, config_dir, data_dir, state_dir
+    from qwen_launcher.profiles import load_catalog
+    from qwen_launcher.validation import validate_resources
+
+    try:
+        config = load_config()
+    except ConfigError as error:
+        stderr.print(f"[red]Configuration error:[/red] {error}")
+        raise typer.Exit(code=2) from error
+    try:
+        hardware = detect_hardware()
+    except HardwareError as error:
+        stderr.print(f"[red]Hardware error:[/red] {error}")
+        raise typer.Exit(code=1) from error
+    validation = validate_resources()
+    shared_seeds = 0
+    record_lines: tuple[str, ...] = ()
+    if not validation.errors:
+        catalog = load_catalog()
+        shared_seeds = sum(profile.is_engine_compatible for profile in catalog.profiles)
+        record_lines = _record_lines(config, hardware)
+    managed_engine = engine_status()
+    directories = (config_dir(), data_dir(), cache_dir(), state_dir())
+    data = DoctorData(config, hardware, shared_seeds, version, directories, managed_engine)
+    stdout.print(build_doctor_table(data))
+    for warning in hardware.warnings:
+        stdout.print(f"[yellow]WARNING[/yellow] {warning}")
+    for line in record_lines:
+        stdout.print(line)
+    for difference in managed_engine.differences:
+        stdout.print(f"[yellow]Engine:[/yellow] {difference}")
+    show_validation(validation, stdout, stderr)
+    if validation.errors:
+        raise typer.Exit(code=1)

@@ -1,8 +1,9 @@
-"""Apply exact profile matching and the verified Step 3 fallback envelope."""
+"""Apply local-record reuse, seed matching, and the verified fallback envelope."""
 
 from __future__ import annotations
 
 from math import inf
+from typing import TYPE_CHECKING, cast
 
 from qwen_launcher.config import DEFAULT_MODEL, Config
 from qwen_launcher.hardware import HardwareInfo
@@ -15,6 +16,9 @@ from qwen_launcher.profiles import (
     PlanError,
     Profile,
 )
+
+if TYPE_CHECKING:
+    from qwen_launcher._calibration_reuse import RecordEvaluation
 
 _FALLBACK_CTX = 8192
 _FALLBACK_CUDA_N_CPU_MOE = 48
@@ -59,10 +63,10 @@ def _sort_key(profile: Profile, hardware: HardwareInfo) -> tuple[float, float, i
     return (ram_width, 0.0, os_rank, profile.id)
 
 
-def _select_profile(
+def select_seed_profile(
     request: LaunchRequest, catalog: Catalog, hardware: HardwareInfo
 ) -> tuple[Profile | None, tuple[str, ...]]:
-    """Select the most specific shared seed and diagnose an id-only tie."""
+    """Select the most specific shared seed and diagnose an id-only tie (section 5.5)."""
     matches = [
         profile for profile in catalog.profiles if _profile_applies(profile, request, hardware)
     ]
@@ -102,7 +106,10 @@ def _fallback(request: LaunchRequest, hardware: HardwareInfo) -> tuple[Envelope,
     """Return the verified spike baseline while making its uncalibrated status explicit."""
     n_cpu_moe = _FALLBACK_CUDA_N_CPU_MOE if hardware.backend == "cuda" else None
     if request.config.model == DEFAULT_MODEL:
-        warning = "No local calibration record matched; using the non-optimized baseline."
+        warning = (
+            "No local calibration record matched; using the non-optimized baseline. "
+            "Run `qwen-launcher calibrate` to optimize this machine."
+        )
     else:
         warning = (
             "This model has no local calibration record; using the default model's baseline "
@@ -111,26 +118,48 @@ def _fallback(request: LaunchRequest, hardware: HardwareInfo) -> tuple[Envelope,
     return Envelope(_FALLBACK_CTX, n_cpu_moe, None), (warning,)
 
 
+def _record_evaluation(request: LaunchRequest, hardware: HardwareInfo) -> RecordEvaluation:
+    """Evaluate the mode's local record against the current lock identity (section 5.5)."""
+    from qwen_launcher._calibration_reuse import ReuseQuery, evaluate_record
+    from qwen_launcher.engine import load_engine_lock
+
+    query = ReuseQuery(request.config, request.mode_id, hardware, load_engine_lock())
+    return evaluate_record(query)
+
+
 def build_plan(request: LaunchRequest, catalog: Catalog, hardware: HardwareInfo) -> LaunchPlan:
-    """Use the baseline because D-034 forbids treating a shared seed as locally calibrated."""
+    """Prefer a compatible local record, otherwise the verified baseline (section 5.5).
+
+    Shared seeds never become the envelope because D-034 forbids treating them as locally
+    calibrated; only a record produced by calibration/v2 on this machine may steer the plan.
+    """
     mode = catalog.mode(request.mode_id)
     if mode is None:
         valid = ", ".join(item.id for item in catalog.modes)
         raise PlanError(f"unknown mode {request.mode_id!r}; valid modes: {valid}")
-    seed, warnings = _select_profile(request, catalog, hardware)
-    envelope, fallback_warnings = _fallback(request, hardware)
-    warnings += fallback_warnings
-    if seed is not None:
-        warnings += (
-            f"Shared profile {seed.id!r} is reference-only; local calibration is required.",
-        )
+    evaluation = _record_evaluation(request, hardware)
+    seed, warnings = select_seed_profile(request, catalog, hardware)
+    if evaluation.status == "valid":
+        profile_id = "local-calibration-record"
+        envelope = Envelope(cast(int, evaluation.ctx), evaluation.n_cpu_moe, None)
+        warnings = ()
+    else:
+        profile_id = None
+        envelope, fallback_warnings = _fallback(request, hardware)
+        warnings += fallback_warnings
+        if evaluation.status != "missing":
+            warnings += evaluation.diagnostics
+        if seed is not None:
+            warnings += (
+                f"Shared profile {seed.id!r} is reference-only; local calibration is required.",
+            )
     return LaunchPlan(
         mode,
         request.config.model,
         request.model_path,
         request.mmproj_path,
         request.config.llama_port,
-        None,
+        profile_id,
         envelope.ctx,
         envelope.n_cpu_moe,
         hardware.backend,

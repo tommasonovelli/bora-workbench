@@ -4,10 +4,14 @@ from types import SimpleNamespace
 
 from typer.testing import CliRunner
 
+import qwen_launcher._calibration_record as record_module
 import qwen_launcher._cli_control as control_cli
+import qwen_launcher._cli_doctor as doctor_cli
 import qwen_launcher._cli_services as service_cli
 import qwen_launcher.cli as cli_module
 import qwen_launcher.config as config_module
+import qwen_launcher.engine as engine_module
+import qwen_launcher.paths as paths_module
 from qwen_launcher.cli import app
 from qwen_launcher.hardware import HardwareError, HardwareInfo
 from qwen_launcher.validation import ValidationIssue, ValidationResult
@@ -25,7 +29,9 @@ def patch_directories(tmp_path, monkeypatch):
     }
     monkeypatch.setattr(config_module, "config_dir", lambda: directories["config_dir"])
     for name, path in directories.items():
-        monkeypatch.setattr(cli_module, name, lambda path=path: path)
+        monkeypatch.setattr(paths_module, name, lambda path=path: path)
+    # The record module binds data_dir at import time, so its lookup is patched directly.
+    monkeypatch.setattr(record_module, "data_dir", lambda: directories["data_dir"])
     absent_engine = SimpleNamespace(
         is_active=False,
         release=None,
@@ -34,7 +40,7 @@ def patch_directories(tmp_path, monkeypatch):
         is_compatible=False,
         differences=("not installed",),
     )
-    monkeypatch.setattr(cli_module, "engine_status", lambda: absent_engine)
+    monkeypatch.setattr(engine_module, "engine_status", lambda: absent_engine)
     return directories
 
 
@@ -86,7 +92,7 @@ def test_validate_maps_errors_to_exit_1(monkeypatch) -> None:
 def test_doctor_is_read_only_and_reports_hardware(tmp_path, monkeypatch) -> None:
     """Describe Step 2B hardware and empty profiles without creating directories."""
     patch_directories(tmp_path, monkeypatch)
-    monkeypatch.setattr(cli_module, "detect_hardware", fake_hardware)
+    monkeypatch.setattr(doctor_cli, "detect_hardware", fake_hardware)
 
     result = runner.invoke(app, ["doctor"])
 
@@ -96,6 +102,19 @@ def test_doctor_is_read_only_and_reports_hardware(tmp_path, monkeypatch) -> None
     assert "32.00 GiB" in result.stdout
     assert "No local calibration record" in result.stdout
     assert not any(tmp_path.iterdir())
+
+
+def test_doctor_distinguishes_every_record_state() -> None:
+    """Present the five contractual local-record states with actionable wording."""
+    assert "valid and usable" in doctor_cli._record_line("coding", "valid", ())
+    assert "No local calibration record" in doctor_cli._record_line("coding", "missing", ())
+    stale = doctor_cli._record_line("coding", "incompatible", ("engine release changed",))
+    assert "stale" in stale and "engine release changed" in stale
+    assert "invalid" in doctor_cli._record_line("coding", "invalid", ("broken JSON",))
+    headroom = doctor_cli._record_line(
+        "coding", "insufficient-headroom", ("free VRAM is below the measured need",)
+    )
+    assert "free VRAM" in headroom
 
 
 def test_doctor_maps_invalid_configuration_to_exit_2(tmp_path, monkeypatch) -> None:
@@ -115,7 +134,7 @@ def test_doctor_maps_hardware_failure_to_exit_1(tmp_path, monkeypatch) -> None:
     """Map missing required hardware facts to an actionable operational error."""
     patch_directories(tmp_path, monkeypatch)
     failure = HardwareError("cannot determine logical CPU cores")
-    monkeypatch.setattr(cli_module, "detect_hardware", lambda: (_ for _ in ()).throw(failure))
+    monkeypatch.setattr(doctor_cli, "detect_hardware", lambda: (_ for _ in ()).throw(failure))
 
     result = runner.invoke(app, ["doctor"])
 

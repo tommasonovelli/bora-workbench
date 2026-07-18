@@ -43,6 +43,16 @@ class VramError(RuntimeError):
         self.summary = summary
 
 
+class VramEnvironmentError(VramError):
+    """Mark evidence invalidated by the environment rather than by the candidate.
+
+    Specification section 5.6 separates candidate-level failures (reserve or release violations,
+    which discard one candidate) from run-level failures (concurrent compute workloads, monitor
+    faults, or changed capacity, which invalidate the whole run). calibration/v1 treats both as one
+    ``VramError``; calibration/v2 needs the distinction, so the subclass keeps v1 behavior intact.
+    """
+
+
 @dataclass(slots=True)
 class VramMonitor:
     """Collect fixed-interval selected-GPU snapshots around one fresh server process."""
@@ -60,7 +70,7 @@ class VramMonitor:
         """Capture an uncontaminated baseline and begin 250 ms aggregate polling."""
         baseline = self.query(self.gpu_index)
         if baseline.compute_pids:
-            raise VramError(
+            raise VramEnvironmentError(
                 "concurrent GPU compute workload detected before calibration; stop it and retry"
             )
         self._baseline = baseline
@@ -91,7 +101,8 @@ class VramMonitor:
         try:
             self._validate_samples(managed_pid, baseline, release)
         except VramError as error:
-            raise VramError(str(error), summary) from error
+            # Re-raise the same class so environment failures stay run-invalidating for v2.
+            raise type(error)(str(error), summary) from error
         return summary
 
     def _stop_polling(self) -> None:
@@ -100,7 +111,7 @@ class VramMonitor:
         if self._thread is not None:
             self._thread.join()
         if self._error is not None:
-            raise VramError(f"GPU monitoring failed: {self._error}") from self._error
+            raise VramEnvironmentError(f"GPU monitoring failed: {self._error}") from self._error
 
     def _wait_for_release(self, baseline: GpuSnapshot) -> GpuSnapshot:
         """Sample release on the protocol schedule until tolerance or deadline is reached."""
@@ -149,9 +160,11 @@ class VramMonitor:
         allowed = set() if managed_pid is None else {managed_pid}
         foreign = set().union(*(set(sample.compute_pids) for sample in self._samples)) - allowed
         if foreign or release.compute_pids:
-            raise VramError("concurrent GPU compute workload contaminated calibration; stop it")
+            raise VramEnvironmentError(
+                "concurrent GPU compute workload contaminated calibration; stop it"
+            )
         if any(sample.vram_total_gib != baseline.vram_total_gib for sample in self._samples):
-            raise VramError("reported total VRAM changed during calibration")
+            raise VramEnvironmentError("reported total VRAM changed during calibration")
         if any(sample.vram_free_gib < self.thresholds.minimum_free_gib for sample in self._samples):
             raise VramError("minimum free VRAM reserve was violated")
         release_limit = self._used_gib(baseline) + self.thresholds.release_tolerance_gib

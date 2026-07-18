@@ -35,6 +35,7 @@ class CalibrationCliInput:
     mode: str
     candidate_values: tuple[str, ...]
     settings_value: str | None
+    protocol: str = "v2"
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,9 +145,25 @@ def _show_outcome(outcome: CalibrationOutcome, console: Console) -> None:
     console.print("Review every file above; privacy_reviewed remains false until human review.")
 
 
+def _dispatch(options: CalibrationCliInput, output: CalibrationCliOutput) -> bool:
+    """Route to calibration/v2 unless the operator explicitly selected the v1 lab protocol."""
+    if options.protocol == "v1":
+        return False
+    if options.protocol != "v2":
+        raise CalibrationError(f"unknown calibration protocol {options.protocol!r}; use v2 or v1")
+    if options.candidate_values or options.settings_value is not None:
+        raise CalibrationError("explicit candidates and settings require --protocol v1")
+    from qwen_launcher._cli_calibration_v2 import run_calibrate_v2
+
+    run_calibrate_v2(options.mode, output)
+    return True
+
+
 def run_calibrate(options: CalibrationCliInput, output: CalibrationCliOutput) -> None:
-    """Run the interactive calibration command with contractual error and cancellation mapping."""
+    """Run the selected calibration protocol with contractual error and cancellation mapping."""
     try:
+        if _dispatch(options, output):
+            return
         target = prepare_target(options.mode)
         settings = _settings(target, options)
         _show_preflight(target, settings, output.stdout)

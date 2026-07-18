@@ -1,10 +1,14 @@
-"""Tests for seed matching, fallback, memory gates, and launch-plan identity."""
+"""Tests for record reuse, seed matching, fallback, memory gates, and plan identity."""
 
 from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
+import qwen_launcher._calibration_record as record_module
+import qwen_launcher._calibration_reuse as reuse_module
+from qwen_launcher._calibration_record import build_record, write_record
+from qwen_launcher._hardware_monitoring import GpuSnapshot
 from qwen_launcher.config import DEFAULT_MODEL, Config
 from qwen_launcher.hardware import HardwareInfo
 from qwen_launcher.profiles import (
@@ -15,6 +19,7 @@ from qwen_launcher.profiles import (
     load_catalog,
 )
 from tests.content_fixtures import build_valid_content
+from tests.record_fixtures import cuda_calibration, cuda_hardware, record_target
 
 
 def hardware(backend: str = "cuda", *, ram: float = 32, available: float = 24) -> HardwareInfo:
@@ -58,6 +63,43 @@ def test_shared_profile_is_seed_only_even_inside_its_exact_class(tmp_path, backe
     assert plan.ctx == 8192
     assert plan.n_cpu_moe == (48 if backend == "cuda" else None)
     assert any("reference-only" in warning for warning in plan.warnings)
+
+
+def install_cuda_record(tmp_path, monkeypatch) -> None:
+    """Write one valid CUDA coding record into an isolated managed data directory."""
+    monkeypatch.setattr(record_module, "data_dir", lambda: tmp_path / "data")
+    calibration = cuda_calibration(load_catalog().mode("coding"))
+    document = build_record(record_target(cuda_hardware()), calibration)
+    write_record(document, record_module.record_path("coding"))
+
+
+def test_valid_local_record_steers_the_launch_plan(tmp_path, monkeypatch) -> None:
+    """Use the locally measured envelope immediately once every identity matches."""
+    install_cuda_record(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        reuse_module, "query_gpu_snapshot", lambda index: GpuSnapshot(8, 7, "test-driver", ())
+    )
+
+    plan = build_launch_plan(request(DEFAULT_MODEL), load_catalog(), cuda_hardware())
+
+    assert plan.profile_id == "local-calibration-record"
+    assert (plan.ctx, plan.n_cpu_moe) == (131072, 38)
+    assert plan.warnings == ()
+
+
+def test_stale_local_record_falls_back_with_diagnostics(tmp_path, monkeypatch) -> None:
+    """Explain exactly why an incompatible record was ignored before using the baseline."""
+    install_cuda_record(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        reuse_module, "query_gpu_snapshot", lambda index: GpuSnapshot(8, 7, "620.00", ())
+    )
+
+    plan = build_launch_plan(request(DEFAULT_MODEL), load_catalog(), cuda_hardware())
+
+    assert plan.profile_id is None
+    assert (plan.ctx, plan.n_cpu_moe) == (8192, 48)
+    assert "non-optimized" in plan.warnings[0]
+    assert any("GPU driver changed" in warning for warning in plan.warnings)
 
 
 def test_empty_catalog_uses_declared_default_baseline() -> None:
