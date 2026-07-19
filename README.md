@@ -28,14 +28,16 @@ Gli Step 1–4 sono completi. Suite, build, wheel isolata, matrice CI Ubuntu/Win
 previsti dai relativi gate sono verdi. Il catalogo profili vuoto è valido: i tre modi usano la
 baseline dello spike senza presentarla come profilo ottimizzato. Lo Step 5 è completo: chat e vision
 sono collaudate realmente su Ubuntu e Windows CUDA e la matrice CI Ubuntu/Windows è verde. Lo Step
-5A conserva il protocollo di laboratorio `calibration/v1` e implementa ora `calibration/v2`: ricerca
-locale adattiva a zero input tecnici obbligatori, monitoraggio RAM/VRAM, conferma dei finalisti e
-record locale riutilizzabile soltanto sulla macchina e sui contratti che lo hanno misurato. Il
-mini-spike Ubuntu e lo smoke Windows CUDA 13.3 hanno dato GO a cache KV Q8 con `--mmap` (NO-GO a
-`--no-mmap`) e il contratto CUDA del lock ora la imposta; il dominio di `n_cpu_moe` sul modello
-appuntato è verificato (`[0, 41]`). Progettazione e vincoli del v2 sono in
-[`docs/calibration-v2-design.md`](docs/calibration-v2-design.md) (D-038/D-039). Lo Step 5B resta
-chiuso fino al Calibration Gate reale e ad almeno un esito `CALIBRATION-ACCEPTED`. Il piano
+5A conserva il laboratorio `calibration/v1` e implementa ora `calibration/v3`: ricerca locale a zero
+input tecnici obbligatori, screening adattivo, riserve RAM/VRAM e conferma ABBA con benchmark su
+ogni avvio. Il risultato nasce candidato, viene attivato atomicamente per default e resta
+riutilizzabile soltanto sulla macchina e sui contratti che lo hanno misurato. `calibration/v2` è
+storico e i suoi record v1 sono inerti dopo il Gate respinto del 18 luglio 2026. Il mini-spike Ubuntu
+e lo smoke Windows CUDA 13.3 hanno dato GO a cache KV Q8 con `--mmap` (NO-GO a `--no-mmap`); il
+dominio di `n_cpu_moe` è verificato (`[0, 41]`). Il design implementato è in
+[`docs/calibrate_v3.md`](docs/calibrate_v3.md) (D-041–D-045); il v2 superato resta in
+[`docs/calibration-v2-design.md`](docs/calibration-v2-design.md). Lo Step 5B resta chiuso fino al
+nuovo Calibration Gate e ad almeno un esito `CALIBRATION-ACCEPTED`. Il piano
 normativo e il tracker sono in
 [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
 [`docs/spike-0/`](docs/spike-0/).
@@ -63,6 +65,9 @@ uv run --frozen qwen-launcher status
 uv run --frozen qwen-launcher stop
 ```
 
+`calibrate` usa per default v3. `--no-activate` conserva un candidato per il Gate, `--activate` lo
+promuove senza ripetere le prove e `--target-ctx` fissa facoltativamente un gradino approvato.
+
 `engine install` scarica tramite HTTPS esclusivamente gli asset del lock per OS/backend rilevato,
 verifica SHA-256, conserva gli avvisi di terze parti e attiva un'installazione immutabile tramite
 `current.json`. Su Ubuntu CUDA controlla i prerequisiti e compila il solo server dal commit
@@ -74,8 +79,8 @@ multi-GPU resta bloccato perché lo Spike 0 ha verificato soltanto una macchina 
 `--force` bypassa esclusivamente le soglie RAM del modello predefinito. `studio` abilita la UI
 integrata testuale; `vstudio` abilita anche il mmproj verificato. Entrambi mostrano URL UI/API e log
 e aprono la UI dopo READY quando `open_browser=true`. `calibrate --mode <id|all>` usa per default
-`calibration/v2`, cerca localmente e salva un record privato per modo; `--protocol v1` mantiene il
-laboratorio con candidati e criteri espliciti e genera soltanto una bozza condivisibile. I dati
+`calibration/v3`, misura round accoppiati e salva `calibration-record/v2`; `--protocol v1` mantiene
+il laboratorio con candidati e criteri espliciti e genera soltanto una bozza condivisibile. I dati
 condivisi restano seed o evidenza, mai una busta finale trasferita per classe. Il modello resta
 `UD-Q4_K_M`: il ramo CUDA del lock usa cache KV Q8 con mmap dopo i GO Ubuntu e Windows;
 `--no-mmap` è stato rifiutato dalle misure. Protocollo, sintassi, record e privacy sono descritti in

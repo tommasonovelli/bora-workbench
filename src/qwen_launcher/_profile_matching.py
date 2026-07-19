@@ -131,7 +131,7 @@ def build_plan(request: LaunchRequest, catalog: Catalog, hardware: HardwareInfo)
     """Prefer a compatible local record, otherwise the verified baseline (section 5.5).
 
     Shared seeds never become the envelope because D-034 forbids treating them as locally
-    calibrated; only a record produced by calibration/v2 on this machine may steer the plan.
+    calibrated; only an active record produced by calibration/v3 on this machine may steer the plan.
     """
     mode = catalog.mode(request.mode_id)
     if mode is None:

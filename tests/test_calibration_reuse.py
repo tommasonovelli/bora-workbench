@@ -7,13 +7,14 @@ from dataclasses import replace
 
 import qwen_launcher._calibration_record as record_module
 import qwen_launcher._calibration_reuse as reuse_module
-from qwen_launcher._calibration_record import build_record, write_record
+from qwen_launcher._calibration_record import build_record, candidate_record_path, write_record
 from qwen_launcher._calibration_reuse import ReuseQuery, evaluate_record
 from qwen_launcher._hardware_monitoring import GpuSnapshot
 from qwen_launcher.config import Config
 from qwen_launcher.engine import load_engine_lock
 from qwen_launcher.profiles import load_catalog
 from tests.record_fixtures import (
+    RUN_ID,
     cpu_calibration,
     cpu_hardware,
     cuda_calibration,
@@ -27,7 +28,7 @@ def install_record(tmp_path, monkeypatch, calibration_builder, hardware) -> None
     monkeypatch.setattr(record_module, "data_dir", lambda: tmp_path / "data")
     target = record_target(hardware)
     mode = load_catalog().mode("coding")
-    document = build_record(target, calibration_builder(mode))
+    document = build_record(target, calibration_builder(mode), RUN_ID)
     write_record(document, record_module.record_path("coding"))
 
 
@@ -131,6 +132,34 @@ def test_insufficient_ram_headroom_defers_reuse(tmp_path, monkeypatch) -> None:
 
     assert evaluation.status == "insufficient-headroom"
     assert any("available RAM" in message for message in evaluation.diagnostics)
+
+
+def test_pending_candidate_never_steers_reuse(tmp_path, monkeypatch) -> None:
+    """Report a valid pending candidate while leaving the launch on its baseline."""
+    monkeypatch.setattr(record_module, "data_dir", lambda: tmp_path / "data")
+    target = record_target(cpu_hardware())
+    mode = load_catalog().mode("coding")
+    document = build_record(target, cpu_calibration(mode), RUN_ID)
+    write_record(document, candidate_record_path("coding"))
+
+    evaluation = evaluate_record(query(cpu_hardware()))
+
+    assert evaluation.status == "candidate"
+    assert evaluation.ctx is None
+    assert evaluation.candidate_status == "valid"
+
+
+def test_superseded_v1_record_is_distinct_from_corruption(tmp_path, monkeypatch) -> None:
+    """Give rejected v2-protocol evidence an actionable schema-superceded diagnosis."""
+    monkeypatch.setattr(record_module, "data_dir", lambda: tmp_path / "data")
+    path = record_module.record_path("coding")
+    path.parent.mkdir(parents=True)
+    path.write_text('{"schema":"calibration-record/v1"}', encoding="utf-8")
+
+    evaluation = evaluate_record(query(cpu_hardware()))
+
+    assert evaluation.status == "superseded"
+    assert "rerun" in evaluation.diagnostics[0]
 
 
 def test_corrupt_record_is_reported_as_invalid(tmp_path, monkeypatch) -> None:

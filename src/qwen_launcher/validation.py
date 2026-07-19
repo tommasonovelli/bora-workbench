@@ -18,7 +18,7 @@ _SCHEMA_FILES = {
     "profile/v1": "profile.v1.json",
     "calibration-policy/v1": "calibration-policy.v1.json",
     "calibration-report/v1": "calibration-report.v1.json",
-    "calibration-record/v1": "calibration-record.v1.json",
+    "calibration-record/v2": "calibration-record.v2.json",
 }
 JsonObject = dict[str, object]
 

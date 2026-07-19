@@ -1,4 +1,4 @@
-"""Deterministic RAM monitoring tests for every calibration/v2 backend."""
+"""Deterministic RAM monitoring and reserve tests for every calibration/v3 backend."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import threading
 
 import pytest
 
-from qwen_launcher._calibration_ram import RamError, RamMonitor
+from qwen_launcher._calibration_ram import RamError, RamMonitor, RamReserveError
 
 
 def query_sequence(polled_gib: float):
@@ -35,6 +35,19 @@ def test_monitor_records_baseline_and_minimum_available() -> None:
     assert summary.baseline_available_gib == 24.0
     assert summary.minimum_available_gib == 18.5
     assert summary.needed_gib == pytest.approx(5.5)
+
+
+def test_universal_reserve_violation_retains_candidate_evidence() -> None:
+    """Make one trial infeasible while preserving its measured RAM summary."""
+    query, observed = query_sequence(1.5)
+    monitor = RamMonitor(query, minimum_free_gib=2.0)
+
+    monitor.start()
+    assert observed.wait(timeout=1)
+    with pytest.raises(RamReserveError, match="reserve") as captured:
+        monitor.finish()
+
+    assert captured.value.summary.minimum_available_gib == 1.5
 
 
 def test_query_failure_invalidates_the_run() -> None:

@@ -14,11 +14,13 @@ from qwen_launcher._cli_calibration import (
     CalibrationCliOutput,
     run_calibrate,
 )
+from qwen_launcher._cli_calibration_options import parse_calibration_options
 from qwen_launcher._cli_control import run_stop, show_status
 from qwen_launcher._cli_doctor import run_doctor
 from qwen_launcher._cli_engine import run_engine_install, show_engine_status
 from qwen_launcher._cli_services import run_coding, run_studio, run_vstudio
 from qwen_launcher._cli_validation import run_validate
+from qwen_launcher.calibration import CalibrationError
 from qwen_launcher.validation import validate_resources
 
 app = typer.Typer(
@@ -117,27 +119,33 @@ def vstudio(
     run_vstudio(force, _stdout, _stderr)
 
 
-@app.command()
+@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
 def calibrate(
+    context: typer.Context,
     mode: Annotated[str, typer.Option("--mode", help="Packaged mode id or 'all'.")],
     protocol: Annotated[
         str,
         typer.Option(
             "--protocol",
-            help="calibration protocol: adaptive zero-input 'v2' or gate-only lab 'v1'.",
+            help="calibration protocol: paired zero-input 'v3' or gate-only lab 'v1'.",
         ),
-    ] = "v2",
-    candidate: Annotated[
-        list[str] | None,
-        typer.Option("--candidate", help="v1 only: repeat explicit ID:CTX[:N_CPU_MOE] candidates."),
-    ] = None,
-    settings: Annotated[
-        str | None,
-        typer.Option("--settings", help="v1 only: RUNS[:MIN_FREE_GIB:RELEASE_TOLERANCE_GIB]."),
-    ] = None,
+    ] = "v3",
 ) -> None:
-    """Run the adaptive local calibration/v2 search, or gate-only calibration/v1 on request."""
-    options = CalibrationCliInput(mode, tuple(candidate or ()), settings, protocol)
+    """Run v3 with --activate/--no-activate/--target-ctx, or v1 with candidate/settings."""
+    try:
+        parsed = parse_calibration_options(context.args)
+    except CalibrationError as error:
+        _stderr.print(f"[red]Calibration input error:[/red] {error}")
+        raise typer.Exit(code=2) from error
+    options = CalibrationCliInput(
+        mode,
+        tuple(parsed.candidates),
+        parsed.settings,
+        protocol,
+        parsed.no_activate,
+        parsed.activate,
+        parsed.target_ctx,
+    )
     run_calibrate(options, CalibrationCliOutput(_stdout, _stderr))
 
 

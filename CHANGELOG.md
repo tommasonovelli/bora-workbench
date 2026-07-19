@@ -26,9 +26,13 @@ All notable changes to this project will be documented in this file.
   with honest linear degradation, RAM monitoring for every backend, finalist confirmation with
   stable starts and `benchmark/v1`, noise-robust dominance selection, and an approved-scale
   context descent.
-- Versioned `calibration-record/v1` local records written atomically in the managed data
-  directory, revalidated with selection reconstruction on every load, and reused by launches only
-  with matching identity and measured headroom; `doctor` now reports the per-mode record state.
+- Historical `calibration-record/v1` local records for the v2 implementation.
+- `calibration/v3` paired ABBA confirmation with `benchmark/v1` on every start, unanimous-round
+  dominance, honest baseline-drift degradation, a universal 2 GiB RAM reserve, and safe
+  interpolation over feasible screening peaks only.
+- `calibration-record/v2` with per-process timing, RAM/VRAM/release, benchmark, WDDM-context and
+  best-effort GPU telemetry evidence; candidate/active/previous lifecycle, atomic promotion,
+  `--no-activate`, `--activate`, `--target-ctx`, one-slot evidence retention and doctor states.
 
 ### Changed
 
@@ -40,9 +44,10 @@ All notable changes to this project will be documented in this file.
   future compatible local calibration record.
 - Calibration v1 now rejects mixed contexts, duplicate or unsafe candidate ordering, and validators
   recompute resource constraints, policy provenance and deterministic accepted selections.
-- Calibration v2 refuses an exhausted screening instead of claiming an unproven optimum, treats
-  monitor and driver failures as run-invalidating, combines stable-start headroom conservatively,
-  and ties the reusable context and resource needs to revalidated finalist evidence.
+- Calibration v2 refused an exhausted screening instead of claiming an unproven optimum, treated
+  monitor and driver failures as run-invalidating, and tied reuse to finalist evidence. It is now
+  superseded after the first real Gate rejected its disjoint confirmation windows and extreme
+  maximum-based dominance rule; v1 records are diagnosed as superseded and never reused.
 - The 0.1 plan now requires hardware-independent local search instead of exporting the 32/8 host's
   optimum through nominal RAM/VRAM classes.
 - The engine command contract now pins KV-cache Q8 (`--cache-type-k q8_0 --cache-type-v q8_0`) on

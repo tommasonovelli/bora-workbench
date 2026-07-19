@@ -1,8 +1,9 @@
 # Progettazione di `calibration/v2` — ricerca locale adattiva
 
-> **Stato:** progettazione approvata e implementata nello Step 5A, punti 4–5 del percorso correttivo
-> di `CALIBRATE.md`, sezione 7. La specifica normativa resta `IMPLEMENTATION_SPEC.md` (decisioni
-> D-038 e D-039). Lo Step 5B resta chiuso fino a un esito reale `CALIBRATION-ACCEPTED`.
+> **Stato:** design storico, implementato ma **superato da `calibration/v3`** dopo l'esito
+> `CALIBRATION-REJECTED` del Gate del 18 luglio 2026. Resta evidenza della provenienza di D-038/D-040
+> e non descrive il protocollo predefinito. Il successore è in [`calibrate_v3.md`](calibrate_v3.md)
+> ed è normato da D-041–D-045 in `IMPLEMENTATION_SPEC.md`. Lo Step 5B resta chiuso.
 > **Data:** 17 luglio 2026. **Evidenza citata:** `docs/mini-spike-kv-q8-ubuntu/`,
 > `docs/mini-spike-kv-q8-windows/`, primo bundle reale `calibration-20260716t142541702536`.
 
@@ -105,6 +106,10 @@ degrada onestamente a scansione lineare attorno al confine osservato.
    supporta 262144: l'estensione della scala oltre 131072 è una decisione di prodotto futura.
 10. **Invalidazione ambientale.** Come in `calibration/v1`: carichi compute concorrenti, cambio
     driver o monitor inaffidabile invalidano il run; la deriva oltre tolleranza scarta il candidato.
+    Il driver Windows 610.47 in modalità WDDM include però i contesti grafici persistenti della shell
+    in `--query-compute-apps`, come già registrato dal mini-spike Windows: questi PID iniziali sono
+    inclusi nella baseline aggregata e soltanto un nuovo PID estraneo invalida il run (D-040). Fuori
+    da WDDM qualunque PID compute iniziale resta bloccante.
 
 ## 4. Costanti di design e loro provenienza
 
@@ -132,6 +137,8 @@ non ne introduce altre.
 - test offline deterministici coprono screening, tetto probe, degradazione, dominanza/equivalenza,
   monitor, record, invalidazione e headroom.
 
-Il passo successivo è il Calibration Gate sulla macchina del maintainer come primo caso locale, più
-almeno un caso materialmente diverso, come richiesto da `CALIBRATE.md`, sezione 7. Solo un esito
-`CALIBRATION-ACCEPTED` apre lo Step 5B.
+Il primo Gate reale ha respinto il protocollo, non necessariamente la busta misurata: finestre di
+conferma disgiunte e un massimo estremo non distinguevano candidato e deriva ambientale. Il codice
+v2 è stato sostituito dal v3; i record `calibration-record/v1` sono deliberatamente superati e
+inermi. Il prossimo Gate usa `calibration/v3 --no-activate` e richiede ancora un caso hardware
+materialmente diverso prima di aprire lo Step 5B.

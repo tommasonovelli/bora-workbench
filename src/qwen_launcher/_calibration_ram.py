@@ -1,7 +1,7 @@
 """Sample available RAM around one calibration trial for every backend.
 
-calibration/v2 must observe the minimum available RAM during load, workload, and benchmark on CPU
-and CUDA alike (D-038; design document section 3, step 2). The sampling interval is the same 250 ms
+calibration/v3 must observe and reserve available RAM during load, workload, and benchmark on CPU
+and CUDA alike (D-038/D-042). The sampling interval is the same 250 ms
 protocol interval used for VRAM, so the two evidence streams stay comparable.
 """
 
@@ -23,6 +23,15 @@ _POLL_INTERVAL_SECONDS = GPU_POLL_INTERVAL_MS / 1000
 
 class RamError(RuntimeError):
     """Report RAM evidence that cannot be trusted, invalidating the current run."""
+
+
+class RamReserveError(RuntimeError):
+    """Report a measured reserve violation that makes only the current trial infeasible."""
+
+    def __init__(self, summary: RamSummary) -> None:
+        """Retain the measured summary for candidate evidence and diagnostics."""
+        super().__init__("minimum available RAM reserve was violated")
+        self.summary = summary
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +57,7 @@ class RamMonitor:
     """Collect fixed-interval available-RAM samples around one fresh server process."""
 
     query: Callable[[], float] = query_ram_available_gib
+    minimum_free_gib: float | None = None
     _baseline_gib: float | None = field(default=None, init=False)
     _samples: list[float] = field(default_factory=list, init=False)
     _error: Exception | None = field(default=None, init=False)
@@ -97,4 +107,10 @@ class RamMonitor:
             raise RamError(f"RAM monitoring failed: {self._error}") from self._error
         if self._baseline_gib is None:
             raise RamError("RAM monitor was not started")
-        return RamSummary(self._baseline_gib, min(self._samples))
+        summary = RamSummary(self._baseline_gib, min(self._samples))
+        if (
+            self.minimum_free_gib is not None
+            and summary.minimum_available_gib < self.minimum_free_gib
+        ):
+            raise RamReserveError(summary)
+        return summary

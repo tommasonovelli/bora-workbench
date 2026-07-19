@@ -1,4 +1,4 @@
-"""Read calibration-only aggregate NVIDIA memory and compute-process evidence."""
+"""Read aggregate NVIDIA memory, optional telemetry, and process contexts for calibration."""
 
 from __future__ import annotations
 
@@ -10,16 +10,34 @@ from io import StringIO
 from qwen_launcher.hardware import HardwareError, mib_to_gib
 
 _TIMEOUT_SECONDS = 5
+_BASE_FIELDS = "memory.total,memory.free,driver_version,driver_model.current"
+_TELEMETRY_FIELDS = (
+    "utilization.gpu,temperature.gpu,clocks.current.sm,power.draw,clocks_event_reasons.active"
+)
+_UNAVAILABLE = {"", "n/a", "[n/a]", "not supported", "[not supported]"}
+
+
+@dataclass(frozen=True, slots=True)
+class GpuTelemetry:
+    """Hold best-effort telemetry reported by one selected-GPU query."""
+
+    utilization_percent: float | None
+    temperature_celsius: float | None
+    sm_clock_mhz: float | None
+    power_draw_watts: float | None
+    throttle_reasons: tuple[str, ...] | None
 
 
 @dataclass(frozen=True, slots=True)
 class GpuSnapshot:
-    """Record total/free VRAM, driver, and compute PIDs at one polling instant."""
+    """Record VRAM, driver model, process contexts, and optional telemetry at one instant."""
 
     vram_total_gib: float
     vram_free_gib: float
     driver_version: str
     compute_pids: tuple[int, ...]
+    is_wddm: bool = False
+    telemetry: GpuTelemetry | None = None
 
 
 def _run(arguments: list[str]) -> str:
@@ -43,29 +61,79 @@ def _run(arguments: list[str]) -> str:
     return result.stdout
 
 
-def _memory(index: int) -> tuple[float, float, str]:
-    """Read selected-GPU aggregate memory and driver version in one query."""
+def _gpu_query(index: int, fields: str) -> list[str]:
+    """Read exactly one selected-GPU CSV row for the requested fields."""
     output = _run(
         [
             "nvidia-smi",
             "--id",
             str(index),
-            "--query-gpu=memory.total,memory.free,driver_version",
+            f"--query-gpu={fields}",
             "--format=csv,noheader,nounits",
         ]
     )
     rows = [row for row in csv.reader(StringIO(output)) if any(field.strip() for field in row)]
-    if len(rows) != 1 or len(rows[0]) != 3:
+    if len(rows) != 1:
+        raise HardwareError("nvidia-smi returned malformed calibration GPU data")
+    return [field.strip() for field in rows[0]]
+
+
+def _optional_float(value: str) -> float | None:
+    """Parse one optional finite telemetry scalar without making it decision-critical."""
+    if value.casefold() in _UNAVAILABLE:
+        return None
+    try:
+        parsed = float(value)
+    except ValueError:
+        return None
+    return parsed if parsed >= 0 else None
+
+
+def _throttle_reasons(value: str) -> tuple[str, ...] | None:
+    """Normalize driver-declared throttle flags while preserving unsupported evidence as null."""
+    folded = value.casefold()
+    if folded in _UNAVAILABLE:
+        return None
+    if folded in {"not active", "none"}:
+        return ()
+    return tuple(part.strip() for part in value.split("|") if part.strip())
+
+
+def _telemetry(values: list[str]) -> GpuTelemetry | None:
+    """Decode optional fields from a full row or return null after the compatibility fallback."""
+    if len(values) < 9:
+        return None
+    return GpuTelemetry(
+        _optional_float(values[4]),
+        _optional_float(values[5]),
+        _optional_float(values[6]),
+        _optional_float(values[7]),
+        _throttle_reasons(",".join(values[8:])),
+    )
+
+
+def _memory(index: int) -> tuple[float, float, str, bool, GpuTelemetry | None]:
+    """Read mandatory memory and best-effort telemetry in one query when supported."""
+    try:
+        values = _gpu_query(index, f"{_BASE_FIELDS},{_TELEMETRY_FIELDS}")
+    except HardwareError:
+        values = _gpu_query(index, _BASE_FIELDS)
+    if len(values) < 4:
         raise HardwareError("nvidia-smi returned malformed calibration memory data")
     try:
-        total_mib = float(rows[0][0].strip())
-        free_mib = float(rows[0][1].strip())
-        driver = rows[0][2].strip()
+        total_mib, free_mib = float(values[0]), float(values[1])
     except ValueError as error:
         raise HardwareError("nvidia-smi returned non-numeric calibration memory data") from error
-    if total_mib <= 0 or not 0 <= free_mib <= total_mib or not driver:
+    driver, driver_model = values[2], values[3]
+    if total_mib <= 0 or not 0 <= free_mib <= total_mib or not driver or not driver_model:
         raise HardwareError("nvidia-smi returned invalid calibration memory values")
-    return mib_to_gib(total_mib), mib_to_gib(free_mib), driver
+    return (
+        mib_to_gib(total_mib),
+        mib_to_gib(free_mib),
+        driver,
+        driver_model.casefold() == "wddm",
+        _telemetry(values),
+    )
 
 
 def _compute_pids(index: int) -> tuple[int, ...]:
@@ -90,6 +158,6 @@ def _compute_pids(index: int) -> tuple[int, ...]:
 
 
 def query_gpu_snapshot(index: int) -> GpuSnapshot:
-    """Capture aggregate selected-GPU memory and concurrent compute-process evidence."""
-    total_gib, free_gib, driver = _memory(index)
-    return GpuSnapshot(total_gib, free_gib, driver, _compute_pids(index))
+    """Capture selected-GPU memory, driver model, contexts, and evidence-only telemetry."""
+    total_gib, free_gib, driver, is_wddm, telemetry = _memory(index)
+    return GpuSnapshot(total_gib, free_gib, driver, _compute_pids(index), is_wddm, telemetry)

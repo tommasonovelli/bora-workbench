@@ -100,21 +100,8 @@ def test_doctor_is_read_only_and_reports_hardware(tmp_path, monkeypatch) -> None
     assert "qwen-launcher diagnostics" in result.stdout
     assert "Test CPU" in result.stdout
     assert "32.00 GiB" in result.stdout
-    assert "No local calibration record" in result.stdout
+    assert "no active record" in result.stdout
     assert not any(tmp_path.iterdir())
-
-
-def test_doctor_distinguishes_every_record_state() -> None:
-    """Present the five contractual local-record states with actionable wording."""
-    assert "valid and usable" in doctor_cli._record_line("coding", "valid", ())
-    assert "No local calibration record" in doctor_cli._record_line("coding", "missing", ())
-    stale = doctor_cli._record_line("coding", "incompatible", ("engine release changed",))
-    assert "stale" in stale and "engine release changed" in stale
-    assert "invalid" in doctor_cli._record_line("coding", "invalid", ("broken JSON",))
-    headroom = doctor_cli._record_line(
-        "coding", "insufficient-headroom", ("free VRAM is below the measured need",)
-    )
-    assert "free VRAM" in headroom
 
 
 def test_doctor_maps_invalid_configuration_to_exit_2(tmp_path, monkeypatch) -> None:

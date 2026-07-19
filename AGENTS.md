@@ -19,13 +19,12 @@ apply here.
 - This is a Python 3.12 launcher for a local, calibrated Qwen model served by an exact, verified
   `llama.cpp` release. It is not a generic model manager or plugin framework.
 - Work one implementation step at a time and do not anticipate later milestones.
-- **Steps 3, 4, and 5 are complete; Step 5A is reopened by the portability audit.** The Windows Q8
-  smoke is done and KV-cache Q8 is pinned on the CUDA lock branch; the `n_cpu_moe` domain is
-  verified as `[0, 41]`; the successor protocol `calibration/v2` is designed (D-038/D-039,
-  `docs/calibration-v2-design.md`). The next Step 5A work is implementing v2 (adaptive local
-  search, RAM monitoring, local record, invalidation, headroom) with offline tests and CI. Do not
-  begin the Calibration Gate, Step 5B, or later milestones before a `CALIBRATION-ACCEPTED` result
-  from the implemented v2 protocol.
+- **Steps 3, 4, and 5 are complete; Step 5A remains open at the Calibration Gate.** Q8 is pinned,
+  the `n_cpu_moe` domain is `[0, 41]`, and the first real `calibration/v2` Gate was rejected.
+  `calibration/v3` is implemented (D-041–D-045, `docs/calibrate_v3.md`) with ABBA confirmation,
+  RAM reserve, record v2 lifecycle, offline tests and local packaging checks. The next work is CI,
+  then the v3 Gate with `--no-activate` on the maintainer machine and materially different hardware.
+  Do not begin Step 5B or later milestones before a v3 `CALIBRATION-ACCEPTED` result.
 - Never invent engine flags, checksums, source commits, benchmark results, hardware support, profiles,
   health responses, or compatibility claims.
 

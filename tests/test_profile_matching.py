@@ -19,7 +19,7 @@ from qwen_launcher.profiles import (
     load_catalog,
 )
 from tests.content_fixtures import build_valid_content
-from tests.record_fixtures import cuda_calibration, cuda_hardware, record_target
+from tests.record_fixtures import RUN_ID, cuda_calibration, cuda_hardware, record_target
 
 
 def hardware(backend: str = "cuda", *, ram: float = 32, available: float = 24) -> HardwareInfo:
@@ -69,7 +69,7 @@ def install_cuda_record(tmp_path, monkeypatch) -> None:
     """Write one valid CUDA coding record into an isolated managed data directory."""
     monkeypatch.setattr(record_module, "data_dir", lambda: tmp_path / "data")
     calibration = cuda_calibration(load_catalog().mode("coding"))
-    document = build_record(record_target(cuda_hardware()), calibration)
+    document = build_record(record_target(cuda_hardware()), calibration, RUN_ID)
     write_record(document, record_module.record_path("coding"))
 
 

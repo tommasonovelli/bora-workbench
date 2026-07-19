@@ -2,9 +2,10 @@
 
 > **Stato:** analisi non normativa che corregge il precedente piano host-specific. La specifica
 > normativa resta `IMPLEMENTATION_SPEC.md`. Nessun profilo o policy di produzione è autorizzato da
-> questo documento e lo Step 5B resta chiuso.
-> **Data:** 17 luglio 2026. **Evidenza conservata:** primo bundle reale
-> `calibration-20260716t142541702536` e mini-spike Q8 sotto
+> questo documento e lo Step 5B resta chiuso. L'aggiornamento del 18 luglio registra il Gate v2
+> respinto e il successore v3 implementato in `docs/calibrate_v3.md`.
+> **Data:** 18 luglio 2026. **Evidenza conservata:** primo bundle reale
+> `calibration-20260716t142541702536`, record del run v2 e mini-spike Q8 sotto
 > `docs/mini-spike-kv-q8-ubuntu/`.
 
 ## 1. Requisito di prodotto chiarito
@@ -51,7 +52,8 @@ Restano validi e utili:
 - carico reale per modo, incluso vision per `vstudio`;
 - polling aggregato VRAM a 250 ms;
 - rilascio VRAM entro 10 s con tolleranza esplicita;
-- rilevamento di processi compute concorrenti;
+- rilevamento di processi compute concorrenti, con baseline aggregata dei contesti desktop che
+  WDDM 610.47 espone inevitabilmente nella stessa query e invalidazione di ogni nuovo PID estraneo;
 - `benchmark/v1` con warm-up escluso e cinque misure;
 - bundle atomico, redazione, manifest e scanner privacy;
 - fallback non ottimizzato quando manca una calibrazione locale valida.
@@ -194,9 +196,15 @@ pubblica. L'ordine corretto è:
    luglio 2026**: `calibration/v2`, screening adattivo, finalisti, RAM/VRAM e test offline;
 5. ~~implementare record locale, compatibilità, headroom e invalidazione~~ — **fatto**:
    `calibration-record/v1`, scrittura atomica, ricostruzione, riuso e diagnostica per modo;
-6. eseguire il gate sulla macchina di Tommaso come primo caso reale, senza attribuirgli portabilità;
-7. provare almeno casi hardware eterogenei o fixture che ne riproducano confini differenti;
-8. aprire lo Step 5B solo dopo almeno un risultato locale accettato e dopo aver dimostrato che un PC
+6. ~~eseguire il primo Gate v2 sulla macchina di Tommaso~~ — **fatto il 18 luglio 2026**:
+   `CALIBRATION-REJECTED` per il protocollo, perché le finestre disgiunte e il massimo estremo non
+   separavano throughput e deriva; la busta 38 non è stata dichiarata intrinsecamente errata;
+7. ~~progettare e implementare il successore~~ — **fatto**: `calibration/v3`, ABBA, unanimità,
+   riserva RAM, record `calibration-record/v2`, lifecycle candidato/attivo, telemetria evidence-only
+   e monotonia sui soli probe fattibili (`docs/calibrate_v3.md`, D-041–D-045);
+8. rieseguire il Gate v3 con `--no-activate` sulla macchina di Tommaso e su almeno un caso hardware
+   materialmente diverso;
+9. aprire lo Step 5B solo dopo almeno un risultato locale accettato e dopo aver dimostrato che un PC
    fuori dalla classe originaria può eseguire la propria ricerca.
 
 Fino ad allora la baseline verificata resta il comportamento sicuro. Non viene pubblicata la classe

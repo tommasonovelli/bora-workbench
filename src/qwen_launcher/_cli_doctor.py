@@ -73,24 +73,34 @@ def build_doctor_table(data: DoctorData) -> Table:
     return table
 
 
-def _record_line(mode_id: str, status: str, diagnostics: tuple[str, ...]) -> str:
-    """Describe one mode's local-record state in the five contractual categories.
+def _record_line(mode_id: str, evaluation: object) -> str:
+    """Describe active, candidate, superseded, invalid, and headroom record states."""
+    from qwen_launcher._calibration_reuse import RecordEvaluation
 
-    The launcher must distinguish a valid record, a missing one (baseline not optimized), a stale
-    or invalid record, and insufficient current headroom (design document section 5).
-    """
-    detail = diagnostics[0] if diagnostics else ""
-    if status == "valid":
-        return f"[green]Calibration[/green] {mode_id}: local record valid and usable now."
-    if status == "missing":
+    if not isinstance(evaluation, RecordEvaluation):
+        raise TypeError("doctor record evaluation has an invalid runtime type")
+    detail = evaluation.diagnostics[0] if evaluation.diagnostics else ""
+    suffix = ""
+    if evaluation.candidate_status == "valid":
+        suffix = " Pending candidate is valid and awaits `calibrate --activate`."
+    elif evaluation.candidate_status in {"invalid", "superseded"}:
+        candidate_detail = evaluation.candidate_diagnostics[0]
+        suffix = f" Pending candidate is {evaluation.candidate_status}: {candidate_detail}"
+    if evaluation.status == "valid":
+        return f"[green]Calibration[/green] {mode_id}: active record valid.{suffix}"
+    if evaluation.status == "missing":
         return (
-            f"[yellow]Calibration[/yellow] {mode_id}: No local calibration record; "
-            "the baseline is not optimized. Run `qwen-launcher calibrate`."
+            f"[yellow]Calibration[/yellow] {mode_id}: no active record; "
+            f"baseline not optimized.{suffix}"
         )
-    if status == "insufficient-headroom":
-        return f"[yellow]Calibration[/yellow] {mode_id}: {detail}"
-    label = "invalid" if status == "invalid" else "stale"
-    return f"[yellow]Calibration[/yellow] {mode_id}: local record is {label}: {detail}"
+    if evaluation.status == "candidate":
+        return f"[yellow]Calibration[/yellow] {mode_id}: valid candidate awaits activation."
+    if evaluation.status == "superseded":
+        return f"[yellow]Calibration[/yellow] {mode_id}: record schema superseded: {detail}"
+    if evaluation.status == "insufficient-headroom":
+        return f"[yellow]Calibration[/yellow] {mode_id}: {detail}{suffix}"
+    label = "invalid" if evaluation.status == "invalid" else "stale"
+    return f"[yellow]Calibration[/yellow] {mode_id}: active record is {label}: {detail}{suffix}"
 
 
 def _record_lines(config: Config, hardware: HardwareInfo) -> tuple[str, ...]:
@@ -103,7 +113,7 @@ def _record_lines(config: Config, hardware: HardwareInfo) -> tuple[str, ...]:
     lines = []
     for mode in load_catalog().modes:
         evaluation = evaluate_record(ReuseQuery(config, mode.id, hardware, lock))
-        lines.append(_record_line(mode.id, evaluation.status, evaluation.diagnostics))
+        lines.append(_record_line(mode.id, evaluation))
     return tuple(lines)
 
 

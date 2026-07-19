@@ -1,24 +1,18 @@
-"""Build, atomically write, and load the private local calibration-record/v1 document.
-
-The record is the only artifact the runtime may treat as locally calibrated (D-035/D-038). It
-lives in the managed data directory, never in the wheel, and every load revalidates the schema and
-reconstructs the selection so a tampered or stale record can never silently steer a launch.
-"""
+"""Build, validate, and atomically manage private calibration-record/v2 lifecycle files."""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import os
+import shutil
 from pathlib import Path
-from statistics import median
 from typing import cast
 from uuid import uuid4
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-from qwen_launcher._calibration_v2_search import select_candidate_index
-from qwen_launcher._calibration_v2_types import ModeCalibration, SelectionCandidate
+from qwen_launcher._calibration_v3_types import ModeCalibration
 from qwen_launcher.calibration import CalibrationTarget
 from qwen_launcher.paths import data_dir
 from qwen_launcher.resources import read_json
@@ -27,39 +21,69 @@ JsonObject = dict[str, object]
 
 
 class RecordError(RuntimeError):
-    """Report a local record that cannot be trusted for launch reuse."""
+    """Report a local record that cannot be trusted or promoted."""
+
+
+class RecordSupersededError(RecordError):
+    """Report a structurally valid historical record that calibration/v3 cannot reuse."""
 
 
 def records_directory() -> Path:
-    """Return the managed per-mode record directory without creating it."""
+    """Return the managed active/candidate/previous record directory without creating it."""
     return data_dir() / "calibration" / "records"
 
 
-def record_path(mode_id: str) -> Path:
-    """Return the path of one mode's local record without creating anything."""
-    return records_directory() / f"{mode_id}.json"
+def _root(selected_root: Path | None) -> Path:
+    """Resolve an optional test or operation-owned record root."""
+    return records_directory() if selected_root is None else selected_root
+
+
+def record_path(mode_id: str, selected_root: Path | None = None) -> Path:
+    """Return one mode's active record path without creating anything."""
+    return _root(selected_root) / f"{mode_id}.json"
+
+
+def candidate_record_path(mode_id: str, selected_root: Path | None = None) -> Path:
+    """Return one mode's pending candidate path without creating anything."""
+    return _root(selected_root) / f"{mode_id}.candidate.json"
+
+
+def previous_record_path(mode_id: str, selected_root: Path | None = None) -> Path:
+    """Return one mode's single rollback-slot path without creating anything."""
+    return _root(selected_root) / f"{mode_id}.previous.json"
 
 
 def command_contract_sha256(lock: JsonObject) -> str:
-    """Digest the lock's command contract so record identity detects contract changes."""
+    """Digest the lock command contract so identity detects semantic changes."""
     canonical = json.dumps(lock["command_contract"], sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def build_record(target: CalibrationTarget, calibration: ModeCalibration) -> JsonObject:
-    """Build one complete calibration-record/v1 document from measured evidence."""
+def build_record(
+    target: CalibrationTarget, calibration: ModeCalibration, evidence_run_id: str
+) -> JsonObject:
+    """Build one complete calibration-record/v2 candidate document."""
     from qwen_launcher._calibration_record_build import build_record_document
 
-    return build_record_document(target, calibration)
+    return build_record_document(target, calibration, evidence_run_id)
+
+
+def _mode_from_path(path: Path) -> str:
+    """Derive mode identity from active, candidate, or previous lifecycle names."""
+    name = path.name
+    for suffix in (".candidate.json", ".previous.json", ".json"):
+        if name.endswith(suffix):
+            return name.removesuffix(suffix)
+    return path.stem
 
 
 def _validate_record(document: JsonObject, path: Path) -> None:
     """Validate one decoded record's file identity, schema, and semantics."""
     from qwen_launcher._calibration_record_checks import verify_record
 
-    if document.get("mode") != path.stem:
+    if document.get("mode") != _mode_from_path(path):
         raise RecordError(f"local calibration record {path} is invalid: mode must match file name")
-    schema = cast(JsonObject, read_json("schemas/calibration-record.v1.json"))
+    schema = cast(JsonObject, read_json("schemas/calibration-record.v2.json"))
     validator = Draft202012Validator(schema, format_checker=FormatChecker())
     errors = sorted(validator.iter_errors(document), key=lambda error: list(error.absolute_path))
     if errors:
@@ -68,7 +92,7 @@ def _validate_record(document: JsonObject, path: Path) -> None:
 
 
 def write_record(document: JsonObject, path: Path) -> Path:
-    """Validate and atomically replace one same-directory local record."""
+    """Validate and atomically replace one same-directory lifecycle record."""
     _validate_record(document, path)
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
@@ -89,29 +113,55 @@ def _reject_nonfinite(value: str) -> object:
     raise ValueError(f"non-finite JSON number {value}")
 
 
-def load_record(path: Path) -> JsonObject:
-    """Load one record, revalidating schema, summary coherence, and the selection."""
+def _decode_record(path: Path) -> JsonObject:
+    """Decode one strict UTF-8 JSON object without yet assigning schema semantics."""
     try:
         decoded = json.loads(path.read_bytes().decode("utf-8"), parse_constant=_reject_nonfinite)
     except (OSError, UnicodeDecodeError, json.JSONDecodeError, ValueError) as error:
         raise RecordError(f"cannot read local calibration record {path}: {error}") from error
     if not isinstance(decoded, dict):
         raise RecordError(f"local calibration record {path} must contain a JSON object")
-    document = cast(JsonObject, decoded)
+    return cast(JsonObject, decoded)
+
+
+def load_record(path: Path) -> JsonObject:
+    """Load one v2 record or diagnose historical v1 evidence as explicitly superseded."""
+    document = _decode_record(path)
+    if document.get("schema") == "calibration-record/v1":
+        raise RecordSupersededError(
+            f"local calibration record {path} uses superseded calibration-record/v1; "
+            "rerun `qwen-launcher calibrate`"
+        )
     _validate_record(document, path)
     return document
 
 
-def reconstruct_selection(finalists: list[JsonObject]) -> tuple[int, str]:
-    """Recompute the winning valid finalist and rule from serialized evidence."""
-    candidates = []
-    for entry in finalists:
-        if entry["outcome"] != "valid":
-            continue
-        measured = [float(value) for value in cast(list[float], entry["measured_tok_s"])]
-        free = cast(float | None, entry["minimum_free_vram_gib"])
-        moe = cast(int | None, entry["n_cpu_moe"])
-        candidates.append(SelectionCandidate(median(measured), max(measured), free, moe))
-    if not candidates:
-        raise RecordError("local calibration record has no valid finalist")
-    return select_candidate_index(tuple(candidates))
+def _preserve_previous(active: Path, previous: Path) -> None:
+    """Prepare the rollback slot without moving or weakening the current active record."""
+    temporary = previous.with_name(f".{previous.name}.{uuid4().hex}.tmp")
+    try:
+        with active.open("rb") as source, temporary.open("xb") as output:
+            shutil.copyfileobj(source, output)
+            output.flush()
+            os.fsync(output.fileno())
+        temporary.replace(previous)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+def promote_candidate(mode_id: str, selected_root: Path | None = None) -> Path:
+    """Atomically replace active with a validated candidate while retaining one rollback slot."""
+    candidate = candidate_record_path(mode_id, selected_root)
+    active = record_path(mode_id, selected_root)
+    previous = previous_record_path(mode_id, selected_root)
+    if not candidate.is_file():
+        raise RecordError(f"no pending calibration candidate for mode {mode_id!r}")
+    load_record(candidate)
+    active.parent.mkdir(parents=True, exist_ok=True)
+    if active.is_file():
+        _preserve_previous(active, previous)
+    try:
+        candidate.replace(active)
+    except OSError as error:
+        raise RecordError(f"cannot activate calibration candidate {candidate}: {error}") from error
+    return active

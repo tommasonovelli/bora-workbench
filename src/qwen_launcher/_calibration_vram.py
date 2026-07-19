@@ -1,4 +1,4 @@
-"""Sample aggregate VRAM and verify tolerant, stabilized release after each trial."""
+"""Sample aggregate VRAM, WDDM context stability, and tolerant release after each trial."""
 
 from __future__ import annotations
 
@@ -7,50 +7,19 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
+from qwen_launcher._calibration_gpu_evidence import summarize_telemetry
+from qwen_launcher._calibration_vram_types import (
+    VramEnvironmentError,
+    VramError,
+    VramSummary,
+    VramThresholds,
+)
 from qwen_launcher._hardware_monitoring import GpuSnapshot, query_gpu_snapshot
 
 GPU_POLL_INTERVAL_MS = 250
 GPU_RELEASE_STABILIZATION_MS = 10_000
 _POLL_INTERVAL_SECONDS = GPU_POLL_INTERVAL_MS / 1000
 _RELEASE_STABILIZATION_SECONDS = GPU_RELEASE_STABILIZATION_MS / 1000
-
-
-@dataclass(frozen=True, slots=True)
-class VramThresholds:
-    """Hold explicit CUDA reserve and post-stop release tolerance values."""
-
-    minimum_free_gib: float
-    release_tolerance_gib: float
-
-
-@dataclass(frozen=True, slots=True)
-class VramSummary:
-    """Hold aggregate baseline, peak, reserve, release, and driver evidence."""
-
-    baseline_used_gib: float
-    peak_used_gib: float
-    minimum_free_gib: float
-    release_used_gib: float
-    driver_version: str
-
-
-class VramError(RuntimeError):
-    """Report invalid VRAM evidence while retaining measurable discarded-run values."""
-
-    def __init__(self, message: str, summary: VramSummary | None = None) -> None:
-        """Attach an optional measured summary to an invalid-run diagnosis."""
-        super().__init__(message)
-        self.summary = summary
-
-
-class VramEnvironmentError(VramError):
-    """Mark evidence invalidated by the environment rather than by the candidate.
-
-    Specification section 5.6 separates candidate-level failures (reserve or release violations,
-    which discard one candidate) from run-level failures (concurrent compute workloads, monitor
-    faults, or changed capacity, which invalidate the whole run). calibration/v1 treats both as one
-    ``VramError``; calibration/v2 needs the distinction, so the subclass keeps v1 behavior intact.
-    """
 
 
 @dataclass(slots=True)
@@ -76,11 +45,13 @@ class VramMonitor:
             raise VramEnvironmentError(f"GPU monitoring failed: {error}") from error
 
     def start(self) -> None:
-        """Capture an uncontaminated baseline and begin 250 ms aggregate polling."""
+        """Capture an eligible baseline and begin 250 ms aggregate polling."""
         baseline = self._query_snapshot()
-        if baseline.compute_pids:
+        if baseline.compute_pids and not baseline.is_wddm:
+            pids = ", ".join(str(pid) for pid in baseline.compute_pids)
             raise VramEnvironmentError(
-                "concurrent GPU compute workload detected before calibration; stop it and retry"
+                f"concurrent GPU compute workload detected before calibration (PIDs {pids}); "
+                "stop it and retry"
             )
         self._baseline = baseline
         self._samples.append(baseline)
@@ -105,12 +76,12 @@ class VramMonitor:
         """Wait up to ten seconds for post-stop memory to return within tolerance."""
         self._stop_polling()
         baseline = self._require_baseline()
-        release = self._wait_for_release(baseline)
-        summary = self._summary(baseline, release)
+        release, release_duration = self._wait_for_release(baseline)
+        summary = self._summary(baseline, release, release_duration)
         try:
             self._validate_samples(managed_pid, baseline, release)
         except VramError as error:
-            # Re-raise the same class so environment failures stay run-invalidating for v2.
+            # Preserve the class so environment failures stay run-invalidating for v3.
             raise type(error)(str(error), summary) from error
         return summary
 
@@ -124,25 +95,28 @@ class VramMonitor:
                 raise self._error
             raise VramEnvironmentError(f"GPU monitoring failed: {self._error}") from self._error
 
-    def _wait_for_release(self, baseline: GpuSnapshot) -> GpuSnapshot:
-        """Sample release on the protocol schedule until tolerance or deadline is reached."""
+    def _wait_for_release(self, baseline: GpuSnapshot) -> tuple[GpuSnapshot, float]:
+        """Sample release until tolerance or deadline and measure the stabilization duration."""
         baseline_used = self._used_gib(baseline)
         limit = baseline_used + self.thresholds.release_tolerance_gib
-        deadline = time.monotonic() + _RELEASE_STABILIZATION_SECONDS
+        started = time.monotonic()
+        deadline = started + _RELEASE_STABILIZATION_SECONDS
         while True:
             release = self._query_snapshot()
             self._samples.append(release)
-            if release.compute_pids or release.vram_total_gib != baseline.vram_total_gib:
-                return release
-            if self._used_gib(release) <= limit:
-                return release
+            baseline_pids = set(baseline.compute_pids) if baseline.is_wddm else set()
+            is_invalid = bool(set(release.compute_pids) - baseline_pids)
+            has_changed_capacity = release.vram_total_gib != baseline.vram_total_gib
+            is_released = self._used_gib(release) <= limit
             remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                return release
+            if is_invalid or has_changed_capacity or is_released or remaining <= 0:
+                return release, time.monotonic() - started
             time.sleep(min(_POLL_INTERVAL_SECONDS, remaining))
 
-    def _summary(self, baseline: GpuSnapshot, release: GpuSnapshot) -> VramSummary:
-        """Aggregate every workload and release sample into reproducible evidence."""
+    def _summary(
+        self, baseline: GpuSnapshot, release: GpuSnapshot, release_duration: float
+    ) -> VramSummary:
+        """Aggregate workload, release, WDDM-context, and optional telemetry evidence."""
         minimum_free = min(sample.vram_free_gib for sample in self._samples)
         peak_used = max(self._used_gib(sample) for sample in self._samples)
         return VramSummary(
@@ -151,6 +125,9 @@ class VramMonitor:
             minimum_free,
             self._used_gib(release),
             baseline.driver_version,
+            release_duration,
+            len(baseline.compute_pids) if baseline.is_wddm else 0,
+            summarize_telemetry(self._samples),
         )
 
     def _require_baseline(self) -> GpuSnapshot:
@@ -168,16 +145,22 @@ class VramMonitor:
         self, managed_pid: int | None, baseline: GpuSnapshot, release: GpuSnapshot
     ) -> None:
         """Reject foreign processes, reserve or capacity violations, and retained VRAM."""
-        allowed = set() if managed_pid is None else {managed_pid}
-        foreign = set().union(*(set(sample.compute_pids) for sample in self._samples)) - allowed
-        if foreign or release.compute_pids:
+        baseline_pids = set(baseline.compute_pids) if baseline.is_wddm else set()
+        managed_pids = set() if managed_pid is None else {managed_pid}
+        observed_pids = set().union(*(set(sample.compute_pids) for sample in self._samples))
+        foreign = observed_pids - baseline_pids - managed_pids
+        release_foreign = set(release.compute_pids) - baseline_pids
+        if foreign or release_foreign:
+            pids = ", ".join(str(pid) for pid in sorted(foreign | release_foreign))
             raise VramEnvironmentError(
-                "concurrent GPU compute workload contaminated calibration; stop it"
+                f"concurrent GPU compute workload contaminated calibration (PIDs {pids}); stop it"
             )
         if any(sample.vram_total_gib != baseline.vram_total_gib for sample in self._samples):
             raise VramEnvironmentError("reported total VRAM changed during calibration")
         if any(sample.driver_version != baseline.driver_version for sample in self._samples):
             raise VramEnvironmentError("GPU driver version changed during calibration")
+        if any(sample.is_wddm != baseline.is_wddm for sample in self._samples):
+            raise VramEnvironmentError("GPU driver model changed during calibration")
         if any(sample.vram_free_gib < self.thresholds.minimum_free_gib for sample in self._samples):
             raise VramError("minimum free VRAM reserve was violated")
         release_limit = self._used_gib(baseline) + self.thresholds.release_tolerance_gib

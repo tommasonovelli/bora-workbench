@@ -1,4 +1,4 @@
-# qwen-launcher — Specifica centrale di implementazione (v4.0)
+# qwen-launcher — Specifica centrale di implementazione (v4.1)
 
 ## 0. Tracker di avanzamento — aggiornato al 18 luglio 2026
 
@@ -25,16 +25,15 @@
 - [x] **Step 4 — Asset lock e attivazione atomica del motore.**
 - [x] **Step 5 — `studio` e `vstudio`:** implementazione, collaudi reali Ubuntu/Windows e matrice CI
   multipiattaforma conclusi.
-- [~] **Step 5A — Calibrazione assistita:** `calibration/v1`, bundle e correzioni del primo run sono
-  implementati; l'audit di portabilità aveva riaperto lo step. Smoke Windows Q8, dominio degli
-  assi, progettazione `calibration/v2` (D-038/D-039) e implementazione del protocollo v2 con
-  record locale, riuso, invalidazione, test offline e matrice CI Ubuntu/Windows sono completati;
-  resta la validazione delle costanti al Gate.
-- [~] **Calibration Gate / Step 5B — Prima calibrazione locale:** primo run Linux non accettato;
-  mini-spike Ubuntu e smoke Windows GO per Q8+mmap (NO-GO per no-mmap) e contratto Q8 adottato nel
-  ramo CUDA del lock. La ricerca hardware-indipendente `calibration/v2` con monitoraggio RAM,
-  record locale `calibration-record/v1`, riuso con headroom e invalidazione è implementata;
-  resta il Gate col protocollo corretto.
+- [~] **Step 5A — Calibrazione assistita:** `calibration/v1`, bundle, Q8, dominio degli assi e
+  `calibration/v2` sono storicamente completati. Il primo Gate v2 è stato respinto; il successore
+  `calibration/v3` (D-041–D-045) è ora implementato con conferma ABBA, riserva RAM, telemetria,
+  record `calibration-record/v2`, lifecycle candidato/attivo, evidenza locale e test offline.
+  Restano la matrice CI e la validazione reale delle costanti al nuovo Gate.
+- [~] **Calibration Gate / Step 5B — Prima calibrazione locale:** il run v2 del 18 luglio è
+  `CALIBRATION-REJECTED` per il protocollo, non necessariamente per la busta 38. Mini-spike Ubuntu e
+  smoke Windows restano GO per Q8+mmap (NO-GO per no-mmap). Il v3 hardware-indipendente è
+  implementato; resta rieseguire il Gate con `--no-activate` su Tommaso e hardware eterogeneo.
 - [ ] **Step 6A / Human Gate / 6B — Release 0.1.**
 - [ ] **Step 7 — Skill e router.**
 - [ ] **Step 8 — Open WebUI e sync.**
@@ -208,8 +207,8 @@
   ordine; `validate` ricostruisce riserva, rilascio, classe d'origine e selezione; i profili v1
   condivisi non entrano più direttamente nel `LaunchPlan`. Verifica locale Windows: sync frozen,
   Ruff, 229 test, `validate`, build e wheel isolata verdi; il primo probe wheel del motore a freddo è
-  scaduto, il retry è riuscito. Monitoraggio RAM e ricerca versionata sono ora implementati dal
-  v2 e la matrice CI è verde; resta il risultato locale del Gate.
+  scaduto, il retry è riuscito. Il v2 completò monitoraggio RAM e ricerca versionata con CI verde;
+  il suo Gate è ora respinto e l'audit resta aperto fino al Gate v3 eterogeneo.
 - [x] Smoke Windows 11 CUDA 13.3 b10011 con Q8+mmap (17 luglio 2026): GO su coding (48 e 38),
   studio (38) e vstudio (48 e 38) a ctx 131072 con benchmark/v1, MTP, UI, vision `Rosso`, stop e
   rilascio entro tolleranza; compatibilità CPU a ctx 8192. Cache Q8 adottata nel ramo CUDA del lock
@@ -242,22 +241,33 @@
   guasti monitor come invalidazione e legato contesto/headroom del record all'evidenza dei
   finalisti. Matrice CI GitHub Ubuntu 22.04/Windows Server 2022 verde sul commit `689c1d1` (run
   `29647535746`), inclusi 288 test, `validate`, build e verifica wheel isolata.
+- [x] Primo Gate v2 eseguito sul modo `coding` il 18 luglio 2026: il record è formalmente coerente,
+  ma il protocollo è `CALIBRATION-REJECTED` perché le finestre disgiunte, il benchmark su un solo
+  avvio e la regola mediana-contro-massimo non separano candidato e deriva ambientale.
+- [x] `calibration/v3` progettato e implementato (D-041–D-045, `docs/calibrate_v3.md`): round ABBA
+  con benchmark completo su ogni avvio, dominanza per unanimità, deriva come degradazione onesta,
+  riserva RAM 2,0 GiB, monotonia sui soli probe fattibili, split interpolato solo come ordinamento,
+  telemetria GPU evidence-only, `calibration-record/v2` per-avvio, log dell'ultimo run e lifecycle
+  candidato→attivo→previous con `--no-activate`/`--activate`; `--target-ctx` resta facoltativo.
+  I record v1 sono diagnosticati come superati e non guidano i lanci. Verifica locale Windows con
+  uv 0.11.28 e CPython 3.12.13: sync frozen, Ruff, 296 test offline, `validate`, build e wheel
+  isolata verdi. Il primo probe wheel del motore a freddo è scaduto dopo 10 s; il retry è riuscito.
+  Resta la matrice CI Ubuntu/Windows post-commit.
 
 ### Prossima azione obbligatoria
 
-Il Calibration Gate resta chiuso. Il protocollo `calibration/v2` è implementato, verificato offline
-e coperto dalla matrice CI Ubuntu/Windows verde. La prossima azione è Tommaso che esegue il Gate col
-protocollo implementato, compreso almeno un caso hardware materialmente diverso, validando o
-correggendo con evidenza le costanti di design D-039. Non iniziare lo Step 5B o step successivi prima
-di almeno un esito locale `CALIBRATION-ACCEPTED` prodotto dal protocollo implementato.
+Il Calibration Gate resta chiuso. La prossima azione è verificare la matrice CI del v3, poi Tommaso
+riesegue il Gate con `--no-activate` sulla propria macchina e su almeno un caso
+hardware materialmente diverso, validando o correggendo D-039/D-041–D-045. Non iniziare lo Step 5B o
+step successivi prima di almeno un esito locale `CALIBRATION-ACCEPTED` prodotto da `calibration/v3`.
 
 ---
 
 > **Stato:** documento normativo centrale, pronto a guidare l'implementazione per step.  
-> **Data di consolidamento:** 18 luglio 2026; la v4.0 registra il ridisegno adattivo local-first
-> approvato dal maintainer (D-038/D-039 e `docs/calibration-v2-design.md`), adotta cache KV Q8 nel
-> contratto CUDA dopo il mini-spike Ubuntu e lo smoke Windows e appunta il dominio verificato degli
-> assi. La v3.4 separava evidenza condivisa e calibrazione locale e riapriva lo Step 5A.  
+> **Data di consolidamento:** 18 luglio 2026; la v4.1 registra il Gate v2 respinto e il successore
+> `calibration/v3` implementato (D-041–D-045, `docs/calibrate_v3.md`). La v4.0 introduceva il
+> ridisegno local-first v2, Q8 e il dominio verificato degli assi; la v3.4 separava evidenza
+> condivisa e calibrazione locale e riapriva lo Step 5A.  
 > **Sostituisce:** la v3.4, la v3.1, `PIANO_IMPLEMENTAZIONE_v2.md`, le due revisioni successive e la
 > v3 non corretta.  
 > **Regola d'uso:** una sessione di sviluppo esegue un solo step, nell'ordine indicato. Prima di
@@ -403,8 +413,14 @@ Regole conseguenti:
 | D-035 | report e profili condivisi sono seed/evidenza; il runtime usa come calibrato soltanto un record locale compatibile con modello, contratto motore, modo, backend e hardware correnti | consente a ogni PC supportato di misurare il proprio optimum senza nearest-match o fingerprint distribuiti |
 | D-036 | la policy pubblica governa un dominio di ricerca verificato e indipendente dalla macchina 32/8; ogni confronto mantiene fisso il contesto e misura localmente risorse e prestazioni | impedisce che una lista costruita attorno al confine della RTX 2060 SUPER diventi il dominio implicito del prodotto |
 | D-037 | `calibration/v1` resta protocollo di laboratorio del Gate; prima della calibrazione pubblica 0.1 serve un protocollo successivo con screening, finalisti, monitoraggio RAM, record locale e invalidazione | estendere v1 silenziosamente o inventare limiti/criteri senza spike violerebbe versionamento ed evidenza |
-| D-038 | il protocollo pubblico è `calibration/v2`: ricerca locale adattiva a zero input obbligatori — predizione del dominio dai metadati GGUF e dall'hardware, screening senza benchmark governato dalla riserva misurata, conferma dei finalisti con avvii stabili e `benchmark/v1`, selezione robusta al rumore per dominanza fra misure locali, record locale atomico `calibration-record/v1` usato subito dai lanci | l'utente che ignora i flag interni ottiene l'optimum della propria macchina; nessuna lista curata a mano e nessun valore ereditato da un altro host (progettazione in `docs/calibration-v2-design.md`) |
-| D-039 | le costanti di design del v2 — riserva VRAM 0,5 GiB, tolleranza rilascio/deriva 0,125 GiB, 2 avvii stabili, tetto 12 probe per modo, scala contesti 131072→8192 — hanno provenienza dichiarata (ridisegno local-first approvato dal maintainer il 17 luglio 2026) e vengono validate al Calibration Gate; il dominio di ogni asse deriva dai metadati verificati del modello appuntato (`block_count=41`; valori superiori sono alias del massimo) e mai da liste ricordate | distingue costanti universali dichiarate e verificabili dalle soglie inventate dall'esecutore e àncora il dominio alla misura del modello reale |
+| D-038 | decisione storica superata da D-041–D-045: `calibration/v2` introdusse ricerca adattiva locale, record v1 e riuso, ma la conferma misurava i finalisti in finestre disgiunte e usava mediana-contro-massimo | conserva la provenienza del primo protocollo local-first e del Gate respinto senza lasciarlo attivo (`docs/calibration-v2-design.md`) |
+| D-039 | le costanti comuni del successore — riserva VRAM 0,5 GiB, tolleranza rilascio/deriva 0,125 GiB, 2 round, tetto 12 probe per modo, scala contesti 131072→8192 e riserva RAM 2,0 GiB — hanno provenienza dichiarata e vengono validate al nuovo Calibration Gate; il dominio deriva dai metadati verificati (`block_count=41`) | distingue costanti universali revisionabili al Gate da soglie per-macchina e àncora il dominio al modello reale |
+| D-040 | su WDDM i PID già presenti nel campione iniziale di `--query-compute-apps` sono trattati come contesti grafici ambientali e inclusi nella baseline aggregata; un PID nuovo diverso dal processo gestito invalida il run, mentre fuori da WDDM qualunque PID iniziale resta bloccante | il driver Windows 610.47 riporta come compute anche i contesti inevitabili della shell; VRAM aggregata, riserva e stabilità conservano il carico ambientale reale |
+| D-041 | il protocollo pubblico è `calibration/v3`: due round accoppiati A→B/B→A, `benchmark/v1` completo su ogni avvio e dominanza solo per unanimità delle mediane di sessione; la deriva oltre tolleranza disabilita la dominanza ma non scarta finalisti che rispettano le riserve assolute | equilibra la posizione temporale dei candidati, resiste ai burst senza soglie statistiche inventate e conserva un fallback prudente (`docs/calibrate_v3.md`) |
+| D-042 | ogni trial v3 richiede almeno 2,0 GiB di RAM disponibile; una violazione rende il probe non fattibile o scarta il finalista, e il riuso richiede fabbisogno RAM misurato più la stessa riserva | impedisce di accettare buste vicine alla paginazione con semantica simmetrica alla riserva VRAM; il valore resta da validare su hardware eterogeneo al Gate |
+| D-043 | `calibration-record/v2` nasce come `<modo>.candidate.json`, viene promosso atomicamente per default ad attivo e conserva un solo `<modo>.previous.json`; `--no-activate` ferma la promozione e `--activate` la esegue senza nuove prove | un solo comando serve l'utente normale, mentre il Gate non rende operativo un risultato sperimentale; i record v1 sono superati e inerti senza migrazione automatica |
+| D-044 | telemetria GPU (utilizzo, clock, temperatura, potenza, throttle driver) è best-effort ed evidence-only; valori o campi non supportati sono `null` e non invalidano un run | aiuta a spiegare regimi ambientali senza introdurre soglie termiche o prestazionali non misurate |
+| D-045 | la monotonia VRAM usa soltanto probe fattibili; i picchi OOM troncati non la contraddicono. Dopo due picchi fattibili, l'interpolazione può ordinare il prossimo punto solo dentro la staffa e ripiega sul punto medio; non restringe mai il dominio | evita degradazioni lineari spurie e riduce il costo medio senza indebolire la prova misurata o il tetto di 12 probe |
 
 Le sole decisioni lasciate allo spike sono: release esatta di `llama.cpp`, nomi esatti dei flag per
 quella release, forma reale della salute, asset ufficiali disponibili, compatibilità della UI e
@@ -472,7 +488,7 @@ qwen-launcher/
 │       │   ├── calibration-report.v1.json      # evidenza storica di laboratorio
 │       │   ├── mode.v1.json
 │       │   ├── profile.v1.json                 # seed condivisi, mai buste finali
-│       │   └── calibration-record.v1.json      # record locale v2, aggiunto nello step che implementa D-038
+│       │   └── calibration-record.v2.json      # record locale v3 con evidenza per avvio e lifecycle
 │       └── content/
 │           ├── calibration-policy.json
 │           ├── calibrations/*.json
@@ -676,6 +692,16 @@ report accettato. La validazione ricostruisce il vincitore, riserva e rilascio V
 picco/minimo libero/totale, policy approvata e appartenenza della macchina d'origine alla classe
 nominata. Questi controlli provano coerenza dell'evidenza, non portabilità della busta.
 
+`calibration-record/v2` è il record privato locale di `calibration/v3`. Registra identità completa
+di modello, motore, OS/backend e hardware; obiettivo lessicografico; busta; fabbisogni conservativi;
+costante di ricerca e riserve; probe in ordine; finalisti e due sessioni per finalista con round,
+posizione ABBA, timestamp, RAM, VRAM, durata del rilascio, benchmark completo e telemetria opzionale;
+vincitore di ogni round, deriva e regola di selezione. `validate` a ogni caricamento ricostruisce
+mediane, ordine ABBA, unanimità, deriva, tie-break, minimi e aggregati. Il filename determina il
+lifecycle: `.candidate.json`, attivo `.json`, rollback `.previous.json`; soltanto l'attivo può
+entrare in `LaunchPlan`. `calibration-record/v1` è superato e riceve diagnosi azionabile, non una
+migrazione implicita.
+
 Un profilo può coprire solo alcuni modi. `validate` segnala come errore un modo citato ma inesistente;
 non segnala come errore un modo non coperto. Sampling e servizi non possono comparire nei profili;
 parametri di memoria non possono comparire nei modi. Un profilo è invalido se report o digest
@@ -723,11 +749,11 @@ blocca l'avvio CUDA multi-GPU con errore operativo invece di promettere un isola
 
 ### 5.5 Matching, buste e ripiego
 
-Un record è calibrato per l'avvio soltanto quando è stato prodotto localmente dal protocollo
-successivo a `calibration/v1` e coincidono modello/artefatto, release/commit e contratto del motore,
-modo, backend e identità hardware stabile definita dal relativo schema. Deve inoltre conservare
-headroom RAM/VRAM sufficiente rispetto alla disponibilità corrente. Una divergenza lo invalida e
-richiede baseline o nuova calibrazione; non esiste nearest-match.
+Un record è calibrato per l'avvio soltanto quando è l'attivo `calibration-record/v2` prodotto
+localmente da `calibration/v3` e coincidono modello/artefatto, release/commit e contratto del motore,
+modo, backend e identità hardware stabile. La RAM disponibile deve coprire il fabbisogno misurato
+più 2,0 GiB; su CUDA la VRAM libera deve coprire il fabbisogno misurato più 0,5 GiB. Candidato,
+previous, schema superato o divergenza usano baseline o nuova calibrazione; non esiste nearest-match.
 
 Le finestre RAM/VRAM di `profile/v1` riconoscono capacità nominali e possono ordinare seed condivisi,
 ma D-034 vieta di usarle come prova che il vincitore dell'host d'origine sia calibrato localmente.
@@ -801,8 +827,11 @@ spazio, log e rischio di scarto/crash del solo processo di prova.
 
 Protocollo iniziale:
 
-1. registra hardware, VRAM totale/libera e consumo GPU complessivo prima della prova; carichi GPU
-   concorrenti rendono la misura invalida e fermano la calibrazione con rimedio azionabile;
+1. registra hardware, VRAM totale/libera e consumo GPU complessivo prima della prova; fuori da WDDM
+   un PID compute iniziale rende la misura invalida. Su WDDM, dove il driver 610.47 verificato include
+   anche i contesti grafici inevitabili della shell, i PID iniziali restano parte della baseline
+   aggregata e qualunque nuovo PID diverso dal processo gestito invalida il run; l'utente chiude
+   comunque workload GPU intensivi prima della prova;
 2. usa la policy approvata oppure, esclusivamente nello Step 5A prima del Calibration Gate, candidati,
    riserva e contesti forniti esplicitamente da Tommaso;
 3. parte dalla baseline più prudente approvata e varia soltanto `n_cpu_moe` per CUDA; il codice
@@ -834,9 +863,19 @@ ricordo di prove precedenti. Il run 8/32 produce evidenza sul proprio host, non 
 Una policy pubblica richiede il protocollo successivo previsto da D-037: dominio legale verificato
 nel lock o in contenuto approvato, screening locale, finalisti, RAM e VRAM durante il trial, criterio
 robusto e record atomico compatibile con la macchina corrente. Contesto e modi restano separati.
-Il protocollo successivo è definito da D-038/D-039 come `calibration/v2` e progettato in
-`docs/calibration-v2-design.md`; il dominio di `n_cpu_moe` sul modello appuntato è `[0, 41]`,
-verificato dai metadati GGUF e dai probe del 17 luglio 2026.
+`calibration/v2` ha soddisfatto questi requisiti strutturali ma il Gate ne ha respinto la conferma;
+il design resta storico in `docs/calibration-v2-design.md`. Il protocollo attivo è
+`calibration/v3` (D-041–D-045, `docs/calibrate_v3.md`): mantiene scala e screening misurato, verifica
+la monotonia sui soli probe fattibili e usa l'interpolazione soltanto per scegliere un punto interno
+alla staffa. Ogni trial rispetta 2,0 GiB RAM e, su CUDA, 0,5 GiB VRAM. I finalisti eseguono due round
+A→B/B→A con benchmark completo per avvio; la dominanza richiede lo stesso vincitore in entrambi i
+round, mentre discordanza, parità o deriva oltre 0,125 GiB usano margine e prudenza. Telemetria GPU è
+solo evidenza. Il dominio `n_cpu_moe` resta `[0, 41]`, verificato dai metadati e dai probe reali.
+
+Il v3 scrive prima il record candidato; per default lo promuove atomicamente all'attivo e conserva
+un previous, mentre `--no-activate` e `--activate` separano Gate e promozione. `--target-ctx` può
+fissare un gradino approvato senza cambiare il default contesto-prima. I log privati dell'ultimo run
+vivono in un solo slot ruotato; bundle e pubblicazione restano separati.
 
 Un utente idoneo senza record locale continua con la baseline oppure calibra uno o più modi. Un
 record parziale vale solo per i modi provati. Nessun seed «più vicino» viene usato come busta finale e
@@ -1537,8 +1576,11 @@ locale, non il template del prodotto. Il gate:
 - verifica che dominio e strategia derivino da contratto/spike, non dal confine della RTX 2060 SUPER;
 - mantiene il contesto fisso per confronto e prova separatamente coding, studio e vstudio;
 - osserva RAM e VRAM durante caricamento, workload, benchmark e rilascio;
-- verifica screening, finalisti, avvii stabili, MTP, vision e criterio robusto;
-- crea e riusa il record locale, poi lo invalida simulando cambi di motore, modello, hardware e
+- verifica screening, monotonia sui soli fattibili, ABBA, benchmark per avvio, unanimità, deriva,
+  riserve RAM/VRAM, telemetria best-effort, MTP e vision;
+- usa `--no-activate`, ricostruisce il candidato `calibration-record/v2`, lo promuove e riusa,
+  poi lo invalida simulando
+  cambi di motore, modello, hardware e
   headroom insufficiente;
 - verifica che un seed 32/8 proveniente da CPU/GPU diverse non diventi direttamente un `LaunchPlan`;
 - esegue almeno un secondo caso reale materialmente diverso oppure mantiene il gate chiuso e dichiara

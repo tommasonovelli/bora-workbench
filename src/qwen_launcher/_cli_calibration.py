@@ -36,7 +36,10 @@ class CalibrationCliInput:
     mode: str
     candidate_values: tuple[str, ...]
     settings_value: str | None
-    protocol: str = "v2"
+    protocol: str = "v3"
+    no_activate: bool = False
+    activate: bool = False
+    target_ctx: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -147,16 +150,23 @@ def _show_outcome(outcome: CalibrationOutcome, console: Console) -> None:
 
 
 def _dispatch(options: CalibrationCliInput, output: CalibrationCliOutput) -> bool:
-    """Route to calibration/v2 unless the operator explicitly selected the v1 lab protocol."""
+    """Route to calibration/v3 unless the operator explicitly selects the v1 laboratory."""
+    has_v3_options = options.no_activate or options.activate or options.target_ctx is not None
     if options.protocol == "v1":
+        if has_v3_options:
+            raise CalibrationError("activation and target context options require calibration/v3")
         return False
-    if options.protocol != "v2":
-        raise CalibrationError(f"unknown calibration protocol {options.protocol!r}; use v2 or v1")
+    if options.protocol != "v3":
+        raise CalibrationError(f"unknown calibration protocol {options.protocol!r}; use v3 or v1")
+    if options.no_activate and options.activate:
+        raise CalibrationError("--no-activate and --activate are mutually exclusive")
+    if options.activate and options.target_ctx is not None:
+        raise CalibrationError("--target-ctx cannot be used while activating a pending candidate")
     if options.candidate_values or options.settings_value is not None:
         raise CalibrationError("explicit candidates and settings require --protocol v1")
-    from qwen_launcher._cli_calibration_v2 import run_calibrate_v2
+    from qwen_launcher._cli_calibration_v3 import run_calibrate_v3
 
-    run_calibrate_v2(options.mode, output)
+    run_calibrate_v3(options, output)
     return True
 
 

@@ -1,24 +1,26 @@
-"""Pure calibration/v2 screening search and noise-robust finalist selection.
+"""Implement pure calibration/v3 screening and paired-round finalist selection.
 
-The search finds the ``n_cpu_moe`` feasibility boundary by bisection because measured VRAM grows
-monotonically as the axis descends (design document section 2.3). Every probe verifies that model
-with a measure: a measured non-monotonic outcome degrades honestly to a linear scan from the most
-prudent value, and a shared seed may only reorder the probes of the same complete search (D-038).
+Screening preserves measured bisection and may use safe interpolation only to choose the next probe;
+it never excludes a value. Peak monotonicity is checked only on completed feasible loads because an
+OOM peak is truncated evidence (D-045).
 """
 
 from __future__ import annotations
 
+import math
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from qwen_launcher._calibration_v2_types import (
-    RELEASE_TOLERANCE_GIB,
-    SELECTION_DOMINANCE,
-    SELECTION_FREE_VRAM,
-    SELECTION_PRUDENT,
-    SELECTION_SINGLE,
-    SelectionCandidate,
-)
+from qwen_launcher._calibration_v3_selection import select_candidate_index
+from qwen_launcher._calibration_v3_types import RELEASE_TOLERANCE_GIB
+
+__all__ = [
+    "ProbeMeasurement",
+    "ScreeningPlan",
+    "ScreeningResult",
+    "screen",
+    "select_candidate_index",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,13 +37,14 @@ class ScreeningPlan:
 
     domain_maximum: int
     maximum_peak_gib: float | None
+    peak_limit_gib: float
     seed: int | None
     probe_budget: int
 
 
 @dataclass(frozen=True, slots=True)
 class ScreeningResult:
-    """Hold the measured boundary and the exact probe sequence that produced it."""
+    """Hold the measured boundary and exact probe sequence that produced it."""
 
     boundary: int
     probed: tuple[tuple[int, ProbeMeasurement], ...]
@@ -51,7 +54,7 @@ class ScreeningResult:
 
 @dataclass(slots=True)
 class _Screening:
-    """Track probe outcomes, ordering, and the remaining budget for one screening."""
+    """Track probe outcomes, ordering, and remaining budget for one screening."""
 
     probe: Callable[[int], ProbeMeasurement]
     plan: ScreeningPlan
@@ -75,17 +78,8 @@ class _Screening:
         return measured
 
     def has_monotonic_violation(self) -> bool:
-        """Detect an aggressive probe measuring less VRAM than a more prudent one.
-
-        Descending ``n_cpu_moe`` moves experts onto the GPU, so peak VRAM must not measurably
-        shrink (design section 2.3). The comparison uses the declared drift tolerance instead of
-        an invented equality threshold (D-039).
-        """
-        peaks = [
-            (value, measured.peak_used_gib)
-            for value, measured in self.outcomes.items()
-            if measured.peak_used_gib is not None
-        ]
+        """Detect contradictory peaks using only completed feasible probes (D-045)."""
+        peaks = _feasible_peaks(self.outcomes)
         return any(
             aggressive < prudent and aggressive_peak + RELEASE_TOLERANCE_GIB < prudent_peak
             for aggressive, aggressive_peak in peaks
@@ -94,15 +88,47 @@ class _Screening:
         )
 
 
+def _feasible_peaks(outcomes: dict[int, ProbeMeasurement]) -> list[tuple[int, float]]:
+    """Return sorted complete-load peaks suitable for monotonicity and interpolation."""
+    return sorted(
+        (value, measured.peak_used_gib)
+        for value, measured in outcomes.items()
+        if measured.is_feasible and measured.peak_used_gib is not None
+    )
+
+
+def _interpolated_split(state: _Screening, low: int, high: int) -> int | None:
+    """Predict a bracket-internal boundary from two feasible peaks without excluding values."""
+    peaks = _feasible_peaks(state.outcomes)
+    if len(peaks) < 2:
+        return None
+    left, right = peaks[0], peaks[-1]
+    if left[0] == right[0] or left[1] == right[1]:
+        return None
+    slope = (right[1] - left[1]) / (right[0] - left[0])
+    if slope >= 0:
+        return None
+    intercept = left[1] - slope * left[0]
+    predicted = math.ceil((state.plan.peak_limit_gib - intercept) / slope)
+    return predicted if low <= predicted < high else None
+
+
+def _next_split(state: _Screening, bracket: tuple[int, int], is_first: bool) -> int:
+    """Choose seed, safe interpolation, or midpoint in deterministic priority order."""
+    low, high = bracket
+    seed = state.plan.seed
+    if is_first and seed is not None and low <= seed < high:
+        return seed
+    predicted = _interpolated_split(state, low, high)
+    return predicted if predicted is not None else (low + high) // 2
+
+
 def _bisect(state: _Screening) -> int | None:
     """Bisect to the least feasible value, or return ``None`` on a measured violation."""
     low, high = 0, state.plan.domain_maximum
     is_first = True
     while low < high:
-        split = (low + high) // 2
-        seed = state.plan.seed
-        if is_first and seed is not None and low <= seed < high:
-            split = seed
+        split = _next_split(state, (low, high), is_first)
         is_first = False
         measured = state.run(split)
         if measured is None:
@@ -119,13 +145,11 @@ def _bisect(state: _Screening) -> int | None:
 def _linear_descent(state: _Screening) -> int:
     """Scan downward from the most prudent value after the monotonic model failed."""
     boundary = state.plan.domain_maximum
-    value = boundary - 1
-    while value >= 0:
+    for value in range(boundary - 1, -1, -1):
         measured = state.run(value)
         if measured is None or not measured.is_feasible:
             break
         boundary = value
-        value -= 1
     return boundary
 
 
@@ -140,27 +164,3 @@ def screen(probe: Callable[[int], ProbeMeasurement], plan: ScreeningPlan) -> Scr
     if boundary is None:
         boundary = _linear_descent(state)
     return ScreeningResult(boundary, tuple(state.order), did_degrade, state.is_exhausted)
-
-
-def select_candidate_index(candidates: tuple[SelectionCandidate, ...]) -> tuple[int, str]:
-    """Choose between finalists with the noise-robust rule of design section 3, step 4.
-
-    A candidate dominates only when its median exceeds the other's maximum measure; otherwise the
-    two are equivalent and the rule prefers the larger observed VRAM margin, then prudence.
-    """
-    if len(candidates) == 1:
-        return 0, SELECTION_SINGLE
-    if len(candidates) != 2:
-        raise ValueError("calibration/v2 confirms at most two finalists per mode")
-    first, second = candidates
-    if first.median_tok_s > second.maximum_tok_s:
-        return 0, SELECTION_DOMINANCE
-    if second.median_tok_s > first.maximum_tok_s:
-        return 1, SELECTION_DOMINANCE
-    first_free = first.minimum_free_vram_gib or 0.0
-    second_free = second.minimum_free_vram_gib or 0.0
-    if first_free != second_free:
-        return (0 if first_free > second_free else 1), SELECTION_FREE_VRAM
-    first_prudence = first.n_cpu_moe or 0
-    second_prudence = second.n_cpu_moe or 0
-    return (0 if first_prudence >= second_prudence else 1), SELECTION_PRUDENT

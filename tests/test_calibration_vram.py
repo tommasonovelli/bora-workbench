@@ -19,12 +19,18 @@ from qwen_launcher._calibration_vram import (
 from qwen_launcher._hardware_monitoring import GpuSnapshot
 
 
-def snapshot(free: float, pids: tuple[int, ...] = (), driver: str = "610.47") -> GpuSnapshot:
+def snapshot(
+    free: float, pids: tuple[int, ...] = (), driver: str = "610.47", *, is_wddm: bool = False
+) -> GpuSnapshot:
     """Build one fixed 8 GiB aggregate GPU observation."""
-    return GpuSnapshot(8, free, driver, pids)
+    return GpuSnapshot(8, free, driver, pids, is_wddm)
 
 
-def query_sequence(polled: GpuSnapshot, releases: tuple[GpuSnapshot, ...]):
+def query_sequence(
+    polled: GpuSnapshot,
+    releases: tuple[GpuSnapshot, ...],
+    baseline: GpuSnapshot | None = None,
+):
     """Return a thread-aware query and event for baseline, workload, and release calls."""
     observed = threading.Event()
     main_calls = 0
@@ -38,7 +44,7 @@ def query_sequence(polled: GpuSnapshot, releases: tuple[GpuSnapshot, ...]):
             return polled
         main_calls += 1
         if main_calls == 1:
-            return snapshot(7)
+            return baseline or snapshot(7)
         release_index = min(main_calls - 2, len(releases) - 1)
         return releases[release_index]
 
@@ -114,6 +120,33 @@ def test_concurrent_compute_load_blocks_before_candidate_start() -> None:
         monitor.start()
 
 
+def test_stable_wddm_desktop_contexts_are_part_of_the_aggregate_baseline() -> None:
+    """Allow WDDM's persistent desktop contexts while accounting for their aggregate VRAM."""
+    baseline = snapshot(7, (100,), is_wddm=True)
+    workload = snapshot(2, (42, 100), is_wddm=True)
+    release = snapshot(7, (100,), is_wddm=True)
+    query, observed = query_sequence(workload, (release,), baseline)
+    monitor = monitor_for(query)
+
+    monitor.start()
+    assert observed.wait(timeout=1)
+    assert monitor.finish(42).release_used_gib == 1
+
+
+def test_new_wddm_context_invalidates_the_run() -> None:
+    """Reject a WDDM context that appears after the measured desktop baseline."""
+    baseline = snapshot(7, (100,), is_wddm=True)
+    workload = snapshot(2, (42, 100, 999), is_wddm=True)
+    release = snapshot(7, (100,), is_wddm=True)
+    query, observed = query_sequence(workload, (release,), baseline)
+    monitor = monitor_for(query)
+
+    monitor.start()
+    assert observed.wait(timeout=1)
+    with pytest.raises(VramEnvironmentError, match="concurrent"):
+        monitor.finish(42)
+
+
 def test_monitor_query_failure_invalidates_the_run() -> None:
     """Classify a failed baseline query as unreliable environmental evidence."""
     monitor = monitor_for(lambda index: (_ for _ in ()).throw(OSError("query failed")))
@@ -150,7 +183,7 @@ def test_hardware_snapshot_query_reads_memory_driver_and_compute_pids(monkeypatc
     """Use bounded shell-free nvidia-smi queries for all calibration monitoring facts."""
     run = Mock(
         side_effect=[
-            SimpleNamespace(stdout="8192, 7000, 610.47\n"),
+            SimpleNamespace(stdout="8192, 7000, 610.47, WDDM\n"),
             SimpleNamespace(stdout="42\n7\n"),
         ]
     )
@@ -161,6 +194,7 @@ def test_hardware_snapshot_query_reads_memory_driver_and_compute_pids(monkeypatc
     assert result.vram_total_gib == 8
     assert result.vram_free_gib == 7000 / 1024
     assert result.compute_pids == (7, 42)
+    assert result.is_wddm
     for call in run.call_args_list:
         assert call.kwargs["timeout"] == 5
         assert "shell" not in call.kwargs

@@ -1,4 +1,4 @@
-"""Serialize measured calibration/v2 evidence into calibration-record/v1 documents."""
+"""Serialize measured calibration/v3 evidence into calibration-record/v2 documents."""
 
 from __future__ import annotations
 
@@ -6,14 +6,21 @@ from datetime import UTC, datetime
 from typing import cast
 
 from qwen_launcher._calibration_metadata import launcher_version
-from qwen_launcher._calibration_v2_types import (
-    CALIBRATION_V2_PROTOCOL,
+from qwen_launcher._calibration_record_evidence import (
+    finalist_entry,
+    probe_trial_entry,
+    selected_benchmark_entry,
+    vram_needed,
+)
+from qwen_launcher._calibration_v3_types import (
+    CALIBRATION_V3_PROTOCOL,
+    CONFIRM_ROUNDS,
     CONTEXT_SCALE,
     MODE_PROBE_CAP,
+    OBJECTIVE,
+    RAM_RESERVE_GIB,
     RELEASE_TOLERANCE_GIB,
-    STABLE_START_RUNS,
     VRAM_RESERVE_GIB,
-    FinalistEvidence,
     ModeCalibration,
 )
 from qwen_launcher.calibration import CalibrationTarget
@@ -22,7 +29,7 @@ JsonObject = dict[str, object]
 
 
 def _hardware_identity(target: CalibrationTarget, gpu_driver: str | None) -> JsonObject:
-    """Build the stable hardware identity fixed by design section 3, step 5."""
+    """Build the stable hardware identity required for local reuse."""
     hardware = target.hardware
     return {
         "cpu_name": hardware.cpu_name,
@@ -35,98 +42,75 @@ def _hardware_identity(target: CalibrationTarget, gpu_driver: str | None) -> Jso
     }
 
 
-def _vram_needed(finalist: FinalistEvidence) -> float | None:
-    """Return the measured incremental VRAM need when CUDA evidence exists."""
-    if finalist.vram is None:
-        return None
-    return finalist.vram.peak_used_gib - finalist.vram.baseline_used_gib
-
-
-def _finalist_entry(finalist: FinalistEvidence, is_selected: bool) -> JsonObject:
-    """Serialize one finalist with all fields reused by semantic reconstruction."""
-    benchmark, vram, ram = finalist.benchmark, finalist.vram, finalist.ram
-    return {
-        "ctx": finalist.ctx,
-        "n_cpu_moe": finalist.n_cpu_moe,
-        "outcome": finalist.outcome,
-        "discard_reason": finalist.discard_reason,
-        "measured_tok_s": None if benchmark is None else list(benchmark.measured_tok_s),
-        "ram_needed_gib": None if ram is None else ram.needed_gib,
-        "minimum_ram_available_gib": None if ram is None else ram.minimum_available_gib,
-        "vram_needed_gib": _vram_needed(finalist),
-        "minimum_free_vram_gib": None if vram is None else vram.minimum_free_gib,
-        "is_selected": is_selected,
-    }
-
-
-def _finalist_entries(calibration: ModeCalibration) -> list[JsonObject]:
-    """Serialize every finalist in its deterministic confirmation order."""
-    return [
-        _finalist_entry(finalist, finalist is calibration.selected)
-        for finalist in calibration.finalists
-    ]
-
-
-def _observed_entry(selected: FinalistEvidence) -> JsonObject:
-    """Serialize selected resource minima used by the launch-time headroom check."""
-    assert selected.ram is not None
+def _observed_entry(calibration: ModeCalibration) -> JsonObject:
+    """Serialize selected minima and conservative needs used by launch-time headroom."""
+    selected = calibration.selected
+    if selected.ram is None:
+        raise ValueError("selected finalist requires measured RAM evidence")
     return {
         "ram_needed_gib": selected.ram.needed_gib,
         "minimum_ram_available_gib": selected.ram.minimum_available_gib,
-        "vram_needed_gib": _vram_needed(selected),
-        "minimum_vram_free_gib": None if selected.vram is None else selected.vram.minimum_free_gib,
+        "vram_needed_gib": vram_needed(selected),
+        "minimum_vram_free_gib": (
+            None if selected.vram is None else selected.vram.minimum_free_gib
+        ),
     }
 
 
-def _benchmark_entry(selected: FinalistEvidence) -> JsonObject:
-    """Serialize the selected finalist's complete benchmark/v1 evidence."""
-    assert selected.benchmark is not None
-    benchmark = selected.benchmark
-    rates = benchmark.tok_s
+def _probe_entry(probe: object) -> JsonObject:
+    """Serialize one typed probe without broadening the public record builder interface."""
+    from qwen_launcher._calibration_v3_types import ProbeRecord
+
+    if not isinstance(probe, ProbeRecord):
+        raise TypeError("calibration probe has an invalid runtime type")
     return {
-        "warmup_tok_s": benchmark.warmup_tok_s,
-        "measured_tok_s": list(benchmark.measured_tok_s),
-        "tok_s": {"min": rates.minimum, "median": rates.median, "max": rates.maximum},
+        "ctx": probe.ctx,
+        "n_cpu_moe": probe.n_cpu_moe,
+        "is_feasible": probe.is_feasible,
+        "reason": probe.reason,
+        "trial": probe_trial_entry(probe.trial),
     }
 
 
 def _search_entry(calibration: ModeCalibration) -> JsonObject:
-    """Serialize algorithm constants, screening probes, and finalist evidence."""
+    """Serialize constants, screening, paired sessions, drift, and round winners."""
     return {
         "context_scale": list(CONTEXT_SCALE),
+        "target_ctx": calibration.target_ctx,
         "probe_cap": MODE_PROBE_CAP,
         "vram_reserve_gib": VRAM_RESERVE_GIB,
+        "ram_reserve_gib": RAM_RESERVE_GIB,
         "release_tolerance_gib": RELEASE_TOLERANCE_GIB,
-        "stable_start_runs": STABLE_START_RUNS,
+        "confirm_rounds": CONFIRM_ROUNDS,
         "did_degrade": calibration.did_degrade,
-        "probes": [
-            {
-                "ctx": probe.ctx,
-                "n_cpu_moe": probe.n_cpu_moe,
-                "is_feasible": probe.is_feasible,
-                "reason": probe.reason,
-                "peak_used_gib": probe.peak_used_gib,
-            }
-            for probe in calibration.probes
+        "baseline_drift_gib": calibration.baseline_drift_gib,
+        "round_winners": list(calibration.round_winners),
+        "probes": [_probe_entry(probe) for probe in calibration.probes],
+        "finalists": [
+            finalist_entry(finalist, finalist is calibration.selected)
+            for finalist in calibration.finalists
         ],
-        "finalists": _finalist_entries(calibration),
     }
 
 
-def build_record_document(target: CalibrationTarget, calibration: ModeCalibration) -> JsonObject:
-    """Build one complete calibration-record/v1 document from measured evidence."""
+def build_record_document(
+    target: CalibrationTarget, calibration: ModeCalibration, evidence_run_id: str
+) -> JsonObject:
+    """Build one complete calibration-record/v2 candidate document."""
     from qwen_launcher._calibration_record import command_contract_sha256
 
     selected = calibration.selected
     artifact = cast(JsonObject, target.lock["default_model_artifact"])
     gpu_driver = None if selected.vram is None else selected.vram.driver_version
     return {
-        "schema": "calibration-record/v1",
+        "schema": "calibration-record/v2",
         "mode": calibration.mode.id,
         "created_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "launcher_version": launcher_version(),
-        "calibration_protocol": CALIBRATION_V2_PROTOCOL,
+        "calibration_protocol": CALIBRATION_V3_PROTOCOL,
         "benchmark_protocol": "benchmark/v1",
+        "objective": OBJECTIVE,
+        "evidence_run_id": evidence_run_id,
         "model": target.config.model,
         "model_sha256": artifact["sha256"],
         "engine_release": target.lock["release"],
@@ -136,8 +120,8 @@ def build_record_document(target: CalibrationTarget, calibration: ModeCalibratio
         "backend": target.hardware.backend,
         "hardware": _hardware_identity(target, gpu_driver),
         "envelope": {"ctx": calibration.ctx, "n_cpu_moe": selected.n_cpu_moe},
-        "observed": _observed_entry(selected),
-        "benchmark": _benchmark_entry(selected),
+        "observed": _observed_entry(calibration),
+        "benchmark": selected_benchmark_entry(selected),
         "search": _search_entry(calibration),
         "selection_rule": calibration.selection_rule,
     }
