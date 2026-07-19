@@ -5,6 +5,13 @@
 
 > Una PR non deve modificare contemporaneamente core e contenuti.
 
+## Evidenza di calibrazione (se applicabile)
+
+- [ ] Report `calibration-report/v2` privacy-safe e riferito dalla policy con SHA-256 esatto
+- [ ] Scope realmente misurato e limite `GATE-PARTIAL` dichiarati
+- [ ] Seed di solo ordinamento; nessun `profile/v1`, nearest-match o busta remota
+- [ ] Manifest verificato e checklist di `docs/calibration-contributing.md` completata
+
 ## Verifiche
 
 - [ ] `uv run --frozen ruff check .`

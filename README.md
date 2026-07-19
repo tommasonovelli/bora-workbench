@@ -11,7 +11,7 @@ Il repository contiene i tre modi locali `coding`, `studio` e `vstudio`:
 - percorsi Linux/Windows senza side effect e configurazione severa;
 - schemi, modi, report e profili validati semanticamente;
 - rilevamento CPU, RAM e GPU NVIDIA senza modificare l'ambiente padre;
-- profili v1 validabili ma solo come seed; baseline verificata e non ottimizzata per l'avvio;
+- profili v1 storici non pubblicati; report v3 caricati soltanto come seed di ordine;
 - risoluzione read-only del modello appuntato e verifica dell'eseguibile `llama-server`;
 - builder governato esclusivamente da `engine.lock`;
 - lifecycle con lock d'avvio, salute, stato atomico, log, `status` e `stop` sicuro;
@@ -42,10 +42,17 @@ Il Gate v3 Windows 11/CUDA del 19 luglio 2026 è `CALIBRATION-ACCEPTED` per codi
 ha prodotto tre candidati v2 validi con `--no-activate`, senza modificare i piani di lancio. CI è
 verde su Ubuntu e Windows. La copertura empirica resta `GATE-PARTIAL`; D-047 accetta esplicitamente
 questo limite e rinvia la prova su hardware materialmente diverso a un follow-up non bloccante.
-Step 5A è concluso e Step 5B è il prossimo step. Risultati e limiti sono in
-[`docs/calibration-gate-v3-windows.md`](docs/calibration-gate-v3-windows.md). Il piano normativo e
-il tracker sono in [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello
-spike è sotto [`docs/spike-0/`](docs/spike-0/).
+Gli Step 5A e 5B sono conclusi. La wheel distribuisce `calibration-policy/v2`, che descrive il
+metodo completo, e un `calibration-report/v2` privacy-safe del solo caso Windows 11/CUDA su RTX 2060
+SUPER 8 GiB e 31,92 GiB RAM. Le buste 37/37/39 restano evidenza locale: il loader espone soltanto
+`n_cpu_moe` come suggerimento d'ordine e non trasferisce contesto, hardware, tok/s o busta nel piano.
+Risultati e limiti sono in
+[`docs/calibration-gate-v3-windows.md`](docs/calibration-gate-v3-windows.md); policy, checksum e
+flusso manuale di contribuzione sono descritti in
+[`docs/calibration-contributing.md`](docs/calibration-contributing.md). La copertura resta
+`GATE-PARTIAL` e il follow-up hardware eterogeneo è aperto ma non bloccante. Il piano normativo e il
+tracker sono in [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike
+è sotto [`docs/spike-0/`](docs/spike-0/).
 
 ## Sviluppo
 
@@ -86,8 +93,10 @@ integrata testuale; `vstudio` abilita anche il mmproj verificato. Entrambi mostr
 e aprono la UI dopo READY quando `open_browser=true`. `calibrate --mode <id|all>` usa per default
 `calibration/v3`, misura round accoppiati e salva `calibration-record/v2`; `--protocol v1` mantiene
 il laboratorio con candidati e criteri espliciti e genera soltanto una bozza condivisibile. I dati
-condivisi restano seed o evidenza, mai una busta finale trasferita per classe. Il modello resta
-`UD-Q4_K_M`: il ramo CUDA del lock usa cache KV Q8 con mmap dopo i GO Ubuntu e Windows;
+condivisi restano seed o evidenza, mai una busta finale trasferita per classe. Un seed compatibile
+può soltanto cambiare l'ordine dei probe della stessa ricerca completa; rimuoverlo non cambia dominio o
+selezione locale. Il modello resta `UD-Q4_K_M`: il ramo CUDA del lock usa cache KV Q8 con mmap dopo
+i GO Ubuntu e Windows;
 `--no-mmap` è stato rifiutato dalle misure. Protocollo, sintassi, record e privacy sono descritti in
 [`docs/calibration.md`](docs/calibration.md). Open WebUI non fa parte della 0.1.
 

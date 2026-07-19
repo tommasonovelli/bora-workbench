@@ -9,6 +9,12 @@
 /docs/mini-spike-kv-q8-windows/** -text -diff
 /src/qwen_launcher/resources/benchmark-v1/** -text
 /src/qwen_launcher/resources/calibration-v1/** -text
+# Preserve Step 5B policy, evidence, source references, and manifests for reproducible digests.
+/docs/calibrate_v3.md -text
+/docs/calibration-gate-v3-windows.md -text
+/docs/calibrations/** -text
+/src/qwen_launcher/resources/content/calibration-policy.json -text
+/src/qwen_launcher/resources/content/calibrations/** -text
 # Preserve the exact NVIDIA notice bytes verified by the Spike 0 digest.
 /src/qwen_launcher/resources/notices/NVIDIA-CUDA-EULA.html -text -diff
 # The normative plan uses Markdown hard line breaks intentionally.

@@ -52,9 +52,9 @@ def benchmark(rate: float) -> BenchmarkResult:
     return BenchmarkResult(rate, values, TokenRate(rate, rate, rate))
 
 
-def test_step_5a_has_no_packaged_policy_and_requires_explicit_values() -> None:
-    """Keep policy absent and reject any attempt to calibrate from author-memory defaults."""
-    assert not resource("content/calibration-policy.json").is_file()
+def test_v1_laboratory_still_requires_explicit_values() -> None:
+    """Keep historical v1 explicit after the packaged policy activates only calibration/v3."""
+    assert resource("content/calibration-policy.json").is_file()
     with pytest.raises(CalibrationError, match="explicit candidate"):
         validate_settings(CalibrationSettings((), 0, None, None), "cuda")
 

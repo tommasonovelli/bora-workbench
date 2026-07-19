@@ -1,4 +1,4 @@
-# qwen-launcher — Specifica centrale di implementazione (v4.3)
+# qwen-launcher — Specifica centrale di implementazione (v4.4)
 
 ## 0. Tracker di avanzamento — aggiornato al 19 luglio 2026
 
@@ -38,7 +38,9 @@
   complessivo resta `GATE-PARTIAL` perché manca hardware eterogeneo, ma D-047 accetta esplicitamente
   questa copertura come sufficiente per procedere; la prova eterogenea è un follow-up futuro non
   bloccante e nessun candidato è stato attivato.
-- [ ] **Step 5B — Policy di ricerca approvata, evidenza e flusso pubblico:** prossimo step.
+- [x] **Step 5B — Policy di ricerca approvata, evidenza e flusso pubblico:** contratti pubblici v2,
+  policy del metodo v3, report Windows privacy-safe, digest, seed di solo ordine, guida e verifica
+  wheel completati. Nessun profilo finale è distribuito e la copertura resta `GATE-PARTIAL`.
 - [ ] **Step 6A / Human Gate / 6B — Release 0.1.**
 - [ ] **Step 7 — Skill e router.**
 - [ ] **Step 8 — Open WebUI e sync.**
@@ -266,18 +268,18 @@
 
 ### Prossima azione obbligatoria
 
-Il Gate empirico resta `GATE-PARTIAL`, ma D-047 accetta la copertura locale come sufficiente per la
-progressione. La prossima azione obbligatoria è Step 5B, limitato a policy, evidenza redatta e flusso
-pubblico dichiarativi; non attivare i candidati e non anticipare Step 6. La ripetizione con
-`--no-activate` su hardware materialmente diverso resta un follow-up futuro da registrare quando
-diventa fattibile, senza bloccare Step 5B.
+Step 5B è concluso senza attivare i candidati locali. La prossima milestone è Step 6A, da iniziare
+soltanto in una nuova sessione dedicata; questa modifica non ne anticipa installer, release o
+pubblicazione. La ripetizione `calibration/v3 --no-activate` su hardware materialmente diverso resta
+un follow-up futuro non bloccante e la copertura empirica resta `GATE-PARTIAL`.
 
 ---
 
 > **Stato:** documento normativo centrale, pronto a guidare l'implementazione per step.  
-> **Data di consolidamento:** 19 luglio 2026; la v4.3 registra D-047, che accetta il Gate locale
-> Windows CUDA come precondizione sufficiente per Step 5B e rinvia la prova hardware eterogenea a un
-> follow-up non bloccante. La v4.2 registrava CI verde e il Gate v3 locale accettato per i tre modi;
+> **Data di consolidamento:** 19 luglio 2026; la v4.4 registra D-048 e la conclusione dello Step
+> 5B con policy/report v2, evidenza Windows privacy-safe e seed di solo ordine. La v4.3 registrava
+> D-047, che accetta il Gate locale Windows CUDA e rinvia la prova hardware eterogenea a un follow-up
+> non bloccante. La v4.2 registrava CI verde e il Gate v3 locale accettato per i tre modi;
 > la v4.1 registrava il Gate v2 respinto e `calibration/v3` implementato (D-041–D-046,
 > `docs/calibrate_v3.md`).  
 > **Sostituisce:** la v4.2, la v4.1, la v3.4, la v3.1, `PIANO_IMPLEMENTAZIONE_v2.md`, le due revisioni
@@ -1671,6 +1673,10 @@ Hugging Face.
 un utente idoneo calibra e usa localmente la propria busta senza conoscere `llama-server`, mentre il
 contributo resta opzionale e manuale. Documentazione e contenuti mantengono visibile che l'evidenza
 reale v3 copre per ora un solo hardware e che la validazione eterogenea è un follow-up.
+
+**Stato al 19 luglio 2026:** completato con `calibration-policy/v2`, `calibration-report/v2`, policy
+per i tre modi, evidenza Windows 11/CUDA privacy-safe, manifest, guida di contribuzione e seed
+proiettati esclusivamente su `n_cpu_moe`. Nessun `profile/v1` di produzione è stato pubblicato.
 
 **Commit locale suggerito:**
 `feat(content): pubblica policy portabile ed evidenza per la calibrazione locale`

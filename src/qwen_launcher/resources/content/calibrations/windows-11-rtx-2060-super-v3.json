@@ -1,0 +1,168 @@
+{
+  "schema": "calibration-report/v2",
+  "id": "windows-11-rtx-2060-super-v3",
+  "created_at": "2026-07-19T10:21:47Z",
+  "decision": "accepted-reference",
+  "privacy_reviewed": true,
+  "policy_id": "default-model-calibration-v3",
+  "calibration_protocol": "calibration/v3",
+  "benchmark_protocol": "benchmark/v1",
+  "model": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M",
+  "model_sha256": "0b21525e972670ed59e1812e170b27c26355381f0656ecc4e25617ece7dac58b",
+  "engine_release": "b10011",
+  "engine_source_commit": "bf2c86ddc0685f580595954056c2e77ebabfab4f",
+  "command_contract_sha256": "965d8bbc01812bc7df08da6451cb598ed8a552bd512b0e141817343b6566333d",
+  "hardware": {
+    "os_name": "windows",
+    "os_version": "Windows 11 build 10.0.26200",
+    "backend": "cuda",
+    "ram_total_gib": 31.92,
+    "gpu_name": "NVIDIA GeForce RTX 2060 SUPER",
+    "gpu_driver": "610.47",
+    "vram_total_gib": 8.0
+  },
+  "gate": {
+    "local_result": "calibration-accepted",
+    "overall_status": "gate-partial",
+    "constants_validated_on_materially_different_hardware": false,
+    "heterogeneous_hardware_follow_up": "open-non-blocking"
+  },
+  "search": {
+    "context_scale": [
+      131072,
+      65536,
+      32768,
+      16384,
+      8192
+    ],
+    "n_cpu_moe_domain": {
+      "minimum": 0,
+      "maximum": 41,
+      "maximum_source": "gguf-block-count"
+    },
+    "probe_cap": 12,
+    "vram_reserve_gib": 0.5,
+    "ram_reserve_gib": 2.0,
+    "release_tolerance_gib": 0.125,
+    "confirm_rounds": 2,
+    "confirmation_order": [
+      "a",
+      "b",
+      "b",
+      "a"
+    ],
+    "selection_rule": "paired-round-unanimity-then-memory-margin-then-prudence"
+  },
+  "modes": {
+    "coding": {
+      "observed_local_envelope": {
+        "ctx": 131072,
+        "n_cpu_moe": 37
+      },
+      "seed_n_cpu_moe": 37,
+      "probe_sequence": [
+        { "n_cpu_moe": 41, "is_feasible": true },
+        { "n_cpu_moe": 20, "is_feasible": false },
+        { "n_cpu_moe": 31, "is_feasible": false },
+        { "n_cpu_moe": 36, "is_feasible": false },
+        { "n_cpu_moe": 39, "is_feasible": true },
+        { "n_cpu_moe": 38, "is_feasible": true },
+        { "n_cpu_moe": 37, "is_feasible": true }
+      ],
+      "finalists": [
+        {
+          "n_cpu_moe": 37,
+          "outcome": "valid",
+          "round_medians_tok_s": [25.814, 24.873]
+        },
+        {
+          "n_cpu_moe": 38,
+          "outcome": "valid",
+          "round_medians_tok_s": [25.088, 24.555]
+        }
+      ],
+      "selection_rule": "dominance-unanimous-rounds",
+      "minimum_ram_available_gib": 9.291,
+      "minimum_vram_free_gib": 0.95,
+      "maximum_release_above_baseline_gib": 0.0,
+      "baseline_drift_gib": 0.0
+    },
+    "studio": {
+      "observed_local_envelope": {
+        "ctx": 131072,
+        "n_cpu_moe": 37
+      },
+      "seed_n_cpu_moe": 37,
+      "probe_sequence": [
+        { "n_cpu_moe": 41, "is_feasible": true },
+        { "n_cpu_moe": 20, "is_feasible": false },
+        { "n_cpu_moe": 31, "is_feasible": false },
+        { "n_cpu_moe": 36, "is_feasible": true },
+        { "n_cpu_moe": 34, "is_feasible": false },
+        { "n_cpu_moe": 35, "is_feasible": false }
+      ],
+      "finalists": [
+        {
+          "n_cpu_moe": 36,
+          "outcome": "valid",
+          "round_medians_tok_s": [27.381, 26.194]
+        },
+        {
+          "n_cpu_moe": 37,
+          "outcome": "valid",
+          "round_medians_tok_s": [25.236, 26.578]
+        }
+      ],
+      "selection_rule": "equivalent-prefer-minimum-free-vram",
+      "minimum_ram_available_gib": 9.331,
+      "minimum_vram_free_gib": 0.503,
+      "maximum_release_above_baseline_gib": 0.0078,
+      "baseline_drift_gib": 0.0146
+    },
+    "vstudio": {
+      "observed_local_envelope": {
+        "ctx": 131072,
+        "n_cpu_moe": 39
+      },
+      "seed_n_cpu_moe": 39,
+      "probe_sequence": [
+        { "n_cpu_moe": 41, "is_feasible": true },
+        { "n_cpu_moe": 20, "is_feasible": false },
+        { "n_cpu_moe": 31, "is_feasible": false },
+        { "n_cpu_moe": 36, "is_feasible": false },
+        { "n_cpu_moe": 39, "is_feasible": true },
+        { "n_cpu_moe": 38, "is_feasible": true },
+        { "n_cpu_moe": 37, "is_feasible": false }
+      ],
+      "finalists": [
+        {
+          "n_cpu_moe": 38,
+          "outcome": "discarded",
+          "round_medians_tok_s": [null, null]
+        },
+        {
+          "n_cpu_moe": 39,
+          "outcome": "valid",
+          "round_medians_tok_s": [null, null]
+        }
+      ],
+      "selection_rule": "single-finalist",
+      "minimum_ram_available_gib": 8.602,
+      "minimum_vram_free_gib": 0.505,
+      "maximum_release_above_baseline_gib": 0.0176,
+      "baseline_drift_gib": 0.0176
+    }
+  },
+  "seed_usage": "probe-ordering-only-complete-local-search",
+  "performance_portability": "observed-values-are-not-promises",
+  "source_references": [
+    {
+      "path": "docs/calibration-gate-v3-windows.md",
+      "sha256": "d1fed2710fcab2e1ec85385eef2f23101eee2146310dbfaab4e2c921458f259f"
+    },
+    {
+      "path": "docs/calibrate_v3.md",
+      "sha256": "5229eb200db8102f060fec8eaf02a652a028161bb9cd248d90a50aaa65d29517"
+    }
+  ]
+}

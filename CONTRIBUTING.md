@@ -10,9 +10,15 @@ alla volta. Prima di una modifica:
 5. non modificare configurazione utente o cache Hugging Face.
 
 Una pull request modifica **contenuto dichiarativo oppure core, mai entrambi**. I report devono
-contenere misure reali raccolte con il protocollo e la release del lock. Finché l'audit di
-portabilità dello Step 5A è aperto non si accettano profili di produzione: una misura su un host non
-può essere trasformata in una busta finale per altri PC usando soltanto classi RAM/VRAM.
+contenere misure reali raccolte con `calibration/v3` e la release del lock. Non si accettano profili
+`profile/v1` di produzione: una misura su un host non può diventare una busta finale per altri PC.
+L'evidenza condivisa può soltanto ordinare la stessa ricerca locale completa.
+
+La procedura, il naming, i checksum, la checklist privacy e il testo PR sono in
+[`docs/calibration-contributing.md`](docs/calibration-contributing.md). Il flusso è manuale e non
+crea autenticazione, upload, branch remoti, issue o pull request. La sola evidenza v3 attuale resta
+Windows 11/CUDA su RTX 2060 SUPER 8 GiB e 31,92 GiB RAM; la copertura è `GATE-PARTIAL` e il
+follow-up su hardware materialmente diverso è aperto ma non bloccante per D-047.
 
 ## Revisione delle pull request
 

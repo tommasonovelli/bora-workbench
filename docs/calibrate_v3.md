@@ -480,8 +480,9 @@ lifecycle doctor `2d4cc22` (run `29684866498`). Il Gate reale è descritto in
 2. ~~implementare v3 e i test offline~~ — completato; i run sperimentali usano `--no-activate`;
 3. ~~rieseguire il Calibration Gate sulla macchina di Tommaso~~ — completato il 19 luglio 2026 con
    esito locale accettato per i tre modi e candidati lasciati inattivi;
-4. implementare Step 5B con copertura empirica esplicitamente limitata alla macchina misurata e senza
-   distribuire la sua busta come optimum remoto;
+4. ~~implementare Step 5B con copertura empirica esplicitamente limitata alla macchina misurata e
+   senza distribuire la sua busta come optimum remoto~~ — completato con policy/report v2, checksum
+   e seed di solo ordine;
 5. ripetere in futuro il Gate su almeno un caso materialmente diverso e aggiornare l'evidenza, senza
    rendere il follow-up bloccante per Step 5B.
 

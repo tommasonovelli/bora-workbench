@@ -35,6 +35,8 @@ All notable changes to this project will be documented in this file.
   `--no-activate`, `--activate`, `--target-ctx`, one-slot evidence retention and doctor states.
 - Run-scoped WDDM executable-file identity that admits bounded baseline respawns while retaining
   invalidation for new, unreadable or excess GPU contexts.
+- Public `calibration-policy/v2` and `calibration-report/v2` contracts, an approved v3 method policy,
+  privacy-safe Windows reference evidence, reproducible checksums and a manual contribution guide.
 
 ### Changed
 
@@ -43,7 +45,8 @@ All notable changes to this project will be documented in this file.
 - Excessive VRAM baseline drift now discards only the affected candidate instead of aborting the
   complete calibration; all-discarded bundles receive an explicit CLI summary.
 - Shared profile v1 envelopes are reference-only seeds and no longer enter a launch plan without a
-  future compatible local calibration record.
+  future compatible local calibration record. Production v3 reports now expose only `n_cpu_moe` as
+  a probe-ordering hint; context, hardware, rates and the observed envelope never enter a plan.
 - Calibration v1 now rejects mixed contexts, duplicate or unsafe candidate ordering, and validators
   recompute resource constraints, policy provenance and deterministic accepted selections.
 - Calibration v2 refused an exhausted screening instead of claiming an unproven optimum, treated

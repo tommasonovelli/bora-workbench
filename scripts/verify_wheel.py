@@ -19,6 +19,7 @@ def _verify_install(python: Path) -> None:
     command = (
         "import hashlib; "
         "from importlib.metadata import version; "
+        "from qwen_launcher.profiles import load_catalog; "
         "from qwen_launcher.resources import read_json, read_text, resource; "
         "assert version('qwen-launcher') == '0.1.0.dev0'; "
         "assert 'Spike 0' in read_text('README.txt'); "
@@ -29,7 +30,16 @@ def _verify_install(python: Path) -> None:
         "assert hashlib.sha256(resource('benchmark-v1/prompt.txt').read_bytes()).hexdigest() == "
         "'1c7182235411da2d4fe6fca130e3effb0b0d965569c52abd8fd45327103ddb2e'; "
         "assert hashlib.sha256(resource('benchmark-v1/request.json').read_bytes()).hexdigest() == "
-        "'025dc91aeb61a790d5fd36c27f127e04761ae7f1c3d6b542d0cfd9d37bc5c19f'"
+        "'025dc91aeb61a790d5fd36c27f127e04761ae7f1c3d6b542d0cfd9d37bc5c19f'; "
+        "policy = read_json('content/calibration-policy.json'); "
+        "report_path = 'content/' + policy['evidence'][0]['path']; "
+        "report_bytes = resource(report_path).read_bytes(); "
+        "assert hashlib.sha256(report_bytes).hexdigest() == policy['evidence'][0]['sha256']; "
+        "report = read_json(report_path); "
+        "assert report['gate']['overall_status'] == 'gate-partial'; "
+        "assert not report['gate']['constants_validated_on_materially_different_hardware']; "
+        "assert [(s.mode_id, s.n_cpu_moe) for s in load_catalog().calibration_seeds] == "
+        "[('coding', 37), ('studio', 37), ('vstudio', 39)]"
     )
     subprocess.run([str(python), "-c", command], check=True)
     subprocess.run([str(python), "-m", "qwen_launcher.cli", "--version"], check=True)

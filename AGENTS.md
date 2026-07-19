@@ -19,13 +19,13 @@ apply here.
 - This is a Python 3.12 launcher for a local, calibrated Qwen model served by an exact, verified
   `llama.cpp` release. It is not a generic model manager or plugin framework.
 - Work one implementation step at a time and do not anticipate later milestones.
-- **Steps 3, 4, 5 and 5A are complete; Step 5B is the next implementation step.** Q8 is pinned, the
-  `n_cpu_moe` domain is `[0, 41]`, and `calibration/v3` (D-041–D-046) is implemented and CI-green.
-  The Windows 11/CUDA Gate is `CALIBRATION-ACCEPTED` for coding, studio and vstudio; its three v2
-  candidates remain inactive. D-047 authorizes Step 5B with overall empirical coverage still
-  `GATE-PARTIAL`; materially different hardware is a future non-blocking follow-up whose absence
-  must remain explicit. See `docs/calibration-gate-v3-windows.md`. Work only on declarative Step 5B,
-  do not activate the candidates, and do not begin Step 6 or later milestones.
+- **Steps 3, 4, 5, 5A and 5B are complete; Step 6A is next but requires a dedicated session.** Q8
+  is pinned, the `n_cpu_moe` domain is `[0, 41]`, and `calibration/v3` is implemented. The wheel
+  distributes policy/report v2 and seed di solo ordine; no `profile/v1` envelope is published. The
+  Windows 11/CUDA Gate is `CALIBRATION-ACCEPTED` for the three modes, while overall coverage remains
+  `GATE-PARTIAL`; materially different hardware is a future non-blocking follow-up. The three local
+  candidates remain inactive. See `docs/calibration-gate-v3-windows.md`. Do not activate them or
+  begin Step 6 or later milestones without an explicit new-session instruction.
 - Never invent engine flags, checksums, source commits, benchmark results, hardware support, profiles,
   health responses, or compatibility claims.
 

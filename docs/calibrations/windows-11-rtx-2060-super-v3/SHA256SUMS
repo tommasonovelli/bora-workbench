@@ -1,0 +1,5 @@
+37c24dbc0e7b0716869b5d42e49744f7e0ad06799b99dcf2cb6ec1e5f250e0e0  src/qwen_launcher/resources/content/calibration-policy.json
+7c5bec86fe3cd32c7fa5d98c0b3434b37fa1a6ea91b2b922b6dfcf5cba8b44e2  src/qwen_launcher/resources/content/calibrations/windows-11-rtx-2060-super-v3.json
+d1fed2710fcab2e1ec85385eef2f23101eee2146310dbfaab4e2c921458f259f  docs/calibration-gate-v3-windows.md
+5229eb200db8102f060fec8eaf02a652a028161bb9cd248d90a50aaa65d29517  docs/calibrate_v3.md
+eb4c608ec26cc549f5c9e4cbcb0aa8e9ef46ee795fbf13d23b8895e177d7863a  docs/calibrations/windows-11-rtx-2060-super-v3/README.md

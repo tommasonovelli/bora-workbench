@@ -122,8 +122,8 @@ valido in attesa; nessuna calibrazione è stata rieseguita e nessun candidato è
 
 Il risultato valida localmente screening, ABBA, riserve, lifecycle, MTP, vision e D-046, ma non prova
 che le costanti comuni siano sufficienti su componenti o capacità diverse. D-047 accetta
-esplicitamente questa copertura parziale come sufficiente per aprire Step 5B: il prossimo step
-pubblica il metodo di ricerca e dichiara il perimetro misurato, senza esportare la busta 32/8.
-Un nuovo run con `--no-activate` su hardware materialmente diverso resta un follow-up futuro non
+esplicitamente questa copertura parziale come sufficiente per Step 5B, ora completato con policy del
+metodo, report privacy-safe e seed di solo ordine senza esportare la busta 32/8. Un nuovo run con
+`--no-activate` su hardware materialmente diverso resta un follow-up futuro non
 bloccante. I candidati locali rimangono inattivi finché il maintainer non autorizza separatamente la
 promozione.

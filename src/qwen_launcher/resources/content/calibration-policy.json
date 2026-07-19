@@ -1,0 +1,79 @@
+{
+  "schema": "calibration-policy/v2",
+  "id": "default-model-calibration-v3",
+  "calibration_protocol": "calibration/v3",
+  "benchmark_protocol": "benchmark/v1",
+  "model": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M",
+  "model_sha256": "0b21525e972670ed59e1812e170b27c26355381f0656ecc4e25617ece7dac58b",
+  "engine_release": "b10011",
+  "engine_source_commit": "bf2c86ddc0685f580595954056c2e77ebabfab4f",
+  "command_contract_sha256": "965d8bbc01812bc7df08da6451cb598ed8a552bd512b0e141817343b6566333d",
+  "objective": "maximum-context-then-paired-throughput-then-memory-margin-then-prudence",
+  "modes": [
+    "coding",
+    "studio",
+    "vstudio"
+  ],
+  "backends": {
+    "cuda": {
+      "axis": {
+        "name": "n_cpu_moe",
+        "minimum": 0,
+        "maximum_source": "gguf-block-count",
+        "expected_maximum": 41
+      },
+      "seed_semantics": "reorder-only-complete-local-search"
+    },
+    "cpu": {
+      "strategy": "engine-baseline-confirmation",
+      "tuning_axis": null,
+      "seed_semantics": "none"
+    }
+  },
+  "search": {
+    "gpu_poll_interval_ms": 250,
+    "gpu_release_stabilization_ms": 10000,
+    "context_scale": [
+      131072,
+      65536,
+      32768,
+      16384,
+      8192
+    ],
+    "probe_cap": 12,
+    "vram_reserve_gib": 0.5,
+    "ram_reserve_gib": 2.0,
+    "release_tolerance_gib": 0.125,
+    "confirm_rounds": 2,
+    "confirmation_order": [
+      "a",
+      "b",
+      "b",
+      "a"
+    ],
+    "selection_rule": "paired-round-unanimity-then-memory-margin-then-prudence"
+  },
+  "empirical_coverage": {
+    "status": "gate-partial",
+    "constants_validated_on_materially_different_hardware": false,
+    "heterogeneous_hardware_follow_up": "open-non-blocking",
+    "measured_scope": [
+      {
+        "evidence_id": "windows-11-rtx-2060-super-v3",
+        "os_name": "windows",
+        "os_version": "Windows 11 build 10.0.26200",
+        "backend": "cuda",
+        "gpu_name": "NVIDIA GeForce RTX 2060 SUPER",
+        "vram_total_gib": 8.0,
+        "ram_total_gib": 31.92
+      }
+    ]
+  },
+  "evidence": [
+    {
+      "id": "windows-11-rtx-2060-super-v3",
+      "path": "calibrations/windows-11-rtx-2060-super-v3.json",
+      "sha256": "7c5bec86fe3cd32c7fa5d98c0b3434b37fa1a6ea91b2b922b6dfcf5cba8b44e2"
+    }
+  ]
+}

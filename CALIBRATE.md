@@ -208,8 +208,9 @@ pubblica. L'ordine corretto è:
    2026**: Windows 11/CUDA `--mode all`, tre candidati validi e inattivi, esito locale
    `CALIBRATION-ACCEPTED` per coding, studio e vstudio
    (`docs/calibration-gate-v3-windows.md`);
-9. implementare Step 5B dichiarando che l'evidenza reale v3 copre per ora soltanto l'hardware del
-   maintainer e distribuendo il metodo di ricerca, non la sua busta;
+9. ~~implementare Step 5B dichiarando che l'evidenza reale v3 copre per ora soltanto l'hardware del
+   maintainer e distribuendo il metodo di ricerca, non la sua busta~~ — **fatto**: policy v2,
+   report v2 privacy-safe, checksum e seed di solo ordine senza `profile/v1`;
 10. ripetere in futuro lo stesso Gate su almeno un caso hardware materialmente diverso e aggiornare
     l'evidenza senza rendere questa attività bloccante per Step 5B.
 

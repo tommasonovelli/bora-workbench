@@ -19,6 +19,20 @@ Step 5B e rinvia lo stesso protocollo su hardware materialmente diverso a un fol
 bloccante. Risultati, riserve e limiti sono registrati in
 [`calibration-gate-v3-windows.md`](calibration-gate-v3-windows.md).
 
+## Policy pubblica ed evidenza
+
+Step 5B distribuisce `calibration-policy/v2`, che appunta modello, motore, dominio derivato dal GGUF,
+scala contesti, riserve, tetto probe, ABBA e selezione. Non contiene le buste 37/37/39. L'unico
+`calibration-report/v2` reale copre Windows 11/CUDA su RTX 2060 SUPER 8 GiB e 31,92 GiB RAM; le
+costanti non sono presentate come validate su hardware materialmente diverso.
+
+Dal report il loader costruisce soltanto un seed `n_cpu_moe` per modello, motore, backend e modo
+compatibili. Il seed può anticipare un probe dentro la staffa ma non restringe `[0, block_count]`,
+non salta gradini di contesto e non entra nel `LaunchPlan`. Se il report viene rimosso o ignorato,
+la ricerca locale
+completa produce lo stesso dominio e applica le stesse regole. Manifest e procedura manuale sono in
+[`calibration-contributing.md`](calibration-contributing.md).
+
 ## Prerequisiti
 
 Prima di iniziare:
@@ -154,5 +168,7 @@ mmap dopo i GO Ubuntu e Windows; il ramo CPU è invariato. `--no-mmap` è stato 
 
 Il bundle condivisibile del laboratorio resta separato dai record privati. Contiene report, misure,
 proposta non distribuibile, log redatti, manifest e guida. `validate --path <bundle>` verifica
-schema, digest, riferimenti relativi e pattern privati POSIX/Windows. Nessun comando crea branch,
-issue, PR o upload; la revisione umana resta obbligatoria.
+schema, digest, riferimenti relativi e pattern privati POSIX/Windows. Per l'evidenza pubblica v3 si
+usa il flusso manuale `calibration-report/v2` di
+[`calibration-contributing.md`](calibration-contributing.md), senza copiare record o log locali.
+Nessun comando crea branch, issue, PR o upload; la revisione umana resta obbligatoria.
