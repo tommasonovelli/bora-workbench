@@ -8,7 +8,7 @@ import qwen_launcher._calibration_record as record_module
 import qwen_launcher._cli_control as control_cli
 import qwen_launcher._cli_doctor as doctor_cli
 import qwen_launcher._cli_services as service_cli
-import qwen_launcher.cli as cli_module
+import qwen_launcher._cli_validation as validation_cli
 import qwen_launcher.config as config_module
 import qwen_launcher.engine as engine_module
 import qwen_launcher.paths as paths_module
@@ -81,7 +81,7 @@ def test_validate_passes_with_complete_engine_assets() -> None:
 def test_validate_maps_errors_to_exit_1(monkeypatch) -> None:
     """Print validation errors to stderr and return the contractual failure code."""
     invalid = ValidationResult((ValidationIssue("error", "mode.json", "$.id", "bad id"),))
-    monkeypatch.setattr(cli_module, "validate_resources", lambda: invalid)
+    monkeypatch.setattr(validation_cli, "validate_resources", lambda: invalid)
 
     result = runner.invoke(app, ["validate"])
 

@@ -21,7 +21,6 @@ from qwen_launcher._cli_engine import run_engine_install, show_engine_status
 from qwen_launcher._cli_services import run_coding, run_studio, run_vstudio
 from qwen_launcher._cli_validation import run_validate
 from qwen_launcher.calibration import CalibrationError
-from qwen_launcher.validation import validate_resources
 
 app = typer.Typer(
     name="qwen-launcher",
@@ -71,8 +70,7 @@ def validate_command(
     ] = None,
 ) -> None:
     """Validate installed resources or one explicit local calibration bundle."""
-    source = validate_resources() if path is None else path
-    run_validate(source, _stdout, _stderr)
+    run_validate(path, _stdout, _stderr)
 
 
 @app.command()

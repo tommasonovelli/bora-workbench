@@ -29,11 +29,9 @@ def show_validation(result: ValidationResult, stdout: Console, stderr: Console) 
         stdout.print(f"[green]Validation passed[/green] with {len(result.warnings)} warning(s)")
 
 
-def run_validate(source: Path | ValidationResult | None, stdout: Console, stderr: Console) -> None:
+def run_validate(source: Path | None, stdout: Console, stderr: Console) -> None:
     """Validate installed content by default or one explicit local Step 5A bundle."""
-    if isinstance(source, ValidationResult):
-        result = source
-    elif source is None:
+    if source is None:
         result = validate_resources()
     else:
         from qwen_launcher._calibration_validation import validate_bundle
