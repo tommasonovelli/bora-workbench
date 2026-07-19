@@ -31,7 +31,11 @@ def test_baseline_monitor_failure_is_not_masked_by_cleanup(tmp_path, monkeypatch
     target = cpu_target()
     run = SimpleNamespace(target=target, mode=target.modes[0])
     plan = build_plan(run, 8192, None)
-    monkeypatch.setattr(process_module, "_monitors", lambda target: (None, _BrokenRamMonitor()))
+    monkeypatch.setattr(
+        process_module,
+        "_monitors",
+        lambda target, baseline: (None, _BrokenRamMonitor()),
+    )
     spec = TrialSpec(plan, tmp_path / "trial", False, tmp_path, TrialOrder("screening", 1))
 
     with pytest.raises(RamError, match="baseline RAM query failed"):

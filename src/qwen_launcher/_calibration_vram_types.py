@@ -27,6 +27,7 @@ class VramSummary:
     release_duration_seconds: float = 0.0
     initial_compute_context_count: int = 0
     telemetry: GpuTelemetrySummary | None = None
+    context_replacement_count: int = 0
 
 
 class VramError(RuntimeError):

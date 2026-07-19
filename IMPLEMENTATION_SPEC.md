@@ -27,9 +27,9 @@
   multipiattaforma conclusi.
 - [~] **Step 5A — Calibrazione assistita:** `calibration/v1`, bundle, Q8, dominio degli assi e
   `calibration/v2` sono storicamente completati. Il primo Gate v2 è stato respinto; il successore
-  `calibration/v3` (D-041–D-045) è ora implementato con conferma ABBA, riserva RAM, telemetria,
-  record `calibration-record/v2`, lifecycle candidato/attivo, evidenza locale e test offline.
-  Restano la matrice CI e la validazione reale delle costanti al nuovo Gate.
+  `calibration/v3` (D-041–D-046) è ora implementato con conferma ABBA, riserva RAM, telemetria,
+  record `calibration-record/v2`, lifecycle candidato/attivo, identità WDDM a scope di run,
+  evidenza locale e test offline. Restano la matrice CI e la validazione reale delle costanti al Gate.
 - [~] **Calibration Gate / Step 5B — Prima calibrazione locale:** il run v2 del 18 luglio è
   `CALIBRATION-REJECTED` per il protocollo, non necessariamente per la busta 38. Mini-spike Ubuntu e
   smoke Windows restano GO per Q8+mmap (NO-GO per no-mmap). Il v3 hardware-indipendente è
@@ -244,28 +244,29 @@
 - [x] Primo Gate v2 eseguito sul modo `coding` il 18 luglio 2026: il record è formalmente coerente,
   ma il protocollo è `CALIBRATION-REJECTED` perché le finestre disgiunte, il benchmark su un solo
   avvio e la regola mediana-contro-massimo non separano candidato e deriva ambientale.
-- [x] `calibration/v3` progettato e implementato (D-041–D-045, `docs/calibrate_v3.md`): round ABBA
+- [x] `calibration/v3` progettato e implementato (D-041–D-046, `docs/calibrate_v3.md`): round ABBA
   con benchmark completo su ogni avvio, dominanza per unanimità, deriva come degradazione onesta,
   riserva RAM 2,0 GiB, monotonia sui soli probe fattibili, split interpolato solo come ordinamento,
-  telemetria GPU evidence-only, `calibration-record/v2` per-avvio, log dell'ultimo run e lifecycle
-  candidato→attivo→previous con `--no-activate`/`--activate`; `--target-ctx` resta facoltativo.
+  telemetria GPU evidence-only, identità eseguibile WDDM a scope di run, `calibration-record/v2`
+  per-avvio, log dell'ultimo run e lifecycle candidato→attivo→previous con
+  `--no-activate`/`--activate`; `--target-ctx` resta facoltativo.
   I record v1 sono diagnosticati come superati e non guidano i lanci. Verifica locale Windows con
-  uv 0.11.28 e CPython 3.12.13: sync frozen, Ruff, 296 test offline, `validate`, build e wheel
-  isolata verdi. Il primo probe wheel del motore a freddo è scaduto dopo 10 s; il retry è riuscito.
-  Resta la matrice CI Ubuntu/Windows post-commit.
+  uv 0.11.28 e CPython 3.12.13: sync frozen, Ruff, 313 test offline, `validate`, build e wheel
+  isolata verdi; la baseline D-046 ha risolto 20/20 identità WDDM senza serializzare percorsi.
+  Resta la matrice CI Ubuntu/Windows post-commit e il nuovo Gate reale.
 
 ### Prossima azione obbligatoria
 
 Il Calibration Gate resta chiuso. La prossima azione è verificare la matrice CI del v3, poi Tommaso
 riesegue il Gate con `--no-activate` sulla propria macchina e su almeno un caso
-hardware materialmente diverso, validando o correggendo D-039/D-041–D-045. Non iniziare lo Step 5B o
+hardware materialmente diverso, validando o correggendo D-039/D-041–D-046. Non iniziare lo Step 5B o
 step successivi prima di almeno un esito locale `CALIBRATION-ACCEPTED` prodotto da `calibration/v3`.
 
 ---
 
 > **Stato:** documento normativo centrale, pronto a guidare l'implementazione per step.  
 > **Data di consolidamento:** 18 luglio 2026; la v4.1 registra il Gate v2 respinto e il successore
-> `calibration/v3` implementato (D-041–D-045, `docs/calibrate_v3.md`). La v4.0 introduceva il
+> `calibration/v3` implementato (D-041–D-046, `docs/calibrate_v3.md`). La v4.0 introduceva il
 > ridisegno local-first v2, Q8 e il dominio verificato degli assi; la v3.4 separava evidenza
 > condivisa e calibrazione locale e riapriva lo Step 5A.  
 > **Sostituisce:** la v3.4, la v3.1, `PIANO_IMPLEMENTAZIONE_v2.md`, le due revisioni successive e la
@@ -421,6 +422,7 @@ Regole conseguenti:
 | D-043 | `calibration-record/v2` nasce come `<modo>.candidate.json`, viene promosso atomicamente per default ad attivo e conserva un solo `<modo>.previous.json`; `--no-activate` ferma la promozione e `--activate` la esegue senza nuove prove | un solo comando serve l'utente normale, mentre il Gate non rende operativo un risultato sperimentale; i record v1 sono superati e inerti senza migrazione automatica |
 | D-044 | telemetria GPU (utilizzo, clock, temperatura, potenza, throttle driver) è best-effort ed evidence-only; valori o campi non supportati sono `null` e non invalidano un run | aiuta a spiegare regimi ambientali senza introdurre soglie termiche o prestazionali non misurate |
 | D-045 | la monotonia VRAM usa soltanto probe fattibili; i picchi OOM troncati non la contraddicono. Dopo due picchi fattibili, l'interpolazione può ordinare il prossimo punto solo dentro la staffa e ripiega sul punto medio; non restringe mai il dominio | evita degradazioni lineari spurie e riduce il costo medio senza indebolire la prova misurata o il tetto di 12 probe |
+| D-046 | `calibration/v3` raffina D-040 su WDDM con una baseline immutabile per l'intero run: ogni contesto usa l'istanza `pid + create_time` e un'identità opaca del file eseguibile (`st_dev + st_ino`); un respawn dello stesso file è ammesso entro la molteplicità iniziale e contato solo come evidenza, mentre file nuovi, identità illeggibili, molteplicità aggiuntiva e riciclo del PID gestito invalidano ancora il run. I gap fra trial non sono campionati, ma un contesto persistente viene confrontato con la baseline di run; nessun percorso o identificatore file entra nel record | due tentativi reali del Gate sono stati invalidati dal respawn di un contesto desktop già ammesso, mostrando che il PID era un proxy asimmetrico del lifecycle e non dell'attività compute; il file-id rende uniforme la popolazione ammessa senza soglie, allowlist per-processo o indebolimento di riserve, ABBA e telemetria |
 
 Le sole decisioni lasciate allo spike sono: release esatta di `llama.cpp`, nomi esatti dei flag per
 quella release, forma reale della salute, asset ufficiali disponibili, compatibilità della UI e
@@ -829,9 +831,10 @@ Protocollo iniziale:
 
 1. registra hardware, VRAM totale/libera e consumo GPU complessivo prima della prova; fuori da WDDM
    un PID compute iniziale rende la misura invalida. Su WDDM, dove il driver 610.47 verificato include
-   anche i contesti grafici inevitabili della shell, i PID iniziali restano parte della baseline
-   aggregata e qualunque nuovo PID diverso dal processo gestito invalida il run; l'utente chiude
-   comunque workload GPU intensivi prima della prova;
+   anche contesti grafici inevitabili, v3 cattura una sola popolazione iniziale di file eseguibili:
+   un respawn dello stesso file entro la molteplicità iniziale è evidence-only, mentre file nuovi,
+   identità illeggibili o istanze aggiuntive invalidano il run. Il processo gestito coincide soltanto
+   per `pid + create_time`; l'utente chiude comunque workload GPU intensivi prima della prova;
 2. usa la policy approvata oppure, esclusivamente nello Step 5A prima del Calibration Gate, candidati,
    riserva e contesti forniti esplicitamente da Tommaso;
 3. parte dalla baseline più prudente approvata e varia soltanto `n_cpu_moe` per CUDA; il codice
@@ -865,7 +868,7 @@ nel lock o in contenuto approvato, screening locale, finalisti, RAM e VRAM duran
 robusto e record atomico compatibile con la macchina corrente. Contesto e modi restano separati.
 `calibration/v2` ha soddisfatto questi requisiti strutturali ma il Gate ne ha respinto la conferma;
 il design resta storico in `docs/calibration-v2-design.md`. Il protocollo attivo è
-`calibration/v3` (D-041–D-045, `docs/calibrate_v3.md`): mantiene scala e screening misurato, verifica
+`calibration/v3` (D-041–D-046, `docs/calibrate_v3.md`): mantiene scala e screening misurato, verifica
 la monotonia sui soli probe fattibili e usa l'interpolazione soltanto per scegliere un punto interno
 alla staffa. Ogni trial rispetta 2,0 GiB RAM e, su CUDA, 0,5 GiB VRAM. I finalisti eseguono due round
 A→B/B→A con benchmark completo per avvio; la dominanza richiede lo stesso vincitore in entrambi i

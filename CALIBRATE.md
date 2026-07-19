@@ -53,7 +53,8 @@ Restano validi e utili:
 - polling aggregato VRAM a 250 ms;
 - rilascio VRAM entro 10 s con tolleranza esplicita;
 - rilevamento di processi compute concorrenti, con baseline aggregata dei contesti desktop che
-  WDDM 610.47 espone inevitabilmente nella stessa query e invalidazione di ogni nuovo PID estraneo;
+  WDDM 610.47 espone inevitabilmente; D-046 usa una popolazione eseguibili a scope di run e continua
+  a invalidare file nuovi, identità illeggibili e molteplicità aggiuntiva;
 - `benchmark/v1` con warm-up escluso e cinque misure;
 - bundle atomico, redazione, manifest e scanner privacy;
 - fallback non ottimizzato quando manca una calibrazione locale valida.
@@ -201,7 +202,7 @@ pubblica. L'ordine corretto è:
    separavano throughput e deriva; la busta 38 non è stata dichiarata intrinsecamente errata;
 7. ~~progettare e implementare il successore~~ — **fatto**: `calibration/v3`, ABBA, unanimità,
    riserva RAM, record `calibration-record/v2`, lifecycle candidato/attivo, telemetria evidence-only
-   e monotonia sui soli probe fattibili (`docs/calibrate_v3.md`, D-041–D-045);
+   e monotonia sui soli probe fattibili (`docs/calibrate_v3.md`, D-041–D-046);
 8. rieseguire il Gate v3 con `--no-activate` sulla macchina di Tommaso e su almeno un caso hardware
    materialmente diverso;
 9. aprire lo Step 5B solo dopo almeno un risultato locale accettato e dopo aver dimostrato che un PC

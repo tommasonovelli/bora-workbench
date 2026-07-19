@@ -60,6 +60,7 @@ def vram_entry(summary: VramSummary | None) -> JsonObject | None:
         "release_duration_seconds": summary.release_duration_seconds,
         "driver_version": summary.driver_version,
         "initial_compute_context_count": summary.initial_compute_context_count,
+        "context_replacement_count": summary.context_replacement_count,
         "telemetry": _telemetry_entry(summary),
     }
 

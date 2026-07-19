@@ -7,6 +7,7 @@ from datetime import datetime
 from functools import partial
 from pathlib import Path
 
+from qwen_launcher._calibration_gpu_contexts import GpuContextBaseline
 from qwen_launcher._calibration_v3_plan import build_plan
 from qwen_launcher._calibration_v3_process import TrialFailure, TrialSpec, run_trial
 from qwen_launcher._calibration_v3_search import (
@@ -38,6 +39,7 @@ class ModeRunRequest:
     runtime_root: Path
     domain_maximum: int
     seed: int | None
+    gpu_context_baseline: GpuContextBaseline | None
     options: V3RunOptions
 
 
@@ -50,6 +52,7 @@ class _ModeRun:
     runtime_root: Path
     domain_maximum: int
     seed: int | None
+    gpu_context_baseline: GpuContextBaseline | None
     options: V3RunOptions
     probes: list[ProbeRecord] = field(default_factory=list)
     drivers: set[str] = field(default_factory=set)
@@ -82,6 +85,7 @@ def create_mode_run(request: ModeRunRequest) -> _ModeRun:
         request.runtime_root,
         request.domain_maximum,
         request.seed,
+        request.gpu_context_baseline,
         request.options,
     )
 
@@ -98,7 +102,14 @@ def run_probe(run: _ModeRun, ctx: int, value: int) -> ProbeMeasurement:
     sequence = len(run.probes) + 1
     root = run.runtime_root / run.mode.id / f"probe-{sequence}-ctx{ctx}-n{value}"
     order = TrialOrder("screening", sequence)
-    spec = TrialSpec(build_plan(run, ctx, value), root, False, run.runtime_root, order)
+    spec = TrialSpec(
+        build_plan(run, ctx, value),
+        root,
+        False,
+        run.runtime_root,
+        order,
+        run.gpu_context_baseline,
+    )
     try:
         measured = run_trial(run.target, spec)
     except TrialFailure as failure:

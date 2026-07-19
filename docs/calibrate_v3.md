@@ -169,8 +169,9 @@ Quindi in v3 la deriva di baseline oltre tolleranza durante la conferma:
   mosso, il confronto di velocità non è affidabile e il protocollo lo dice, invece di fingere;
 - resta registrata per avvio nel record (baseline di ognuno dei 4 avvii, escursione complessiva).
 
-Le invalidazioni di run restano intatte e più severe: PID compute estraneo (D-040), cambio
-driver, cambio capacità, monitor guasto.
+Le invalidazioni di run restano severe: un file eseguibile compute estraneo alla baseline WDDM
+(D-046), cambio driver, cambio capacità o monitor guasto. Un respawn dello stesso file entro la
+molteplicità iniziale è soltanto evidenza; non modifica riserve o selezione.
 
 ### 3.4 Il run del 18 luglio sotto la nuova regola
 
@@ -254,7 +255,28 @@ Regole:
   inventata: lo dichiara l'hardware) meriti di diventare decisionale in un protocollo futuro.
 
 Questo risponde anche al limite WDDM residuo: un contesto desktop già presente che inizia a
-lavorare non cambia PID, ma lascia traccia in utilizzo/clock e nel confronto fra round.
+lavorare non cambia necessariamente istanza, ma lascia traccia in utilizzo/clock e nel confronto fra
+round.
+
+### 6.1 Identità WDDM a scope di run (D-046)
+
+Due tentativi reali del Gate hanno mostrato lo stesso contesto desktop ricreato con PID diversi. Il
+PID era quindi un proxy asimmetrico: ammetteva qualunque cambio di attività finché l'istanza restava
+viva, ma invalidava il lifecycle ordinario dello stesso eseguibile. V3 usa ora una baseline
+immutabile per l'intero run:
+
+- ogni istanza è `pid + create_time`; il processo gestito è escluso soltanto con questa coppia;
+- l'eseguibile usa un digest locale di volume/file-id (`st_dev + st_ino`), senza conservare percorsi;
+- il multiset corrente deve essere un sotto-multiset della popolazione iniziale. Un respawn dello
+  stesso file è ammesso entro la molteplicità iniziale; file nuovi, identità illeggibili o istanze
+  aggiuntive invalidano ancora il run;
+- i respawn sono contati come evidenza per trial e non alimentano soglie o selezione;
+- i gap fra trial non sono campionati. Un evento interamente confinato nel gap non sovrappone una
+  misura; se persiste nel trial successivo viene confrontato con la baseline di run e non può essere
+  assorbito silenziosamente.
+
+La regola governa l'igiene della misura, non la sicurezza contro processi ostili. Riserve assolute,
+ABBA, telemetria e divieto di workload concorrenti restano invariati.
 
 ## 7. Record `calibration-record/v2` ed evidenza (problema 7)
 
@@ -263,7 +285,7 @@ Lo schema v2 conserva tutto ciò che serve a rifare i conti del run senza i log:
 - **per ogni avvio di conferma** (e in forma ridotta per ogni probe): round, posizione globale
   nell'ordine temporale, timestamp di inizio/fine, baseline/picco/minimo libero VRAM, valore e
   **durata del rilascio**, baseline/minimo RAM, sessione benchmark completa (warm-up + 5 misure),
-  telemetria (o `null`), numero di contesti WDDM iniziali;
+  telemetria (o `null`), numero di contesti WDDM iniziali e respawn ammessi evidence-only;
 - **per la selezione**: mediane di sessione, vincitore di ogni round, esito
   unanimità/equivalenza, escursione delle baseline della conferma, flag
   `equivalent-after-baseline-drift`;
@@ -365,7 +387,7 @@ Dove va il tempo, e che cosa si può comprimere:
 | Regola di selezione | unanimità dei round su mediane di sessione | sostituisce «mediana > massimo»; zero soglie; da validare al Gate |
 
 Nessuna costante per-macchina; ogni effetto passa da misure locali. La provenienza è registrata in
-D-039/D-041–D-045; il Calibration Gate deve ancora validarne i valori su hardware eterogeneo.
+D-039/D-041–D-046; il Calibration Gate deve ancora validarne i valori su hardware eterogeneo.
 
 ## 12. Versionamento, decisioni, migrazione
 
@@ -380,10 +402,10 @@ D-039/D-041–D-045; il Calibration Gate deve ancora validarne i valori su hardw
 - **Decisioni registrate nella spec:** D-041 conferma accoppiata e dominanza per unanimità;
   D-042 riserva RAM universale; D-043 ciclo candidato→attivo con promozione atomica e
   `--no-activate`; D-044 telemetria GPU evidence-only; D-045 monotonia sui soli probe fattibili e
-  split interpolato come solo ordinamento.
+  split interpolato come solo ordinamento; D-046 identità eseguibile WDDM a scope di run.
 - **Cosa non cambia**, ed è la maggior parte: zero input obbligatori, un contesto per confronto,
   bisezione misurata con tetto e degradazione onesta, riserva VRAM su ogni campione, rilascio con
-  tolleranza, D-040 su WDDM, invalidazioni di run, `benchmark/v1` byte-identico, identità e
+  tolleranza, D-040/D-046 su WDDM, invalidazioni di run, `benchmark/v1` byte-identico, identità e
   headroom del riuso senza nearest-match, seed solo come ordinamento, conferma onesta della
   baseline su CPU (ora con benchmark su entrambi gli avvii), privacy e bundle, confini dei moduli
   e limiti di dimensione del codice.
@@ -403,6 +425,8 @@ D-039/D-041–D-045; il Calibration Gate deve ancora validarne i valori su hardw
    fissare il valore.
 5. La telemetria è best-effort per costruzione: su driver che non la espongono il record ha
    `null` e la spiegazione ambientale resta parziale (mai bloccante).
+6. I gap fra trial non sono campionati; D-046 impedisce l'assorbimento di contesti persistenti ma
+   non registra eventi nati e terminati interamente fuori da una finestra di misura.
 
 ## 14. Implementazione e test completati nello Step 5A
 
@@ -414,7 +438,7 @@ Il codice è stato separato per responsabilità entro i limiti di 200 righe/file
 | `_calibration_v2_confirm.py` → `_calibration_v3_confirm.py` | round ABBA con benchmark per avvio; deriva → flag di degradazione (~80 r. riorganizzate) |
 | `_calibration_v2_runner.py` → `_calibration_v3_runner.py` | orchestrazione round, etichette selezione, evidence dir con rotazione (~30 r.) |
 | `_calibration_ram.py` | riserva RAM nel validate del monitor (~10 r.) |
-| `_hardware_monitoring.py` / `_calibration_vram.py` | campi telemetria opzionali nella stessa query (~40 r.) |
+| `_hardware_monitoring.py` / `_calibration_vram.py` | telemetria opzionale e baseline eseguibili WDDM a scope di run |
 | record: schema v2 + `_record_build` / `_record_checks` / `_record` | evidenza per avvio, ricostruzione round/unanimità, percorsi candidate/active/previous (~120 r.) |
 | `_calibration_reuse.py`, `_cli_doctor.py` | headroom RAM + riserva; stati candidato/schema superato (~30 r.) |
 | `_cli_calibration_v2.py` → `_cli_calibration_v3.py` | `--no-activate`/`--activate`, progresso per fase, sommario in linguaggio piano (~40 r.) |
@@ -433,16 +457,18 @@ La suite offline deterministica copre (fake trial runner, nessun hardware):
 - split interpolato dentro staffa, fallback a punto medio e tetto rispettato;
 - record v2: costruzione/carico/verifica, ricostruzione della selezione, rifiuto azionabile dei
   record v1, promozione atomica candidate→active→previous, `--no-activate` che non attiva;
-- telemetria assente → `null` senza errori.
+- telemetria assente → `null` senza errori;
+- respawn stesso file ammesso e contato, file nuovo/molteplicità extra/identità illeggibile e PID
+  gestito riciclato rifiutati senza percorsi serializzati.
 
-Verifica locale Windows: uv 0.11.28, CPython 3.12.13, Ruff, 296 test offline, `validate`, build e
-wheel isolata verdi. Il primo probe wheel a freddo è scaduto; il retry è riuscito. La matrice CI
-Ubuntu/Windows resta una verifica post-commit, non dichiarata in anticipo.
+Verifica locale Windows: uv 0.11.28, CPython 3.12.13, Ruff, 313 test offline, `validate`, build e
+wheel isolata verdi. La baseline D-046 ha risolto 20/20 identità WDDM reali senza serializzare
+percorsi. La matrice CI Ubuntu/Windows resta una verifica post-commit, non dichiarata in anticipo.
 
 ## 15. Percorso operativo
 
 1. ~~approvare riserva RAM, ABBA, lifecycle, telemetria e split interpolato~~ — completato con
-   D-041–D-045;
+   D-041–D-046;
 2. ~~implementare v3 e i test offline~~ — completato; i run sperimentali usano `--no-activate`;
 3. rieseguire il Calibration Gate sulla macchina di Tommaso e su almeno un caso materialmente diverso;
    le costanti (riserve, round, tetto) si validano o si correggono con l'evidenza raccolta;

@@ -47,6 +47,17 @@ def rewrite(path, mutate) -> None:
     path.write_text(json.dumps(document), encoding="utf-8")
 
 
+def remove_context_identity_evidence(record) -> None:
+    """Reduce a document to the compatible pre-D-046 calibration-record/v2 shape."""
+    search = record["search"]
+    search.pop("context_identity_model")
+    trials = [probe["trial"] for probe in search["probes"]]
+    trials += [session for finalist in search["finalists"] for session in finalist["sessions"]]
+    for trial in trials:
+        if trial["vram"] is not None:
+            trial["vram"].pop("context_replacement_count")
+
+
 def test_cuda_and_cpu_records_round_trip_complete_paired_evidence(tmp_path) -> None:
     """Revalidate CUDA and CPU documents with ten selected benchmark measures."""
     cuda_path = written_record(tmp_path / "cuda", cuda_calibration, cuda_hardware())
@@ -59,9 +70,21 @@ def test_cuda_and_cpu_records_round_trip_complete_paired_evidence(tmp_path) -> N
     assert cuda["calibration_protocol"] == "calibration/v3"
     assert len(cuda["benchmark"]["measured_tok_s"]) == 10
     assert cuda["search"]["round_winners"] == [0, 0]
-    assert cuda["search"]["finalists"][0]["sessions"][0]["vram"]["telemetry"] is None
+    assert cuda["search"]["context_identity_model"] == "executable-file-id/v1"
+    first_vram = cuda["search"]["finalists"][0]["sessions"][0]["vram"]
+    assert first_vram["telemetry"] is None
+    assert first_vram["context_replacement_count"] == 0
+    assert cpu["search"]["context_identity_model"] is None
     assert cpu["selection_rule"] == "cpu-baseline-confirmation"
     assert cpu["observed"]["vram_needed_gib"] is None
+
+
+def test_pre_d046_v2_record_remains_compatibly_loadable(tmp_path) -> None:
+    """Keep evidence-only D-046 fields additive within calibration-record/v2."""
+    path = written_record(tmp_path, cuda_calibration, cuda_hardware())
+    rewrite(path, remove_context_identity_evidence)
+
+    assert load_record(path)["calibration_protocol"] == "calibration/v3"
 
 
 def test_candidate_promotes_atomically_and_preserves_one_previous_slot(tmp_path) -> None:

@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from qwen_launcher._calibration_gguf import GgufError, read_block_count
+from qwen_launcher._calibration_gpu_contexts import GpuContextBaseline
 from qwen_launcher._calibration_v3_confirm import confirm_finalists
 from qwen_launcher._calibration_v3_screening import (
     ModeRunRequest,
@@ -140,14 +141,17 @@ def run_mode(request: ModeRunRequest) -> tuple[ModeCalibration, set[str]]:
         request.runtime_root,
         block_count,
         seed,
+        request.gpu_context_baseline,
         request.options,
     )
     return _cuda_mode(predicted)
 
 
 def mode_request(
-    target: CalibrationTarget, mode: Mode, run_context: tuple[Path, V3RunOptions]
+    target: CalibrationTarget,
+    mode: Mode,
+    run_context: tuple[Path, V3RunOptions, GpuContextBaseline | None],
 ) -> ModeRunRequest:
     """Group runner inputs before model metadata predicts the CUDA domain."""
-    runtime_root, options = run_context
-    return ModeRunRequest(target, mode, runtime_root, 0, None, options)
+    runtime_root, options, baseline = run_context
+    return ModeRunRequest(target, mode, runtime_root, 0, None, baseline, options)

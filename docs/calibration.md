@@ -20,9 +20,11 @@ Prima di iniziare:
 - una sola GPU NVIDIA quando il backend rilevato è CUDA;
 - nessun altro workload compute o grafico intensivo sulla GPU selezionata.
 
-Su WDDM i contesti persistenti del desktop riportati come compute entrano nella baseline aggregata;
-un nuovo PID estraneo durante il trial invalida l'intero run. Fuori da WDDM qualunque PID compute
-iniziale blocca la calibrazione.
+Su WDDM i contesti persistenti del desktop riportati come compute entrano in una baseline
+immutabile per l'intero run. Un respawn dello stesso file eseguibile è ammesso entro la molteplicità
+iniziale e contato come evidenza; un file nuovo, un'identità illeggibile o un'istanza aggiuntiva
+invalida il run. Il processo gestito coincide soltanto per `pid + create_time`. Fuori da WDDM
+qualunque contesto compute iniziale blocca la calibrazione.
 
 Il comando non scarica il modello, non installa il motore, non modifica `config.toml`, non crea
 commit e non effettua upload.

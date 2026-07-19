@@ -8,7 +8,9 @@ import pytest
 
 import qwen_launcher._calibration_v3_confirm as confirm_module
 import qwen_launcher._calibration_v3_mode as mode_module
+import qwen_launcher._calibration_v3_runner as runner_module
 import qwen_launcher._calibration_v3_screening as screening_module
+from qwen_launcher._calibration_gpu_contexts import GpuContextBaseline
 from qwen_launcher._calibration_ram import RamReserveError, RamSummary
 from qwen_launcher._calibration_record import load_record
 from qwen_launcher._calibration_v3_process import TrialFailure, TrialMeasurement
@@ -63,6 +65,9 @@ def install_fakes(monkeypatch, run, block_count: int = 41) -> None:
     monkeypatch.setattr(screening_module, "run_trial", run)
     monkeypatch.setattr(confirm_module, "run_trial", run)
     monkeypatch.setattr(mode_module, "read_block_count", lambda path: block_count)
+    monkeypatch.setattr(
+        runner_module, "capture_gpu_context_baseline", lambda index: GpuContextBaseline(True, ())
+    )
 
 
 def active_record(root):

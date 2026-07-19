@@ -7,6 +7,7 @@ import subprocess
 from dataclasses import dataclass
 from io import StringIO
 
+from qwen_launcher._gpu_process_identity import GpuProcessIdentity, identify_gpu_processes
 from qwen_launcher.hardware import HardwareError, mib_to_gib
 
 _TIMEOUT_SECONDS = 5
@@ -38,6 +39,7 @@ class GpuSnapshot:
     compute_pids: tuple[int, ...]
     is_wddm: bool = False
     telemetry: GpuTelemetry | None = None
+    compute_contexts: tuple[GpuProcessIdentity, ...] | None = None
 
 
 def _run(arguments: list[str]) -> str:
@@ -160,4 +162,6 @@ def _compute_pids(index: int) -> tuple[int, ...]:
 def query_gpu_snapshot(index: int) -> GpuSnapshot:
     """Capture selected-GPU memory, driver model, contexts, and evidence-only telemetry."""
     total_gib, free_gib, driver, is_wddm, telemetry = _memory(index)
-    return GpuSnapshot(total_gib, free_gib, driver, _compute_pids(index), is_wddm, telemetry)
+    pids = _compute_pids(index)
+    contexts = identify_gpu_processes(pids)
+    return GpuSnapshot(total_gib, free_gib, driver, pids, is_wddm, telemetry, contexts)

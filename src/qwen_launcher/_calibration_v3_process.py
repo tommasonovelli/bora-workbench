@@ -6,8 +6,15 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
 
+from qwen_launcher._calibration_gpu_contexts import GpuContextBaseline
 from qwen_launcher._calibration_ram import RamError, RamMonitor, RamReserveError, RamSummary
-from qwen_launcher._calibration_v3_process_types import TrialFailure, TrialMeasurement, TrialSpec
+from qwen_launcher._calibration_v3_process_types import (
+    SpawnRecord,
+    TrialFailure,
+    TrialMeasurement,
+    TrialSpec,
+    managed_gpu_identity,
+)
 from qwen_launcher._calibration_v3_types import (
     RAM_RESERVE_GIB,
     RELEASE_TOLERANCE_GIB,
@@ -28,17 +35,6 @@ from qwen_launcher.process import RunningService, StartRequest, start_service, s
 from qwen_launcher.profiles import Mode
 
 
-@dataclass(slots=True)
-class _SpawnRecord:
-    """Capture child identity before health readiness can fail."""
-
-    pid: int | None = None
-
-    def __call__(self, pid: int) -> None:
-        """Record the exact PID reported immediately after shell-free spawn."""
-        self.pid = pid
-
-
 @dataclass(frozen=True, slots=True)
 class _CompletedTrial:
     """Group cleanup timestamps and resource summaries for evidence assembly."""
@@ -56,19 +52,22 @@ class _TrialState:
     vram_monitor: VramMonitor | None
     ram_monitor: RamMonitor
     running: RunningService | None = None
-    spawned: _SpawnRecord = field(default_factory=_SpawnRecord)
+    spawned: SpawnRecord = field(default_factory=SpawnRecord)
     benchmark: BenchmarkResult | None = None
 
 
-def _monitors(target: CalibrationTarget) -> tuple[VramMonitor | None, RamMonitor]:
-    """Apply the universal RAM reserve and CUDA-only VRAM thresholds (D-042)."""
+def _monitors(
+    target: CalibrationTarget, context_baseline: GpuContextBaseline | None
+) -> tuple[VramMonitor | None, RamMonitor]:
+    """Apply universal reserves and calibration/v3's immutable GPU context baseline."""
     ram = RamMonitor(minimum_free_gib=RAM_RESERVE_GIB)
     if target.hardware.backend == "cpu":
         return None, ram
-    if target.hardware.gpu_index is None:
-        raise CalibrationRunError("CUDA calibration requires a selected GPU index")
+    if target.hardware.gpu_index is None or context_baseline is None:
+        raise CalibrationRunError("CUDA calibration requires a measured GPU context baseline")
     thresholds = VramThresholds(VRAM_RESERVE_GIB, RELEASE_TOLERANCE_GIB)
-    return VramMonitor(target.hardware.gpu_index, thresholds), ram
+    monitor = VramMonitor(target.hardware.gpu_index, thresholds, context_baseline=context_baseline)
+    return monitor, ram
 
 
 def _workload(mode: Mode, base_url: str, with_benchmark: bool) -> BenchmarkResult | None:
@@ -115,9 +114,8 @@ def _finish(
         except BaseException as caught:
             error = _prefer_cleanup_error(error, caught)
     if state.vram_monitor is not None:
-        pid = state.spawned.pid if state.running is None else state.running.process.pid
         try:
-            vram = state.vram_monitor.finish(pid)
+            vram = state.vram_monitor.finish(managed_gpu_identity(state.running, state.spawned))
         except BaseException as caught:
             if isinstance(caught, VramError) and caught.summary is not None:
                 vram = caught.summary
@@ -164,7 +162,7 @@ def _evidence(spec: TrialSpec, state: _TrialState, completed: _CompletedTrial) -
 
 def run_trial(target: CalibrationTarget, spec: TrialSpec) -> TrialMeasurement:
     """Start, exercise, stop, and verify one isolated calibration/v3 trial."""
-    state = _TrialState(*_monitors(target))
+    state = _TrialState(*_monitors(target, spec.gpu_context_baseline))
     started_at = _timestamp()
     failure: BaseException | None = None
     try:

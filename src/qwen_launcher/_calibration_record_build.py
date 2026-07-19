@@ -23,6 +23,7 @@ from qwen_launcher._calibration_v3_types import (
     VRAM_RESERVE_GIB,
     ModeCalibration,
 )
+from qwen_launcher._gpu_process_identity import GPU_CONTEXT_IDENTITY_MODEL
 from qwen_launcher.calibration import CalibrationTarget
 
 JsonObject = dict[str, object]
@@ -72,10 +73,11 @@ def _probe_entry(probe: object) -> JsonObject:
     }
 
 
-def _search_entry(calibration: ModeCalibration) -> JsonObject:
-    """Serialize constants, screening, paired sessions, drift, and round winners."""
+def _search_entry(calibration: ModeCalibration, is_cuda: bool) -> JsonObject:
+    """Serialize constants, context identity, screening, sessions, drift, and winners."""
     return {
         "context_scale": list(CONTEXT_SCALE),
+        "context_identity_model": GPU_CONTEXT_IDENTITY_MODEL if is_cuda else None,
         "target_ctx": calibration.target_ctx,
         "probe_cap": MODE_PROBE_CAP,
         "vram_reserve_gib": VRAM_RESERVE_GIB,
@@ -122,6 +124,6 @@ def build_record_document(
         "envelope": {"ctx": calibration.ctx, "n_cpu_moe": selected.n_cpu_moe},
         "observed": _observed_entry(calibration),
         "benchmark": selected_benchmark_entry(selected),
-        "search": _search_entry(calibration),
+        "search": _search_entry(calibration, target.hardware.backend == "cuda"),
         "selection_rule": calibration.selection_rule,
     }

@@ -175,6 +175,7 @@
       ],
       "properties": {
         "context_scale": { "description": "Approved descending context scale.", "const": [131072, 65536, 32768, 16384, 8192] },
+        "context_identity_model": { "description": "Evidence-only run-scoped GPU process identity model, or null on CPU.", "type": ["string", "null"], "enum": ["executable-file-id/v1", null] },
         "target_ctx": { "description": "Optional expert-fixed context rung.", "type": ["integer", "null"], "enum": [131072, 65536, 32768, 16384, 8192, null] },
         "probe_cap": { "description": "Maximum screening probes per mode.", "const": 12 },
         "vram_reserve_gib": { "description": "Universal minimum free VRAM during CUDA trials.", "const": 0.5 },
@@ -214,7 +215,7 @@
           "hardware": { "properties": { "gpu_count": { "const": 0 }, "gpu_name": { "type": "null" }, "gpu_driver": { "type": "null" }, "vram_total_gib": { "type": "null" } } },
           "envelope": { "properties": { "n_cpu_moe": { "type": "null" } } },
           "observed": { "properties": { "vram_needed_gib": { "type": "null" }, "minimum_vram_free_gib": { "type": "null" } } },
-          "search": { "properties": { "baseline_drift_gib": { "type": "null" }, "probes": { "maxItems": 0 }, "finalists": { "maxItems": 1 } } },
+          "search": { "properties": { "context_identity_model": { "type": "null" }, "baseline_drift_gib": { "type": "null" }, "probes": { "maxItems": 0 }, "finalists": { "maxItems": 1 } } },
           "selection_rule": { "const": "cpu-baseline-confirmation" }
         }
       },
@@ -223,6 +224,7 @@
           "hardware": { "properties": { "gpu_count": { "type": "integer", "minimum": 1 }, "gpu_name": { "type": "string" }, "gpu_driver": { "type": "string" }, "vram_total_gib": { "type": "number" } } },
           "envelope": { "properties": { "n_cpu_moe": { "type": "integer" } } },
           "observed": { "properties": { "vram_needed_gib": { "type": "number" }, "minimum_vram_free_gib": { "type": "number" } } },
+          "search": { "properties": { "context_identity_model": { "const": "executable-file-id/v1" } } },
           "selection_rule": { "enum": ["dominance-unanimous-rounds", "equivalent-prefer-minimum-free-vram", "equivalent-prefer-prudent", "equivalent-after-baseline-drift", "single-finalist"] }
         }
       }
@@ -290,7 +292,8 @@
         "release_used_gib": { "description": "Aggregate used VRAM at release acceptance or timeout.", "type": "number", "minimum": 0 },
         "release_duration_seconds": { "description": "Measured post-stop release duration.", "type": "number", "minimum": 0 },
         "driver_version": { "description": "Driver version observed by the monitor.", "type": "string", "minLength": 1 },
-        "initial_compute_context_count": { "description": "WDDM contexts included in the initial baseline.", "type": "integer", "minimum": 0 },
+        "initial_compute_context_count": { "description": "WDDM contexts present at this trial's initial sample.", "type": "integer", "minimum": 0 },
+        "context_replacement_count": { "description": "Evidence-only count of admitted same-executable WDDM replacement instances.", "type": "integer", "minimum": 0 },
         "telemetry": { "$ref": "#/$defs/telemetry" }
       }
     },

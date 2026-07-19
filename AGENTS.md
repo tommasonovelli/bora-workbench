@@ -21,8 +21,9 @@ apply here.
 - Work one implementation step at a time and do not anticipate later milestones.
 - **Steps 3, 4, and 5 are complete; Step 5A remains open at the Calibration Gate.** Q8 is pinned,
   the `n_cpu_moe` domain is `[0, 41]`, and the first real `calibration/v2` Gate was rejected.
-  `calibration/v3` is implemented (D-041–D-045, `docs/calibrate_v3.md`) with ABBA confirmation,
-  RAM reserve, record v2 lifecycle, offline tests and local packaging checks. The next work is CI,
+  `calibration/v3` is implemented (D-041–D-046, `docs/calibrate_v3.md`) with ABBA confirmation,
+  RAM reserve, record v2 lifecycle, run-scoped WDDM executable identity, offline tests and local
+  packaging checks. The next work is CI,
   then the v3 Gate with `--no-activate` on the maintainer machine and materially different hardware.
   Do not begin Step 5B or later milestones before a v3 `CALIBRATION-ACCEPTED` result.
 - Never invent engine flags, checksums, source commits, benchmark results, hardware support, profiles,

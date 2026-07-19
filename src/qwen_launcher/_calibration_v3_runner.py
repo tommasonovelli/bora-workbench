@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
 from qwen_launcher._calibration_evidence import preserve_evidence
+from qwen_launcher._calibration_gpu_contexts import (
+    GpuContextBaseline,
+    capture_gpu_context_baseline,
+)
 from qwen_launcher._calibration_ram import RamError
 from qwen_launcher._calibration_record import (
     RecordError,
@@ -21,20 +26,28 @@ from qwen_launcher.calibration import CalibrationRunError, CalibrationTarget
 from qwen_launcher.paths import data_dir
 
 
+@dataclass(frozen=True, slots=True)
+class _V3RunContext:
+    """Group immutable options, runtime path, and the one run-scoped GPU baseline."""
+
+    runtime_root: Path
+    options: V3RunOptions
+    gpu_context_baseline: GpuContextBaseline | None
+
+
 def _preserve_on_failure(root: Path, runtime_root: Path, run_id: str) -> None:
     """Retain the failed run's logs as the latest evidence instead of deleting diagnostics."""
     if runtime_root.exists():
         preserve_evidence(root, runtime_root, run_id)
 
 
-def _run_modes(
-    target: CalibrationTarget, runtime_root: Path, options: V3RunOptions
-) -> tuple[ModeCalibration, ...]:
-    """Run selected modes and invalidate the whole run if driver identity changes."""
+def _run_modes(target: CalibrationTarget, context: _V3RunContext) -> tuple[ModeCalibration, ...]:
+    """Run selected modes against one immutable context population and driver identity."""
     calibrations: list[ModeCalibration] = []
     drivers: set[str] = set()
     for mode in target.modes:
-        request = mode_request(target, mode, (runtime_root, options))
+        run_context = (context.runtime_root, context.options, context.gpu_context_baseline)
+        request = mode_request(target, mode, run_context)
         calibration, mode_drivers = run_mode(request)
         calibrations.append(calibration)
         drivers |= mode_drivers
@@ -67,6 +80,18 @@ def _activate(
     return tuple(promote_candidate(item.mode.id, records_root) for item in calibrations)
 
 
+def _capture_context_baseline(target: CalibrationTarget) -> GpuContextBaseline | None:
+    """Fail fast before process work when CUDA context identities cannot be trusted."""
+    if target.hardware.backend == "cpu":
+        return None
+    if target.hardware.gpu_index is None:
+        raise CalibrationRunError("CUDA calibration requires a selected GPU index")
+    try:
+        return capture_gpu_context_baseline(target.hardware.gpu_index)
+    except VramEnvironmentError as error:
+        raise CalibrationRunError(f"calibration run invalidated: {error}") from error
+
+
 def run_calibration_v3(
     target: CalibrationTarget,
     options: V3RunOptions | None = None,
@@ -75,11 +100,13 @@ def run_calibration_v3(
     """Search, retain evidence, write candidates, and optionally activate each selected mode."""
     selected = options or V3RunOptions()
     root = data_dir() / "calibration" if destination_root is None else destination_root
+    context_baseline = _capture_context_baseline(target)
     run_id = uuid4().hex
     runtime_root = root / f".runtime-{run_id}"
     runtime_root.mkdir(parents=True, exist_ok=False)
+    context = _V3RunContext(runtime_root, selected, context_baseline)
     try:
-        calibrations = _run_modes(target, runtime_root, selected)
+        calibrations = _run_modes(target, context)
     except (VramEnvironmentError, RamError) as error:
         _preserve_on_failure(root, runtime_root, run_id)
         raise CalibrationRunError(f"calibration run invalidated: {error}") from error

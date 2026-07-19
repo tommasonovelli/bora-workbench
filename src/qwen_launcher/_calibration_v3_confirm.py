@@ -98,6 +98,7 @@ def _combine_vram(summaries: list[VramSummary]) -> VramSummary | None:
         max(item.release_duration_seconds for item in summaries),
         max(item.initial_compute_context_count for item in summaries),
         combine_telemetry([item.telemetry for item in summaries]),
+        sum(item.context_replacement_count for item in summaries),
     )
 
 
@@ -140,7 +141,14 @@ def _trial_spec(run: _ModeRun, ctx: int, assignment: _SessionAssignment) -> Tria
         assignment.round_index,
         assignment.global_position,
     )
-    return TrialSpec(build_plan(run, ctx, value), root, True, run.runtime_root, order)
+    return TrialSpec(
+        build_plan(run, ctx, value),
+        root,
+        True,
+        run.runtime_root,
+        order,
+        run.gpu_context_baseline,
+    )
 
 
 def _run_session(paired: _PairedRun, assignment: _SessionAssignment) -> None:
