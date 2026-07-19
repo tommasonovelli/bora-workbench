@@ -11,6 +11,7 @@ import pytest
 from qwen_launcher.benchmark import (
     PROMPT_SHA256,
     REQUEST_SHA256,
+    VISION_REQUEST_SHA256,
     BenchmarkError,
     run_benchmark,
     run_vision_probe,
@@ -44,6 +45,10 @@ def test_packaged_protocol_bytes_match_spike_hashes() -> None:
     assert (
         hashlib.sha256(resource("benchmark-v1/request.json").read_bytes()).hexdigest()
         == REQUEST_SHA256
+    )
+    assert (
+        hashlib.sha256(resource("calibration-v1/vision-request.json").read_bytes()).hexdigest()
+        == VISION_REQUEST_SHA256
     )
 
 

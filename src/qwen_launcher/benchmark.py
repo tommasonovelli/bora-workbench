@@ -19,6 +19,7 @@ _REQUEST_PATH = "benchmark-v1/request.json"
 _VISION_REQUEST_PATH = "calibration-v1/vision-request.json"
 PROMPT_SHA256 = "1c7182235411da2d4fe6fca130e3effb0b0d965569c52abd8fd45327103ddb2e"
 REQUEST_SHA256 = "025dc91aeb61a790d5fd36c27f127e04761ae7f1c3d6b542d0cfd9d37bc5c19f"
+VISION_REQUEST_SHA256 = "2641e7a3d3e23b6779fb3a73eefae4ed5a27dec19280384c33df170aeaad483c"
 _COMPLETION_TOKENS = 256
 _REQUEST_TIMEOUT_SECONDS = 15 * 60.0
 JsonObject = dict[str, object]
@@ -49,12 +50,20 @@ def _load_request(path: str) -> JsonObject:
 
 
 def verify_protocol_resources() -> None:
-    """Require byte-identical benchmark/v1 resources from Spike 0 (section 7, Step 5A)."""
-    expected = ((_PROMPT_PATH, PROMPT_SHA256), (_REQUEST_PATH, REQUEST_SHA256))
+    """Require byte-identical protocol resources from Spike 0 (section 7, Step 5A).
+
+    The vision request digest is the one measured for the Ubuntu Spike 0 evidence copies in
+    ``docs/spike-0/SHA256SUMS``, which the packaged resource matches byte for byte.
+    """
+    expected = (
+        (_PROMPT_PATH, PROMPT_SHA256),
+        (_REQUEST_PATH, REQUEST_SHA256),
+        (_VISION_REQUEST_PATH, VISION_REQUEST_SHA256),
+    )
     for path, digest in expected:
         actual = hashlib.sha256(resource(path).read_bytes()).hexdigest()
         if actual != digest:
-            raise BenchmarkError(f"benchmark/v1 resource digest mismatch: {path}")
+            raise BenchmarkError(f"protocol resource digest mismatch: {path}")
 
 
 def _post(client: httpx.Client, url: str, request: JsonObject) -> JsonObject:
@@ -116,6 +125,7 @@ def run_probe(base_url: str, client: httpx.Client | None = None) -> float:
 
 def run_vision_probe(base_url: str, client: httpx.Client | None = None) -> None:
     """Run the red-image request verified by Spike 0 and require its observed answer."""
+    verify_protocol_resources()
     selected, is_owned = _client(client)
     try:
         response = _post(
