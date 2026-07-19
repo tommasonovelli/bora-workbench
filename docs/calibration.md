@@ -10,6 +10,15 @@ storica in [`calibration-v2-design.md`](calibration-v2-design.md). Il design v3 
 I profili condivisi sono soltanto seed. Nessun vincitore misurato su un altro PC diventa una busta
 locale senza una nuova misura.
 
+## Stato del Calibration Gate
+
+Il run Windows 11/CUDA del 19 luglio 2026 ha completato `--mode all --no-activate` e ha prodotto
+candidati validi per coding, studio e vstudio, senza attivarli. L'esito locale è
+`CALIBRATION-ACCEPTED`; la copertura empirica complessiva resta `GATE-PARTIAL`. D-047 autorizza
+Step 5B e rinvia lo stesso protocollo su hardware materialmente diverso a un follow-up futuro non
+bloccante. Risultati, riserve e limiti sono registrati in
+[`calibration-gate-v3-windows.md`](calibration-gate-v3-windows.md).
+
 ## Prerequisiti
 
 Prima di iniziare:

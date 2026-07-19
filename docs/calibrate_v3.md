@@ -1,10 +1,12 @@
 # `calibrate_v3.md` — Ridisegno implementato della conferma `calibration/v3`
 
-> **Stato:** design approvato e implementato nello Step 5A. Risponde al run reale `coding` del
-> 18 luglio 2026 (record `records/coding.json`, esito onesto `CALIBRATION-REJECTED` per v2) e agli
-> otto problemi rilevati durante il Gate. Il prossimo passo è rieseguire il Gate con v3.
-> **Data:** 18 luglio 2026. **Evidenza citata:** record `calibration-record/v1` del run coding,
-> `docs/calibration-v2-design.md`, dispersioni dei mini-spike (`CALIBRATE.md`, sezione 2.2).
+> **Stato:** design approvato, implementato e sostenuto dal Gate v3 Windows CUDA dello Step 5A.
+> Risponde al run reale `coding` del 18 luglio 2026 (`CALIBRATION-REJECTED` per v2); il run pulito
+> `--mode all --no-activate` del 19 luglio è `CALIBRATION-ACCEPTED` localmente per coding, studio e
+> vstudio. La copertura empirica resta `GATE-PARTIAL`; D-047 autorizza Step 5B e rinvia hardware
+> materialmente diverso a un follow-up futuro non bloccante.
+> **Data:** 19 luglio 2026. **Evidenza citata:** `docs/calibration-gate-v3-windows.md`, record
+> `calibration-record/v1` del run v2, `docs/calibration-v2-design.md` e mini-spike.
 
 ## 1. Sintesi
 
@@ -30,8 +32,9 @@ ciclo di vita. In cinque punti:
    supera quella di B **in ogni round**. Nessuna nuova soglia: la regola resta derivata soltanto
    dalle misure locali. Senza unanimità i finalisti sono equivalenti e decide, come oggi, il
    margine VRAM e poi la prudenza.
-3. **Riserva RAM universale** (proposta 2,0 GiB) con la stessa semantica della riserva VRAM:
-   violarla durante un trial rende il probe non fattibile o scarta il finalista.
+3. **Riserva RAM universale** (2,0 GiB) con la stessa semantica della riserva VRAM: violarla
+   durante un trial rende il probe non fattibile o scarta il finalista. Il Gate locale non l'ha
+   avvicinata; la prova su capacità diverse resta un follow-up D-047 non bloccante.
 4. **Record `calibration-record/v2`** con evidenza per singolo avvio (baseline, picco, rilascio e
    sua durata, RAM, sessione benchmark, telemetria GPU, ordine temporale) e conservazione dei log
    dell'ultimo run; `validate` ricostruisce round, unanimità e scelta.
@@ -214,7 +217,7 @@ La bisezione misurata resta com'è (è già la parte che funziona: confine 37 tr
 
 ## 5. Riserva RAM universale (problema 6)
 
-Nuova costante di design, simmetrica alla riserva VRAM:
+Costante implementata, simmetrica alla riserva VRAM:
 
 > `RAM_RESERVE_GIB = 2,0`: se durante un trial la RAM disponibile minima scende sotto
 > la riserva, il probe è non fattibile / il finalista è scartato, con motivo esplicito
@@ -224,7 +227,9 @@ Motivazione del valore: è un margine assoluto contro la paginazione, indipenden
 della macchina (Windows degrada in modo simile vicino all'esaurimento a 16 come a 64 GiB); i
 prerequisiti attuali (28 GiB totali) e la misura reale (minimo 9,6 GiB disponibili) lo rendono
 inerte sugli host sani e attivo solo dove oggi accetteremmo una busta al limite del thrashing.
-Provenienza dichiarata: questa proposta; validazione al Gate come per le altre costanti D-039.
+Provenienza dichiarata: questa proposta. Il Gate Windows ha osservato almeno 8,602 GiB disponibili
+nei trial accettati, quindi ha verificato il monitor e la regola ma non ha stressato la soglia; la
+validazione su hardware con meno RAM resta aperta.
 
 Coerenza con il riuso: il controllo di headroom al lancio richiede già
 `RAM disponibile ≥ fabbisogno misurato`; diventa `≥ fabbisogno + riserva RAM`, speculare al ramo
@@ -311,8 +316,8 @@ nuova regola.
   attivo precedente sopravvive come `<modo>.previous.json` (uno slot, rollback a costo zero).
   L'utente ignaro continua a vivere con un solo comando e il record attivo subito: D-038 resta
   vero alla lettera.
-- `--no-activate` (nome da confermare) ferma il flusso al candidato: è la modalità per i run
-  sperimentali del Gate — un risultato non accettato non diventa operativo. `doctor` mostra per
+- `--no-activate` ferma il flusso al candidato: è la modalità per i run sperimentali del Gate — un
+  risultato non accettato non diventa operativo. `doctor` mostra per
   modo lo stato: attivo, candidato in attesa, assente, invalido, schema superato, senza headroom.
   Un successivo `calibrate --activate` promuove il candidato senza rieseguire la ricerca.
 - **Il record respinto di oggi si neutralizza da solo**: quando v3 arriva, `coding.json` (schema
@@ -366,28 +371,29 @@ Dove va il tempo, e che cosa si può comprimere:
   dell'intero protocollo.
 - **Niente parallelismo**: una sola GPU e la contesa di memoria renderebbero le misure
   reciprocamente contaminate; la serialità è un requisito di correttezza, non un'ingenuità.
-- Stima sulla macchina del Gate: screening ~7×2–3 min + conferma 4×4–6 min ≈ **30–45 min a modo
-  CUDA** (oggi: simile meno ~3 min), `all` ≈ 1,5–2 h. Con lo split interpolato ~−5 min a modo.
-  La CLI deve mostrare progresso per fase con stima appresa online (dopo due probe la durata del
-  probe è nota): per l'utente la durata percepita conta quanto quella reale.
+- La stima di design era 30–45 minuti a modo e 1,5–2 ore per `all`. Il Gate Windows reale ha
+  completato `all` in **27 minuti e 3 secondi**: coding 8,61 min, studio 7,99 min, vstudio 9,52 min.
+  Lo split interpolato e i tempi di caricamento locali spiegano il divario; il dato non diventa una
+  promessa su altro hardware. La CLI mostra progresso per fase con stima appresa online.
 - Futuro possibile, da mini-spike: `coding` e `studio` differiscono solo per sampling e UI; se
   uno spike verifica che la busta di memoria del server è identica, `all` può condividere lo
   screening fra i due (−~6 probe) confermando comunque per modo. Non necessario ora.
 
 ## 11. Costanti e provenienza (aggiornamento D-039)
 
-| Costante | Valore | Stato in v3 |
+| Costante | Valore | Evidenza del Gate Windows v3 |
 |---|---:|---|
-| Riserva VRAM minima | 0,5 GiB | invariata; da validare al Gate |
-| Tolleranza rilascio/deriva | 0,125 GiB | invariata; la deriva in conferma degrada la selezione invece di scartare (sezione 3.3) |
-| Round di conferma | 2 | sostituisce «2 avvii stabili» a parità di avvii; benchmark su ogni avvio; da validare al Gate |
-| Riserva RAM minima | 2,0 GiB | implementata con provenienza D-042; da validare al Gate |
-| Tetto probe screening per modo | 12 | invariato |
-| Scala contesti | 131072 → 8192 | invariata; obiettivo lessicografico ora dichiarato |
-| Regola di selezione | unanimità dei round su mediane di sessione | sostituisce «mediana > massimo»; zero soglie; da validare al Gate |
+| Riserva VRAM minima | 0,5 GiB | ha governato il confine; ha scartato vstudio 38 a 0,488 GiB; minimi accettati studio/vstudio 0,503/0,505 GiB |
+| Tolleranza rilascio/deriva | 0,125 GiB | massimo rilascio 0,0176 GiB e massima deriva 0,0176 GiB |
+| Round di conferma | 2 | ordine ABBA completo nei tre modi; benchmark su ogni avvio |
+| Riserva RAM minima | 2,0 GiB | minimo accettato 8,602 GiB; soglia non stressata |
+| Tetto probe screening per modo | 12 | usati 7/6/7 probe per coding/studio/vstudio |
+| Scala contesti | 131072 → 8192 | `ctx=131072` fattibile e selezionato nei tre modi |
+| Regola di selezione | unanimità dei round su mediane di sessione | osservate dominanza unanime, equivalenza per round discordi e finalista unico dopo scarto di riserva |
 
 Nessuna costante per-macchina; ogni effetto passa da misure locali. La provenienza è registrata in
-D-039/D-041–D-046; il Calibration Gate deve ancora validarne i valori su hardware eterogeneo.
+D-039/D-041–D-046. Il Gate locale sostiene i valori sulla macchina 32/8; D-047 rinvia la prova su
+hardware eterogeneo a un follow-up non bloccante e vieta di descriverla come già eseguita.
 
 ## 12. Versionamento, decisioni, migrazione
 
@@ -412,8 +418,8 @@ D-039/D-041–D-046; il Calibration Gate deve ancora validarne i valori su hardw
 
 ## 13. Limiti onesti della proposta
 
-1. Non riabilita il run del 18 luglio: serve una nuova esecuzione (è il costo dell'onestà, non
-   un difetto del disegno).
+1. Non riabilita il run v2 del 18 luglio: il nuovo run v3 è evidenza distinta e non reinterpreta
+   retroattivamente misure raccolte con un altro protocollo.
 2. Con 2 round, un burst che cade esattamente dentro una sessione può ancora produrre round
    discordi → equivalenza → margine: è il fallback voluto, prudente e dichiarato, non una scelta
    sbagliata; il Gate può alzare i round a 3 (unanimità su 3, sempre senza soglie) se l'evidenza
@@ -421,8 +427,8 @@ D-039/D-041–D-046; il Calibration Gate deve ancora validarne i valori su hardw
 3. Un carico ambientale **costante** per tutto il run abbassa i tok/s assoluti di entrambi i
    finalisti: il confronto resta equo, i valori assoluti restano relativi all'ambiente (il record
    lo dichiara; la telemetria lo documenta).
-4. La semantica della riserva RAM su Windows (standby list, mmap) va osservata al Gate prima di
-   fissare il valore.
+4. Il Gate Windows ha osservato la riserva RAM con mmap, ma con almeno 8,602 GiB disponibili: la
+   semantica vicino a 2 GiB e su un host con meno RAM resta non provata.
 5. La telemetria è best-effort per costruzione: su driver che non la espongono il record ha
    `null` e la spiegazione ambientale resta parziale (mai bloccante).
 6. I gap fra trial non sono campionati; D-046 impedisce l'assorbimento di contesti persistenti ma
@@ -461,19 +467,25 @@ La suite offline deterministica copre (fake trial runner, nessun hardware):
 - respawn stesso file ammesso e contato, file nuovo/molteplicità extra/identità illeggibile e PID
   gestito riciclato rifiutati senza percorsi serializzati.
 
-Verifica locale Windows: uv 0.11.28, CPython 3.12.13, Ruff, 313 test offline, `validate`, build e
+Verifica locale Windows: uv 0.11.28, CPython 3.12.13, Ruff, 314 test offline, `validate`, build e
 wheel isolata verdi. La baseline D-046 ha risolto 20/20 identità WDDM reali senza serializzare
-percorsi. La matrice CI Ubuntu/Windows resta una verifica post-commit, non dichiarata in anticipo.
+percorsi. Le matrici CI Ubuntu/Windows sono verdi sui commit D-046 `6f69d77` (run `29684539755`) e
+lifecycle doctor `2d4cc22` (run `29684866498`). Il Gate reale è descritto in
+`docs/calibration-gate-v3-windows.md`.
 
 ## 15. Percorso operativo
 
 1. ~~approvare riserva RAM, ABBA, lifecycle, telemetria e split interpolato~~ — completato con
    D-041–D-046;
 2. ~~implementare v3 e i test offline~~ — completato; i run sperimentali usano `--no-activate`;
-3. rieseguire il Calibration Gate sulla macchina di Tommaso e su almeno un caso materialmente diverso;
-   le costanti (riserve, round, tetto) si validano o si correggono con l'evidenza raccolta;
-4. solo dopo `CALIBRATION-ACCEPTED`: promozione dei record, apertura dello Step 5B.
+3. ~~rieseguire il Calibration Gate sulla macchina di Tommaso~~ — completato il 19 luglio 2026 con
+   esito locale accettato per i tre modi e candidati lasciati inattivi;
+4. implementare Step 5B con copertura empirica esplicitamente limitata alla macchina misurata e senza
+   distribuire la sua busta come optimum remoto;
+5. ripetere in futuro il Gate su almeno un caso materialmente diverso e aggiornare l'evidenza, senza
+   rendere il follow-up bloccante per Step 5B.
 
-La conclusione resta quella onesta già dichiarata: `CALIBRATION-REJECTED` vale per il protocollo
-v2, non necessariamente per la busta 38 — e `calibration/v3` esiste esattamente per poter dire,
-al prossimo run, quale busta vince *e perché*, su qualunque macchina, con un solo comando.
+La conclusione aggiornata resta onesta: `CALIBRATION-REJECTED` vale per il protocollo v2, mentre il
+v3 spiega quale busta vince e perché sulla macchina misurata. Il risultato Windows è
+`CALIBRATION-ACCEPTED` per i tre modi; D-047 permette di procedere con Step 5B senza chiamare
+completa la copertura empirica.

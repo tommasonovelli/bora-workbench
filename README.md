@@ -28,19 +28,24 @@ Gli Step 1–4 sono completi. Suite, build, wheel isolata, matrice CI Ubuntu/Win
 previsti dai relativi gate sono verdi. Il catalogo profili vuoto è valido: i tre modi usano la
 baseline dello spike senza presentarla come profilo ottimizzato. Lo Step 5 è completo: chat e vision
 sono collaudate realmente su Ubuntu e Windows CUDA e la matrice CI Ubuntu/Windows è verde. Lo Step
-5A conserva il laboratorio `calibration/v1` e implementa ora `calibration/v3`: ricerca locale a zero
+5A conserva il laboratorio `calibration/v1` e implementa `calibration/v3`: ricerca locale a zero
 input tecnici obbligatori, screening adattivo, riserve RAM/VRAM e conferma ABBA con benchmark su
 ogni avvio. Il risultato nasce candidato, viene attivato atomicamente per default e resta
 riutilizzabile soltanto sulla macchina e sui contratti che lo hanno misurato. `calibration/v2` è
 storico e i suoi record v1 sono inerti dopo il Gate respinto del 18 luglio 2026. Il mini-spike Ubuntu
 e lo smoke Windows CUDA 13.3 hanno dato GO a cache KV Q8 con `--mmap` (NO-GO a `--no-mmap`); il
 dominio di `n_cpu_moe` è verificato (`[0, 41]`). Il design implementato è in
-[`docs/calibrate_v3.md`](docs/calibrate_v3.md) (D-041–D-045); il v2 superato resta in
-[`docs/calibration-v2-design.md`](docs/calibration-v2-design.md). Lo Step 5B resta chiuso fino al
-nuovo Calibration Gate e ad almeno un esito `CALIBRATION-ACCEPTED`. Il piano
-normativo e il tracker sono in
-[`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello spike è sotto
-[`docs/spike-0/`](docs/spike-0/).
+[`docs/calibrate_v3.md`](docs/calibrate_v3.md) (D-041–D-046); il v2 superato resta in
+[`docs/calibration-v2-design.md`](docs/calibration-v2-design.md).
+
+Il Gate v3 Windows 11/CUDA del 19 luglio 2026 è `CALIBRATION-ACCEPTED` per coding, studio e vstudio:
+ha prodotto tre candidati v2 validi con `--no-activate`, senza modificare i piani di lancio. CI è
+verde su Ubuntu e Windows. La copertura empirica resta `GATE-PARTIAL`; D-047 accetta esplicitamente
+questo limite e rinvia la prova su hardware materialmente diverso a un follow-up non bloccante.
+Step 5A è concluso e Step 5B è il prossimo step. Risultati e limiti sono in
+[`docs/calibration-gate-v3-windows.md`](docs/calibration-gate-v3-windows.md). Il piano normativo e
+il tracker sono in [`IMPLEMENTATION_SPEC.md`](IMPLEMENTATION_SPEC.md); l'evidenza verificata dello
+spike è sotto [`docs/spike-0/`](docs/spike-0/).
 
 ## Sviluppo
 

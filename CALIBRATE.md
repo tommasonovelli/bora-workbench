@@ -2,11 +2,12 @@
 
 > **Stato:** analisi non normativa che corregge il precedente piano host-specific. La specifica
 > normativa resta `IMPLEMENTATION_SPEC.md`. Nessun profilo o policy di produzione è autorizzato da
-> questo documento e lo Step 5B resta chiuso. L'aggiornamento del 18 luglio registra il Gate v2
-> respinto e il successore v3 implementato in `docs/calibrate_v3.md`.
-> **Data:** 18 luglio 2026. **Evidenza conservata:** primo bundle reale
-> `calibration-20260716t142541702536`, record del run v2 e mini-spike Q8 sotto
-> `docs/mini-spike-kv-q8-ubuntu/`.
+> questo documento. L'aggiornamento del 19 luglio registra il Gate v2 respinto, il successore v3
+> implementato, il primo Gate v3 Windows CUDA accettato localmente e D-047, che autorizza Step 5B
+> rinviando la prova hardware eterogenea a un follow-up non bloccante.
+> **Data:** 19 luglio 2026. **Evidenza conservata:** primo bundle reale
+> `calibration-20260716t142541702536`, record del run v2, mini-spike Q8 e
+> `docs/calibration-gate-v3-windows.md`.
 
 ## 1. Requisito di prodotto chiarito
 
@@ -93,14 +94,14 @@ Il run del 16 luglio conserva valore diagnostico sulla macchina originale:
 | historical | 131072 | 38 | OOM col contratto allora attivo |
 | aggressive | 131072 | 36 | OOM col contratto allora attivo |
 
-Il mini-spike Ubuntu conserva inoltre questi esiti sul contratto motore:
+I mini-spike conservano inoltre questi esiti sul contratto motore:
 
 - cache K/V Q8 con mmap: `GO` Ubuntu;
 - Q8 con `--no-mmap`: `NO-GO` Ubuntu;
-- smoke Windows ancora necessario prima di modificare il lock globale.
+- smoke Windows CUDA 13.3 con Q8+mmap: `GO`; il lock CUDA è stato aggiornato separatamente.
 
-Questi fatti possono correggere il contratto Q8 e riprodurre il PC originale. Non approvano una
-policy universale, una classe portabile o una lista di ricerca completa.
+Questi fatti correggono il contratto Q8 e riproducono il PC originale. Non approvano una policy
+universale, una classe portabile o una lista di ricerca completa.
 
 ## 5. Architettura corretta
 
@@ -203,10 +204,15 @@ pubblica. L'ordine corretto è:
 7. ~~progettare e implementare il successore~~ — **fatto**: `calibration/v3`, ABBA, unanimità,
    riserva RAM, record `calibration-record/v2`, lifecycle candidato/attivo, telemetria evidence-only
    e monotonia sui soli probe fattibili (`docs/calibrate_v3.md`, D-041–D-046);
-8. rieseguire il Gate v3 con `--no-activate` sulla macchina di Tommaso e su almeno un caso hardware
-   materialmente diverso;
-9. aprire lo Step 5B solo dopo almeno un risultato locale accettato e dopo aver dimostrato che un PC
-   fuori dalla classe originaria può eseguire la propria ricerca.
+8. ~~rieseguire il Gate v3 con `--no-activate` sulla macchina di Tommaso~~ — **fatto il 19 luglio
+   2026**: Windows 11/CUDA `--mode all`, tre candidati validi e inattivi, esito locale
+   `CALIBRATION-ACCEPTED` per coding, studio e vstudio
+   (`docs/calibration-gate-v3-windows.md`);
+9. implementare Step 5B dichiarando che l'evidenza reale v3 copre per ora soltanto l'hardware del
+   maintainer e distribuendo il metodo di ricerca, non la sua busta;
+10. ripetere in futuro lo stesso Gate su almeno un caso hardware materialmente diverso e aggiornare
+    l'evidenza senza rendere questa attività bloccante per Step 5B.
 
-Fino ad allora la baseline verificata resta il comportamento sicuro. Non viene pubblicata la classe
-`[31, 33]` / `[7.5, 8.5]` come soluzione al problema di generalizzazione.
+La baseline verificata resta il comportamento sicuro e i candidati del Gate non vengono attivati da
+questa decisione. Non viene pubblicata la classe `[31, 33]` / `[7.5, 8.5]` come soluzione al problema
+di generalizzazione.

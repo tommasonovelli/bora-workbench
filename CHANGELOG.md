@@ -33,6 +33,8 @@ All notable changes to this project will be documented in this file.
 - `calibration-record/v2` with per-process timing, RAM/VRAM/release, benchmark, WDDM-context and
   best-effort GPU telemetry evidence; candidate/active/previous lifecycle, atomic promotion,
   `--no-activate`, `--activate`, `--target-ctx`, one-slot evidence retention and doctor states.
+- Run-scoped WDDM executable-file identity that admits bounded baseline respawns while retaining
+  invalidation for new, unreadable or excess GPU contexts.
 
 ### Changed
 
@@ -49,7 +51,9 @@ All notable changes to this project will be documented in this file.
   superseded after the first real Gate rejected its disjoint confirmation windows and extreme
   maximum-based dominance rule; v1 records are diagnosed as superseded and never reused.
 - The 0.1 plan now requires hardware-independent local search instead of exporting the 32/8 host's
-  optimum through nominal RAM/VRAM classes.
+  optimum through nominal RAM/VRAM classes. The first clean v3 Gate is locally accepted for all
+  three Windows CUDA modes; D-047 permits Step 5B with empirical coverage still partial and defers
+  materially different hardware to a non-blocking follow-up.
 - The engine command contract now pins KV-cache Q8 (`--cache-type-k q8_0 --cache-type-v q8_0`) on
   the CUDA branch only, keeping mmap enabled and the CPU branch unchanged, after paired Ubuntu and
   Windows 11 CUDA 13.3 smoke evidence on llama.cpp b10011.

@@ -3,7 +3,8 @@
 > **Stato:** design storico, implementato ma **superato da `calibration/v3`** dopo l'esito
 > `CALIBRATION-REJECTED` del Gate del 18 luglio 2026. Resta evidenza della provenienza di D-038/D-040
 > e non descrive il protocollo predefinito. Il successore è in [`calibrate_v3.md`](calibrate_v3.md)
-> ed è normato da D-041–D-045 in `IMPLEMENTATION_SPEC.md`. Lo Step 5B resta chiuso.
+> ed è normato da D-041–D-046 in `IMPLEMENTATION_SPEC.md`. D-047 autorizza Step 5B con copertura
+> empirica ancora parziale.
 > **Data:** 17 luglio 2026. **Evidenza citata:** `docs/mini-spike-kv-q8-ubuntu/`,
 > `docs/mini-spike-kv-q8-windows/`, primo bundle reale `calibration-20260716t142541702536`.
 
@@ -140,5 +141,6 @@ non ne introduce altre.
 Il primo Gate reale ha respinto il protocollo, non necessariamente la busta misurata: finestre di
 conferma disgiunte e un massimo estremo non distinguevano candidato e deriva ambientale. Il codice
 v2 è stato sostituito dal v3; i record `calibration-record/v1` sono deliberatamente superati e
-inermi. Il prossimo Gate usa `calibration/v3 --no-activate` e richiede ancora un caso hardware
-materialmente diverso prima di aprire lo Step 5B.
+inermi. Il Gate `calibration/v3 --no-activate` del 19 luglio è accettato localmente su Windows CUDA
+per i tre modi (`calibration-gate-v3-windows.md`). D-047 autorizza Step 5B e rinvia il caso hardware
+materialmente diverso a un follow-up futuro non bloccante.
