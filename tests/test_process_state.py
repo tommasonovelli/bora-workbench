@@ -121,6 +121,24 @@ def test_stop_escalates_from_terminate_to_kill_after_ten_seconds(tmp_path, monke
     assert fake.wait.call_args_list[1].kwargs["timeout"] == 5
 
 
+def test_stop_skips_process_dying_between_recheck_and_terminate(tmp_path, monkeypatch) -> None:
+    """Treat NoSuchProcess raised by terminate as already stopped instead of a control error."""
+    child = sleeper()
+    try:
+        service = service_for(child, tmp_path)
+    finally:
+        child.terminate()
+        child.wait(timeout=5)
+    fake = Mock()
+    fake.is_running.return_value = True
+    fake.create_time.return_value = service.create_time
+    fake.terminate.side_effect = psutil.NoSuchProcess(service.pid)
+    monkeypatch.setattr(control.psutil, "Process", lambda pid: fake)
+
+    assert control._terminate_service(service) is False
+    fake.kill.assert_not_called()
+
+
 def test_live_start_lock_rejects_second_launch(tmp_path) -> None:
     """Reject concurrent preflight while the exact owner remains alive."""
     first = acquire_start_lock(tmp_path)

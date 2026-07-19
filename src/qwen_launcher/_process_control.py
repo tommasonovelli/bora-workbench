@@ -7,7 +7,13 @@ from pathlib import Path
 
 import psutil
 
-from qwen_launcher._process_state import ServiceState, StateError, clean_state, write_state
+from qwen_launcher._process_state import (
+    ServiceState,
+    StateError,
+    clean_state,
+    find_verified_process,
+    write_state,
+)
 
 
 class ControlError(RuntimeError):
@@ -35,12 +41,14 @@ def status_at(root: Path) -> ServiceReport:
 def _terminate_service(service: ServiceState) -> bool:
     """Stop one service only after rechecking its mandatory process identity."""
     try:
-        process = psutil.Process(service.pid)
-        if not process.is_running() or process.create_time() != service.create_time:
+        process = find_verified_process(service.pid, service.create_time)
+        if process is None:
             return False
+        process.terminate()
     except psutil.NoSuchProcess:
+        # The verified process exited between the identity recheck and terminate; treat it
+        # like any other already-dead entry so stop stays idempotent.
         return False
-    process.terminate()
     try:
         process.wait(timeout=10)
     except psutil.TimeoutExpired:

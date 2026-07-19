@@ -141,13 +141,25 @@ def write_state(root: Path, services: tuple[ServiceState, ...]) -> None:
         raise StateError(f"cannot update service state {path}: {error}") from error
 
 
+def find_verified_process(pid: int, create_time: float) -> psutil.Process | None:
+    """Return the live process only when pid and create_time both match, or None when gone.
+
+    The pid/create_time pair is the mandatory process identity from specification section 5.9.
+    Access failures propagate unmapped so each caller raises its own boundary error.
+    """
+    try:
+        process = psutil.Process(pid)
+        if process.is_running() and process.create_time() == create_time:
+            return process
+    except psutil.NoSuchProcess:
+        return None
+    return None
+
+
 def is_same_process(service: ServiceState) -> bool:
     """Match the mandatory pid plus create_time identity without guessing on access errors."""
     try:
-        process = psutil.Process(service.pid)
-        return process.is_running() and process.create_time() == service.create_time
-    except psutil.NoSuchProcess:
-        return False
+        return find_verified_process(service.pid, service.create_time) is not None
     except (psutil.AccessDenied, OSError) as error:
         raise StateError(
             f"cannot verify process identity for PID {service.pid}: {error}"

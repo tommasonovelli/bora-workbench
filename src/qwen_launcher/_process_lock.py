@@ -9,6 +9,8 @@ from pathlib import Path
 
 import psutil
 
+from qwen_launcher._process_state import find_verified_process
+
 
 class StartLockError(RuntimeError):
     """Report a concurrent or unverifiable launcher start lock."""
@@ -43,10 +45,7 @@ def _read_owner(path: Path) -> _Owner:
 def _owner_alive(owner: _Owner) -> bool:
     """Return whether the lock still belongs to the exact recorded process."""
     try:
-        process = psutil.Process(owner.pid)
-        return process.is_running() and process.create_time() == owner.create_time
-    except psutil.NoSuchProcess:
-        return False
+        return find_verified_process(owner.pid, owner.create_time) is not None
     except (psutil.AccessDenied, OSError) as error:
         raise StartLockError(f"cannot verify start-lock owner PID {owner.pid}: {error}") from error
 

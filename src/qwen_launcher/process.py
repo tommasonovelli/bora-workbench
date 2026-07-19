@@ -131,6 +131,8 @@ def _health_target(request: StartRequest, log_path: Path) -> HealthTarget:
 def start_service(request: StartRequest, root: Path | None = None) -> RunningService:
     """Serialize preflight, spawn shell-free, persist identity, and wait for exact readiness."""
     selected_root = state_dir() if root is None else root
+    process: subprocess.Popen[str] | None = None
+    service: ServiceState | None = None
     try:
         with acquire_start_lock(selected_root):
             snapshot = clean_state(selected_root)
@@ -157,9 +159,9 @@ def start_service(request: StartRequest, root: Path | None = None) -> RunningSer
         wait_for_health(process, _health_target(request, log_path))
         return running
     except (HealthError, OSError, ProcessError, StartLockError, StateError) as error:
-        if "process" in locals():
+        if process is not None:
             _terminate_popen(process)
-        if "service" in locals():
+        if service is not None:
             remove_service(selected_root, service)
         raise ProcessError(str(error)) from error
 

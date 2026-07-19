@@ -120,7 +120,10 @@ def test_modes_and_candidates_use_distinct_fresh_process_roots(tmp_path, monkeyp
     assert all(mode.proposed_candidate_id == "fast" for mode in result.modes)
 
 
-@pytest.mark.parametrize("message", ["CUDA out of memory", "health timeout", "process crashed"])
+@pytest.mark.parametrize(
+    "message",
+    ["CUDA out of memory", "health timeout", "process crashed", "renderer zoom failure"],
+)
 def test_candidate_failure_is_discarded_and_next_candidate_runs(
     tmp_path, monkeypatch, message
 ) -> None:

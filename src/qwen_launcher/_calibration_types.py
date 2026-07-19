@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -9,6 +10,10 @@ from qwen_launcher._calibration_vram import VramSummary
 from qwen_launcher.benchmark import BenchmarkResult
 from qwen_launcher.calibration import Candidate
 from qwen_launcher.profiles import Mode
+
+# "oom" must match as a whole word: a bare substring test would classify unrelated log text
+# such as "zoom" as an out-of-memory failure.
+_OOM_PATTERN = re.compile(r"\boom\b|out of memory")
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,7 +55,7 @@ def discard_reason(error: Exception, logs: tuple[Path, ...]) -> str:
         except OSError:
             continue
     lowered = text.casefold()
-    if "out of memory" in lowered or "oom" in lowered:
+    if _OOM_PATTERN.search(lowered):
         return f"OOM: {error}"
     return str(error) or error.__class__.__name__
 
