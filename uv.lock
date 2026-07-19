@@ -215,7 +215,7 @@ wheels = [
 
 [[package]]
 name = "qwen-launcher"
-version = "0.1.0.dev0"
+version = "0.1.0rc1"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

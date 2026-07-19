@@ -1,48 +1,84 @@
 # Contribuire
 
-Il progetto segue il piano normativo `IMPLEMENTATION_SPEC.md` e procede uno step
-alla volta. Prima di una modifica:
+`IMPLEMENTATION_SPEC.md` è l'unico piano normativo. Il progetto procede uno step alla volta: una PR
+non può anticipare milestone, cambiare versioni appuntate o trasformare assunzioni in compatibilità.
 
-1. leggere l'intero piano e il tracker iniziale;
-2. non anticipare feature di step successivi;
-3. non inventare flag, benchmark o compatibilità del motore;
-4. non usare rete nei test;
-5. non modificare configurazione utente o cache Hugging Face.
+## Prima della modifica
 
-Una pull request modifica **contenuto dichiarativo oppure core, mai entrambi**. I report devono
-contenere misure reali raccolte con `calibration/v3` e la release del lock. Non si accettano profili
-`profile/v1` di produzione: una misura su un host non può diventare una busta finale per altri PC.
-L'evidenza condivisa può soltanto ordinare la stessa ricerca locale completa.
+1. leggere l'intero piano e il tracker;
+2. eseguire `git status`, conservando modifiche preesistenti;
+3. eseguire sync, Ruff e pytest nel lock congelato;
+4. leggere lock, schemi, test ed evidenza pertinenti;
+5. fermarsi e descrivere qualunque contraddizione fra fonti.
 
-La procedura, il naming, i checksum, la checklist privacy e il testo PR sono in
-[`docs/calibration-contributing.md`](docs/calibration-contributing.md). Il flusso è manuale e non
-crea autenticazione, upload, branch remoti, issue o pull request. La sola evidenza v3 attuale resta
-Windows 11/CUDA su RTX 2060 SUPER 8 GiB e 31,92 GiB RAM; la copertura è `GATE-PARTIAL` e il
-follow-up su hardware materialmente diverso è aperto ma non bloccante per D-047.
+Non inventare flag, checksum, commit, benchmark, hardware supportato, profili, salute o claim di
+portabilità. I test non usano rete, GPU, modello, server reale o privilegi amministrativi.
 
-## Revisione delle pull request
+## Una PR: core oppure contenuto
 
-Il branch `main` è protetto. Prima del merge di una PR di un contributore:
+Una pull request modifica **core oppure contenuto dichiarativo, mai entrambi**.
 
-- la CI Ubuntu e Windows deve essere verde e il branch deve essere aggiornato;
-- l'unico maintainer esegue personalmente la revisione come code owner;
-- è richiesta almeno un'approvazione del code owner;
-- nuovi commit annullano l'approvazione precedente e richiedono una nuova revisione.
+- Core: Python, lifecycle, installer, workflow e test comportamentali.
+- Contenuto: modi, policy, report, manifest, evidenza e relativa documentazione.
 
-CI verde e approvazione sono necessarie, ma non garantiscono il merge. Una PR può richiedere
-correzioni o essere rifiutata se esce dal perimetro dello step, manca di evidenze o contraddice la
-specifica. Essendoci un solo maintainer, non è garantito un tempo preciso di revisione.
+Schemi incompatibili richiedono una nuova versione e una milestone che la autorizzi. Non rinominare,
+spostare o riformattare file estranei allo scopo della PR.
 
-Il bypass amministratore resta attivo per evitare che l'unico code owner rimanga bloccato sulle
-proprie modifiche. Non cambia il flusso dei contributori e le modifiche del maintainer vengono
-comunque verificate dalla CI.
+## Evidenza di calibrazione
+
+Un contributo usa esclusivamente il protocollo pubblico approvato `calibration/v3`,
+`benchmark/v1`, il modello appuntato e `llama.cpp b10011`. Numeri e scope devono provenire da un run
+reale sulla release lock; un campo mancante non viene ricostruito o inventato.
+
+Sono obbligatori:
+
+- bundle/report validato e privacy-safe;
+- SHA-256 dei byte esatti e manifest verificato;
+- hardware e limite di copertura dichiarati senza hostname, username o percorsi privati;
+- nessun record locale, config o log grezzo nel repository;
+- `GATE-PARTIAL` visibile finché manca evidenza materialmente diversa;
+- approvazione personale del maintainer prima dell'accettazione.
+
+Un report condiviso è evidenza e seed di solo ordine: non diventa una busta finale remota. Non sono
+accettati nuovi `profile/v1`, nearest-match, promesse tok/s o applicazione diretta del vincitore di un
+altro PC. La procedura completa e il testo PR sono in
+[`docs/calibration-contributing.md`](docs/calibration-contributing.md).
+
+## Qualità e sicurezza
+
+- funzioni piccole, tipi precisi e docstring su ogni modulo, classe e funzione;
+- nessun `shell=True`, `eval`, `exec`, `sudo`, elevazione o bind `0.0.0.0`;
+- TLS e checksum obbligatori, estrazione confinata e cancellazioni solo nelle radici gestite;
+- nessuna modifica automatica a `config.toml` o alla cache Hugging Face;
+- dipendenze nuove soltanto se autorizzate dallo step, con `pyproject.toml` e `uv.lock` insieme;
+- errori attesi azionabili su stderr, senza traceback e con gli exit code normativi.
 
 ## Verifiche
 
 ```bash
+uv sync --frozen
 uv run --frozen ruff check .
 uv run --frozen ruff format --check .
 uv run --frozen pytest
+uv run --frozen qwen-launcher validate
 ```
 
-Usare Conventional Commits. Push, tag e pubblicazioni richiedono sempre autorizzazione esplicita.
+Se packaging o risorse cambiano:
+
+```bash
+uv build
+uv run --frozen python scripts/verify_wheel.py
+```
+
+Segnalare esplicitamente controlli non eseguiti; non sostituire CI o Gate umani con “funziona sulla
+mia macchina”.
+
+## Revisione e Git
+
+Il branch `main` richiede CI Ubuntu/Windows verde e revisione code owner per i contributori. Nuovi
+commit annullano l'approvazione precedente. Il bypass amministratore evita di bloccare l'unico
+maintainer, ma non elimina i controlli locali e CI.
+
+Usare Conventional Commits con oggetto concreto e, per cambi non banali, un corpo che spieghi
+vincoli, motivazione e verifiche. Push, tag, release, upload, impostazioni remote e pubblicazione
+richiedono autorizzazione esplicita nella sessione corrente.

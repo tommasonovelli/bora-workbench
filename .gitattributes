@@ -19,3 +19,6 @@
 /src/qwen_launcher/resources/notices/NVIDIA-CUDA-EULA.html -text -diff
 # The normative plan uses Markdown hard line breaks intentionally.
 /IMPLEMENTATION_SPEC.md whitespace=-blank-at-eol
+# Pin installer line endings so the POSIX and PowerShell scripts run on every checkout.
+/install.sh text eol=lf
+/install.ps1 text eol=crlf

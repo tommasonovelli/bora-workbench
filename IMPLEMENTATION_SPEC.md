@@ -1,4 +1,4 @@
-# qwen-launcher — Specifica centrale di implementazione (v4.4)
+# qwen-launcher — Specifica centrale di implementazione (v4.5)
 
 ## 0. Tracker di avanzamento — aggiornato al 19 luglio 2026
 
@@ -41,7 +41,11 @@
 - [x] **Step 5B — Policy di ricerca approvata, evidenza e flusso pubblico:** contratti pubblici v2,
   policy del metodo v3, report Windows privacy-safe, digest, seed di solo ordine, guida e verifica
   wheel completati. Nessun profilo finale è distribuito e la copertura resta `GATE-PARTIAL`.
-- [ ] **Step 6A / Human Gate / 6B — Release 0.1.**
+- [x] **Step 6A — Preparazione locale release 0.1:** RC `0.1.0rc1`, installer espliciti,
+  disinstallazione confinata, documentazione, workflow OIDC e artefatti locali completati senza
+  pubblicazione.
+- [ ] **Human Gate 0.1 — Collaudi puliti e decisione `RELEASE`/`NO-RELEASE`.**
+- [ ] **Step 6B — Finalizzazione locale release 0.1:** bloccato fino a `RELEASE` esplicito.
 - [ ] **Step 7 — Skill e router.**
 - [ ] **Step 8 — Open WebUI e sync.**
 - [ ] **Step 9 — Benchmark autonomo e doctor definitivo.**
@@ -266,23 +270,40 @@
   `docs/calibration-gate-v3-windows.md`. D-047 rinvia la prova su hardware materialmente diverso a un
   follow-up futuro non bloccante e chiude lo Step 5A.
 
+### Step 6A — dettaglio
+
+- [x] `install.sh` e `install.ps1` richiedono una sorgente esplicita: wheel RC con SHA-256, commit Git
+  completo o versione PyPI già esistente; appuntano uv `0.11.28` e CPython `3.12.13` senza
+  elevazione, default remoto o claim su una versione non pubblicata.
+- [x] `uninstall` mostra le quattro radici gestite, rifiuta servizi vivi e radici alterate o symlink,
+  richiede conferma e non include mai la cache Hugging Face.
+- [x] README, CONTRIBUTING, troubleshooting, release, benchmark e anatomia modo/profilo completati;
+  la sdist li include insieme agli installer.
+- [x] Workflow release separato con matrice Ubuntu/Windows, action a SHA completo, artefatto testato,
+  ambiente `pypi`, least privilege e Trusted Publishing OIDC; nessuna configurazione remota eseguita.
+- [x] Versione `0.1.0rc1`, lock e changelog aggiornati; 351 test offline, Ruff, `validate`, build e
+  verifica isolata degli artefatti verdi localmente su Windows con CPython `3.12.13` e uv `0.11.28`.
+
 ### Prossima azione obbligatoria
 
-Step 5B è concluso senza attivare i candidati locali. La prossima milestone è Step 6A, da iniziare
-soltanto in una nuova sessione dedicata; questa modifica non ne anticipa installer, release o
-pubblicazione. La ripetizione `calibration/v3 --no-activate` su hardware materialmente diverso resta
-un follow-up futuro non bloccante e la copertura empirica resta `GATE-PARTIAL`.
+Step 6A è concluso localmente senza tag, upload, release o modifica remota. La prossima milestone è
+lo Human Gate 0.1: Tommaso deve collaudare l'artefatto RC con hash verificato su Ubuntu 22.04 pulito e
+Windows Sandbox e decidere esplicitamente `RELEASE` o `NO-RELEASE`. Step 6B resta bloccato fino a
+`RELEASE`. La ripetizione `calibration/v3 --no-activate` su hardware materialmente diverso resta un
+follow-up futuro non bloccante e la copertura empirica resta `GATE-PARTIAL`.
 
 ---
 
 > **Stato:** documento normativo centrale, pronto a guidare l'implementazione per step.  
-> **Data di consolidamento:** 19 luglio 2026; la v4.4 registra D-048 e la conclusione dello Step
-> 5B con policy/report v2, evidenza Windows privacy-safe e seed di solo ordine. La v4.3 registrava
-> D-047, che accetta il Gate locale Windows CUDA e rinvia la prova hardware eterogenea a un follow-up
-> non bloccante. La v4.2 registrava CI verde e il Gate v3 locale accettato per i tre modi;
-> la v4.1 registrava il Gate v2 respinto e `calibration/v3` implementato (D-041–D-046,
+> **Data di consolidamento:** 19 luglio 2026; la v4.5 registra la conclusione locale dello Step 6A
+> e il passaggio allo Human Gate 0.1, senza pubblicazione. La v4.4 registrava D-048 e la conclusione
+> dello Step 5B con policy/report v2, evidenza Windows privacy-safe e seed di solo ordine. La v4.3
+> registrava D-047, che accetta il Gate locale Windows CUDA e rinvia la prova hardware eterogenea a
+> un follow-up non bloccante. La v4.2 registrava CI verde e il Gate v3 locale accettato per i tre
+> modi; la v4.1 registrava il Gate v2 respinto e `calibration/v3` implementato (D-041–D-046,
 > `docs/calibrate_v3.md`).  
-> **Sostituisce:** la v4.2, la v4.1, la v3.4, la v3.1, `PIANO_IMPLEMENTAZIONE_v2.md`, le due revisioni
+> **Sostituisce:** la v4.4, la v4.3, la v4.2, la v4.1, la v3.4, la v3.1,
+> `PIANO_IMPLEMENTAZIONE_v2.md`, le due revisioni
 > successive e la v3 non corretta.  
 > **Regola d'uso:** una sessione di sviluppo esegue un solo step, nell'ordine indicato. Prima di
 > modificare il repository, l'esecutore legge comunque l'intero documento e applica tutti i

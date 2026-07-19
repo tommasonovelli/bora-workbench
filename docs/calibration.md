@@ -171,4 +171,5 @@ proposta non distribuibile, log redatti, manifest e guida. `validate --path <bun
 schema, digest, riferimenti relativi e pattern privati POSIX/Windows. Per l'evidenza pubblica v3 si
 usa il flusso manuale `calibration-report/v2` di
 [`calibration-contributing.md`](calibration-contributing.md), senza copiare record o log locali.
-Nessun comando crea branch, issue, PR o upload; la revisione umana resta obbligatoria.
+Nessun comando crea branch, issue, PR o upload; la revisione umana resta obbligatoria. Per la
+separazione fra misura, calibrazione e regressione vedere [`benchmarks.md`](benchmarks.md).

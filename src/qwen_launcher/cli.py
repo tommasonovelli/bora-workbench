@@ -19,6 +19,7 @@ from qwen_launcher._cli_control import run_stop, show_status
 from qwen_launcher._cli_doctor import run_doctor
 from qwen_launcher._cli_engine import run_engine_install, show_engine_status
 from qwen_launcher._cli_services import run_coding, run_studio, run_vstudio
+from qwen_launcher._cli_uninstall import run_uninstall
 from qwen_launcher._cli_validation import run_validate
 from qwen_launcher.calibration import CalibrationError
 
@@ -39,7 +40,7 @@ def package_version() -> str:
     try:
         return version("qwen-launcher")
     except PackageNotFoundError:
-        return "0.1.0.dev0"
+        return "0.1.0rc1"
 
 
 def _version_callback(value: bool) -> None:
@@ -157,6 +158,12 @@ def status() -> None:
 def stop() -> None:
     """Stop only identity-verified managed services and remain idempotent when none exist."""
     run_stop(_stdout, _stderr)
+
+
+@app.command()
+def uninstall() -> None:
+    """Preview and, after confirmation, delete managed data, cache, state, and configuration."""
+    run_uninstall(_stdout, _stderr)
 
 
 if __name__ == "__main__":

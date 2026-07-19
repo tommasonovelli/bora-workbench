@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.0rc1] - 2026-07-19
+
 ### Added
 
 - Initial Python package scaffold.
@@ -37,6 +39,10 @@ All notable changes to this project will be documented in this file.
   invalidation for new, unreadable or excess GPU contexts.
 - Public `calibration-policy/v2` and `calibration-report/v2` contracts, an approved v3 method policy,
   privacy-safe Windows reference evidence, reproducible checksums and a manual contribution guide.
+- Explicit-source Ubuntu and Windows RC installers pinned to uv 0.11.28 and CPython 3.12.13.
+- Confined `uninstall` preview and confirmation that preserve the Hugging Face cache.
+- Release workflow with SHA-pinned actions, tested artifacts, protected `pypi` environment and OIDC.
+- Release, requirements, troubleshooting, benchmark and mode/profile anatomy documentation.
 
 ### Changed
 
