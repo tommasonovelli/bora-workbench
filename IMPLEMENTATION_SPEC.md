@@ -361,8 +361,8 @@ Open WebUI via API prima che la sua superficie sia verificata sulla versione app
 In caso di conflitto prevale la prima fonte applicabile nell'ordine seguente:
 
 1. lock versionati, report di calibrazione accettati e artefatti strutturati dello spike
-   (`engine.lock`, contenuti `calibration-report/v1`, in 0.2 `open-webui.lock`,
-   `docs/spike-0.json`);
+   (`engine.lock`, contenuti `calibration-report/v2`; `calibration-report/v1` resta storico; in 0.2
+   `open-webui.lock`, `docs/spike-0.json`);
 2. output reali (`--help`, `--version`, endpoint e asset) della versione appuntata, conservati o
    descritti nello spike;
 3. schemi e test già presenti nel repository;
@@ -435,6 +435,7 @@ Regole conseguenti:
 | D-045 | la monotonia VRAM usa soltanto probe fattibili; i picchi OOM troncati non la contraddicono. Dopo due picchi fattibili, l'interpolazione può ordinare il prossimo punto solo dentro la staffa e ripiega sul punto medio; non restringe mai il dominio | evita degradazioni lineari spurie e riduce il costo medio senza indebolire la prova misurata o il tetto di 12 probe |
 | D-046 | `calibration/v3` raffina D-040 su WDDM con una baseline immutabile per l'intero run: ogni contesto usa l'istanza `pid + create_time` e un'identità opaca del file eseguibile (`st_dev + st_ino`); un respawn dello stesso file è ammesso entro la molteplicità iniziale e contato solo come evidenza, mentre file nuovi, identità illeggibili, molteplicità aggiuntiva e riciclo del PID gestito invalidano ancora il run. I gap fra trial non sono campionati, ma un contesto persistente viene confrontato con la baseline di run; nessun percorso o identificatore file entra nel record | due tentativi reali del Gate sono stati invalidati dal respawn di un contesto desktop già ammesso, mostrando che il PID era un proxy asimmetrico del lifecycle e non dell'attività compute; il file-id rende uniforme la popolazione ammessa senza soglie, allowlist per-processo o indebolimento di riserve, ABBA e telemetria |
 | D-047 | il Gate Windows 11/CUDA accettato localmente per coding, studio e vstudio è sufficiente per chiudere Step 5A e iniziare Step 5B anche se la copertura empirica complessiva resta `GATE-PARTIAL`; la prova su hardware materialmente diverso è rinviata a un follow-up futuro non bloccante. Policy, report e documentazione devono dichiarare il perimetro misurato e non presentare le costanti come validate empiricamente su componenti diversi | il maintainer non dispone attualmente di hardware eterogeneo; bloccare indefinitamente il metodo local-first non aggiunge evidenza. Ogni utente misura comunque la propria busta, i seed non diventano `LaunchPlan`, le riserve restano conservative e il fallback rimane disponibile |
+| D-048 | la policy pubblica di `calibration/v3` usa `calibration-policy/v2` e l'evidenza condivisa usa `calibration-report/v2`; il loader proietta da un report soltanto `n_cpu_moe` come suggerimento d'ordine per modello, motore, backend e modo esatti, senza esporre al piano contesto, hardware o busta osservata | i contratti v1 sono storici e il record v2 è privato; nuovi contratti espliciti impediscono di fingere v1 e rendono strutturale il divieto D-047 di trasferire l'optimum 32/8 |
 
 Le sole decisioni lasciate allo spike sono: release esatta di `llama.cpp`, nomi esatti dei flag per
 quella release, forma reale della salute, asset ufficiali disponibili, compatibilità della UI e
@@ -499,9 +500,11 @@ qwen-launcher/
 │       ├── engine.lock
 │       ├── schemas/
 │       │   ├── calibration-policy.v1.json      # contratto storico di laboratorio
+│       │   ├── calibration-policy.v2.json      # metodo pubblico calibration/v3
 │       │   ├── calibration-report.v1.json      # evidenza storica di laboratorio
+│       │   ├── calibration-report.v2.json      # evidenza v3 privacy-safe e seed di solo ordine
 │       │   ├── mode.v1.json
-│       │   ├── profile.v1.json                 # seed condivisi, mai buste finali
+│       │   ├── profile.v1.json                 # contratto storico; nessuna busta finale 0.1
 │       │   └── calibration-record.v2.json      # record locale v3 con evidenza per avvio e lifecycle
 │       └── content/
 │           ├── calibration-policy.json
@@ -531,9 +534,9 @@ qwen-launcher/
 └── LICENSE
 ```
 
-I nomi e campi degli schemi successivi non vengono fissati prima dello spike richiesto da D-037;
-devono essere versionati esplicitamente e aggiornare questo albero nello stesso step che li approva.
-Il record locale vive nella directory dati gestita e non nelle risorse della wheel.
+D-048 approva i successori pubblici v2 dopo lo spike e il Gate richiesti da D-037; ogni ulteriore
+schema deve essere versionato esplicitamente e aggiornare questo albero nello stesso step che lo
+approva. Il record locale vive nella directory dati gestita e non nelle risorse della wheel.
 
 ### 4.3 Risorse di pacchetto
 
@@ -705,6 +708,21 @@ scartati e richiedono cinque misure, riepilogo coerente e candidato selezionato 
 report accettato. La validazione ricostruisce il vincitore, riserva e rilascio VRAM, coerenza fra
 picco/minimo libero/totale, policy approvata e appartenenza della macchina d'origine alla classe
 nominata. Questi controlli provano coerenza dell'evidenza, non portabilità della busta.
+
+`calibration-policy/v2` distribuisce il metodo pubblico di `calibration/v3`, non una lista di buste.
+È legata a modello, digest artefatto, release/commit e digest del contratto motore; dichiara obiettivo,
+modi, strategia CPU, dominio CUDA `[0, gguf.block_count]`, scala contesti, polling, rilascio, riserve,
+tetto probe, round ABBA e selezione. `expected_maximum=41` ricontrolla i metadati del modello
+appuntato, ma il runtime legge comunque il GGUF locale. La policy dichiara `GATE-PARTIAL`, elenca
+l'unico scope realmente misurato, mantiene falso il collaudo su hardware materialmente diverso e
+lega ogni report tramite percorso relativo e SHA-256 dei byte esatti.
+
+`calibration-report/v2` è evidenza condivisa, revisionata e privacy-safe di `calibration/v3`. Ripete
+identità e metodo, registra hardware senza hostname/username/percorsi, esito locale e limite del Gate,
+probe, finalisti, busta osservata e risorse per modo, più riferimenti riproducibili. La busta resta
+esplicitamente locale. Il loader costruisce soltanto un seed `n_cpu_moe` per modello, motore, backend
+e modo esatti; non carica dal report `ctx`, hardware o valori prestazionali nel piano. Eliminare o
+ignorare il seed lascia invariati dominio, contesti, tetto e selezione della ricerca locale completa.
 
 `calibration-record/v2` è il record privato locale di `calibration/v3`. Registra identità completa
 di modello, motore, OS/backend e hardware; obiettivo lessicografico; busta; fabbisogni conservativi;

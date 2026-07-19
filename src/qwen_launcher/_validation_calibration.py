@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import cast
 
+from qwen_launcher._validation_calibration_v3 import validate_v3_contracts
 from qwen_launcher._validation_policy import validate_policies, validate_policy_links
 from qwen_launcher._validation_report import validate_reports
 from qwen_launcher._validation_selection import validate_report_selections
@@ -30,11 +31,14 @@ def _mode_issues(documents: tuple[Document, ...]) -> tuple[set[str], list[Valida
     return mode_ids, issues
 
 
-def validate_calibration(documents: tuple[Document, ...]) -> list[ValidationIssue]:
-    """Validate mode identities and calibration policy/report semantics."""
+def validate_calibration(
+    documents: tuple[Document, ...], engine: dict[str, object]
+) -> list[ValidationIssue]:
+    """Validate mode identities and all versioned calibration content semantics."""
     mode_ids, issues = _mode_issues(documents)
     issues.extend(validate_policies(documents, mode_ids))
     issues.extend(validate_reports(documents, mode_ids))
     issues.extend(validate_policy_links(documents))
     issues.extend(validate_report_selections(documents))
+    issues.extend(validate_v3_contracts(documents, mode_ids, engine))
     return issues

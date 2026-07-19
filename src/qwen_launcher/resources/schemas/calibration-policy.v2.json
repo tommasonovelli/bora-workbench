@@ -1,0 +1,335 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-launcher.dev/schemas/calibration-policy.v2.json",
+  "title": "qwen-launcher calibration-policy/v2",
+  "description": "Public calibration/v3 method policy. It distributes a complete local search, never a remote launch envelope.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "calibration_protocol",
+    "benchmark_protocol",
+    "model",
+    "model_sha256",
+    "engine_release",
+    "engine_source_commit",
+    "command_contract_sha256",
+    "objective",
+    "modes",
+    "backends",
+    "search",
+    "empirical_coverage",
+    "evidence"
+  ],
+  "properties": {
+    "schema": {
+      "description": "Versioned schema identifier for the public calibration method.",
+      "const": "calibration-policy/v2"
+    },
+    "id": {
+      "description": "Stable policy identifier.",
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "calibration_protocol": {
+      "description": "Local-first calibration protocol governed by this policy.",
+      "const": "calibration/v3"
+    },
+    "benchmark_protocol": {
+      "description": "Benchmark protocol run in every confirmation session.",
+      "const": "benchmark/v1"
+    },
+    "model": {
+      "description": "Complete model identifier whose metadata defines the search axis.",
+      "type": "string",
+      "minLength": 1
+    },
+    "model_sha256": {
+      "description": "SHA-256 of the exact model artifact covered by the policy.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "engine_release": {
+      "description": "Exact llama.cpp release covered by the policy.",
+      "type": "string",
+      "minLength": 1
+    },
+    "engine_source_commit": {
+      "description": "Full source commit of the covered engine release.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "command_contract_sha256": {
+      "description": "SHA-256 of the canonical engine command contract.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "objective": {
+      "description": "Declared lexicographic local optimization objective.",
+      "const": "maximum-context-then-paired-throughput-then-memory-margin-then-prudence"
+    },
+    "modes": {
+      "description": "Existing modes governed by the same complete local method.",
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9-]+$"
+      }
+    },
+    "backends": {
+      "description": "Backend-specific search-axis behavior.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cuda", "cpu"],
+      "properties": {
+        "cuda": {
+          "description": "CUDA metadata-derived search behavior.",
+          "$ref": "#/$defs/cuda_backend"
+        },
+        "cpu": {
+          "description": "CPU baseline-confirmation behavior.",
+          "$ref": "#/$defs/cpu_backend"
+        }
+      }
+    },
+    "search": {
+      "description": "Hardware-independent calibration/v3 constants supported by the local Gate.",
+      "$ref": "#/$defs/search"
+    },
+    "empirical_coverage": {
+      "description": "Explicitly partial empirical scope required by D-047.",
+      "$ref": "#/$defs/coverage"
+    },
+    "evidence": {
+      "description": "Privacy-reviewed reference reports bound by exact UTF-8 digests.",
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/evidence_reference" }
+    }
+  },
+  "$defs": {
+    "cuda_backend": {
+      "description": "CUDA searches the full metadata-derived n_cpu_moe domain locally.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["axis", "seed_semantics"],
+      "properties": {
+        "axis": {
+          "description": "Complete legal CUDA tuning axis derived from model metadata.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["name", "minimum", "maximum_source", "expected_maximum"],
+          "properties": {
+            "name": {
+              "description": "Only tuning axis verified by the model and lock.",
+              "const": "n_cpu_moe"
+            },
+            "minimum": {
+              "description": "Inclusive legal lower bound.",
+              "const": 0
+            },
+            "maximum_source": {
+              "description": "The local model metadata, never a shared hardware result, supplies the upper bound.",
+              "const": "gguf-block-count"
+            },
+            "expected_maximum": {
+              "description": "Reviewed block count of the pinned model; runtime still reads the local GGUF.",
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        },
+        "seed_semantics": {
+          "description": "Shared evidence may change probe order but cannot narrow or replace the local search.",
+          "const": "reorder-only-complete-local-search"
+        }
+      }
+    },
+    "cpu_backend": {
+      "description": "CPU honestly confirms the engine baseline because no tuning axis is verified.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["strategy", "tuning_axis", "seed_semantics"],
+      "properties": {
+        "strategy": {
+          "description": "Honest confirmation strategy without launcher optimization.",
+          "const": "engine-baseline-confirmation"
+        },
+        "tuning_axis": {
+          "description": "No CPU tuning axis has been verified.",
+          "type": "null"
+        },
+        "seed_semantics": {
+          "description": "CPU has no axis whose probe order a seed could change.",
+          "const": "none"
+        }
+      }
+    },
+    "search": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "gpu_poll_interval_ms",
+        "gpu_release_stabilization_ms",
+        "context_scale",
+        "probe_cap",
+        "vram_reserve_gib",
+        "ram_reserve_gib",
+        "release_tolerance_gib",
+        "confirm_rounds",
+        "confirmation_order",
+        "selection_rule"
+      ],
+      "properties": {
+        "gpu_poll_interval_ms": {
+          "description": "Fixed GPU and RAM sample interval in milliseconds.",
+          "const": 250
+        },
+        "gpu_release_stabilization_ms": {
+          "description": "Maximum post-stop GPU release window in milliseconds.",
+          "const": 10000
+        },
+        "context_scale": {
+          "description": "Descending context targets searched locally.",
+          "const": [131072, 65536, 32768, 16384, 8192]
+        },
+        "probe_cap": {
+          "description": "Maximum screening processes per mode across context rungs.",
+          "const": 12
+        },
+        "vram_reserve_gib": {
+          "description": "Minimum aggregate free VRAM throughout each CUDA trial.",
+          "const": 0.5
+        },
+        "ram_reserve_gib": {
+          "description": "Minimum available RAM throughout every trial.",
+          "const": 2.0
+        },
+        "release_tolerance_gib": {
+          "description": "Maximum release excess and baseline-drift interpretation threshold.",
+          "const": 0.125
+        },
+        "confirm_rounds": {
+          "description": "Number of paired confirmation rounds.",
+          "const": 2
+        },
+        "confirmation_order": {
+          "description": "Deterministic A-B/B-A temporal order.",
+          "const": ["a", "b", "b", "a"]
+        },
+        "selection_rule": {
+          "description": "Unanimous paired throughput, then margin, then prudence.",
+          "const": "paired-round-unanimity-then-memory-margin-then-prudence"
+        }
+      }
+    },
+    "measured_scope": {
+      "description": "One real calibration/v3 platform without host identity or a portable envelope claim.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "evidence_id",
+        "os_name",
+        "os_version",
+        "backend",
+        "gpu_name",
+        "vram_total_gib",
+        "ram_total_gib"
+      ],
+      "properties": {
+        "evidence_id": {
+          "description": "Reference report proving this measured scope.",
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "os_name": {
+          "description": "Normalized measured operating system.",
+          "enum": ["linux", "windows"]
+        },
+        "os_version": {
+          "description": "Privacy-safe measured operating-system version.",
+          "type": "string",
+          "minLength": 1
+        },
+        "backend": {
+          "description": "Backend exercised by the real Gate run.",
+          "enum": ["cuda", "cpu"]
+        },
+        "gpu_name": {
+          "description": "Measured GPU model, or null for CPU evidence.",
+          "type": ["string", "null"],
+          "minLength": 1
+        },
+        "vram_total_gib": {
+          "description": "Measured total VRAM, or null for CPU evidence.",
+          "type": ["number", "null"],
+          "exclusiveMinimum": 0
+        },
+        "ram_total_gib": {
+          "description": "Measured total system RAM in exact GiB.",
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "constants_validated_on_materially_different_hardware",
+        "heterogeneous_hardware_follow_up",
+        "measured_scope"
+      ],
+      "properties": {
+        "status": {
+          "description": "Overall empirical coverage remains incomplete.",
+          "const": "gate-partial"
+        },
+        "constants_validated_on_materially_different_hardware": {
+          "description": "D-047 forbids claiming heterogeneous validation.",
+          "const": false
+        },
+        "heterogeneous_hardware_follow_up": {
+          "description": "Materially different hardware remains an open non-blocking follow-up.",
+          "const": "open-non-blocking"
+        },
+        "measured_scope": {
+          "description": "Complete list of real calibration/v3 hardware scopes currently available.",
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/measured_scope" }
+        }
+      }
+    },
+    "relative_json_path": {
+      "description": "Resource-root-relative JSON path checked semantically for traversal and absoluteness.",
+      "type": "string",
+      "pattern": "^calibrations/[a-z0-9-]+\\.json$"
+    },
+    "evidence_reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "path", "sha256"],
+      "properties": {
+        "id": {
+          "description": "Stable referenced report identifier.",
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "path": {
+          "description": "Resource-root-relative report path.",
+          "$ref": "#/$defs/relative_json_path"
+        },
+        "sha256": {
+          "description": "SHA-256 of exact report UTF-8 bytes.",
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  }
+}

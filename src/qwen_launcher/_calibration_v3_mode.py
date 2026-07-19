@@ -134,7 +134,7 @@ def run_mode(request: ModeRunRequest) -> tuple[ModeCalibration, set[str]]:
         raise CalibrationRunError(str(error)) from error
     from qwen_launcher._calibration_v3_seed import seed_probe_value
 
-    seed = seed_probe_value(request.target, request.mode)
+    seed = seed_probe_value(request.target, request.mode, block_count)
     predicted = ModeRunRequest(
         request.target,
         request.mode,

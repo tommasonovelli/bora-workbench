@@ -17,7 +17,9 @@ _SCHEMA_FILES = {
     "mode/v1": "mode.v1.json",
     "profile/v1": "profile.v1.json",
     "calibration-policy/v1": "calibration-policy.v1.json",
+    "calibration-policy/v2": "calibration-policy.v2.json",
     "calibration-report/v1": "calibration-report.v1.json",
+    "calibration-report/v2": "calibration-report.v2.json",
     "calibration-record/v2": "calibration-record.v2.json",
 }
 JsonObject = dict[str, object]
@@ -164,7 +166,7 @@ def _semantic_issues(documents: tuple[Document, ...], engine: JsonObject) -> lis
     from qwen_launcher._validation_calibration import validate_calibration
     from qwen_launcher._validation_profiles import validate_profiles
 
-    issues = validate_calibration(documents)
+    issues = validate_calibration(documents, engine)
     issues.extend(validate_profiles(documents, engine))
     return issues
 

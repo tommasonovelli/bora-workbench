@@ -16,6 +16,11 @@ _GENERIC_PRIVATE_PATTERNS = (
 )
 
 
+def has_private_path_pattern(text: str) -> bool:
+    """Return whether text contains a generic POSIX, Windows, or UNC private path."""
+    return any(pattern.search(text) for pattern in _GENERIC_PRIVATE_PATTERNS)
+
+
 def redact_text(text: str, private_values: tuple[str, ...]) -> str:
     """Replace every known private value and slash-normalized variant in text."""
     for value in private_values:
@@ -68,6 +73,6 @@ def privacy_findings(root: Path) -> tuple[tuple[str, str], ...]:
         if any(marker in text for marker in markers):
             findings.append((relative, "contains local username, hostname, or absolute path"))
             continue
-        if any(pattern.search(text) for pattern in _GENERIC_PRIVATE_PATTERNS):
+        if has_private_path_pattern(text):
             findings.append((relative, "contains a private absolute path pattern"))
     return tuple(findings)

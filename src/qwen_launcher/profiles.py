@@ -101,11 +101,24 @@ class Profile:
 
 
 @dataclass(frozen=True, slots=True)
+class CalibrationSeed:
+    """Expose only a shared report's probe-ordering hint, never its observed envelope."""
+
+    report_id: str
+    model: str
+    engine: str
+    backend: Literal["cuda", "cpu"]
+    mode_id: str
+    n_cpu_moe: int
+
+
+@dataclass(frozen=True, slots=True)
 class Catalog:
-    """Hold immutable validated modes and profiles loaded from one resource root."""
+    """Hold immutable validated modes, historical profiles, and v3 ordering seeds."""
 
     modes: tuple[Mode, ...]
     profiles: tuple[Profile, ...]
+    calibration_seeds: tuple[CalibrationSeed, ...] = ()
 
     def mode(self, mode_id: str) -> Mode | None:
         """Return one mode by identifier, or None when it does not exist."""

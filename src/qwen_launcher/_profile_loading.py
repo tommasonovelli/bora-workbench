@@ -7,6 +7,7 @@ from importlib.resources.abc import Traversable
 from typing import Literal, cast
 
 from qwen_launcher.profiles import (
+    CalibrationSeed,
     Catalog,
     ContentError,
     Envelope,
@@ -84,6 +85,28 @@ def _profile(file: Traversable, engine_release: str) -> Profile:
     )
 
 
+def _calibration_seeds(file: Traversable) -> tuple[CalibrationSeed, ...]:
+    """Load only v3 report seed fields so observed remote envelopes cannot become plans."""
+    raw = _read_object(file)
+    if raw.get("schema") != "calibration-report/v2":
+        return ()
+    hardware = cast(JsonObject, raw["hardware"])
+    if hardware["backend"] != "cuda":
+        return ()
+    modes = cast(JsonObject, raw["modes"])
+    return tuple(
+        CalibrationSeed(
+            cast(str, raw["id"]),
+            cast(str, raw["model"]),
+            cast(str, raw["engine_release"]),
+            "cuda",
+            mode_id,
+            cast(int, cast(JsonObject, value)["seed_n_cpu_moe"]),
+        )
+        for mode_id, value in sorted(modes.items())
+    )
+
+
 def _json_files(directory: Traversable) -> tuple[Traversable, ...]:
     """Return sorted JSON children, treating an absent directory as an empty catalog."""
     if not directory.is_dir():
@@ -105,4 +128,8 @@ def load_catalog_from_root(root: Traversable | None = None) -> Catalog:
     content = selected_root.joinpath("content")
     modes = tuple(_mode(file) for file in _json_files(content.joinpath("modes")))
     profiles = tuple(_profile(file, release) for file in _json_files(content.joinpath("profiles")))
-    return Catalog(modes, profiles)
+    seed_groups = (
+        _calibration_seeds(file) for file in _json_files(content.joinpath("calibrations"))
+    )
+    seeds = tuple(seed for group in seed_groups for seed in group)
+    return Catalog(modes, profiles, seeds)
