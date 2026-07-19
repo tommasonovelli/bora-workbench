@@ -96,7 +96,9 @@ def _record_line(mode_id: str, evaluation: object) -> str:
     if evaluation.status == "candidate":
         return f"[yellow]Calibration[/yellow] {mode_id}: valid candidate awaits activation."
     if evaluation.status == "superseded":
-        return f"[yellow]Calibration[/yellow] {mode_id}: record schema superseded: {detail}"
+        return (
+            f"[yellow]Calibration[/yellow] {mode_id}: record schema superseded: {detail}.{suffix}"
+        )
     if evaluation.status == "insufficient-headroom":
         return f"[yellow]Calibration[/yellow] {mode_id}: {detail}{suffix}"
     label = "invalid" if evaluation.status == "invalid" else "stale"

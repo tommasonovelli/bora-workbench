@@ -138,6 +138,16 @@ def test_doctor_distinguishes_record_lifecycle_states() -> None:
         assert expected in doctor_cli._record_line("coding", evaluation)
 
 
+def test_doctor_keeps_candidate_hint_when_active_is_superseded() -> None:
+    """Report the pending valid candidate even when the active record is superseded."""
+    evaluation = RecordEvaluation("superseded", None, None, ("rerun calibrate",), "valid")
+
+    line = doctor_cli._record_line("coding", evaluation)
+
+    assert "record schema superseded: rerun calibrate" in line
+    assert "Pending candidate is valid and awaits `calibrate --activate`." in line
+
+
 def test_runtime_failure_is_operational_exit_one(monkeypatch) -> None:
     """Map a measured search failure to code 1 without traceback."""
     monkeypatch.setattr(calibration_v3_cli, "prepare_target", lambda mode_value: cpu_target())
