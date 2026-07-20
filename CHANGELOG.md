@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Lowered the default model's available-RAM gate from 24 GiB to 22 GiB while retaining the 28 GiB
+  total-RAM gate and calibration/v3's monitored 2 GiB per-trial reserve.
+- Added 98304 as an explicit expert `--target-ctx` without changing calibration/v3's automatic
+  descending context scale or invalidating existing v2 records.
+
 ## [0.1.0rc1] - 2026-07-19
 
 ### Added

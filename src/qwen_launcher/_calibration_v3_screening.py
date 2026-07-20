@@ -18,6 +18,7 @@ from qwen_launcher._calibration_v3_search import (
 )
 from qwen_launcher._calibration_v3_types import (
     CONTEXT_SCALE,
+    EXPERT_CONTEXT_TARGETS,
     MODE_PROBE_CAP,
     VRAM_RESERVE_GIB,
     ProbeRecord,
@@ -133,8 +134,8 @@ def _contexts(options: V3RunOptions) -> tuple[int, ...]:
     """Return the full approved scale or one expert-selected target rung."""
     if options.target_ctx is None:
         return CONTEXT_SCALE
-    if options.target_ctx not in CONTEXT_SCALE:
-        allowed = ", ".join(str(value) for value in CONTEXT_SCALE)
+    if options.target_ctx not in EXPERT_CONTEXT_TARGETS:
+        allowed = ", ".join(str(value) for value in EXPERT_CONTEXT_TARGETS)
         raise CalibrationRunError(f"target context must be one of: {allowed}")
     return (options.target_ctx,)
 

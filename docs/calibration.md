@@ -38,7 +38,7 @@ completa produce lo stesso dominio e applica le stesse regole. Manifest e proced
 Prima di iniziare:
 
 - modello predefinito appuntato e motore `b10011` compatibile già disponibili;
-- almeno 28 GiB di RAM totale e 24 GiB disponibili al preflight;
+- almeno 28 GiB di RAM totale e 22 GiB disponibili al preflight;
 - nessun servizio gestito attivo;
 - una sola GPU NVIDIA quando il backend rilevato è CUDA;
 - nessun altro workload compute o grafico intensivo sulla GPU selezionata.
@@ -122,14 +122,15 @@ migrazione automatica.
 
 ## Contesto esperto
 
-Un utente esperto può fissare un solo gradino approvato:
+Un utente esperto può fissare un solo contesto approvato, incluso `98304` fra i gradini della scala
+automatica:
 
 ```console
-qwen-launcher calibrate --mode coding --target-ctx 32768
+qwen-launcher calibrate --mode coding --target-ctx 98304
 ```
 
-Il confronto resta a contesto fisso. Il percorso predefinito senza questa opzione continua a
-massimizzare il contesto fattibile.
+Il confronto resta a contesto fisso. Il percorso predefinito senza questa opzione continua a usare
+la scala `131072 → 65536 → 32768 → 16384 → 8192` e a massimizzare il contesto fattibile.
 
 ## Riuso e headroom
 

@@ -144,11 +144,16 @@ def test_profile_without_requested_mode_falls_back(tmp_path, mode_id) -> None:
     assert plan.mode.id == mode_id
 
 
-@pytest.mark.parametrize("ram,available", [(27.9, 24), (28, 23.9)])
+@pytest.mark.parametrize("ram,available", [(27.9, 22), (28, 21.9)])
 def test_default_model_memory_gate_checks_total_and_available(ram, available) -> None:
     """Stop the default model before resolution when either normative RAM threshold fails."""
-    with pytest.raises(PlanError, match="28 GiB total RAM"):
+    with pytest.raises(PlanError, match="28 GiB total RAM and 22 GiB available RAM"):
         enforce_memory_gate(Config(), hardware(ram=ram, available=available), force=False)
+
+
+def test_default_model_memory_gate_accepts_exact_thresholds() -> None:
+    """Accept the inclusive total and available RAM boundaries required by section 5.5."""
+    enforce_memory_gate(Config(), hardware(ram=28, available=22), force=False)
 
 
 def test_force_bypasses_only_memory_gate_and_other_models_have_no_fixed_gate() -> None:

@@ -177,6 +177,14 @@ def test_benchmark_summary_and_ram_reserve_are_reconstructed(tmp_path) -> None:
         load_record(reserve)
 
 
+def test_expert_target_context_must_match_envelope(tmp_path) -> None:
+    """Reject an expert target that contradicts the measured envelope."""
+    path = written_record(tmp_path, cuda_calibration, cuda_hardware())
+    rewrite(path, lambda record: record["search"].update(target_ctx=65536))
+    with pytest.raises(RecordError, match="expert target context"):
+        load_record(path)
+
+
 def test_malformed_and_schema_invalid_records_are_rejected(tmp_path) -> None:
     """Diagnose malformed JSON and structural backend tampering."""
     malformed = tmp_path / "malformed" / "coding.json"

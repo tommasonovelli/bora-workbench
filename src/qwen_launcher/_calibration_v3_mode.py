@@ -15,8 +15,8 @@ from qwen_launcher._calibration_v3_screening import (
 )
 from qwen_launcher._calibration_v3_search import ScreeningResult, select_candidate_index
 from qwen_launcher._calibration_v3_types import (
-    CONTEXT_SCALE,
     CPU_BASELINE_CTX,
+    EXPERT_CONTEXT_TARGETS,
     MODE_PROBE_CAP,
     RELEASE_TOLERANCE_GIB,
     SELECTION_CPU_BASELINE,
@@ -99,8 +99,8 @@ def _cpu_mode(request: ModeRunRequest) -> tuple[ModeCalibration, set[str]]:
     """Confirm the engine's CPU baseline twice with a benchmark in each round."""
     run = create_mode_run(request)
     ctx = run.options.target_ctx or CPU_BASELINE_CTX
-    if ctx not in CONTEXT_SCALE:
-        allowed = ", ".join(str(value) for value in CONTEXT_SCALE)
+    if ctx not in EXPERT_CONTEXT_TARGETS:
+        allowed = ", ".join(str(value) for value in EXPERT_CONTEXT_TARGETS)
         raise CalibrationRunError(f"target context must be one of: {allowed}")
     run.finalist_values = (None,)
     confirmation = confirm_finalists(run, ctx)

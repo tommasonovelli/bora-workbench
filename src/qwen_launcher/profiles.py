@@ -153,7 +153,7 @@ class LaunchPlan:
 
 
 DEFAULT_MODEL_MIN_TOTAL_GIB = 28.0
-DEFAULT_MODEL_MIN_AVAILABLE_GIB = 24.0
+DEFAULT_MODEL_MIN_AVAILABLE_GIB = 22.0
 
 
 def load_catalog(root: Traversable | None = None) -> Catalog:

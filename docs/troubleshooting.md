@@ -49,7 +49,7 @@ calibrato rispetto ai dati del modello predefinito.
 
 ## RAM insufficiente
 
-Il modello predefinito richiede almeno 28 GiB totali e 24 GiB disponibili prima del download.
+Il modello predefinito richiede almeno 28 GiB totali e 22 GiB disponibili prima del download.
 Chiudere workload o usare una macchina idonea. `--force` accetta consapevolmente soltanto il rischio
 del gate RAM; non bypassa lock, checksum, config, motore, porta o piattaforma.
 

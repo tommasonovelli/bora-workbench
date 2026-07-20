@@ -71,12 +71,12 @@ def test_no_activate_and_target_context_reach_runner(tmp_path, monkeypatch) -> N
     monkeypatch.setattr(calibration_v3_cli, "run_calibration_v3", run)
     result = runner.invoke(
         app,
-        ["calibrate", "--mode", "coding", "--no-activate", "--target-ctx", "32768"],
+        ["calibrate", "--mode", "coding", "--no-activate", "--target-ctx", "98304"],
         input="y\n",
     )
 
     assert result.exit_code == 0
-    assert captured[0].target_ctx == 32768
+    assert captured[0].target_ctx == 98304
     assert not captured[0].is_activate
 
 

@@ -1,6 +1,6 @@
-# qwen-launcher — Specifica centrale di implementazione (v4.5)
+# qwen-launcher — Specifica centrale di implementazione (v4.7)
 
-## 0. Tracker di avanzamento — aggiornato al 19 luglio 2026
+## 0. Tracker di avanzamento — aggiornato al 20 luglio 2026
 
 > Questo blocco registra lo stato reale del repository. Questo è il documento normativo
 > `IMPLEMENTATION_SPEC.md` alla radice, unica copia normativa nel repository come previsto dallo
@@ -43,7 +43,9 @@
   wheel completati. Nessun profilo finale è distribuito e la copertura resta `GATE-PARTIAL`.
 - [x] **Step 6A — Preparazione locale release 0.1:** RC `0.1.0rc1`, installer espliciti,
   disinstallazione confinata, documentazione, workflow OIDC e artefatti locali completati senza
-  pubblicazione.
+  pubblicazione. La correzione pre-Gate D-049 porta a 22 GiB il gate RAM disponibile su tutti i
+  target, mantenendo 28 GiB totali e la riserva dinamica v3 di 2 GiB. D-050 aggiunge `98304` ai soli
+  target contesto esperti senza cambiare la scala automatica o invalidare i record v2 esistenti.
 - [ ] **Human Gate 0.1 — Collaudi puliti e decisione `RELEASE`/`NO-RELEASE`.**
 - [ ] **Step 6B — Finalizzazione locale release 0.1:** bloccato fino a `RELEASE` esplicito.
 - [ ] **Step 7 — Skill e router.**
@@ -283,26 +285,36 @@
   ambiente `pypi`, least privilege e Trusted Publishing OIDC; nessuna configurazione remota eseguita.
 - [x] Versione `0.1.0rc1`, lock e changelog aggiornati; 351 test offline, Ruff, `validate`, build e
   verifica isolata degli artefatti verdi localmente su Windows con CPython `3.12.13` e uv `0.11.28`.
+- [x] Correzione pre-Gate D-049: un preflight reale Windows con browser aperto è stato bloccato a
+  circa 23,7 GiB disponibili prima di qualsiasi trial. Il gate statico comune scende da 24 a 22 GiB;
+  restano invariati il minimo totale di 28 GiB, il monitoraggio a 250 ms e la riserva dinamica v3 di
+  2 GiB. La suite, `validate`, build e verifica wheel sono stati ripetuti sul RC corretto.
+- [x] Estensione esperta D-050: `--target-ctx 98304` è ammesso separatamente dalla scala automatica,
+  che resta `131072 → 65536 → 32768 → 16384 → 8192`. L'enum additivo del record v2 conserva la
+  validità dell'evidenza precedente e `validate` impone che il target coincida con la busta misurata.
 
 ### Prossima azione obbligatoria
 
 Step 6A è concluso localmente senza tag, upload, release o modifica remota. La prossima milestone è
-lo Human Gate 0.1: Tommaso deve collaudare l'artefatto RC con hash verificato su Ubuntu 22.04 pulito e
-Windows Sandbox e decidere esplicitamente `RELEASE` o `NO-RELEASE`. Step 6B resta bloccato fino a
-`RELEASE`. La ripetizione `calibration/v3 --no-activate` su hardware materialmente diverso resta un
-follow-up futuro non bloccante e la copertura empirica resta `GATE-PARTIAL`.
+lo Human Gate 0.1: Tommaso deve usare l'artefatto RC rigenerato dopo D-049, verificarne il nuovo hash
+su Ubuntu 22.04 pulito e Windows Sandbox e decidere esplicitamente `RELEASE` o `NO-RELEASE`; gli hash
+RC precedenti alla correzione non sono più applicabili. Step 6B resta bloccato fino a `RELEASE`. La
+ripetizione `calibration/v3 --no-activate` su hardware materialmente diverso resta un follow-up
+futuro non bloccante e la copertura empirica resta `GATE-PARTIAL`.
 
 ---
 
 > **Stato:** documento normativo centrale, pronto a guidare l'implementazione per step.  
-> **Data di consolidamento:** 19 luglio 2026; la v4.5 registra la conclusione locale dello Step 6A
-> e il passaggio allo Human Gate 0.1, senza pubblicazione. La v4.4 registrava D-048 e la conclusione
-> dello Step 5B con policy/report v2, evidenza Windows privacy-safe e seed di solo ordine. La v4.3
-> registrava D-047, che accetta il Gate locale Windows CUDA e rinvia la prova hardware eterogenea a
-> un follow-up non bloccante. La v4.2 registrava CI verde e il Gate v3 locale accettato per i tre
-> modi; la v4.1 registrava il Gate v2 respinto e `calibration/v3` implementato (D-041–D-046,
-> `docs/calibrate_v3.md`).  
-> **Sostituisce:** la v4.4, la v4.3, la v4.2, la v4.1, la v3.4, la v3.1,
+> **Data di consolidamento:** 20 luglio 2026; la v4.7 registra D-050 e il target contesto esperto
+> `98304`, separato dalla scala automatica. La v4.6 registrava D-049 e la correzione pre-Gate della
+> RAM disponibile da 24 a 22 GiB, senza indebolire il minimo totale o la riserva dinamica v3. La v4.5
+> registrava la conclusione locale dello Step 6A e il passaggio allo Human Gate 0.1, senza
+> pubblicazione. La v4.4 registrava D-048 e la conclusione dello Step 5B con policy/report v2,
+> evidenza Windows privacy-safe e seed di solo ordine. La v4.3 registrava D-047, che accetta il Gate
+> locale Windows CUDA e rinvia la prova hardware eterogenea a un follow-up non bloccante. La v4.2
+> registrava CI verde e il Gate v3 locale accettato per i tre modi; la v4.1 registrava il Gate v2
+> respinto e `calibration/v3` implementato (D-041–D-046, `docs/calibrate_v3.md`).  
+> **Sostituisce:** la v4.6, la v4.5, la v4.4, la v4.3, la v4.2, la v4.1, la v3.4, la v3.1,
 > `PIANO_IMPLEMENTAZIONE_v2.md`, le due revisioni
 > successive e la v3 non corretta.  
 > **Regola d'uso:** una sessione di sviluppo esegue un solo step, nell'ordine indicato. Prima di
@@ -459,6 +471,8 @@ Regole conseguenti:
 | D-046 | `calibration/v3` raffina D-040 su WDDM con una baseline immutabile per l'intero run: ogni contesto usa l'istanza `pid + create_time` e un'identità opaca del file eseguibile (`st_dev + st_ino`); un respawn dello stesso file è ammesso entro la molteplicità iniziale e contato solo come evidenza, mentre file nuovi, identità illeggibili, molteplicità aggiuntiva e riciclo del PID gestito invalidano ancora il run. I gap fra trial non sono campionati, ma un contesto persistente viene confrontato con la baseline di run; nessun percorso o identificatore file entra nel record | due tentativi reali del Gate sono stati invalidati dal respawn di un contesto desktop già ammesso, mostrando che il PID era un proxy asimmetrico del lifecycle e non dell'attività compute; il file-id rende uniforme la popolazione ammessa senza soglie, allowlist per-processo o indebolimento di riserve, ABBA e telemetria |
 | D-047 | il Gate Windows 11/CUDA accettato localmente per coding, studio e vstudio è sufficiente per chiudere Step 5A e iniziare Step 5B anche se la copertura empirica complessiva resta `GATE-PARTIAL`; la prova su hardware materialmente diverso è rinviata a un follow-up futuro non bloccante. Policy, report e documentazione devono dichiarare il perimetro misurato e non presentare le costanti come validate empiricamente su componenti diversi | il maintainer non dispone attualmente di hardware eterogeneo; bloccare indefinitamente il metodo local-first non aggiunge evidenza. Ogni utente misura comunque la propria busta, i seed non diventano `LaunchPlan`, le riserve restano conservative e il fallback rimane disponibile |
 | D-048 | la policy pubblica di `calibration/v3` usa `calibration-policy/v2` e l'evidenza condivisa usa `calibration-report/v2`; il loader proietta da un report soltanto `n_cpu_moe` come suggerimento d'ordine per modello, motore, backend e modo esatti, senza esporre al piano contesto, hardware o busta osservata | i contratti v1 sono storici e il record v2 è privato; nuovi contratti espliciti impediscono di fingere v1 e rendono strutturale il divieto D-047 di trasferire l'optimum 32/8 |
+| D-049 | il gate statico del modello predefinito richiede 28 GiB di RAM totale e 22 GiB disponibili su tutti i target supportati; il monitor v3 continua a imporre almeno 2 GiB disponibili durante ogni trial e il riuso conserva il fabbisogno misurato più la stessa riserva | il preflight reale Windows si è fermato a circa 23,7 GiB con un browser aperto prima di poter misurare, rendendo 24 GiB troppo restrittivi per un desktop idoneo. La soglia comune evita diramazioni OS non autorizzate e non sostituisce le protezioni dinamiche; la copertura eterogenea resta il follow-up D-047 |
+| D-050 | `98304` è un target contesto esperto ammesso da `--target-ctx` e dal record `calibration-record/v2`, ma non entra nella scala automatica `131072 → 65536 → 32768 → 16384 → 8192`; il confronto resta a contesto fisso e il target serializzato deve coincidere con la busta misurata | consente al maintainer di misurare esplicitamente coding a 96 Ki token senza cambiare l'obiettivo contesto-prima, la policy pubblica, il report accettato o la validità dei record v2 precedenti; l'estensione degli enum è additiva e l'esito resta candidato inattivo finché non viene autorizzato separatamente |
 
 Le sole decisioni lasciate allo spike sono: release esatta di `llama.cpp`, nomi esatti dei flag per
 quella release, forma reale della salute, asset ufficiali disponibili, compatibilità della UI e
@@ -839,8 +853,12 @@ Gate di memoria per il solo modello predefinito:
 
 ```python
 DEFAULT_MODEL_MIN_TOTAL_GIB = 28.0
-DEFAULT_MODEL_MIN_AVAILABLE_GIB = 24.0
+DEFAULT_MODEL_MIN_AVAILABLE_GIB = 22.0
 ```
+
+D-049 applica la soglia disponibile comune a Linux e Windows: il gate statico non deve impedire a un
+desktop idoneo di raggiungere il monitoraggio reale. `calibration/v3` continua a campionare la RAM
+ogni 250 ms e scarta qualsiasi trial che scenda sotto la riserva dinamica di 2,0 GiB.
 
 Se una delle soglie non è raggiunta, l'avvio si ferma prima di qualunque download. `--force` bypassa
 esclusivamente questo gate; non bypassa config invalida, OS non supportato, motore assente o
@@ -930,7 +948,8 @@ solo evidenza. Il dominio `n_cpu_moe` resta `[0, 41]`, verificato dai metadati e
 
 Il v3 scrive prima il record candidato; per default lo promuove atomicamente all'attivo e conserva
 un previous, mentre `--no-activate` e `--activate` separano Gate e promozione. `--target-ctx` può
-fissare un gradino approvato senza cambiare il default contesto-prima. I log privati dell'ultimo run
+fissare un contesto esperto approvato senza cambiare il default contesto-prima; D-050 aggiunge
+`98304` mantenendolo fuori dalla scala automatica. I log privati dell'ultimo run
 vivono in un solo slot ruotato; bundle e pubblicazione restano separati.
 
 Un utente idoneo senza record locale continua con la baseline oppure calibra uno o più modi. Un

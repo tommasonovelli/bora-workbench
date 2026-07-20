@@ -35,7 +35,7 @@ Open WebUI, skill, router e benchmark autonomo appartengono alla roadmap 0.2 e n
 
 - Ubuntu 22.04 o superiore x86-64, oppure Windows 11 x86-64;
 - CPU oppure una singola GPU NVIDIA CUDA esplicitamente selezionata;
-- almeno 28 GiB di RAM totale e 24 GiB disponibili per il gate del modello predefinito;
+- almeno 28 GiB di RAM totale e 22 GiB disponibili per il gate del modello predefinito;
 - modello e mmproj appuntati già presenti nella cache Hugging Face, oppure `model_path` esplicito per
   un modello diverso;
 - spazio per modello, mmproj, motore e log. I pesi appuntati occupano 22.663.387.424 byte e il mmproj

@@ -127,7 +127,7 @@
       "additionalProperties": false,
       "required": ["ctx", "n_cpu_moe"],
       "properties": {
-        "ctx": { "description": "Selected approved context rung.", "enum": [131072, 65536, 32768, 16384, 8192] },
+        "ctx": { "description": "Selected approved context.", "enum": [131072, 98304, 65536, 32768, 16384, 8192] },
         "n_cpu_moe": { "description": "Selected CPU MoE block count, or null on CPU.", "type": ["integer", "null"], "minimum": 0 }
       }
     },
@@ -176,7 +176,7 @@
       "properties": {
         "context_scale": { "description": "Approved descending context scale.", "const": [131072, 65536, 32768, 16384, 8192] },
         "context_identity_model": { "description": "Evidence-only run-scoped GPU process identity model, or null on CPU.", "type": ["string", "null"], "enum": ["executable-file-id/v1", null] },
-        "target_ctx": { "description": "Optional expert-fixed context rung.", "type": ["integer", "null"], "enum": [131072, 65536, 32768, 16384, 8192, null] },
+        "target_ctx": { "description": "Optional expert-fixed context target.", "type": ["integer", "null"], "enum": [131072, 98304, 65536, 32768, 16384, 8192, null] },
         "probe_cap": { "description": "Maximum screening probes per mode.", "const": 12 },
         "vram_reserve_gib": { "description": "Universal minimum free VRAM during CUDA trials.", "const": 0.5 },
         "ram_reserve_gib": { "description": "Universal minimum available RAM during every trial.", "const": 2.0 },
@@ -334,7 +334,7 @@
       "additionalProperties": false,
       "required": ["ctx", "n_cpu_moe", "is_feasible", "reason", "trial"],
       "properties": {
-        "ctx": { "description": "Context used by this probe.", "enum": [131072, 65536, 32768, 16384, 8192] },
+        "ctx": { "description": "Context used by this probe.", "enum": [131072, 98304, 65536, 32768, 16384, 8192] },
         "n_cpu_moe": { "description": "CPU MoE block count used by this probe.", "type": "integer", "minimum": 0 },
         "is_feasible": { "description": "Whether workload and both reserves completed.", "type": "boolean" },
         "reason": { "description": "Infeasibility reason, or null.", "type": ["string", "null"], "minLength": 1 },
@@ -361,7 +361,7 @@
       "additionalProperties": false,
       "required": ["ctx", "n_cpu_moe", "outcome", "discard_reason", "sessions", "round_medians", "ram_needed_gib", "minimum_ram_available_gib", "vram_needed_gib", "minimum_free_vram_gib", "is_selected"],
       "properties": {
-        "ctx": { "description": "Context shared by all finalists.", "enum": [131072, 65536, 32768, 16384, 8192] },
+        "ctx": { "description": "Context shared by all finalists.", "enum": [131072, 98304, 65536, 32768, 16384, 8192] },
         "n_cpu_moe": { "description": "Finalist CPU MoE block count, or null on CPU.", "type": ["integer", "null"], "minimum": 0 },
         "outcome": { "description": "Paired confirmation outcome.", "enum": ["valid", "discarded"] },
         "discard_reason": { "description": "First confirmation failure, or null.", "type": ["string", "null"], "minLength": 1 },

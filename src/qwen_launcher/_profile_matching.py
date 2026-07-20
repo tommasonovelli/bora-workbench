@@ -96,7 +96,7 @@ def enforce_memory_gate_for_launch(config: Config, hardware: HardwareInfo, *, fo
     if total_ok and available_ok:
         return
     message = (
-        "the default model requires at least 28 GiB total RAM and 24 GiB available RAM; "
+        "the default model requires at least 28 GiB total RAM and 22 GiB available RAM; "
         "free memory or pass --force to bypass only this memory gate"
     )
     raise PlanError(message)

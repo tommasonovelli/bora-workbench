@@ -12,6 +12,7 @@ from qwen_launcher._calibration_v3_runner import run_calibration_v3
 from qwen_launcher._calibration_v3_types import (
     CONFIRM_ROUNDS,
     CONTEXT_SCALE,
+    EXPERT_CONTEXT_TARGETS,
     MODE_PROBE_CAP,
     OBJECTIVE,
     RAM_RESERVE_GIB,
@@ -141,8 +142,8 @@ def _activate_candidates(options: CalibrationCliInput, console: Console) -> None
 
 def run_calibrate_v3(options: CalibrationCliInput, output: CalibrationCliOutput) -> None:
     """Activate pending evidence or run paired adaptive search for selected modes."""
-    if options.target_ctx is not None and options.target_ctx not in CONTEXT_SCALE:
-        allowed = ", ".join(str(value) for value in CONTEXT_SCALE)
+    if options.target_ctx is not None and options.target_ctx not in EXPERT_CONTEXT_TARGETS:
+        allowed = ", ".join(str(value) for value in EXPERT_CONTEXT_TARGETS)
         raise CalibrationError(f"target context must be one of: {allowed}")
     if options.activate:
         _activate_candidates(options, output.stdout)

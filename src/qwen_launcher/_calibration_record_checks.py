@@ -41,6 +41,9 @@ def _verify_envelope(document: JsonObject, path: Path) -> None:
     """Require one fixed context and the selected finalist's exact axis."""
     _, selected = selected_entry(document, path)
     envelope = cast(JsonObject, document["envelope"])
+    target_ctx = _search(document)["target_ctx"]
+    if target_ctx is not None and envelope["ctx"] != target_ctx:
+        raise fail(path, "expert target context does not match the recorded envelope")
     if any(entry["ctx"] != envelope["ctx"] for entry in _finalists(document)):
         raise fail(path, "all finalists must use the recorded envelope context")
     if envelope["n_cpu_moe"] != selected["n_cpu_moe"]:

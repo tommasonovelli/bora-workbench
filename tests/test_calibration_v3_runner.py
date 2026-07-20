@@ -124,6 +124,15 @@ def test_context_descends_or_obeys_an_expert_target(tmp_path, monkeypatch) -> No
         )
 
 
+def test_expert_target_between_automatic_rungs_stays_fixed(tmp_path, monkeypatch) -> None:
+    """Allow 96k explicitly without changing the automatic context scale."""
+    install_fakes(monkeypatch, fake_trial(lambda spec: True))
+    run_calibration_v3(cuda_target(), V3RunOptions(target_ctx=98304), destination_root=tmp_path)
+    record = active_record(tmp_path)
+    assert record["envelope"]["ctx"] == record["search"]["target_ctx"] == 98304
+    assert record["search"]["context_scale"] == [131072, 65536, 32768, 16384, 8192]
+
+
 def test_cpu_confirms_two_benchmarked_baseline_rounds(tmp_path, monkeypatch) -> None:
     """Record two CPU benchmark sessions without pretending to search an axis."""
     install_fakes(monkeypatch, fake_trial(lambda spec: True))
