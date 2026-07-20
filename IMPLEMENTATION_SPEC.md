@@ -1,4 +1,4 @@
-# qwen-launcher — Specifica centrale di implementazione (v4.7)
+# qwen-launcher — Specifica centrale di implementazione (v4.8)
 
 ## 0. Tracker di avanzamento — aggiornato al 20 luglio 2026
 
@@ -46,8 +46,13 @@
   pubblicazione. La correzione pre-Gate D-049 porta a 22 GiB il gate RAM disponibile su tutti i
   target, mantenendo 28 GiB totali e la riserva dinamica v3 di 2 GiB. D-050 aggiunge `98304` ai soli
   target contesto esperti senza cambiare la scala automatica o invalidare i record v2 esistenti.
-- [ ] **Human Gate 0.1 — Collaudi puliti e decisione `RELEASE`/`NO-RELEASE`.**
-- [ ] **Step 6B — Finalizzazione locale release 0.1:** bloccato fino a `RELEASE` esplicito.
+- [x] **Human Gate 0.1 — Decisione `RELEASE`:** il 20 luglio 2026 Tommaso ha dichiarato il progetto
+  funzionante, ha accettato esplicitamente le limitazioni residue note e ha autorizzato release,
+  push, tag e pubblicazione. I dettagli dei collaudi puliti non sono conservati come evidenza
+  strutturata nel repository e non vengono ricostruiti dall'agente.
+- [x] **Step 6B — Finalizzazione locale release 0.1:** versione `0.1.0`, changelog, installer e
+  documentazione finale completati; suite, build e verifica wheel finali costituiscono il gate del
+  commit di release.
 - [ ] **Step 7 — Skill e router.**
 - [ ] **Step 8 — Open WebUI e sync.**
 - [ ] **Step 9 — Benchmark autonomo e doctor definitivo.**
@@ -295,18 +300,20 @@
 
 ### Prossima azione obbligatoria
 
-Step 6A è concluso localmente senza tag, upload, release o modifica remota. La prossima milestone è
-lo Human Gate 0.1: Tommaso deve usare l'artefatto RC rigenerato dopo D-049, verificarne il nuovo hash
-su Ubuntu 22.04 pulito e Windows Sandbox e decidere esplicitamente `RELEASE` o `NO-RELEASE`; gli hash
-RC precedenti alla correzione non sono più applicabili. Step 6B resta bloccato fino a `RELEASE`. La
-ripetizione `calibration/v3 --no-activate` su hardware materialmente diverso resta un follow-up
-futuro non bloccante e la copertura empirica resta `GATE-PARTIAL`.
+La decisione umana `RELEASE` del 20 luglio 2026 autorizza la pubblicazione di `v0.1.0`. Dopo tag,
+GitHub Release e workflow PyPI occorre verificare gli artefatti pubblici e l'installazione esplicita
+`qwen-launcher==0.1.0`; qualunque correzione successiva usa una nuova versione e non sostituisce gli
+artefatti in place. La 0.1 va stabilizzata prima di iniziare lo Step 7. La ripetizione
+`calibration/v3 --no-activate` su hardware materialmente diverso resta un follow-up futuro non
+bloccante e la copertura empirica resta `GATE-PARTIAL`.
 
 ---
 
 > **Stato:** documento normativo centrale, pronto a guidare l'implementazione per step.  
-> **Data di consolidamento:** 20 luglio 2026; la v4.7 registra D-050 e il target contesto esperto
-> `98304`, separato dalla scala automatica. La v4.6 registrava D-049 e la correzione pre-Gate della
+> **Data di consolidamento:** 20 luglio 2026; la v4.8 registra la decisione umana `RELEASE` e la
+> finalizzazione locale di `0.1.0`, mantenendo esplicite le verifiche pulite non strutturate e i
+> limiti residui. La v4.7 registrava D-050 e il target contesto esperto `98304`, separato dalla scala
+> automatica. La v4.6 registrava D-049 e la correzione pre-Gate della
 > RAM disponibile da 24 a 22 GiB, senza indebolire il minimo totale o la riserva dinamica v3. La v4.5
 > registrava la conclusione locale dello Step 6A e il passaggio allo Human Gate 0.1, senza
 > pubblicazione. La v4.4 registrava D-048 e la conclusione dello Step 5B con policy/report v2,
@@ -314,7 +321,7 @@ futuro non bloccante e la copertura empirica resta `GATE-PARTIAL`.
 > locale Windows CUDA e rinvia la prova hardware eterogenea a un follow-up non bloccante. La v4.2
 > registrava CI verde e il Gate v3 locale accettato per i tre modi; la v4.1 registrava il Gate v2
 > respinto e `calibration/v3` implementato (D-041–D-046, `docs/calibrate_v3.md`).  
-> **Sostituisce:** la v4.6, la v4.5, la v4.4, la v4.3, la v4.2, la v4.1, la v3.4, la v3.1,
+> **Sostituisce:** la v4.7, la v4.6, la v4.5, la v4.4, la v4.3, la v4.2, la v4.1, la v3.4, la v3.1,
 > `PIANO_IMPLEMENTAZIONE_v2.md`, le due revisioni
 > successive e la v3 non corretta.  
 > **Regola d'uso:** una sessione di sviluppo esegue un solo step, nell'ordine indicato. Prima di
@@ -1957,8 +1964,10 @@ Tommaso le esegue oppure le autorizza singolarmente nella sessione corrente.
   l'optimum 8/32 come busta finale.
 - [~] Follow-up non bloccante: ripetere `calibration/v3 --no-activate` su hardware materialmente
   diverso e aggiornare l'evidenza senza reinterpretare retroattivamente il Gate locale.
-- [ ] Installer provati in Ubuntu pulito e Windows Sandbox.
-- [ ] Release autorizzata tramite cancello umano; nessuna pubblicazione implicita.
+- [~] Il maintainer ha dichiarato il progetto funzionante; i dettagli dei collaudi installer in
+  Ubuntu pulito e Windows Sandbox non sono conservati come evidenza strutturata nel repository.
+- [x] Release autorizzata esplicitamente dal maintainer il 20 luglio 2026; pubblicazione limitata a
+  versione `0.1.0`, tag `v0.1.0` e relativi artefatti.
 
 ### Milestone 0.2
 

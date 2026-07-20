@@ -4,12 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-07-20
+
+### Added
+
+- First public release with pinned PyPI, Git-commit and verified-wheel installation paths.
+
 ### Changed
 
 - Lowered the default model's available-RAM gate from 24 GiB to 22 GiB while retaining the 28 GiB
   total-RAM gate and calibration/v3's monitored 2 GiB per-trial reserve.
 - Added 98304 as an explicit expert `--target-ctx` without changing calibration/v3's automatic
   descending context scale or invalidating existing v2 records.
+- Finalized installer messages, package metadata and user documentation for version `0.1.0`.
+
+### Known limitations
+
+- Calibration evidence remains `GATE-PARTIAL` because materially different hardware has not yet
+  repeated the v3 protocol.
+- CUDA remains blocked on multi-GPU hosts, and model weights are not distributed by the launcher.
 
 ## [0.1.0rc1] - 2026-07-19
 
@@ -46,7 +59,8 @@ All notable changes to this project will be documented in this file.
   invalidation for new, unreadable or excess GPU contexts.
 - Public `calibration-policy/v2` and `calibration-report/v2` contracts, an approved v3 method policy,
   privacy-safe Windows reference evidence, reproducible checksums and a manual contribution guide.
-- Explicit-source Ubuntu and Windows RC installers pinned to uv 0.11.28 and CPython 3.12.13.
+- Explicit-source Ubuntu and Windows release-candidate installers pinned to uv 0.11.28 and CPython
+  3.12.13.
 - Confined `uninstall` preview and confirmation that preserve the Hugging Face cache.
 - Release workflow with SHA-pinned actions, tested artifacts, protected `pypi` environment and OIDC.
 - Release, requirements, troubleshooting, benchmark and mode/profile anatomy documentation.

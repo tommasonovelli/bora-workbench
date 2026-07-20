@@ -40,7 +40,7 @@ def package_version() -> str:
     try:
         return version("qwen-launcher")
     except PackageNotFoundError:
-        return "0.1.0rc1"
+        return "0.1.0"
 
 
 def _version_callback(value: bool) -> None:

@@ -1,122 +1,125 @@
 # qwen-launcher
 
-`qwen-launcher` è una distribuzione locale e riproducibile per il modello appuntato
-`unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M`, servito da `llama.cpp b10011` con contratti e
-asset verificati.
+[![CI](https://github.com/tommasonovelli/qwen-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/tommasonovelli/qwen-launcher/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/qwen-launcher.svg)](https://pypi.org/project/qwen-launcher/)
+[![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-31213/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## Stato della release
+`qwen-launcher` installa e governa una distribuzione locale e riproducibile del modello
+`unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M`, servito dall'esatta release verificata
+`llama.cpp b10011`.
 
-La versione corrente è **`0.1.0rc1`**, un release candidate locale per lo Human Gate 0.1. Non è
-ancora pubblicata su PyPI: non esiste quindi un one-liner PyPI supportato e gli installer non
-scelgono una sorgente implicita. Il Gate umano deve ancora verificare Ubuntu 22.04 pulito, Windows
-Sandbox, i tre modi, calibrazione, riuso e disinstallazione prima della decisione `RELEASE`.
+Non è un model manager generico: modello, motore, flag, salute, modi e protocollo di calibrazione
+sono vincolati da lock e contratti versionati. I servizi ascoltano soltanto su `127.0.0.1`.
 
-Gli Step 0–5B sono conclusi. Il Gate `calibration/v3` è accettato localmente sui tre modi Windows
-11/CUDA; la copertura empirica resta `GATE-PARTIAL` perché manca hardware materialmente diverso.
-D-047 rende quel follow-up non bloccante, senza trasformare il risultato della macchina 32/8 in una
-busta trasferibile. Stato ed evidenza sono in
-[`docs/calibration-gate-v3-windows.md`](docs/calibration-gate-v3-windows.md).
+## Installazione
 
-## Funzionalità 0.1
+La release corrente è **`0.1.0`**. Gli installer ufficiali fissano uv `0.11.28` e CPython `3.12.13`,
+non richiedono privilegi amministrativi e richiedono sempre una sorgente/versione esplicita.
 
-- modi `coding`, `studio` e `vstudio`, con UI e vision abilitate o disabilitate esplicitamente;
-- configurazione severa e percorsi nativi Ubuntu/Windows senza side effect all'import;
-- rilevamento CPU, RAM e NVIDIA con una sola GPU CUDA selezionata nel solo ambiente figlio;
-- modello e mmproj risolti in sola lettura alla revisione e ai digest appuntati;
-- installazione sicura di `llama.cpp`, checksum obbligatori e attivazione atomica via manifest;
-- lifecycle con salute, log, stato atomico, lock d'avvio, `status` e `stop` identity-safe;
-- calibrazione locale v3 con RAM/VRAM, screening, round ABBA e record candidato/attivo/previous;
-- policy/report condivisi usati soltanto per ordinare probe, mai come `LaunchPlan` remoto;
-- `validate`, `doctor`, bundle privacy-safe e `uninstall` confinato alle directory gestite.
-
-Open WebUI, skill, router e benchmark autonomo appartengono alla roadmap 0.2 e non sono inclusi.
-
-## Requisiti supportati
-
-- Ubuntu 22.04 o superiore x86-64, oppure Windows 11 x86-64;
-- CPU oppure una singola GPU NVIDIA CUDA esplicitamente selezionata;
-- almeno 28 GiB di RAM totale e 22 GiB disponibili per il gate del modello predefinito;
-- modello e mmproj appuntati già presenti nella cache Hugging Face, oppure `model_path` esplicito per
-  un modello diverso;
-- spazio per modello, mmproj, motore e log. I pesi appuntati occupano 22.663.387.424 byte e il mmproj
-  902.822.528 byte; il launcher non li redistribuisce né gestisce la cache Hugging Face;
-- rete HTTPS per installare uv/dipendenze o il motore quando non si usano artefatti già disponibili.
-
-CUDA su host multi-GPU resta bloccato: lo Spike 0 ha verificato soltanto una macchina con una GPU.
-`--force` bypassa esclusivamente il gate RAM del modello predefinito.
-
-## Installare il release candidate locale
-
-Gli script appuntano uv `0.11.28` e CPython `3.12.13`. Prima della pubblicazione richiedono una
-sorgente esplicita. Per un artefatto RC trasferito, verificare il digest comunicato separatamente:
+### Ubuntu 22.04+
 
 ```bash
-sha256sum dist/qwen_launcher-0.1.0rc1-py3-none-any.whl
-sh ./install.sh \
-  --wheel dist/qwen_launcher-0.1.0rc1-py3-none-any.whl \
-  --sha256 <64-hex-verificato>
+curl --fail --location \
+  https://raw.githubusercontent.com/tommasonovelli/qwen-launcher/v0.1.0/install.sh \
+  --output install.sh
+sh ./install.sh --pypi-version 0.1.0
 ```
+
+### Windows 11
+
+Da PowerShell:
 
 ```powershell
-(Get-FileHash .\dist\qwen_launcher-0.1.0rc1-py3-none-any.whl -Algorithm SHA256).Hash
-.\install.ps1 `
-  -Wheel .\dist\qwen_launcher-0.1.0rc1-py3-none-any.whl `
-  -Sha256 <64-hex-verificato>
+Invoke-WebRequest `
+  https://raw.githubusercontent.com/tommasonovelli/qwen-launcher/v0.1.0/install.ps1 `
+  -OutFile install.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -PypiVersion 0.1.0
 ```
 
-Per un collaudo da commit esatto è disponibile `--git-commit <40-hex>` / `-GitCommit <40-hex>`.
-`--pypi-version` / `-PypiVersion` è ammesso soltanto per una versione già realmente pubblicata.
-Rieseguire lo stesso comando è sicuro; una versione uv diversa nel `PATH` non viene usata: lo script
-installa e invoca quella appuntata tramite l'installer ufficiale versionato, senza elevazione.
+`ExecutionPolicy Bypass` vale soltanto per quel processo e non modifica la policy di sistema.
 
-La procedura RC, il workflow OIDC e il cancello umano sono descritti in
-[`docs/releasing.md`](docs/releasing.md).
+### Se uv è già installato
 
-## Primo avvio
+```bash
+uv tool install --python 3.12.13 "qwen-launcher==0.1.0"
+```
+
+Verificare subito l'installazione:
 
 ```bash
 qwen-launcher --version
 qwen-launcher validate
 qwen-launcher doctor
+```
+
+La pagina [GitHub Releases](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.0)
+contiene anche wheel, sdist e checksum. Per installazioni verificabili da wheel o commit Git completo,
+consultare [la procedura di release](docs/releasing.md).
+
+## Requisiti
+
+- Ubuntu 22.04+ x86-64 oppure Windows 11 x86-64;
+- CPU oppure una singola GPU NVIDIA CUDA;
+- almeno **28 GiB di RAM totale** e **22 GiB disponibili** per il modello predefinito;
+- modello e mmproj appuntati già presenti nella cache Hugging Face, oppure `model_path` esplicito per
+  un modello diverso;
+- spazio per modello, mmproj, motore e log;
+- rete HTTPS per installare dipendenze e motore, salvo disponibilità locale degli artefatti.
+
+I pesi non sono inclusi: il GGUF appuntato occupa 22.663.387.424 byte e il mmproj 902.822.528 byte.
+Il launcher verifica revisione, dimensione e SHA-256 senza modificare la cache Hugging Face.
+
+CUDA su host multi-GPU resta bloccato perché la selezione fisica è stata verificata soltanto su host
+a GPU singola. La copertura empirica della calibrazione resta `GATE-PARTIAL`: il metodo è stato
+accettato localmente su Windows 11/CUDA per i tre modi, ma manca ancora una prova su hardware
+materialmente diverso.
+
+## Primo avvio
+
+```bash
 qwen-launcher engine install
+qwen-launcher doctor
 qwen-launcher calibrate --mode all
 qwen-launcher coding
 ```
 
-`engine install` usa soltanto gli asset HTTPS e i digest di `engine.lock`. Su Ubuntu CUDA compila il
-solo server dal commit appuntato e, se mancano prerequisiti, stampa i comandi da eseguire senza
-installare pacchetti. Dettagli: [`docs/engine-lock.md`](docs/engine-lock.md).
+`engine install` scarica o costruisce soltanto gli asset descritti da `engine.lock`, ne verifica i
+checksum e attiva il motore tramite un manifest atomico. Su Ubuntu CUDA, se mancano prerequisiti di
+compilazione, il launcher mostra i comandi necessari ma non esegue `sudo` o package manager.
 
-Senza record locale compatibile, hardware idoneo usa la baseline verificata `ctx=8192`, dichiarata
-non ottimizzata. `calibrate` misura invece la macchina corrente. Per il Gate o per ispezionare un
-candidato senza attivarlo:
+La calibrazione è locale e potenzialmente lunga. Senza un record locale compatibile, il launcher usa
+la baseline verificata `ctx=8192`, dichiarandola non ottimizzata. Per misurare senza attivare il
+risultato:
 
 ```bash
 qwen-launcher calibrate --mode all --no-activate
-qwen-launcher calibrate --mode coding --activate
 ```
 
-La guida completa è [`docs/calibration.md`](docs/calibration.md). Il contributo di evidenza resta
-manuale e separato: [`docs/calibration-contributing.md`](docs/calibration-contributing.md).
+Dettagli: [motore](docs/engine-lock.md) e [calibrazione](docs/calibration.md).
 
-## Modi e servizi
+## Modi disponibili
+
+| Comando | UI | Vision | Uso principale |
+|---|---:|---:|---|
+| `qwen-launcher coding` | no | no | API locale per coding e integrazioni |
+| `qwen-launcher studio` | sì | no | chat nella UI integrata di llama.cpp |
+| `qwen-launcher vstudio` | sì | sì | chat e input immagine tramite mmproj |
+
+Comandi di controllo:
 
 ```bash
-qwen-launcher coding    # API locale, UI off, vision off
-qwen-launcher studio    # UI integrata testuale, vision off
-qwen-launcher vstudio   # UI integrata e mmproj vision
 qwen-launcher status
 qwen-launcher stop
 ```
 
-I servizi ascoltano soltanto su `127.0.0.1`. `studio` e `vstudio` aprono il browser solo dopo READY
-quando `open_browser=true`. Anatomia dei contratti:
-[`mode/v1`](docs/anatomy/mode.md) e [`profile/v1`](docs/anatomy/profile.md).
+`studio` e `vstudio` aprono il browser soltanto dopo lo stato READY e solo quando
+`open_browser=true`. Open WebUI, skill e router appartengono alla roadmap 0.2.
 
 ## Configurazione
 
-File: `config_dir()/config.toml`. La precedenza è ambiente > TOML > default; chiavi sconosciute o
-valori malformati sono errori.
+Il file è `config_dir()/config.toml`. La precedenza è **ambiente > TOML > default**; chiavi
+sconosciute e valori malformati sono errori. Il launcher non modifica mai automaticamente il file.
 
 | Chiave | Variabile ambiente | Default |
 |---|---|---|
@@ -126,23 +129,10 @@ valori malformati sono errori.
 | `engine_path` | `QWEN_LAUNCHER_ENGINE_PATH` | `None` |
 | `open_browser` | `QWEN_LAUNCHER_OPEN_BROWSER` | `true` |
 
-Il launcher non modifica mai automaticamente `config.toml`.
+Un modello diverso richiede `model_path` esplicito e non eredita gate, record o calibrazione del
+modello predefinito.
 
-## Privacy e sicurezza
-
-- nessun servizio viene esposto su `0.0.0.0`;
-- nessun test usa rete, GPU, modello o server reale;
-- download motore con TLS e SHA-256 obbligatori, estrazione confinata e nessuna elevazione;
-- niente credenziali, hostname, username o percorsi assoluti nei report condivisibili;
-- record, log e configurazione locali non vengono caricati automaticamente;
-- la cache Hugging Face non viene modificata o rimossa, neppure da `uninstall`;
-- identità processo = `pid + create_time`; stato obsoleto non autorizza a terminare processi estranei;
-- report condivisi e profili storici non sostituiscono una calibrazione locale compatibile.
-
-Consultare anche [`docs/troubleshooting.md`](docs/troubleshooting.md) e il modello di sicurezza
-normativo in `IMPLEMENTATION_SPEC.md` sezione 5.
-
-## Disinstallare dati e tool
+## Dati locali e disinstallazione
 
 ```bash
 qwen-launcher stop
@@ -150,19 +140,27 @@ qwen-launcher uninstall
 uv tool uninstall qwen-launcher
 ```
 
-`uninstall` mostra config, dati, cache e stato esatti e richiede conferma. Non cancella il tool
-stesso e non tocca mai la cache Hugging Face. Se un servizio è ancora attivo, fermarlo prima per non
-lasciare un processo senza stato gestito.
+`uninstall` mostra in anteprima le radici gestite, richiede conferma e rifiuta servizi vivi, symlink
+o percorsi alterati. Non cancella mai la cache Hugging Face. La rimozione del tool Python resta
+separata tramite uv.
 
-## Benchmark
+## Sicurezza e privacy
 
-`benchmark/v1` è riusato internamente dalla calibrazione: un warm-up escluso e cinque misure da 256
-token esatti. Non misura qualità semantica e non prova portabilità o optimum globale. La 0.1 non
-espone ancora un comando benchmark autonomo. Vedere [`docs/benchmarks.md`](docs/benchmarks.md).
+- nessun bind implicito su `0.0.0.0`;
+- download HTTPS e SHA-256 obbligatori;
+- estrazione degli archivi confinata e nessuna elevazione automatica;
+- identità processo basata su `pid + create_time`;
+- `CUDA_VISIBLE_DEVICES` impostata soltanto nell'ambiente del processo figlio;
+- configurazione, record e log locali mai caricati automaticamente;
+- bundle condivisibili redatti e validati contro hostname, username e percorsi assoluti;
+- report pubblici usati soltanto per ordinare la ricerca, mai come busta calibrata remota.
+
+Per errori di installazione, modello, RAM, CUDA, porte o record consultare
+[troubleshooting](docs/troubleshooting.md).
 
 ## Sviluppo
 
-Prerequisiti di sviluppo: CPython `3.12.13` e uv `0.11.28`.
+Prerequisiti: CPython `3.12.13` e uv `0.11.28`.
 
 ```bash
 uv sync --frozen
@@ -174,17 +172,12 @@ uv build
 uv run --frozen python scripts/verify_wheel.py
 ```
 
-La CI esegue la matrice Ubuntu/Windows. Le regole di contribuzione sono in
-[`CONTRIBUTING.md`](CONTRIBUTING.md); `IMPLEMENTATION_SPEC.md` resta l'unico piano normativo.
-
-## Roadmap 0.2
-
-Dopo la stabilizzazione della 0.1: skill dichiarative e router a frasi, Open WebUI appuntata e
-isolata, sync locale, benchmark autonomo e doctor definitivo. Nessuna funzione 0.2 viene anticipata
-nel release candidate 0.1.
+I test sono deterministici e non usano rete, GPU, modello o server reali. La CI copre Ubuntu e
+Windows. Leggere [CONTRIBUTING.md](CONTRIBUTING.md) prima di modificare il progetto;
+`IMPLEMENTATION_SPEC.md` resta l'unico piano normativo.
 
 ## Licenze
 
-Il launcher è MIT. Le installazioni gestite conservano il testo MIT di `llama.cpp` e, su Windows
-CUDA, la NVIDIA CUDA Toolkit EULA richiesta. Modello e mmproj restano sotto la licenza del modello e
-non sono redistribuiti.
+Il launcher è distribuito con licenza [MIT](LICENSE). Le installazioni gestite conservano il testo
+MIT di `llama.cpp` e, su Windows CUDA, la NVIDIA CUDA Toolkit EULA richiesta. Modello e mmproj non
+sono redistribuiti e restano soggetti alla licenza del modello.

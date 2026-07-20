@@ -13,14 +13,15 @@ qwen-launcher engine status
 Gli errori operativi attesi non mostrano traceback. Conservare il messaggio completo e il percorso
 del log indicato dalla CLI; non pubblicare log senza revisarli per percorsi o dati privati.
 
-## Installazione RC
+## Installazione
 
 ### Nessuna sorgente selezionata
 
-Durante `0.1.0rc1` è intenzionale: la versione non è su PyPI. Trasferire wheel e SHA-256 separatamente
-e usare `--wheel ... --sha256 ...` oppure `-Wheel ... -Sha256 ...`. In alternativa usare un commit
-Git completo di 40 caratteri. Non sostituire il digest con un valore calcolato dopo un trasferimento
-non fidato.
+È intenzionale: gli installer non scelgono una versione o una sorgente implicita. Per la release
+corrente usare `--pypi-version 0.1.0` oppure `-PypiVersion 0.1.0`. In alternativa trasferire wheel e
+SHA-256 tramite canali verificabili e usare `--wheel ... --sha256 ...` / `-Wheel ... -Sha256 ...`,
+oppure indicare un commit Git completo di 40 caratteri. Non sostituire un digest fidato con un valore
+calcolato soltanto dopo un trasferimento non verificato.
 
 ### uv non viene trovato dopo l'installer
 
@@ -30,9 +31,9 @@ directory al `PATH`. `uv --version` deve riportare `0.11.28` per il flusso conge
 
 ### PowerShell blocca lo script locale
 
-Usare un file ottenuto dall'artefatto RC verificato. Se la policy locale consente l'esecuzione del
-solo processo, avviare PowerShell con `-ExecutionPolicy Bypass -File .\install.ps1 ...`; non cambiare
-la policy di sistema e non eseguire stringhe remote con `Invoke-Expression`.
+Scaricare `install.ps1` dal tag `v0.1.0`. Se la policy locale consente l'esecuzione del solo processo,
+avviare PowerShell con `-ExecutionPolicy Bypass -File .\install.ps1 ...`; non cambiare la policy di
+sistema e non eseguire stringhe remote con `Invoke-Expression`.
 
 ## Configurazione invalida
 

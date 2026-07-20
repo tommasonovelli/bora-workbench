@@ -1,11 +1,10 @@
 #!/usr/bin/env sh
-# install.sh - local, offline-safe installer for the qwen-launcher 0.1 release candidate (Linux).
+# install.sh - explicit-source installer for qwen-launcher 0.1 on Linux.
 #
-# Step 6A (IMPLEMENTATION_SPEC.md sections 5.10, 5.11, 5.12 and "Step 6A") requires a small,
-# idempotent installer that verifies prerequisites, pins uv 0.11.28 through its official versioned
-# installer, and installs the tool with CPython 3.12.13. During the release candidate the package
-# is NOT published on PyPI, so there is intentionally no default source: exactly one explicit
-# source must be chosen and no unpublished version is assumed to exist on PyPI.
+# IMPLEMENTATION_SPEC.md sections 5.10-5.12 require a small, idempotent installer that verifies
+# prerequisites, pins uv 0.11.28 through its official versioned installer, and installs the tool
+# with CPython 3.12.13. Exactly one source remains mandatory so an install never changes version or
+# trust boundary because of an implicit default.
 set -eu
 
 UV_VERSION="0.11.28"
@@ -24,12 +23,11 @@ usage() {
     cat >&2 <<EOF
 Usage: install.sh (--wheel PATH --sha256 HEX | --git-commit HEX | --pypi-version VERSION)
 
-Exactly one explicit source is required. This release candidate is not published on PyPI, so
-there is no default source and no version is assumed to exist there.
+Exactly one explicit source is required; no version is selected implicitly.
 
-  --wheel PATH --sha256 HEX   install a local RC wheel after verifying its 64-hex SHA-256
+  --wheel PATH --sha256 HEX   install a local wheel after verifying its 64-hex SHA-256
   --git-commit HEX            install from a 40-hex commit of ${REPO_URL}
-  --pypi-version VERSION      install an explicit version that already exists on PyPI
+  --pypi-version VERSION      install an explicit version that exists on PyPI
 EOF
 }
 
@@ -64,7 +62,7 @@ while [ "$#" -gt 0 ]; do
 done
 
 # Require exactly one explicit source. A missing source is an input error, never a silent PyPI
-# default, so an unpublished release candidate can never be presented as installable from PyPI.
+# default, so rerunning the installer cannot unexpectedly select a newer release.
 source_count=0
 if [ -n "$wheel" ]; then source_count=$((source_count + 1)); fi
 if [ -n "$git_commit" ]; then source_count=$((source_count + 1)); fi

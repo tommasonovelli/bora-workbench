@@ -1,11 +1,10 @@
 <#
-install.ps1 - local, offline-safe installer for the qwen-launcher 0.1 release candidate (Windows).
+install.ps1 - explicit-source installer for qwen-launcher 0.1 on Windows.
 
-Step 6A (IMPLEMENTATION_SPEC.md sections 5.10, 5.11, 5.12 and "Step 6A") requires a small,
-idempotent installer that verifies prerequisites, pins uv 0.11.28 through its official versioned
-installer, and installs the tool with CPython 3.12.13. During the release candidate the package is
-NOT published on PyPI, so there is intentionally no default source: exactly one explicit source
-must be chosen and no unpublished version is assumed to exist on PyPI.
+IMPLEMENTATION_SPEC.md sections 5.10-5.12 require a small, idempotent installer that verifies
+prerequisites, pins uv 0.11.28 through its official versioned installer, and installs the tool with
+CPython 3.12.13. Exactly one source remains mandatory so an install never changes version or trust
+boundary because of an implicit default.
 #>
 [CmdletBinding()]
 param(
@@ -36,12 +35,11 @@ function Show-Usage {
     [Console]::Error.WriteLine(@"
 Usage: install.ps1 (-Wheel PATH -Sha256 HEX | -GitCommit HEX | -PypiVersion VERSION)
 
-Exactly one explicit source is required. This release candidate is not published on PyPI, so
-there is no default source and no version is assumed to exist there.
+Exactly one explicit source is required; no version is selected implicitly.
 
-  -Wheel PATH -Sha256 HEX   install a local RC wheel after verifying its 64-hex SHA-256
+  -Wheel PATH -Sha256 HEX   install a local wheel after verifying its 64-hex SHA-256
   -GitCommit HEX            install from a 40-hex commit of $RepoUrl
-  -PypiVersion VERSION      install an explicit version that already exists on PyPI
+  -PypiVersion VERSION      install an explicit version that exists on PyPI
 "@)
 }
 
@@ -56,7 +54,7 @@ function Test-Hex {
 }
 
 # Require exactly one explicit source. A missing source is an input error, never a silent PyPI
-# default, so an unpublished release candidate can never be presented as installable from PyPI.
+# default, so rerunning the installer cannot unexpectedly select a newer release.
 $sources = 0
 if ($Wheel) { $sources++ }
 if ($GitCommit) { $sources++ }

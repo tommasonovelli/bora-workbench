@@ -23,7 +23,7 @@ def _resource_probe() -> str:
         "from importlib.metadata import version; "
         "from qwen_launcher.profiles import load_catalog; "
         "from qwen_launcher.resources import read_json, read_text, resource; "
-        "assert version('qwen-launcher') == '0.1.0rc1'; "
+        "assert version('qwen-launcher') == '0.1.0'; "
         "assert 'Spike 0' in read_text('README.txt'); "
         "lock = read_json('engine.lock'); "
         "assert lock['release'] == 'b10011' and lock['assets_complete']; "
@@ -83,7 +83,7 @@ def _isolated_environment(root: Path) -> dict[str, str]:
 
 
 def _verify_sdist() -> bool:
-    """Require one sdist containing the RC installers and release documentation (Step 6A)."""
+    """Require one sdist containing the installers and release documentation."""
     archives = list(Path("dist").glob("*.tar.gz"))
     if len(archives) != 1:
         print(f"expected exactly one sdist in dist/, found {len(archives)}", file=sys.stderr)
@@ -115,7 +115,7 @@ def _verify_sdist() -> bool:
 
 
 def main() -> int:
-    """Install the wheel in isolation and inspect both distributions for Step 6A."""
+    """Install the wheel in isolation and inspect both release distributions."""
     # Globbing in Python rather than in the shell keeps this identical on Ubuntu and Windows. An
     # ambiguous dist/ is refused outright, so a stale wheel can never be the one CI blesses.
     wheels = list(Path("dist").glob("*.whl"))

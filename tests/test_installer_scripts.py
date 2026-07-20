@@ -110,7 +110,7 @@ def _run(tmp_path: Path, args: list[str]) -> Run:
 
 def _make_wheel(tmp_path: Path) -> tuple[Path, str]:
     """Write a dummy wheel file and return its path and real SHA-256 digest."""
-    wheel = tmp_path / "qwen_launcher-0.1.0rc1-py3-none-any.whl"
+    wheel = tmp_path / "qwen_launcher-0.1.0-py3-none-any.whl"
     payload = b"not a real wheel; the installer verifies only the digest"
     wheel.write_bytes(payload)
     return wheel, hashlib.sha256(payload).hexdigest()
@@ -150,17 +150,17 @@ def test_malformed_hash_is_input_error(tmp_path: Path) -> None:
     assert result.returncode == 2
 
 
-def test_no_source_is_input_error_without_pypi_claim(tmp_path: Path) -> None:
-    """No source is invalid input and the usage never claims the RC is installable from PyPI."""
+def test_no_source_is_input_error_without_implicit_version(tmp_path: Path) -> None:
+    """No source is invalid input because installers never select an implicit version."""
     result = _run(tmp_path, [])
     assert result.returncode == 2
-    assert "not published on PyPI" in result.stderr
+    assert "no version is selected implicitly" in result.stderr
     assert result.log == ""
 
 
 def test_multiple_sources_rejected(tmp_path: Path) -> None:
     """Two competing sources are invalid input and do not reach uv."""
-    result = _run(tmp_path, _installer_args(git_commit="a" * 40, pypi_version="0.1.0rc1"))
+    result = _run(tmp_path, _installer_args(git_commit="a" * 40, pypi_version="0.1.0"))
     assert result.returncode == 2
     assert result.log == ""
 
@@ -181,9 +181,9 @@ def test_git_commit_must_be_full_hash(tmp_path: Path) -> None:
 
 def test_pypi_version_source_pins_exact_version(tmp_path: Path) -> None:
     """An explicit PyPI version is pinned exactly in the uv install target."""
-    result = _run(tmp_path, _installer_args(pypi_version="0.1.0rc1"))
+    result = _run(tmp_path, _installer_args(pypi_version="0.1.0"))
     assert result.returncode == 0, result.stderr
-    assert "qwen-launcher==0.1.0rc1" in result.log
+    assert "qwen-launcher==0.1.0" in result.log
 
 
 def test_windows_checksum_does_not_require_get_file_hash() -> None:

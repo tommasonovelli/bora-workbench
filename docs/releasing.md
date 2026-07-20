@@ -1,12 +1,39 @@
-# Procedura release 0.1
+# Release 0.1
 
-Questa guida separa preparazione locale, Human Gate e pubblicazione. Nessun passaggio locale
-costituisce autorizzazione a creare tag, push, release GitHub, progetto PyPI, Trusted Publisher o
-upload.
+Questa guida registra il processo usato per `0.1.0` e separa finalizzazione locale, pubblicazione e
+verifica. Tag, GitHub Release e upload PyPI richiedono sempre un'autorizzazione umana esplicita.
 
-## Step 6A: release candidate locale
+## Installare la release pubblicata
 
-La versione è `0.1.0rc1`. Da un checkout pulito:
+Gli installer richiedono una sorgente esplicita e fissano uv `0.11.28` e CPython `3.12.13`:
+
+```bash
+sh ./install.sh --pypi-version 0.1.0
+```
+
+```powershell
+.\install.ps1 -PypiVersion 0.1.0
+```
+
+Sono supportati anche due percorsi verificabili alternativi:
+
+```bash
+sh ./install.sh --git-commit <commit-completo-40-hex>
+sh ./install.sh --wheel <wheel-locale> --sha256 <64-hex-verificato>
+```
+
+```powershell
+.\install.ps1 -GitCommit <commit-completo-40-hex>
+.\install.ps1 -Wheel <wheel-locale> -Sha256 <64-hex-verificato>
+```
+
+Wheel, sdist e `SHA256SUMS` sono allegati alla
+[GitHub Release v0.1.0](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.0).
+Il digest deve essere verificato prima di consegnare una wheel all'installer.
+
+## Verifiche della finalizzazione
+
+La release viene costruita soltanto da un checkout pulito:
 
 ```bash
 uv sync --frozen
@@ -14,96 +41,48 @@ uv run --frozen ruff check .
 uv run --frozen ruff format --check .
 uv run --frozen pytest
 uv run --frozen qwen-launcher validate
-# eseguire da un checkout pulito con dist/ assente
+# dist/ deve essere assente prima della build
 uv build
 uv run --frozen python scripts/verify_wheel.py
 ```
 
-Calcolare e conservare SHA-256 di wheel e sdist. Trasferire il release candidate e il digest tramite
-canali distinti o comunque verificabili. Finché il pacchetto non esiste su PyPI, usare soltanto il
-percorso esplicito degli installer:
+La versione nei metadati deve essere `0.1.0`; il tag deve essere `v0.1.0`. Wheel e sdist vengono
+rigenerate dopo ogni modifica e i relativi SHA-256 sono calcolati sui byte finali.
 
-```bash
-sh ./install.sh --wheel <wheel-rc-locale> --sha256 <64-hex-verificato>
-```
+## Decisione umana 0.1
 
-```powershell
-.\install.ps1 -Wheel <wheel-rc-locale> -Sha256 <64-hex-verificato>
-```
+Il 20 luglio 2026 Tommaso ha dichiarato il progetto funzionante, ha deciso esplicitamente `RELEASE` e
+ha autorizzato finalizzazione, push, tag e pubblicazione. Questa decisione accetta le limitazioni già
+documentate: copertura di calibrazione `GATE-PARTIAL`, assenza di una prova su hardware
+materialmente diverso, blocco CUDA multi-GPU e pesi non redistribuiti.
 
-Un commit Git è ammesso soltanto come SHA completo tramite `--git-commit` / `-GitCommit`. Non
-pubblicare un one-liner PyPI per una versione inesistente.
+I candidati di calibrazione locali restano separati dalla release e non vengono attivati o
+pubblicati implicitamente.
 
-## Human Gate 0.1
+## Workflow di pubblicazione
 
-Tommaso verifica personalmente l'artefatto RC con hash verificato:
-
-### Ubuntu 22.04 pulito
-
-- installer RC, `--version`, `validate` e `doctor`;
-- `engine install` e contratto compatibile;
-- `coding`, `studio`, `vstudio`, salute, UI/vision e stop;
-- macchina senza record: baseline dichiarata, calibrazione e riuso;
-- bundle separato, validazione e nessun upload;
-- `uninstall`, confini delle directory e cache Hugging Face intatta.
-
-### Windows Sandbox
-
-Ripetere lo stesso percorso con `install.ps1`, inclusi motore, tre modi, calibrazione, record,
-disinstallazione e verifica che non restino processi o porte.
-
-### Portabilità e contenuti
-
-- un seed di altro hardware non entra direttamente nel piano;
-- la ricerca resta completa e deterministica con o senza seed;
-- modello, mmproj, policy, report, manifest, licenze e avvisi sono presenti negli artefatti;
-- nomi progetto/account e metadati sono controllati manualmente;
-- il limite `GATE-PARTIAL` resta visibile.
-
-Il Gate termina con una decisione esplicita `RELEASE` oppure `NO-RELEASE`. `NO-RELEASE` riapre il
-solo step responsabile; non si correggono artefatti pubblicati o misure a mano.
-
-## Preparare PyPI Trusted Publishing
-
-Queste operazioni sono umane e avvengono soltanto durante il Gate:
-
-1. creare o verificare il progetto PyPI `qwen-launcher`;
-2. creare l'ambiente GitHub `pypi` con approvatore richiesto;
-3. configurare su PyPI un Trusted Publisher per:
-   - owner: `tommasonovelli`;
-   - repository: `qwen-launcher`;
-   - workflow: `release.yml`;
-   - environment: `pypi`;
-4. verificare che non esistano token PyPI nel repository o nei secret del workflow.
-
-Il workflow `.github/workflows/release.yml` usa permessi globali `contents: read`. Soltanto il job
-`publish` riceve `id-token: write`, dipende dalla matrice di test e dall'artefatto costruito e
-verificato, e attende l'approvazione dell'ambiente `pypi`. Tutte le action sono appuntate a commit
-SHA completi.
-
-## Step 6B e pubblicazione
-
-Dopo `RELEASE` esplicito, lo Step 6B aggiorna localmente versione `0.1.0`, changelog e riferimenti RC,
-poi ripete suite e build. Anche in quel momento push, tag `v0.1.0`, release GitHub e upload non sono
-impliciti.
-
-Quando Tommaso autorizza e crea il tag esatto, il workflow:
+Il tag `v<versione>` attiva `.github/workflows/release.yml`, che:
 
 1. ripete test e validazione su Ubuntu e Windows;
-2. verifica che il tag `v<versione>` coincida coi metadati;
-3. costruisce wheel e sdist e verifica la wheel in isolamento;
-4. trasferisce l'artefatto fra job tramite GitHub Actions;
-5. pubblica con OIDC soltanto dopo l'approvazione dell'ambiente.
+2. verifica che il tag coincida con la versione del pacchetto;
+3. costruisce wheel e sdist una sola volta;
+4. verifica la wheel in un ambiente isolato;
+5. trasferisce gli stessi artefatti testati al job di pubblicazione;
+6. pubblica su PyPI tramite Trusted Publishing OIDC e ambiente GitHub `pypi`.
+
+Il workflow usa permessi globali `contents: read`. Soltanto il job `publish` riceve
+`id-token: write`; nessun token PyPI è conservato nel repository o passato al workflow.
 
 ## Verifica post-pubblicazione
 
-Su Ubuntu pulito e Windows Sandbox:
+Su Ubuntu 22.04 pulito e Windows 11/Sandbox:
 
-- verificare hash e metadati degli artefatti PyPI;
-- usare il percorso installer PyPI soltanto ora, con versione esplicita già esistente;
-- controllare `qwen-launcher --version`, `validate` e `doctor`;
+- confrontare gli SHA-256 degli artefatti GitHub e PyPI;
+- installare `qwen-launcher==0.1.0` con gli installer;
+- verificare `--version`, `validate`, `doctor` ed `engine status`;
 - eseguire almeno i modi principali e uno stop pulito;
-- verificare di nuovo `uninstall` e `uv tool uninstall qwen-launcher`.
+- verificare `uninstall` e `uv tool uninstall qwen-launcher`;
+- confermare che cache Hugging Face, processi e porte estranei restino intatti.
 
-Eventuali problemi post-pubblicazione vengono documentati; una versione esistente non viene
-sostituita in place.
+Una versione pubblicata non viene mai sostituita in place. Correzioni successive richiedono una nuova
+versione, un nuovo changelog e lo stesso processo di test, autorizzazione e pubblicazione.
