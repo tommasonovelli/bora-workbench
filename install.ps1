@@ -78,6 +78,22 @@ if ($GitCommit -and -not (Test-Hex $GitCommit 40)) {
     Stop-WithError "-GitCommit must be a full 40-character commit hash" 2
 }
 
+function Get-Sha256 {
+    param([string]$Path)
+    # A PowerShell 7 PSModulePath inherited by powershell.exe 5.1 can break module discovery.
+    # Direct .NET hashing keeps the clean-machine installer independent of optional commands.
+    $stream = [System.IO.File]::OpenRead($Path)
+    try {
+        $sha256 = [System.Security.Cryptography.SHA256]::Create()
+        try {
+            $bytes = $sha256.ComputeHash($stream)
+            return ([System.BitConverter]::ToString($bytes)).Replace('-', '').ToLowerInvariant()
+        }
+        finally { $sha256.Dispose() }
+    }
+    finally { $stream.Dispose() }
+}
+
 # Verify the supported platform and architecture before any download or install (spec section
 # 5.10: no elevation, actionable prerequisite errors).
 if ($env:OS -ne 'Windows_NT') {
@@ -93,8 +109,8 @@ if ($Wheel) {
     if (-not (Test-Path -LiteralPath $Wheel -PathType Leaf)) {
         Stop-WithError "wheel not found: $Wheel" 1
     }
-    $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $Wheel).Hash
-    if ($actual.ToLower() -ne $Sha256.ToLower()) {
+    $actual = Get-Sha256 $Wheel
+    if ($actual -ne $Sha256.ToLower()) {
         Stop-WithError "SHA-256 mismatch for $Wheel (expected $($Sha256.ToLower()), got $($actual.ToLower()))" 1
     }
 }

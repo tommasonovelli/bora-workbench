@@ -184,3 +184,11 @@ def test_pypi_version_source_pins_exact_version(tmp_path: Path) -> None:
     result = _run(tmp_path, _installer_args(pypi_version="0.1.0rc1"))
     assert result.returncode == 0, result.stderr
     assert "qwen-launcher==0.1.0rc1" in result.log
+
+
+def test_windows_checksum_does_not_require_get_file_hash() -> None:
+    """Keep hashing independent of module discovery across PowerShell 7 and Windows PowerShell."""
+    script = (REPO_ROOT / "install.ps1").read_text(encoding="utf-8")
+
+    assert "Get-FileHash" not in script
+    assert "[System.Security.Cryptography.SHA256]::Create()" in script
