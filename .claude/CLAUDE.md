@@ -19,13 +19,14 @@ apply here.
 - This is a Python 3.12 launcher for a local, calibrated Qwen model served by an exact, verified
   `llama.cpp` release. It is not a generic model manager or plugin framework.
 - Work one implementation step at a time and do not anticipate later milestones.
-- **Steps 3, 4, 5, 5A, 5B, 6A and 6B are complete.** Tommaso explicitly decided `RELEASE` on
-  20 July 2026 and authorized publication of `0.1.0`/`v0.1.0`. Q8 remains pinned, the
-  `n_cpu_moe` domain is `[0, 41]`, and the Windows 11/CUDA Gate is `CALIBRATION-ACCEPTED` for all
-  three modes while overall coverage remains `GATE-PARTIAL`. The three local candidates remain
-  inactive. See `docs/calibration-gate-v3-windows.md` and `docs/releasing.md`. Stabilize the 0.1
-  line and handle corrections as new versions; do not activate candidates or begin Step 7 without
-  an explicit request.
+- **Steps 3, 4, 5, 5A, 5B, 6A and 6B are complete.** Version `0.1.0`, tag `v0.1.0` and the GitHub
+  Release are public; its artifacts came from the green release test/build jobs. PyPI remains
+  blocked by `invalid-publisher` until Tommaso configures the Trusted Publisher documented in
+  `docs/releasing.md`; do not rebuild or replace the GitHub artifacts. Q8 remains pinned, the
+  `n_cpu_moe` domain is `[0, 41]`, and calibration coverage remains `GATE-PARTIAL`. Treat `0.1.0`
+  as a first public release without stability guarantees. The three local candidates remain
+  inactive. Stabilize 0.1 with new versions for corrections; do not activate candidates or begin
+  Step 7 without an explicit request.
 - Never invent engine flags, checksums, source commits, benchmark results, hardware support, profiles,
   health responses, or compatibility claims.
 

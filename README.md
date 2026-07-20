@@ -1,7 +1,7 @@
 # qwen-launcher
 
 [![CI](https://github.com/tommasonovelli/qwen-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/tommasonovelli/qwen-launcher/actions/workflows/ci.yml)
-[![PyPI](https://img.shields.io/pypi/v/qwen-launcher.svg)](https://pypi.org/project/qwen-launcher/)
+[![Release](https://img.shields.io/github/v/release/tommasonovelli/qwen-launcher.svg)](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.0)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-31213/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -12,18 +12,42 @@
 Non è un model manager generico: modello, motore, flag, salute, modi e protocollo di calibrazione
 sono vincolati da lock e contratti versionati. I servizi ascoltano soltanto su `127.0.0.1`.
 
+## Stato e maturità
+
+> [!WARNING]
+> `0.1.0` è la **prima release pubblica**, destinata a valutazione ed early adopter. Non è garantita
+> alcuna stabilità di CLI, configurazione, formati dei record, procedure operative, prestazioni o
+> compatibilità con versioni future. Non usarla per workload critici senza verifiche indipendenti e
+> senza conservare copie dei propri dati locali.
+
+I test e i lock documentano ciò che è stato verificato sulla versione corrente; non costituiscono una
+garanzia di disponibilità, assenza di difetti, qualità delle risposte del modello o prestazioni su
+hardware diverso. Il software è fornito “as is” secondo la licenza MIT. Problemi e correzioni saranno
+gestiti con nuove versioni, senza sostituire gli artefatti `0.1.0` già pubblicati.
+
 ## Installazione
 
 La release corrente è **`0.1.0`**. Gli installer ufficiali fissano uv `0.11.28` e CPython `3.12.13`,
-non richiedono privilegi amministrativi e richiedono sempre una sorgente/versione esplicita.
+non richiedono privilegi amministrativi e verificano la wheel prima di installarla. PyPI è in attesa
+della configurazione del Trusted Publisher; gli artefatti GitHub qui sotto sono già pubblici e sono
+gli stessi costruiti e verificati dalla CI release su Ubuntu e Windows.
+
+SHA-256 della wheel `0.1.0`:
+
+```text
+8966539a9e257f532d14fab821bf507a9c0327fa7fb246e5d8803fa69289c482
+```
 
 ### Ubuntu 22.04+
 
 ```bash
-curl --fail --location \
-  https://raw.githubusercontent.com/tommasonovelli/qwen-launcher/v0.1.0/install.sh \
-  --output install.sh
-sh ./install.sh --pypi-version 0.1.0
+base="https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.0"
+curl --fail --location "$base/install.sh" --output install.sh
+curl --fail --location "$base/qwen_launcher-0.1.0-py3-none-any.whl" \
+  --output qwen_launcher-0.1.0-py3-none-any.whl
+sh ./install.sh \
+  --wheel ./qwen_launcher-0.1.0-py3-none-any.whl \
+  --sha256 8966539a9e257f532d14fab821bf507a9c0327fa7fb246e5d8803fa69289c482
 ```
 
 ### Windows 11
@@ -31,10 +55,13 @@ sh ./install.sh --pypi-version 0.1.0
 Da PowerShell:
 
 ```powershell
-Invoke-WebRequest `
-  https://raw.githubusercontent.com/tommasonovelli/qwen-launcher/v0.1.0/install.ps1 `
-  -OutFile install.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -PypiVersion 0.1.0
+$base = "https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.0"
+Invoke-WebRequest "$base/install.ps1" -OutFile install.ps1
+Invoke-WebRequest "$base/qwen_launcher-0.1.0-py3-none-any.whl" `
+  -OutFile qwen_launcher-0.1.0-py3-none-any.whl
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 `
+  -Wheel .\qwen_launcher-0.1.0-py3-none-any.whl `
+  -Sha256 8966539a9e257f532d14fab821bf507a9c0327fa7fb246e5d8803fa69289c482
 ```
 
 `ExecutionPolicy Bypass` vale soltanto per quel processo e non modifica la policy di sistema.
@@ -42,7 +69,8 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -PypiVersi
 ### Se uv è già installato
 
 ```bash
-uv tool install --python 3.12.13 "qwen-launcher==0.1.0"
+uv tool install --python 3.12.13 \
+  "qwen-launcher @ https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.0/qwen_launcher-0.1.0-py3-none-any.whl"
 ```
 
 Verificare subito l'installazione:
@@ -54,8 +82,8 @@ qwen-launcher doctor
 ```
 
 La pagina [GitHub Releases](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.0)
-contiene anche wheel, sdist e checksum. Per installazioni verificabili da wheel o commit Git completo,
-consultare [la procedura di release](docs/releasing.md).
+contiene installer, wheel, sdist e `SHA256SUMS`. Per l'installazione da commit Git completo e lo stato
+della pubblicazione PyPI consultare [la procedura di release](docs/releasing.md).
 
 ## Requisiti
 

@@ -8,7 +8,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- First public release with pinned PyPI, Git-commit and verified-wheel installation paths.
+- First public GitHub release with pinned Git-commit and verified-wheel installation paths.
 
 ### Changed
 
@@ -23,6 +23,9 @@ All notable changes to this project will be documented in this file.
 - Calibration evidence remains `GATE-PARTIAL` because materially different hardware has not yet
   repeated the v3 protocol.
 - CUDA remains blocked on multi-GPU hosts, and model weights are not distributed by the launcher.
+- PyPI publication awaits Trusted Publisher configuration; GitHub Release artifacts are available.
+- This first public release does not guarantee stability of the CLI, configuration, record formats,
+  operations, performance, or compatibility with future versions.
 
 ## [0.1.0rc1] - 2026-07-19
 

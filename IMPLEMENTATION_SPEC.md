@@ -1,4 +1,4 @@
-# qwen-launcher — Specifica centrale di implementazione (v4.8)
+# qwen-launcher — Specifica centrale di implementazione (v4.9)
 
 ## 0. Tracker di avanzamento — aggiornato al 20 luglio 2026
 
@@ -53,6 +53,12 @@
 - [x] **Step 6B — Finalizzazione locale release 0.1:** versione `0.1.0`, changelog, installer e
   documentazione finale completati; suite, build e verifica wheel finali costituiscono il gate del
   commit di release.
+- [~] **Pubblicazione 0.1:** `main`, tag `v0.1.0` e GitHub Release con gli artefatti testati dalla CI
+  sono pubblici. Il run release `29739366272` è verde su test Ubuntu/Windows, build e verifica wheel;
+  il solo job PyPI è bloccato da `invalid-publisher` finché Tommaso non configura il Trusted
+  Publisher previsto per repository, workflow e ambiente `pypi`. `0.1.0` è una prima release
+  pubblica per valutazione, senza garanzie di stabilità di interfacce, configurazione, record,
+  operazioni, prestazioni o compatibilità futura.
 - [ ] **Step 7 — Skill e router.**
 - [ ] **Step 8 — Open WebUI e sync.**
 - [ ] **Step 9 — Benchmark autonomo e doctor definitivo.**
@@ -300,19 +306,22 @@
 
 ### Prossima azione obbligatoria
 
-La decisione umana `RELEASE` del 20 luglio 2026 autorizza la pubblicazione di `v0.1.0`. Dopo tag,
-GitHub Release e workflow PyPI occorre verificare gli artefatti pubblici e l'installazione esplicita
-`qwen-launcher==0.1.0`; qualunque correzione successiva usa una nuova versione e non sostituisce gli
-artefatti in place. La 0.1 va stabilizzata prima di iniziare lo Step 7. La ripetizione
-`calibration/v3 --no-activate` su hardware materialmente diverso resta un follow-up futuro non
-bloccante e la copertura empirica resta `GATE-PARTIAL`.
+Tommaso deve configurare su PyPI il Trusted Publisher di `qwen-launcher` per
+`tommasonovelli/qwen-launcher`, workflow `release.yml` e ambiente `pypi`, quindi rieseguire soltanto
+il job fallito del run `29739366272`. Gli artefatti GitHub già pubblicati non vanno ricostruiti o
+sostituiti. Dopo PyPI occorre verificare l'installazione esplicita `qwen-launcher==0.1.0`; qualunque
+correzione successiva usa una nuova versione. La 0.1 va stabilizzata prima di iniziare lo Step 7. La
+ripetizione `calibration/v3 --no-activate` su hardware materialmente diverso resta un follow-up
+futuro non bloccante e la copertura empirica resta `GATE-PARTIAL`.
 
 ---
 
 > **Stato:** documento normativo centrale, pronto a guidare l'implementazione per step.  
-> **Data di consolidamento:** 20 luglio 2026; la v4.8 registra la decisione umana `RELEASE` e la
-> finalizzazione locale di `0.1.0`, mantenendo esplicite le verifiche pulite non strutturate e i
-> limiti residui. La v4.7 registrava D-050 e il target contesto esperto `98304`, separato dalla scala
+> **Data di consolidamento:** 20 luglio 2026; la v4.9 registra tag e GitHub Release pubblici e il
+> blocco PyPI `invalid-publisher`, senza reinterpretare il successo dei job test/build. La v4.8
+> registrava la decisione umana `RELEASE` e la finalizzazione locale di `0.1.0`, mantenendo esplicite
+> le verifiche pulite non strutturate e i limiti residui. La v4.7 registrava D-050 e il target
+> contesto esperto `98304`, separato dalla scala
 > automatica. La v4.6 registrava D-049 e la correzione pre-Gate della
 > RAM disponibile da 24 a 22 GiB, senza indebolire il minimo totale o la riserva dinamica v3. La v4.5
 > registrava la conclusione locale dello Step 6A e il passaggio allo Human Gate 0.1, senza
@@ -321,7 +330,8 @@ bloccante e la copertura empirica resta `GATE-PARTIAL`.
 > locale Windows CUDA e rinvia la prova hardware eterogenea a un follow-up non bloccante. La v4.2
 > registrava CI verde e il Gate v3 locale accettato per i tre modi; la v4.1 registrava il Gate v2
 > respinto e `calibration/v3` implementato (D-041–D-046, `docs/calibrate_v3.md`).  
-> **Sostituisce:** la v4.7, la v4.6, la v4.5, la v4.4, la v4.3, la v4.2, la v4.1, la v3.4, la v3.1,
+> **Sostituisce:** la v4.8, la v4.7, la v4.6, la v4.5, la v4.4, la v4.3, la v4.2, la v4.1, la v3.4,
+> la v3.1,
 > `PIANO_IMPLEMENTAZIONE_v2.md`, le due revisioni
 > successive e la v3 non corretta.  
 > **Regola d'uso:** una sessione di sviluppo esegue un solo step, nell'ordine indicato. Prima di

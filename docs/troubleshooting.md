@@ -17,11 +17,11 @@ del log indicato dalla CLI; non pubblicare log senza revisarli per percorsi o da
 
 ### Nessuna sorgente selezionata
 
-È intenzionale: gli installer non scelgono una versione o una sorgente implicita. Per la release
-corrente usare `--pypi-version 0.1.0` oppure `-PypiVersion 0.1.0`. In alternativa trasferire wheel e
-SHA-256 tramite canali verificabili e usare `--wheel ... --sha256 ...` / `-Wheel ... -Sha256 ...`,
-oppure indicare un commit Git completo di 40 caratteri. Non sostituire un digest fidato con un valore
-calcolato soltanto dopo un trasferimento non verificato.
+È intenzionale: gli installer non scelgono una versione o una sorgente implicita. Finché il Trusted
+Publisher PyPI non è configurato, scaricare wheel e `SHA256SUMS` dalla GitHub Release `v0.1.0` e usare
+`--wheel ... --sha256 ...` / `-Wheel ... -Sha256 ...`; in alternativa indicare il commit completo
+`ce5c1e9d84d81197323aa98848a12cce409647e6`. Non usare ancora `--pypi-version 0.1.0` e non sostituire
+un digest fidato con un valore calcolato soltanto dopo un trasferimento non verificato.
 
 ### uv non viene trovato dopo l'installer
 

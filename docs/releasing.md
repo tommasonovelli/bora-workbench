@@ -5,31 +5,28 @@ verifica. Tag, GitHub Release e upload PyPI richiedono sempre un'autorizzazione 
 
 ## Installare la release pubblicata
 
-Gli installer richiedono una sorgente esplicita e fissano uv `0.11.28` e CPython `3.12.13`:
-
-```bash
-sh ./install.sh --pypi-version 0.1.0
-```
-
-```powershell
-.\install.ps1 -PypiVersion 0.1.0
-```
-
-Sono supportati anche due percorsi verificabili alternativi:
-
-```bash
-sh ./install.sh --git-commit <commit-completo-40-hex>
-sh ./install.sh --wheel <wheel-locale> --sha256 <64-hex-verificato>
-```
-
-```powershell
-.\install.ps1 -GitCommit <commit-completo-40-hex>
-.\install.ps1 -Wheel <wheel-locale> -Sha256 <64-hex-verificato>
-```
-
-Wheel, sdist e `SHA256SUMS` sono allegati alla
+Installer, wheel, sdist e `SHA256SUMS` sono allegati alla
 [GitHub Release v0.1.0](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.0).
-Il digest deve essere verificato prima di consegnare una wheel all'installer.
+Gli installer fissano uv `0.11.28` e CPython `3.12.13`; la wheel CI ha SHA-256:
+
+```text
+8966539a9e257f532d14fab821bf507a9c0327fa7fb246e5d8803fa69289c482
+```
+
+Dopo avere scaricato installer e wheel:
+
+```bash
+sh ./install.sh --wheel ./qwen_launcher-0.1.0-py3-none-any.whl \
+  --sha256 8966539a9e257f532d14fab821bf507a9c0327fa7fb246e5d8803fa69289c482
+```
+
+```powershell
+.\install.ps1 -Wheel .\qwen_launcher-0.1.0-py3-none-any.whl `
+  -Sha256 8966539a9e257f532d14fab821bf507a9c0327fa7fb246e5d8803fa69289c482
+```
+
+Il sorgente resta installabile anche dal commit finale esatto
+`ce5c1e9d84d81197323aa98848a12cce409647e6` tramite `--git-commit` / `-GitCommit`.
 
 ## Verifiche della finalizzazione
 
@@ -56,6 +53,11 @@ ha autorizzato finalizzazione, push, tag e pubblicazione. Questa decisione accet
 documentate: copertura di calibrazione `GATE-PARTIAL`, assenza di una prova su hardware
 materialmente diverso, blocco CUDA multi-GPU e pesi non redistribuiti.
 
+`0.1.0` è una prima release pubblica per valutazione ed early adopter: non garantisce stabilità di
+CLI, configurazione, record, procedure operative, prestazioni o compatibilità futura. Test e lock
+circoscrivono l'evidenza verificata ma non trasformano questa release iniziale in un servizio o in
+un'interfaccia stabile.
+
 I candidati di calibrazione locali restano separati dalla release e non vengono attivati o
 pubblicati implicitamente.
 
@@ -73,12 +75,30 @@ Il tag `v<versione>` attiva `.github/workflows/release.yml`, che:
 Il workflow usa permessi globali `contents: read`. Soltanto il job `publish` riceve
 `id-token: write`; nessun token PyPI è conservato nel repository o passato al workflow.
 
+### Stato della pubblicazione 0.1.0
+
+Il run release [`29739366272`](https://github.com/tommasonovelli/qwen-launcher/actions/runs/29739366272)
+ha completato con successo la matrice Ubuntu/Windows, build e verifica isolata. La GitHub Release usa
+gli stessi artefatti CI. Il solo job PyPI è bloccato da `invalid-publisher`: su PyPI non esiste ancora
+un Trusted Publisher corrispondente.
+
+Per completare PyPI, Tommaso deve configurare sul proprio account:
+
+- progetto: `qwen-launcher`;
+- owner/repository: `tommasonovelli/qwen-launcher`;
+- workflow: `release.yml`;
+- environment: `pypi`.
+
+Dopo la configurazione si riesegue soltanto il job fallito. Fino a quel momento
+`--pypi-version 0.1.0` non va usato; l'installazione supportata passa dagli artefatti GitHub o dal
+commit completo.
+
 ## Verifica post-pubblicazione
 
 Su Ubuntu 22.04 pulito e Windows 11/Sandbox:
 
-- confrontare gli SHA-256 degli artefatti GitHub e PyPI;
-- installare `qwen-launcher==0.1.0` con gli installer;
+- confrontare gli SHA-256 degli artefatti GitHub e, quando disponibile, PyPI;
+- installare la wheel GitHub verificata e poi `qwen-launcher==0.1.0` da PyPI;
 - verificare `--version`, `validate`, `doctor` ed `engine status`;
 - eseguire almeno i modi principali e uno stop pulito;
 - verificare `uninstall` e `uv tool uninstall qwen-launcher`;
