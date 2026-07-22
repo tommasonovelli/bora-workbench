@@ -8,7 +8,7 @@ import qwen_launcher._cli_calibration_v3 as calibration_v3_cli
 import qwen_launcher._cli_doctor as doctor_cli
 from qwen_launcher._calibration_record import RecordError
 from qwen_launcher._calibration_reuse import RecordEvaluation
-from qwen_launcher._calibration_v3_types import V3Outcome
+from qwen_launcher._calibration_v3_types import ProgressEvent, V3Outcome
 from qwen_launcher.calibration import CalibrationRunError
 from qwen_launcher.cli import app
 from qwen_launcher.profiles import load_catalog
@@ -163,4 +163,31 @@ def test_runtime_failure_is_operational_exit_one(monkeypatch) -> None:
 
     assert result.exit_code == 1
     assert "Calibration error" in result.stderr
+    assert "Traceback" not in result.output
+
+
+def test_calibrate_help_lists_specialized_options() -> None:
+    """Expose strictly parsed protocol extras even though Typer does not own them."""
+    result = runner.invoke(app, ["calibrate", "--help"])
+
+    assert result.exit_code == 0
+    for option in ("--no-activate", "--activate", "--target-ctx", "--candidate", "--settings"):
+        assert option in result.stdout
+
+
+def test_keyboard_interrupt_closes_progress_and_returns_130(monkeypatch) -> None:
+    """Map cancellation after a visible started event without traceback or completion."""
+    monkeypatch.setattr(calibration_v3_cli, "prepare_target", lambda mode_value: cpu_target())
+
+    def interrupted(target, options):
+        """Start one progress item before simulating Ctrl-C in the core run."""
+        assert options.progress is not None
+        options.progress(ProgressEvent("coding", "screening", 0, 12, None, True))
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(calibration_v3_cli, "run_calibration_v3", interrupted)
+    result = runner.invoke(app, ["calibrate", "--mode", "coding"], input="y\n")
+
+    assert result.exit_code == 130
+    assert "Calibration cancelled" in result.stderr
     assert "Traceback" not in result.output

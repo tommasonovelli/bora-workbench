@@ -117,14 +117,31 @@ class SelectionCandidate:
 
 
 @dataclass(frozen=True, slots=True)
+class ProgressUpdate:
+    """Describe a phase position before or after one calibration trial.
+
+    ``completed`` always counts finished trials; while running, the current trial is the next one.
+    """
+
+    phase: str
+    completed: int
+    total: int
+    is_running: bool
+
+
+@dataclass(frozen=True, slots=True)
 class ProgressEvent:
-    """Describe one completed phase item and a best-effort learned duration estimate."""
+    """Report phase progress without changing persisted calibration/v3 evidence.
+
+    ``completed`` always counts finished trials; while running, the current trial is the next one.
+    """
 
     mode_id: str
     phase: str
     completed: int
     total: int
     estimated_remaining_seconds: float | None
+    is_running: bool = False
 
 
 ProgressCallback = Callable[[ProgressEvent], None]

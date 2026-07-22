@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from statistics import median
-
 import typer
 from rich.console import Console
 
@@ -18,9 +16,6 @@ from qwen_launcher._calibration_v3_types import (
     RAM_RESERVE_GIB,
     RELEASE_TOLERANCE_GIB,
     VRAM_RESERVE_GIB,
-    ModeCalibration,
-    ProgressEvent,
-    V3Outcome,
     V3RunOptions,
 )
 from qwen_launcher._cli_calibration import (
@@ -28,6 +23,8 @@ from qwen_launcher._cli_calibration import (
     CalibrationCliInput,
     CalibrationCliOutput,
 )
+from qwen_launcher._cli_calibration_progress import CalibrationProgress
+from qwen_launcher._cli_calibration_summary import show_calibration_outcome
 from qwen_launcher.calibration import (
     CalibrationError,
     CalibrationRunError,
@@ -71,56 +68,10 @@ def _show_preflight(
     console.print(
         "Duration: potentially hours; trial crashes are isolated and memory is monitored."
     )
-
-
-def _progress(event: ProgressEvent, console: Console) -> None:
-    """Show phase progress with a learned estimate after two local process durations."""
-    message = f"{event.mode_id} {event.phase}: {event.completed}/{event.total}"
-    if event.estimated_remaining_seconds is not None:
-        minutes = event.estimated_remaining_seconds / 60
-        message += f"; estimated remaining {minutes:.1f} min"
-    console.print(message)
-
-
-def _selected_rates(calibration: ModeCalibration) -> list[float]:
-    """Flatten both selected paired benchmark sessions for the final plain-language summary."""
-    return [
-        value
-        for session in calibration.selected.sessions
-        if session.benchmark is not None
-        for value in session.benchmark.measured_tok_s
-    ]
-
-
-def _mode_summary(calibration: ModeCalibration) -> str:
-    """Summarize one selected envelope and why it won."""
-    selected = calibration.selected
-    envelope = f"ctx={calibration.ctx}"
-    if selected.n_cpu_moe is not None:
-        envelope += f", n_cpu_moe={selected.n_cpu_moe}"
-    rate = median(_selected_rates(calibration))
-    return (
-        f"{calibration.mode.id}: {envelope}; confirmed median {rate:.2f} tok/s; "
-        f"rule {calibration.selection_rule}; probes {len(calibration.probes)}"
+    console.print(
+        "Progress: live on terminals and line-oriented when redirected; screening shows a "
+        "probe-cap count and a duration projection to that cap."
     )
-
-
-def _show_outcome(outcome: V3Outcome, console: Console) -> None:
-    """Print selections, candidate/active paths, retained evidence, and privacy boundary."""
-    console.print("[green]Local calibration completed.[/green]")
-    for calibration in outcome.calibrations:
-        console.print(_mode_summary(calibration))
-    for path in outcome.candidate_paths:
-        if path.exists():
-            console.print(f"Candidate: {path}")
-    for path in outcome.active_paths:
-        console.print(f"Active record: {path}")
-    if not outcome.active_paths:
-        console.print(
-            "[yellow]Candidates were not activated; launches still use prior records.[/yellow]"
-        )
-    console.print(f"Latest private evidence: {outcome.evidence_path}")
-    console.print("Sharing remains a separate manual, redacted contribution step.")
 
 
 def _selected_mode_ids(value: str) -> tuple[str, ...]:
@@ -156,9 +107,11 @@ def run_calibrate_v3(options: CalibrationCliInput, output: CalibrationCliOutput)
     _show_preflight(target, options, output.stdout)
     if not typer.confirm("Start local calibration?", default=False):
         raise CalibrationCancelled("calibration cancelled before process start")
-    run_options = V3RunOptions(
-        options.target_ctx,
-        not options.no_activate,
-        lambda event: _progress(event, output.stdout),
-    )
-    _show_outcome(run_calibration_v3(target, run_options), output.stdout)
+    with CalibrationProgress(output.stdout) as progress:
+        run_options = V3RunOptions(
+            target_ctx=options.target_ctx,
+            is_activate=not options.no_activate,
+            progress=progress,
+        )
+        outcome = run_calibration_v3(target, run_options)
+    show_calibration_outcome(outcome, output.stdout)

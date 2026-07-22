@@ -3,8 +3,8 @@
 ## In breve
 
 La calibrazione serve a trovare una configurazione adatta **a questo PC**. Non cambia il modello e
-non migliora la qualità delle risposte: cerca il miglior compromesso misurato fra contesto,
-throughput e margine di memoria.
+non migliora la qualità delle risposte: massimizza prima il contesto fattibile e poi confronta
+throughput e margine di memoria nel dominio verificato dal protocollo v3.
 
 Per iniziare non occorre conoscere i parametri di `llama.cpp`:
 
@@ -30,8 +30,8 @@ Non effettua upload, non modifica `config.toml` e non pubblica risultati.
 - **Busta**: coppia di parametri prestazionali scelta per un modo, principalmente `ctx` e, su CUDA,
   `n_cpu_moe`.
 - **`ctx`**: limite della finestra di contesto del server, espresso in token.
-- **`n_cpu_moe`**: numero di blocchi MoE lasciati sulla CPU; valori maggiori sono più prudenti verso
-  la VRAM, ma spostano più lavoro sulla CPU.
+- **`n_cpu_moe`**: numero di blocchi MoE lasciati sulla CPU; valori minori usano più VRAM, valori
+  maggiori spostano pesi e lavoro verso RAM e CPU. Il throughput non è assunto monotono.
 - **Record locale**: JSON privato che conserva misure, identità della macchina e busta selezionata.
 - **Candidato**: record valido ma non ancora usato dai lanci.
 - **Record attivo**: unico record che può entrare nel piano di lancio.
@@ -69,7 +69,8 @@ Fuori da WDDM un processo compute già presente rende la misura inaffidabile e b
 Windows/WDDM alcuni processi desktop sono inevitabili: il launcher cattura una popolazione iniziale
 per l'intero run usando PID, tempo di creazione e identità opaca dell'eseguibile. Un respawn dello
 stesso eseguibile è ammesso entro la molteplicità iniziale; file nuovi, identità illeggibili o istanze
-aggiuntive invalidano il run.
+aggiuntive invalidano il run. Le differenze Ubuntu/Windows e il carico desktop non producono
+profili OS hardcoded: entrano nella decisione tramite RAM/VRAM e baseline osservate sul posto.
 
 ## Uso normale
 
@@ -85,9 +86,15 @@ Calibrare un solo modo:
 qwen-launcher calibrate --mode coding
 ```
 
-La CLI mostra fasi e numero di operazioni. Dopo due processi completati aggiunge una stima
-best-effort del tempo rimanente. Un crash di un trial è isolato dal servizio di produzione; il
-motivo e i log vengono conservati.
+Su un terminale interattivo la CLI mostra spinner, barra, tempo trascorso, trial in corso e tempo
+rimanente appreso soltanto dalla fase corrente. Lo screening attende due processi e usa la mediana;
+la conferma, che ha trial omogenei e totale esatto, mostra una prima ETA dopo il primo e la stabilizza
+con la mediana. Nello screening `12` è un cap: il conteggio usa `≤12` e il tempo è una proiezione
+fino al cap, non un limite garantito. Se l'output è rediretto, viene mantenuta una riga stabile per
+ogni trial completato. Al termine, il riepilogo spiega la regola di selezione e i minimi RAM/VRAM
+misurati.
+
+Un crash di un trial è isolato dal servizio di produzione; il motivo e i log vengono conservati.
 
 Al termine verificare:
 
@@ -144,8 +151,12 @@ qwen-launcher calibrate --mode coding --target-ctx 98304
 ```
 
 Valori ammessi: `131072`, `98304`, `65536`, `32768`, `16384`, `8192`. `98304` è disponibile solo
-come target esplicito e non cambia la scala automatica. I candidati vengono sempre confrontati allo
-stesso contesto.
+come target esplicito e non cambia la scala automatica. Se la ricerca automatica si ferma a 65536,
+la CLI propone il comando 98304 con `--no-activate` come misura separata, senza implicarne la
+fattibilità. I candidati vengono sempre confrontati allo stesso contesto.
+
+`131072` è il tetto automatico del protocollo corrente, non una prova che il modello non supporti
+contesti maggiori. Perciò “best fit” significa il migliore nel dominio v3 sopra elencato.
 
 ## Come funziona la ricerca v3
 
@@ -170,7 +181,7 @@ Per ogni modo il calibratore:
 4. richiede almeno 2,0 GiB RAM disponibili durante ogni trial;
 5. su CUDA richiede almeno 0,5 GiB VRAM libera e rilascio entro 0,125 GiB dalla baseline;
 6. considera la monotonia solo fra probe completati; un OOM parziale non inventa un picco;
-7. sceglie fino a due finalisti;
+7. sceglie il primo valore fattibile al confine e, se disponibile, il solo adiacente più prudente;
 8. li conferma in due round accoppiati: `A→B` e `B→A`;
 9. esegue un `benchmark/v1` completo in ciascuno dei quattro avvii;
 10. usa il throughput solo se lo stesso finalista vince entrambi i round; altrimenti preferisce
@@ -180,8 +191,14 @@ Una deriva della baseline VRAM oltre 0,125 GiB disabilita la vittoria per throug
 un finalista che ha rispettato le riserve assolute. Telemetria come utilizzo, clock, temperatura,
 potenza e throttle è raccolta quando disponibile solo per spiegare l'evidenza; non introduce soglie.
 
-Su CPU non esiste un asse di tuning verificato: v3 conferma la baseline del motore a `ctx=8192`
-invece di simulare una ricerca.
+Su CPU non esiste un asse di tuning verificato: per default v3 conferma la baseline del motore a
+`ctx=8192` invece di simulare una ricerca. Un `--target-ctx` esperto può fissare uno degli altri
+valori approvati, ma non introduce un asse automatico.
+
+La ricerca CUDA trova quindi un confine di memoria e confronta due valori adiacenti: non esegue uno
+sweep globale di `n_cpu_moe` e non dimostra che nessun valore lontano abbia throughput maggiore.
+Cambiare scala, assi, benchmark o finalisti sarebbe un nuovo metodo con nuovi record, non una
+correzione silenziosa di `calibration/v3`.
 
 ## `benchmark/v1`
 

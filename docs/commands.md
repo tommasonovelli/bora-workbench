@@ -185,9 +185,14 @@ I target ammessi sono `131072`, `98304`, `65536`, `32768`, `16384` e `8192`. `98
 esplicito e non appartiene alla scala automatica. `--activate` non può essere combinato con
 `--target-ctx`; `--activate` e `--no-activate` sono mutuamente esclusivi.
 
-Le tre opzioni sono gestite dal parser specializzato del comando e, nella versione corrente, non
-compaiono nella tabella generata da `calibrate --help`; la sintassi sopra è quella effettivamente
-supportata.
+Le tre opzioni sono gestite dal parser specializzato del comando. `calibrate --help` le elenca
+nell'epilogo insieme agli extra v1, mentre la tabella generata da Typer contiene soltanto le opzioni
+comuni; la sintassi sopra è quella effettivamente supportata.
+
+Su un terminale interattivo il run v3 mostra una barra viva con fase, trial, tempo trascorso e stima
+adattiva; l'output rediretto resta line-oriented. Lo screening mostra `≤12` e una proiezione della
+durata fino a quel cap, non un limite o una promessa. Il riepilogo finale include la motivazione
+della selezione e i minimi RAM/VRAM osservati.
 
 La calibrazione non effettua upload, non modifica `config.toml` e non installa modello o motore. I
 trial usano la porta configurata se libera; nel branch corrente ripiegano su una porta loopback

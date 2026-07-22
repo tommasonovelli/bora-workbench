@@ -14,6 +14,8 @@ changelog: sono in `IMPLEMENTATION_SPEC.md`.
 
 ### Changed
 
+- La calibrazione v3 mostra trial in corso, avanzamento live ed ETA per fase sui terminali, conserva
+  output lineare quando rediretta e riepiloga motivazione della selezione e headroom misurato.
 - La documentazione è stata riscritta come percorso lineare per nuovi utenti e descrive soltanto il
   comportamento corrente.
 - Le prove misurate sono state separate dai manuali sotto `evidence/`; audit e design superati sono

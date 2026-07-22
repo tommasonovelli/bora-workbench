@@ -33,6 +33,12 @@ app.add_typer(engine_app, name="engine")
 _stdout = Console()
 _stderr = Console(stderr=True)
 _MEMORY_GATE_HELP = "Bypass only the default-model total and available RAM gate."
+_CALIBRATION_EPILOG = (
+    "v3 extras: --no-activate keeps candidates; --activate promotes them; --target-ctx N fixes "
+    "one of 131072, 98304, 65536, 32768, 16384, 8192. "
+    "v1 extras: --candidate ID:CTX[:N_CPU_MOE] (repeatable), --settings VALUES. "
+    "Specialized extras are parsed strictly after Typer's common options."
+)
 
 
 def package_version() -> str:
@@ -118,7 +124,10 @@ def vstudio(
     run_vstudio(force, _stdout, _stderr)
 
 
-@app.command(context_settings={"allow_extra_args": True, "ignore_unknown_options": True})
+@app.command(
+    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
+    epilog=_CALIBRATION_EPILOG,
+)
 def calibrate(
     context: typer.Context,
     mode: Annotated[str, typer.Option("--mode", help="Packaged mode id or 'all'.")],

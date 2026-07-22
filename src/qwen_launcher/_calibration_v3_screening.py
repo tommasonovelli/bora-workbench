@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from functools import partial
 from pathlib import Path
+from statistics import median
 
 from qwen_launcher._calibration_gpu_contexts import GpuContextBaseline
 from qwen_launcher._calibration_v3_plan import build_plan
@@ -23,6 +24,7 @@ from qwen_launcher._calibration_v3_types import (
     VRAM_RESERVE_GIB,
     ProbeRecord,
     ProgressEvent,
+    ProgressUpdate,
     TrialEvidence,
     TrialOrder,
     V3RunOptions,
@@ -57,25 +59,36 @@ class _ModeRun:
     options: V3RunOptions
     probes: list[ProbeRecord] = field(default_factory=list)
     drivers: set[str] = field(default_factory=set)
-    trial_durations: list[float] = field(default_factory=list)
+    trial_durations: dict[str, list[float]] = field(default_factory=dict)
     finalist_values: tuple[int | None, ...] = ()
 
     def note_duration(self, evidence: TrialEvidence) -> None:
-        """Learn one process duration from its stored UTC boundaries."""
+        """Learn one process duration within its own calibration phase."""
         started = datetime.fromisoformat(evidence.started_at.replace("Z", "+00:00"))
         finished = datetime.fromisoformat(evidence.finished_at.replace("Z", "+00:00"))
-        self.trial_durations.append(max(0.0, (finished - started).total_seconds()))
+        durations = self.trial_durations.setdefault(evidence.order.phase, [])
+        durations.append(max(0.0, (finished - started).total_seconds()))
 
-    def report_progress(self, phase: str, completed: int, total: int) -> None:
-        """Emit phase progress and an estimate only after two local process durations."""
+    def report_progress(self, update: ProgressUpdate) -> None:
+        """Emit progress once phase-local durations can inform a useful estimate."""
         callback = self.options.progress
         if callback is None:
             return
+        durations = self.trial_durations.get(update.phase, [])
+        minimum_samples = 1 if update.phase == "confirmation" else 2
         estimate = None
-        if len(self.trial_durations) >= 2:
-            average = sum(self.trial_durations) / len(self.trial_durations)
-            estimate = average * max(0, total - completed)
-        callback(ProgressEvent(self.mode.id, phase, completed, total, estimate))
+        if len(durations) >= minimum_samples:
+            estimate = median(durations) * max(0, update.total - update.completed)
+        callback(
+            ProgressEvent(
+                self.mode.id,
+                update.phase,
+                update.completed,
+                update.total,
+                estimate,
+                update.is_running,
+            )
+        )
 
 
 def create_mode_run(request: ModeRunRequest) -> _ModeRun:
@@ -111,6 +124,7 @@ def run_probe(run: _ModeRun, ctx: int, value: int) -> ProbeMeasurement:
         order,
         run.gpu_context_baseline,
     )
+    run.report_progress(ProgressUpdate("screening", sequence - 1, MODE_PROBE_CAP, True))
     try:
         measured = run_trial(run.target, spec)
     except TrialFailure as failure:
@@ -125,7 +139,7 @@ def run_probe(run: _ModeRun, ctx: int, value: int) -> ProbeMeasurement:
         run.drivers.add(evidence.vram.driver_version)
     run.probes.append(ProbeRecord(ctx, value, is_feasible, reason, evidence))
     run.note_duration(evidence)
-    run.report_progress("screening", sequence, MODE_PROBE_CAP)
+    run.report_progress(ProgressUpdate("screening", sequence, MODE_PROBE_CAP, False))
     peak = None if evidence.vram is None else evidence.vram.peak_used_gib
     return ProbeMeasurement(is_feasible, peak)
 

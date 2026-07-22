@@ -17,6 +17,7 @@ from qwen_launcher._calibration_v3_process import TrialFailure, TrialSpec, run_t
 from qwen_launcher._calibration_v3_types import (
     CONFIRM_ROUNDS,
     FinalistEvidence,
+    ProgressUpdate,
     TrialEvidence,
     TrialOrder,
 )
@@ -155,6 +156,8 @@ def _run_session(paired: _PairedRun, assignment: _SessionAssignment) -> None:
     """Run one scheduled session and retain candidate failures without breaking ABBA."""
     run = paired.mode_run
     progress = paired.confirmations[assignment.finalist_index]
+    total = len(_schedule(len(paired.confirmations)))
+    run.report_progress(ProgressUpdate("confirmation", assignment.global_position - 1, total, True))
     try:
         measured = run_trial(run.target, _trial_spec(run, paired.ctx, assignment))
     except TrialFailure as failure:
@@ -166,8 +169,7 @@ def _run_session(paired: _PairedRun, assignment: _SessionAssignment) -> None:
     if evidence.vram is not None:
         run.drivers.add(evidence.vram.driver_version)
     run.note_duration(evidence)
-    total = len(_schedule(len(paired.confirmations)))
-    run.report_progress("confirmation", assignment.global_position, total)
+    run.report_progress(ProgressUpdate("confirmation", assignment.global_position, total, False))
 
 
 def _baseline_drift(finalists: tuple[FinalistEvidence, ...]) -> float | None:

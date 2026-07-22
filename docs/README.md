@@ -37,10 +37,10 @@ quotidiano del launcher.
 
 ## Stato corrente
 
-La release pubblica è `0.1.0`. Il branch `main` contiene questa documentazione riorganizzata e due
-correzioni runtime non incluse negli artefatti immutabili della release: porta temporanea per i trial
-quando `llama_port` è occupata e tolleranza massima di 1 MiB nella lettura del totale RAM per il
-riuso dei record. La sezione `Unreleased` del changelog riassume le differenze.
+La release pubblica è `0.1.0`. Il branch `main` contiene questa documentazione riorganizzata e
+correzioni non incluse negli artefatti immutabili della release: porta temporanea per i trial quando
+`llama_port` è occupata, tolleranza massima di 1 MiB nella lettura del totale RAM e progresso v3
+interattivo con riepilogo del fit. La sezione `Unreleased` del changelog riassume le differenze.
 
 PyPI non ospita ancora `0.1.0`: il job di pubblicazione attende la configurazione del Trusted
 Publisher. Gli artefatti verificati sono disponibili nella GitHub Release `v0.1.0`; non vanno
