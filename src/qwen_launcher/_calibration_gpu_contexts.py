@@ -1,4 +1,4 @@
-"""Apply calibration/v3's immutable run-scoped WDDM executable baseline."""
+"""Apply calibration/v4's immutable run-scoped WDDM executable baseline."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from qwen_launcher._hardware_monitoring import GpuSnapshot, query_gpu_snapshot
 
 @dataclass(frozen=True, slots=True)
 class GpuContextBaseline:
-    """Hold the complete compute-process population captured once for a v3 run."""
+    """Hold the complete compute-process population captured once for a v4 run."""
 
     is_wddm: bool
     contexts: tuple[GpuProcessIdentity, ...]

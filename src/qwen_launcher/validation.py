@@ -11,17 +11,9 @@ from typing import Literal
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError
 
+from qwen_launcher._validation_schemas import SCHEMA_FILES
 from qwen_launcher.resources import resource_root
 
-_SCHEMA_FILES = {
-    "mode/v1": "mode.v1.json",
-    "profile/v1": "profile.v1.json",
-    "calibration-policy/v1": "calibration-policy.v1.json",
-    "calibration-policy/v2": "calibration-policy.v2.json",
-    "calibration-report/v1": "calibration-report.v1.json",
-    "calibration-report/v2": "calibration-report.v2.json",
-    "calibration-record/v2": "calibration-record.v2.json",
-}
 JsonObject = dict[str, object]
 
 
@@ -88,7 +80,7 @@ def _load_schemas(root: Traversable) -> tuple[dict[str, JsonObject], list[Valida
     schemas: dict[str, JsonObject] = {}
     issues: list[ValidationIssue] = []
     directory = root.joinpath("schemas")
-    for schema_id, name in _SCHEMA_FILES.items():
+    for schema_id, name in SCHEMA_FILES.items():
         document, read_issues = _read_object(directory.joinpath(name), f"schemas/{name}")
         issues.extend(read_issues)
         if document is None:
@@ -130,7 +122,7 @@ def _content_files(root: Traversable) -> tuple[tuple[Traversable, str], ...]:
 def _validate_schema(document: Document, schemas: dict[str, JsonObject]) -> list[ValidationIssue]:
     """Validate one document and preserve every field-level schema error."""
     schema_id = document.data.get("schema")
-    if not isinstance(schema_id, str) or schema_id not in _SCHEMA_FILES:
+    if not isinstance(schema_id, str) or schema_id not in SCHEMA_FILES:
         message = "unknown or missing schema identifier"
         return [ValidationIssue("error", document.file, "$.schema", message)]
     schema = schemas.get(schema_id)

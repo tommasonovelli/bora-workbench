@@ -1,4 +1,4 @@
-"""Reconstruct calibration-record/v2 evidence that JSON Schema cannot cross-check."""
+"""Reconstruct versioned calibration evidence that JSON Schema cannot cross-check."""
 
 from __future__ import annotations
 
@@ -15,12 +15,10 @@ from qwen_launcher._calibration_record_sessions import (
     verify_finalists,
     verify_vram_entry,
 )
-from qwen_launcher._calibration_v3_search import select_candidate_index
-from qwen_launcher._calibration_v3_types import (
-    RAM_RESERVE_GIB,
+from qwen_launcher._calibration_v4_search import select_candidate_index
+from qwen_launcher._calibration_v4_types import (
     RELEASE_TOLERANCE_GIB,
     SELECTION_CPU_BASELINE,
-    VRAM_RESERVE_GIB,
     SelectionCandidate,
 )
 
@@ -87,8 +85,11 @@ def _verify_selected_benchmark(document: JsonObject, path: Path) -> None:
 
 
 def _verify_probe_evidence(document: JsonObject, path: Path) -> None:
-    """Require ordered probes and enforce RAM reserve only on completed feasible loads."""
-    probes = cast(list[JsonObject], _search(document)["probes"])
+    """Require ordered probes and enforce the record's reserves on feasible loads."""
+    search = _search(document)
+    probes = cast(list[JsonObject], search["probes"])
+    ram_reserve_gib = float(cast(float, search["ram_reserve_gib"]))
+    vram_reserve_gib = float(cast(float, search["vram_reserve_gib"]))
     sequences = [cast(JsonObject, probe["trial"])["sequence"] for probe in probes]
     if sequences != list(range(1, len(probes) + 1)):
         raise fail(path, "screening probe sequence is not contiguous execution order")
@@ -97,14 +98,14 @@ def _verify_probe_evidence(document: JsonObject, path: Path) -> None:
             continue
         trial = cast(JsonObject, probe["trial"])
         ram = cast(JsonObject, trial["ram"])
-        if float(cast(float, ram["minimum_available_gib"])) < RAM_RESERVE_GIB:
+        if float(cast(float, ram["minimum_available_gib"])) < ram_reserve_gib:
             raise fail(path, "feasible screening probe violates the universal RAM reserve")
         if document["backend"] != "cuda":
             continue
         vram = cast(JsonObject | None, trial["vram"])
         if vram is None:
             raise fail(path, "feasible CUDA probe requires measured VRAM evidence")
-        if float(cast(float, vram["minimum_free_gib"])) < VRAM_RESERVE_GIB:
+        if float(cast(float, vram["minimum_free_gib"])) < vram_reserve_gib:
             raise fail(path, "feasible screening probe violates the universal VRAM reserve")
         verify_vram_entry(vram, path)
 
@@ -182,7 +183,7 @@ def _verify_selection(document: JsonObject, path: Path, drift: float | None) -> 
 
 
 def verify_record(document: JsonObject, path: Path) -> None:
-    """Run every semantic check required for a trustworthy local v2 record."""
+    """Run every semantic check required for a trustworthy supported local record."""
     verify_abba(document, path)
     verify_finalists(document, path)
     _verify_envelope(document, path)

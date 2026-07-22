@@ -11,8 +11,8 @@ serve sempre un'autorizzazione umana esplicita per push, tag, GitHub Release e P
 - wheel SHA-256:
   `8966539a9e257f532d14fab821bf507a9c0327fa7fb246e5d8803fa69289c482`;
 - PyPI: non ancora pubblicata, per Trusted Publisher mancante;
-- branch `main`: contiene correzioni sotto `Unreleased` che non fanno parte degli artefatti
-  `v0.1.0`.
+- branch `main`: usa `0.1.1rc1` per preparare `0.1.1` con correzioni e `calibration/v4`, ma tag e
+  release sono bloccati finché manca il Gate Windows reale del nuovo metodo.
 
 Gli artefatti pubblicati sono immutabili. Non ricostruire, sostituire o ricaricare file con la stessa
 versione per includere correzioni successive: serve una nuova versione.
@@ -66,8 +66,11 @@ maintainer prova almeno:
 - uninstall confinato e preservazione della cache Hugging Face;
 - upgrade dalla versione pubblica quando applicabile.
 
-Limiti e controlli non eseguiti devono essere espliciti. Solo una decisione umana `RELEASE`
-autorizza la versione finale; non autorizza automaticamente le singole operazioni remote.
+Per 0.1.1 il Gate Ubuntu v4 ha un run fallito e un retry valido; serve ancora una calibrazione v4
+reale Windows, incluso il riuso del record. CI e fake offline non sostituiscono questa prova.
+
+Limiti e controlli non eseguiti devono essere espliciti. Solo una decisione umana `RELEASE` dopo i
+Gate autorizza la versione finale; non autorizza automaticamente le singole operazioni remote.
 
 ## Versione, tag e commit
 

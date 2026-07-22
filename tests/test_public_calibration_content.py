@@ -7,7 +7,7 @@ import shutil
 from pathlib import Path
 
 from qwen_launcher._calibration_privacy import privacy_findings
-from qwen_launcher._calibration_v3_search import ProbeMeasurement, ScreeningPlan, screen
+from qwen_launcher._calibration_v4_search import ProbeMeasurement, ScreeningPlan, screen
 from qwen_launcher.profiles import load_catalog
 from qwen_launcher.resources import read_json, resource
 from qwen_launcher.validation import validate_resources

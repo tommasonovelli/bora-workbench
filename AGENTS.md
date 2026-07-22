@@ -22,11 +22,13 @@ apply here.
 - **Steps 3, 4, 5, 5A, 5B, 6A and 6B are complete.** Version `0.1.0`, tag `v0.1.0` and the GitHub
   Release are public; its artifacts came from the green release test/build jobs. PyPI remains
   blocked by `invalid-publisher` until Tommaso configures the Trusted Publisher documented in
-  `docs/releasing.md`; do not rebuild or replace the GitHub artifacts. Q8 remains pinned, the
-  `n_cpu_moe` domain is `[0, 41]`, and calibration coverage remains `GATE-PARTIAL`. Treat `0.1.0`
-  as a first public release without stability guarantees. The three local candidates remain
-  inactive. Stabilize 0.1 with new versions for corrections; do not activate candidates or begin
-  Step 7 without an explicit request.
+  `docs/releasing.md`; do not rebuild or replace the GitHub artifacts. Main uses `0.1.1rc1` to
+  prepare 0.1.1 with `calibration/v4`, a 0,3 GiB VRAM reserve and `calibration-record/v3`;
+  historical v2 records keep
+  their 0,5 GiB reuse reserve. The 0.1.1 tag/release is blocked until a real Windows v4 Gate and a
+  later human `RELEASE` decision. Q8 remains pinned, the `n_cpu_moe` domain is `[0, 41]`, and
+  calibration coverage remains `GATE-PARTIAL`. The three local candidates remain inactive. Do not
+  activate candidates or begin Step 7 without an explicit request.
 - Never invent engine flags, checksums, source commits, benchmark results, hardware support, profiles,
   health responses, or compatibility claims.
 

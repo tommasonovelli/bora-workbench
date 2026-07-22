@@ -68,13 +68,14 @@ manutenzione, licenza, sicurezza e costo transitivo. `pyproject.toml` e `uv.lock
 
 ## Evidenza di calibrazione
 
-Una PR di calibrazione usa il protocollo corrente `calibration/v3` e segue la sezione
-[Contribuire nuova evidenza](docs/calibration.md#contribuire-nuova-evidenza).
+Una PR di calibrazione usa il protocollo corrente `calibration/v4` e segue la sezione
+[Contribuire nuova evidenza](docs/calibration.md#contribuire-nuova-evidenza). Il contratto pubblico
+v2 descrive ancora v3: evidenza v4 richiede prima un nuovo schema in una PR di contenuto separata.
 
 Sono obbligatori:
 
-- run reale sul modello e motore appuntati;
-- report `calibration-report/v2` privacy-safe;
+- run reale sul modello e motore appuntati, inclusi i fallimenti del Gate;
+- report privacy-safe nella versione di schema autorizzata per il metodo;
 - scope misurato e limite di portabilità espliciti;
 - SHA-256 dei byte finali e manifest verificabile;
 - nessun record locale, config, log grezzo o dato privato;

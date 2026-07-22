@@ -1,4 +1,4 @@
-"""Build candidate-specific launch plans for calibration/v3 trials."""
+"""Build candidate-specific launch plans for calibration/v4 trials."""
 
 from __future__ import annotations
 

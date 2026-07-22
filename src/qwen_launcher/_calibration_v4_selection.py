@@ -1,8 +1,8 @@
-"""Select paired calibration/v3 finalists by unanimity and deterministic safety tie-breaks."""
+"""Select paired calibration/v4 finalists by unanimity and deterministic safety tie-breaks."""
 
 from __future__ import annotations
 
-from qwen_launcher._calibration_v3_types import (
+from qwen_launcher._calibration_v4_types import (
     SELECTION_DOMINANCE,
     SELECTION_DRIFT,
     SELECTION_FREE_VRAM,
@@ -46,7 +46,7 @@ def select_candidate_index(
         rounds = len(candidates[0].round_medians)
         return 0, SELECTION_SINGLE, (None,) * rounds
     if len(candidates) != 2:
-        raise ValueError("calibration/v3 confirms at most two finalists per mode")
+        raise ValueError("calibration/v4 confirms at most two finalists per mode")
     winners = _round_winners(candidates)
     fallback_index, fallback_rule = _fallback_index(candidates)
     if has_baseline_drift:

@@ -1,4 +1,4 @@
-"""Reconstruct calibration-record/v2 paired sessions and conservative resource aggregates."""
+"""Reconstruct versioned record sessions and conservative resource aggregates."""
 
 from __future__ import annotations
 
@@ -7,11 +7,7 @@ from pathlib import Path
 from statistics import median
 from typing import cast
 
-from qwen_launcher._calibration_v3_types import (
-    RAM_RESERVE_GIB,
-    RELEASE_TOLERANCE_GIB,
-    VRAM_RESERVE_GIB,
-)
+from qwen_launcher._calibration_v4_types import RELEASE_TOLERANCE_GIB
 
 JsonObject = dict[str, object]
 
@@ -61,8 +57,8 @@ def _session_medians(finalist: JsonObject, path: Path) -> tuple[float, ...]:
     return tuple(medians)
 
 
-def _ram_values(sessions: list[JsonObject], path: Path) -> tuple[float, float]:
-    """Reconstruct conservative RAM need and minimum while enforcing the universal reserve."""
+def _ram_values(sessions: list[JsonObject], path: Path, reserve_gib: float) -> tuple[float, float]:
+    """Reconstruct conservative RAM need and minimum under the record's own reserve."""
     entries = [cast(JsonObject | None, session["ram"]) for session in sessions]
     if any(entry is None for entry in entries):
         raise fail(path, "every valid finalist session requires measured RAM evidence")
@@ -71,7 +67,7 @@ def _ram_values(sessions: list[JsonObject], path: Path) -> tuple[float, float]:
     minima = [float(cast(float, entry["minimum_available_gib"])) for entry in complete]
     if any(minimum > baseline for minimum, baseline in zip(minima, baselines, strict=True)):
         raise fail(path, "RAM minimum exceeds its own pre-trial baseline")
-    if min(minima) < RAM_RESERVE_GIB:
+    if min(minima) < reserve_gib:
         raise fail(path, "valid finalist violates the universal RAM reserve")
     return max(baselines) - min(minima), min(minima)
 
@@ -87,8 +83,8 @@ def verify_vram_entry(entry: JsonObject, path: Path) -> None:
         raise fail(path, "VRAM release exceeds tolerance")
 
 
-def _vram_values(sessions: list[JsonObject], path: Path) -> tuple[float, float]:
-    """Reconstruct conservative VRAM need and minimum while enforcing reserve and release."""
+def _vram_values(sessions: list[JsonObject], path: Path, reserve_gib: float) -> tuple[float, float]:
+    """Reconstruct conservative VRAM need and minimum under the record's own reserve."""
     entries = [cast(JsonObject | None, session["vram"]) for session in sessions]
     if any(entry is None for entry in entries):
         raise fail(path, "every valid CUDA finalist session requires measured VRAM evidence")
@@ -96,7 +92,7 @@ def _vram_values(sessions: list[JsonObject], path: Path) -> tuple[float, float]:
     baselines = [float(cast(float, entry["baseline_used_gib"])) for entry in complete]
     peaks = [float(cast(float, entry["peak_used_gib"])) for entry in complete]
     minima = [float(cast(float, entry["minimum_free_gib"])) for entry in complete]
-    if min(minima) < VRAM_RESERVE_GIB:
+    if min(minima) < reserve_gib:
         raise fail(path, "valid finalist violates the universal VRAM reserve")
     for entry in complete:
         verify_vram_entry(entry, path)
@@ -105,7 +101,10 @@ def _vram_values(sessions: list[JsonObject], path: Path) -> tuple[float, float]:
 
 def verify_finalists(document: JsonObject, path: Path) -> None:
     """Recompute valid-finalist round medians and conservative resource fields."""
-    finalists = cast(list[JsonObject], cast(JsonObject, document["search"])["finalists"])
+    search = cast(JsonObject, document["search"])
+    finalists = cast(list[JsonObject], search["finalists"])
+    ram_reserve_gib = float(cast(float, search["ram_reserve_gib"]))
+    vram_reserve_gib = float(cast(float, search["vram_reserve_gib"]))
     is_cuda = document["backend"] == "cuda"
     for finalist in finalists:
         if finalist["outcome"] != "valid":
@@ -114,13 +113,13 @@ def verify_finalists(document: JsonObject, path: Path) -> None:
         medians = _session_medians(finalist, path)
         if list(medians) != finalist["round_medians"]:
             raise fail(path, "finalist round medians do not match stored sessions")
-        ram_needed, ram_minimum = _ram_values(sessions, path)
+        ram_needed, ram_minimum = _ram_values(sessions, path, ram_reserve_gib)
         if finalist["ram_needed_gib"] != ram_needed:
             raise fail(path, "finalist RAM need does not match stored sessions")
         if finalist["minimum_ram_available_gib"] != ram_minimum:
             raise fail(path, "finalist RAM minimum does not match stored sessions")
         if is_cuda:
-            vram_needed, vram_minimum = _vram_values(sessions, path)
+            vram_needed, vram_minimum = _vram_values(sessions, path, vram_reserve_gib)
             if finalist["vram_needed_gib"] != vram_needed:
                 raise fail(path, "finalist VRAM need does not match stored sessions")
             if finalist["minimum_free_vram_gib"] != vram_minimum:

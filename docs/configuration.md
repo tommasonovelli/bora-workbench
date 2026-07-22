@@ -114,7 +114,7 @@ data_dir()/
 │   │   ├── <modo>.json                 # record attivo
 │   │   ├── <modo>.candidate.json       # candidato non attivo
 │   │   └── <modo>.previous.json        # singolo slot precedente
-│   └── evidence/<run-id>/              # log privati dell'ultimo run v3
+│   └── evidence/<run-id>/              # log privati dell'ultimo run v4
 └── calibrations/<bundle-id>/            # bundle redatti del laboratorio v1
 
 cache_dir()/

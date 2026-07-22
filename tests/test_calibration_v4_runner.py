@@ -1,4 +1,4 @@
-"""Offline calibration/v3 orchestration tests with fake processes and paired evidence."""
+"""Offline calibration/v4 orchestration tests with fake processes and paired evidence."""
 
 from __future__ import annotations
 
@@ -6,16 +6,16 @@ from dataclasses import replace
 
 import pytest
 
-import qwen_launcher._calibration_v3_confirm as confirm_module
-import qwen_launcher._calibration_v3_mode as mode_module
-import qwen_launcher._calibration_v3_runner as runner_module
-import qwen_launcher._calibration_v3_screening as screening_module
+import qwen_launcher._calibration_v4_confirm as confirm_module
+import qwen_launcher._calibration_v4_mode as mode_module
+import qwen_launcher._calibration_v4_runner as runner_module
+import qwen_launcher._calibration_v4_screening as screening_module
 from qwen_launcher._calibration_gpu_contexts import GpuContextBaseline
 from qwen_launcher._calibration_ram import RamReserveError, RamSummary
 from qwen_launcher._calibration_record import load_record
-from qwen_launcher._calibration_v3_process import TrialFailure, TrialMeasurement
-from qwen_launcher._calibration_v3_runner import run_calibration_v3
-from qwen_launcher._calibration_v3_types import TrialEvidence, V3RunOptions
+from qwen_launcher._calibration_v4_process import TrialFailure, TrialMeasurement
+from qwen_launcher._calibration_v4_runner import run_calibration_v4
+from qwen_launcher._calibration_v4_types import TrialEvidence, V4RunOptions
 from qwen_launcher._calibration_vram import VramEnvironmentError, VramSummary
 from qwen_launcher.benchmark import BenchmarkResult
 from qwen_launcher.calibration import CalibrationError
@@ -79,7 +79,7 @@ def test_cuda_search_runs_abba_and_activates_a_valid_record(tmp_path, monkeypatc
     """Screen, benchmark all four ABBA starts, select dominance, and activate."""
     install_fakes(monkeypatch, fake_trial(lambda spec: (spec.plan.n_cpu_moe or 0) >= 38))
 
-    outcome = run_calibration_v3(cuda_target(), destination_root=tmp_path)
+    outcome = run_calibration_v4(cuda_target(), destination_root=tmp_path)
 
     record = active_record(tmp_path)
     assert record["envelope"] == {"ctx": 131072, "n_cpu_moe": 38}
@@ -95,10 +95,10 @@ def test_cuda_search_runs_abba_and_activates_a_valid_record(tmp_path, monkeypatc
 def test_no_activate_retains_candidate_and_prior_active(tmp_path, monkeypatch) -> None:
     """Keep Gate evidence pending until an explicit promotion without changing active state."""
     install_fakes(monkeypatch, fake_trial(lambda spec: (spec.plan.n_cpu_moe or 0) >= 38))
-    run_calibration_v3(cuda_target(), destination_root=tmp_path)
+    run_calibration_v4(cuda_target(), destination_root=tmp_path)
 
-    outcome = run_calibration_v3(
-        cuda_target(), V3RunOptions(is_activate=False), destination_root=tmp_path
+    outcome = run_calibration_v4(
+        cuda_target(), V4RunOptions(is_activate=False), destination_root=tmp_path
     )
 
     assert (tmp_path / "records" / "coding.json").is_file()
@@ -115,19 +115,19 @@ def test_context_descends_or_obeys_an_expert_target(tmp_path, monkeypatch) -> No
         return spec.plan.ctx <= 65536 and (spec.plan.n_cpu_moe or 0) >= 38
 
     install_fakes(monkeypatch, fake_trial(is_feasible))
-    run_calibration_v3(cuda_target(), destination_root=tmp_path)
+    run_calibration_v4(cuda_target(), destination_root=tmp_path)
     assert active_record(tmp_path)["envelope"]["ctx"] == 65536
 
     with pytest.raises(CalibrationError, match="requested context"):
-        run_calibration_v3(
-            cuda_target(), V3RunOptions(target_ctx=131072), destination_root=tmp_path / "fixed"
+        run_calibration_v4(
+            cuda_target(), V4RunOptions(target_ctx=131072), destination_root=tmp_path / "fixed"
         )
 
 
 def test_expert_target_between_automatic_rungs_stays_fixed(tmp_path, monkeypatch) -> None:
     """Allow 96k explicitly without changing the automatic context scale."""
     install_fakes(monkeypatch, fake_trial(lambda spec: True))
-    run_calibration_v3(cuda_target(), V3RunOptions(target_ctx=98304), destination_root=tmp_path)
+    run_calibration_v4(cuda_target(), V4RunOptions(target_ctx=98304), destination_root=tmp_path)
     record = active_record(tmp_path)
     assert record["envelope"]["ctx"] == record["search"]["target_ctx"] == 98304
     assert record["search"]["context_scale"] == [131072, 65536, 32768, 16384, 8192]
@@ -137,7 +137,7 @@ def test_cpu_confirms_two_benchmarked_baseline_rounds(tmp_path, monkeypatch) -> 
     """Record two CPU benchmark sessions without pretending to search an axis."""
     install_fakes(monkeypatch, fake_trial(lambda spec: True))
 
-    run_calibration_v3(cpu_target(), destination_root=tmp_path)
+    run_calibration_v4(cpu_target(), destination_root=tmp_path)
 
     record = active_record(tmp_path)
     assert record["selection_rule"] == "cpu-baseline-confirmation"
@@ -157,7 +157,7 @@ def test_baseline_drift_degrades_selection_instead_of_discarding(tmp_path, monke
         return fake_trial(lambda item: True, baseline=baseline)(target, spec)
 
     install_fakes(monkeypatch, run)
-    run_calibration_v3(cuda_target(), destination_root=tmp_path)
+    run_calibration_v4(cuda_target(), destination_root=tmp_path)
 
     record = active_record(tmp_path)
     assert record["selection_rule"] == "equivalent-after-baseline-drift"
@@ -176,7 +176,7 @@ def test_ram_reserve_violation_makes_a_probe_infeasible(tmp_path, monkeypatch) -
 
     install_fakes(monkeypatch, run)
     with pytest.raises(CalibrationError, match="no feasible envelope"):
-        run_calibration_v3(cuda_target(), destination_root=tmp_path)
+        run_calibration_v4(cuda_target(), destination_root=tmp_path)
 
 
 def test_discarded_finalists_and_environment_errors_fail_honestly(tmp_path, monkeypatch) -> None:
@@ -186,7 +186,7 @@ def test_discarded_finalists_and_environment_errors_fail_honestly(tmp_path, monk
         fake_trial(lambda spec: not spec.root.name.startswith("final-")),
     )
     with pytest.raises(CalibrationError, match="no finalist passed"):
-        run_calibration_v3(cuda_target(), destination_root=tmp_path / "discarded")
+        run_calibration_v4(cuda_target(), destination_root=tmp_path / "discarded")
 
     def contaminated(target, spec):
         """Simulate a foreign GPU context reported by the monitor."""
@@ -194,4 +194,4 @@ def test_discarded_finalists_and_environment_errors_fail_honestly(tmp_path, monk
 
     install_fakes(monkeypatch, contaminated)
     with pytest.raises(CalibrationError, match="run invalidated"):
-        run_calibration_v3(cuda_target(), destination_root=tmp_path / "invalid")
+        run_calibration_v4(cuda_target(), destination_root=tmp_path / "invalid")

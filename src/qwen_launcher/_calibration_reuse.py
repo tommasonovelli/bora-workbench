@@ -1,4 +1,4 @@
-"""Evaluate active calibration/v3 records and pending candidates for safe local reuse."""
+"""Evaluate supported active calibration records and pending candidates for safe local reuse."""
 
 from __future__ import annotations
 
@@ -18,7 +18,6 @@ from qwen_launcher._calibration_reuse_types import (
     RecordEvaluation,
     ReuseQuery,
 )
-from qwen_launcher._calibration_v3_types import RAM_RESERVE_GIB, VRAM_RESERVE_GIB
 from qwen_launcher._hardware_monitoring import query_gpu_snapshot
 from qwen_launcher.hardware import HardwareError
 
@@ -87,22 +86,25 @@ def _cuda_state(record: JsonObject, query: ReuseQuery) -> tuple[list[str], float
 
 
 def _headroom_issues(record: JsonObject, vram_free_gib: float | None, ram_gib: float) -> list[str]:
-    """Require measured needs plus both universal memory reserves (D-042)."""
+    """Require measured needs plus the exact reserves stored by the record's protocol."""
     observed = cast(JsonObject, record["observed"])
+    search = cast(JsonObject, record["search"])
+    ram_reserve_gib = float(cast(float, search["ram_reserve_gib"]))
+    vram_reserve_gib = float(cast(float, search["vram_reserve_gib"]))
     issues: list[str] = []
-    ram_required = float(cast(float, observed["ram_needed_gib"])) + RAM_RESERVE_GIB
+    ram_required = float(cast(float, observed["ram_needed_gib"])) + ram_reserve_gib
     if ram_gib < ram_required:
         issues.append(
             f"available RAM {ram_gib:.2f} GiB is below measured need plus the "
-            f"{RAM_RESERVE_GIB} GiB reserve ({ram_required:.2f} GiB)"
+            f"{ram_reserve_gib} GiB reserve ({ram_required:.2f} GiB)"
         )
     vram_needed = cast(float | None, observed["vram_needed_gib"])
     if vram_needed is not None and vram_free_gib is not None:
-        required = float(vram_needed) + VRAM_RESERVE_GIB
+        required = float(vram_needed) + vram_reserve_gib
         if vram_free_gib < required:
             issues.append(
                 f"free VRAM {vram_free_gib:.2f} GiB is below measured need plus the "
-                f"{VRAM_RESERVE_GIB} GiB reserve ({required:.2f} GiB)"
+                f"{vram_reserve_gib} GiB reserve ({required:.2f} GiB)"
             )
     return issues
 

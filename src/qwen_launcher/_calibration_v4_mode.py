@@ -1,4 +1,4 @@
-"""Confirm and select one calibration/v3 mode after adaptive screening."""
+"""Confirm and select one calibration/v4 mode after adaptive screening."""
 
 from __future__ import annotations
 
@@ -6,15 +6,15 @@ from pathlib import Path
 
 from qwen_launcher._calibration_gguf import GgufError, read_block_count
 from qwen_launcher._calibration_gpu_contexts import GpuContextBaseline
-from qwen_launcher._calibration_v3_confirm import confirm_finalists
-from qwen_launcher._calibration_v3_screening import (
+from qwen_launcher._calibration_v4_confirm import confirm_finalists
+from qwen_launcher._calibration_v4_screening import (
     ModeRunRequest,
     _ModeRun,
     create_mode_run,
     screen_context,
 )
-from qwen_launcher._calibration_v3_search import ScreeningResult, select_candidate_index
-from qwen_launcher._calibration_v3_types import (
+from qwen_launcher._calibration_v4_search import ScreeningResult, select_candidate_index
+from qwen_launcher._calibration_v4_types import (
     CPU_BASELINE_CTX,
     EXPERT_CONTEXT_TARGETS,
     MODE_PROBE_CAP,
@@ -23,7 +23,7 @@ from qwen_launcher._calibration_v3_types import (
     FinalistEvidence,
     ModeCalibration,
     SelectionCandidate,
-    V3RunOptions,
+    V4RunOptions,
 )
 from qwen_launcher.calibration import CalibrationRunError, CalibrationTarget
 from qwen_launcher.profiles import Mode
@@ -132,7 +132,7 @@ def run_mode(request: ModeRunRequest) -> tuple[ModeCalibration, set[str]]:
         block_count = read_block_count(request.target.model_path)
     except GgufError as error:
         raise CalibrationRunError(str(error)) from error
-    from qwen_launcher._calibration_v3_seed import seed_probe_value
+    from qwen_launcher._calibration_v4_seed import seed_probe_value
 
     seed = seed_probe_value(request.target, request.mode, block_count)
     predicted = ModeRunRequest(
@@ -150,7 +150,7 @@ def run_mode(request: ModeRunRequest) -> tuple[ModeCalibration, set[str]]:
 def mode_request(
     target: CalibrationTarget,
     mode: Mode,
-    run_context: tuple[Path, V3RunOptions, GpuContextBaseline | None],
+    run_context: tuple[Path, V4RunOptions, GpuContextBaseline | None],
 ) -> ModeRunRequest:
     """Group runner inputs before model metadata predicts the CUDA domain."""
     runtime_root, options, baseline = run_context

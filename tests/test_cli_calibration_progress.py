@@ -1,4 +1,4 @@
-"""Test interactive and redirected calibration/v3 progress presentation."""
+"""Test interactive and redirected calibration/v4 progress presentation."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from io import StringIO
 import pytest
 from rich.console import Console
 
-from qwen_launcher._calibration_v3_types import ProgressEvent
+from qwen_launcher._calibration_v4_types import ProgressEvent
 from qwen_launcher._cli_calibration_progress import CalibrationProgress
 
 

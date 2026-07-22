@@ -91,7 +91,7 @@ class VramMonitor:
         try:
             replacements = self._validate_samples(managed, baseline, release)
         except VramError as error:
-            # Preserve the class so environment failures stay run-invalidating for v3.
+            # Preserve the class so environment failures stay run-invalidating for v4.
             raise type(error)(str(error), summary) from error
         return replace(summary, context_replacement_count=replacements)
 
@@ -167,7 +167,7 @@ class VramMonitor:
     def _validate_contexts(
         self, managed: GpuProcessIdentity | int | None, baseline: GpuSnapshot
     ) -> int:
-        """Validate exact v1 PIDs or immutable v3 executable multiplicity."""
+        """Validate exact v1 PIDs or immutable v4 executable multiplicity."""
         if self.context_baseline is None:
             foreign = legacy_foreign_pids(self._samples, baseline, managed)
             if foreign:

@@ -8,4 +8,4 @@ def launcher_version() -> str:
     try:
         return version("qwen-launcher")
     except PackageNotFoundError:
-        return "0.1.0"
+        return "0.1.1rc1"

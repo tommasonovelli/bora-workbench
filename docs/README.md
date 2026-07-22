@@ -12,7 +12,7 @@ La lettura consigliata è lineare:
    directory gestite;
 4. [Architettura](architecture.md) — componenti, flussi, contratti, lifecycle e confini di
    sicurezza;
-5. [Calibrazione](calibration.md) — ricerca locale v3, benchmark, record, riuso ed evidenza
+5. [Calibrazione](calibration.md) — ricerca locale v4, benchmark, record, riuso ed evidenza
    condivisa;
 6. [Operazioni e diagnostica](operations.md) — controlli ordinari, errori e recupero;
 7. [Sviluppo](development.md) — struttura del repository, contenuti, test, packaging e contributi;
@@ -37,10 +37,10 @@ quotidiano del launcher.
 
 ## Stato corrente
 
-La release pubblica è `0.1.0`. Il branch `main` contiene questa documentazione riorganizzata e
-correzioni non incluse negli artefatti immutabili della release: porta temporanea per i trial quando
-`llama_port` è occupata, tolleranza massima di 1 MiB nella lettura del totale RAM e progresso v3
-interattivo con riepilogo del fit. La sezione `Unreleased` del changelog riassume le differenze.
+La release pubblica è `0.1.0`. Il branch `main` prepara `0.1.1` con le correzioni runtime,
+progresso interattivo e `calibration/v4` con record v3 e riserva VRAM 0,3 GiB. La release resta
+bloccata finché manca il Gate Windows reale del nuovo metodo. La sezione `Unreleased` del changelog
+riassume le differenze.
 
 PyPI non ospita ancora `0.1.0`: il job di pubblicazione attende la configurazione del Trusted
 Publisher. Gli artefatti verificati sono disponibili nella GitHub Release `v0.1.0`; non vanno

@@ -1,14 +1,14 @@
-"""CLI tests for calibration/v3 dispatch, lifecycle options, cancellation, and failures."""
+"""CLI tests for calibration/v4 dispatch, lifecycle options, cancellation, and failures."""
 
 from __future__ import annotations
 
 from typer.testing import CliRunner
 
-import qwen_launcher._cli_calibration_v3 as calibration_v3_cli
+import qwen_launcher._cli_calibration_v4 as calibration_v4_cli
 import qwen_launcher._cli_doctor as doctor_cli
 from qwen_launcher._calibration_record import RecordError
 from qwen_launcher._calibration_reuse import RecordEvaluation
-from qwen_launcher._calibration_v3_types import ProgressEvent, V3Outcome
+from qwen_launcher._calibration_v4_types import ProgressEvent, V4Outcome
 from qwen_launcher.calibration import CalibrationRunError
 from qwen_launcher.cli import app
 from qwen_launcher.profiles import load_catalog
@@ -18,26 +18,26 @@ from tests.test_calibration import cpu_target
 runner = CliRunner()
 
 
-def outcome(tmp_path) -> V3Outcome:
+def outcome(tmp_path) -> V4Outcome:
     """Build one complete CLI-facing outcome without real processes."""
     mode = load_catalog().mode("coding")
     assert mode is not None
     active = tmp_path / "records" / "coding.json"
     evidence = tmp_path / "evidence" / ("a" * 32)
-    return V3Outcome((cuda_calibration(mode),), (), (active,), evidence)
+    return V4Outcome((cuda_calibration(mode),), (), (active,), evidence)
 
 
-def test_default_calibrate_runs_v3_and_shows_active_record(tmp_path, monkeypatch) -> None:
+def test_default_calibrate_runs_v4_and_shows_active_record(tmp_path, monkeypatch) -> None:
     """Run paired zero-input protocol by default and present its active path."""
-    monkeypatch.setattr(calibration_v3_cli, "prepare_target", lambda mode_value: cpu_target())
+    monkeypatch.setattr(calibration_v4_cli, "prepare_target", lambda mode_value: cpu_target())
     monkeypatch.setattr(
-        calibration_v3_cli, "run_calibration_v3", lambda target, options: outcome(tmp_path)
+        calibration_v4_cli, "run_calibration_v4", lambda target, options: outcome(tmp_path)
     )
 
     result = runner.invoke(app, ["calibrate", "--mode", "coding"], input="y\n")
 
     assert result.exit_code == 0
-    assert "calibration/v3" in result.stdout
+    assert "calibration/v4" in result.stdout
     assert "zero mandatory technical inputs" in result.stdout
     assert "Trial ports:" in result.stdout
     assert "ctx=131072, n_cpu_moe=38" in result.stdout
@@ -46,13 +46,13 @@ def test_default_calibrate_runs_v3_and_shows_active_record(tmp_path, monkeypatch
 
 def test_refusal_cancels_before_any_process(monkeypatch) -> None:
     """Map a clean operator refusal to contractual exit code 130."""
-    monkeypatch.setattr(calibration_v3_cli, "prepare_target", lambda mode_value: cpu_target())
+    monkeypatch.setattr(calibration_v4_cli, "prepare_target", lambda mode_value: cpu_target())
 
     def forbidden(target, options):
         """Prove no probe starts before explicit confirmation."""
         raise AssertionError("calibration must not start")
 
-    monkeypatch.setattr(calibration_v3_cli, "run_calibration_v3", forbidden)
+    monkeypatch.setattr(calibration_v4_cli, "run_calibration_v4", forbidden)
     result = runner.invoke(app, ["calibrate", "--mode", "coding"], input="n\n")
 
     assert result.exit_code == 130
@@ -62,14 +62,14 @@ def test_refusal_cancels_before_any_process(monkeypatch) -> None:
 def test_no_activate_and_target_context_reach_runner(tmp_path, monkeypatch) -> None:
     """Pass expert controls without adding mandatory input to the default path."""
     captured = []
-    monkeypatch.setattr(calibration_v3_cli, "prepare_target", lambda mode_value: cpu_target())
+    monkeypatch.setattr(calibration_v4_cli, "prepare_target", lambda mode_value: cpu_target())
 
     def run(target, options):
         """Capture grouped core options and return a synthetic outcome."""
         captured.append(options)
         return outcome(tmp_path)
 
-    monkeypatch.setattr(calibration_v3_cli, "run_calibration_v3", run)
+    monkeypatch.setattr(calibration_v4_cli, "run_calibration_v4", run)
     result = runner.invoke(
         app,
         ["calibrate", "--mode", "coding", "--no-activate", "--target-ctx", "98304"],
@@ -84,9 +84,9 @@ def test_no_activate_and_target_context_reach_runner(tmp_path, monkeypatch) -> N
 def test_activate_promotes_without_preparing_hardware(tmp_path, monkeypatch) -> None:
     """Promote a pending candidate without rerunning model, engine, or hardware preflight."""
     active = tmp_path / "records" / "coding.json"
-    monkeypatch.setattr(calibration_v3_cli, "promote_candidate", lambda mode_id: active)
+    monkeypatch.setattr(calibration_v4_cli, "promote_candidate", lambda mode_id: active)
     monkeypatch.setattr(
-        calibration_v3_cli,
+        calibration_v4_cli,
         "prepare_target",
         lambda mode: (_ for _ in ()).throw(AssertionError("must not prepare")),
     )
@@ -101,7 +101,7 @@ def test_activate_missing_candidate_is_operational_without_traceback(monkeypatch
     """Map an absent pending candidate to the expected operational error boundary."""
     failure = RecordError("no pending calibration candidate")
     monkeypatch.setattr(
-        calibration_v3_cli,
+        calibration_v4_cli,
         "promote_candidate",
         lambda mode: (_ for _ in ()).throw(failure),
     )
@@ -117,11 +117,14 @@ def test_invalid_option_combinations_and_v1_boundary() -> None:
     """Reject conflicting lifecycle controls and keep manual candidates in v1."""
     conflict = runner.invoke(app, ["calibrate", "--mode", "coding", "--activate", "--no-activate"])
     explicit = runner.invoke(app, ["calibrate", "--mode", "coding", "--candidate", "safe:8192"])
+    legacy = runner.invoke(app, ["calibrate", "--mode", "coding", "--protocol", "v3"])
 
     assert conflict.exit_code == 2
     assert "mutually exclusive" in conflict.output
     assert explicit.exit_code == 2
     assert "--protocol v1" in explicit.output
+    assert legacy.exit_code == 2
+    assert "use v4 or v1" in legacy.output
 
 
 def test_doctor_distinguishes_record_lifecycle_states() -> None:
@@ -151,11 +154,11 @@ def test_doctor_keeps_candidate_hint_when_active_is_superseded() -> None:
 
 def test_runtime_failure_is_operational_exit_one(monkeypatch) -> None:
     """Map a measured search failure to code 1 without traceback."""
-    monkeypatch.setattr(calibration_v3_cli, "prepare_target", lambda mode_value: cpu_target())
+    monkeypatch.setattr(calibration_v4_cli, "prepare_target", lambda mode_value: cpu_target())
     failure = CalibrationRunError("no finalist passed confirmation")
     monkeypatch.setattr(
-        calibration_v3_cli,
-        "run_calibration_v3",
+        calibration_v4_cli,
+        "run_calibration_v4",
         lambda target, options: (_ for _ in ()).throw(failure),
     )
 
@@ -177,7 +180,7 @@ def test_calibrate_help_lists_specialized_options() -> None:
 
 def test_keyboard_interrupt_closes_progress_and_returns_130(monkeypatch) -> None:
     """Map cancellation after a visible started event without traceback or completion."""
-    monkeypatch.setattr(calibration_v3_cli, "prepare_target", lambda mode_value: cpu_target())
+    monkeypatch.setattr(calibration_v4_cli, "prepare_target", lambda mode_value: cpu_target())
 
     def interrupted(target, options):
         """Start one progress item before simulating Ctrl-C in the core run."""
@@ -185,7 +188,7 @@ def test_keyboard_interrupt_closes_progress_and_returns_130(monkeypatch) -> None
         options.progress(ProgressEvent("coding", "screening", 0, 12, None, True))
         raise KeyboardInterrupt
 
-    monkeypatch.setattr(calibration_v3_cli, "run_calibration_v3", interrupted)
+    monkeypatch.setattr(calibration_v4_cli, "run_calibration_v4", interrupted)
     result = runner.invoke(app, ["calibrate", "--mode", "coding"], input="y\n")
 
     assert result.exit_code == 130

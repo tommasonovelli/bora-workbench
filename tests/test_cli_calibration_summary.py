@@ -1,4 +1,4 @@
-"""Test plain-language calibration/v3 outcome summaries and expert hints."""
+"""Test plain-language calibration/v4 outcome summaries and expert hints."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from io import StringIO
 
 from rich.console import Console
 
-from qwen_launcher._calibration_v3_types import ModeCalibration, V3Outcome
+from qwen_launcher._calibration_v4_types import ModeCalibration, V4Outcome
 from qwen_launcher._cli_calibration_summary import show_calibration_outcome
 from qwen_launcher.profiles import load_catalog
 from tests.record_fixtures import cuda_calibration
@@ -17,7 +17,7 @@ def _render(calibration: ModeCalibration, tmp_path) -> str:
     """Render one synthetic active outcome to a non-interactive console."""
     stream = StringIO()
     console = Console(file=stream, force_terminal=False, color_system=None, width=200)
-    outcome = V3Outcome(
+    outcome = V4Outcome(
         (calibration,),
         (),
         (tmp_path / "records" / "coding.json",),

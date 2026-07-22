@@ -1,4 +1,4 @@
-"""Collect calibration/v3 screening probes and find one fixed-context boundary."""
+"""Collect calibration/v4 screening probes and find one fixed-context boundary."""
 
 from __future__ import annotations
 
@@ -9,15 +9,15 @@ from pathlib import Path
 from statistics import median
 
 from qwen_launcher._calibration_gpu_contexts import GpuContextBaseline
-from qwen_launcher._calibration_v3_plan import build_plan
-from qwen_launcher._calibration_v3_process import TrialFailure, TrialSpec, run_trial
-from qwen_launcher._calibration_v3_search import (
+from qwen_launcher._calibration_v4_plan import build_plan
+from qwen_launcher._calibration_v4_process import TrialFailure, TrialSpec, run_trial
+from qwen_launcher._calibration_v4_search import (
     ProbeMeasurement,
     ScreeningPlan,
     ScreeningResult,
     screen,
 )
-from qwen_launcher._calibration_v3_types import (
+from qwen_launcher._calibration_v4_types import (
     CONTEXT_SCALE,
     EXPERT_CONTEXT_TARGETS,
     MODE_PROBE_CAP,
@@ -27,7 +27,7 @@ from qwen_launcher._calibration_v3_types import (
     ProgressUpdate,
     TrialEvidence,
     TrialOrder,
-    V3RunOptions,
+    V4RunOptions,
 )
 from qwen_launcher.calibration import CalibrationRunError, CalibrationTarget
 from qwen_launcher.profiles import Mode
@@ -43,7 +43,7 @@ class ModeRunRequest:
     domain_maximum: int
     seed: int | None
     gpu_context_baseline: GpuContextBaseline | None
-    options: V3RunOptions
+    options: V4RunOptions
 
 
 @dataclass(slots=True)
@@ -56,7 +56,7 @@ class _ModeRun:
     domain_maximum: int
     seed: int | None
     gpu_context_baseline: GpuContextBaseline | None
-    options: V3RunOptions
+    options: V4RunOptions
     probes: list[ProbeRecord] = field(default_factory=list)
     drivers: set[str] = field(default_factory=set)
     trial_durations: dict[str, list[float]] = field(default_factory=dict)
@@ -144,7 +144,7 @@ def run_probe(run: _ModeRun, ctx: int, value: int) -> ProbeMeasurement:
     return ProbeMeasurement(is_feasible, peak)
 
 
-def _contexts(options: V3RunOptions) -> tuple[int, ...]:
+def _contexts(options: V4RunOptions) -> tuple[int, ...]:
     """Return the full approved scale or one expert-selected target rung."""
     if options.target_ctx is None:
         return CONTEXT_SCALE

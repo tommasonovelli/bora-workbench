@@ -52,6 +52,7 @@ def copy_resource_root(tmp_path: Path) -> Path:
         "schemas/calibration-report.v1.json",
         "schemas/calibration-report.v2.json",
         "schemas/calibration-record.v2.json",
+        "schemas/calibration-record.v3.json",
         "content/modes/coding.json",
         "content/modes/studio.json",
         "content/modes/vstudio.json",

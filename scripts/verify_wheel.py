@@ -23,7 +23,7 @@ def _resource_probe() -> str:
         "from importlib.metadata import version; "
         "from qwen_launcher.profiles import load_catalog; "
         "from qwen_launcher.resources import read_json, read_text, resource; "
-        "assert version('qwen-launcher') == '0.1.0'; "
+        "assert version('qwen-launcher') == '0.1.1rc1'; "
         "assert 'Spike 0' in read_text('README.txt'); "
         "lock = read_json('engine.lock'); "
         "assert lock['release'] == 'b10011' and lock['assets_complete']; "
@@ -33,6 +33,10 @@ def _resource_probe() -> str:
         "'1c7182235411da2d4fe6fca130e3effb0b0d965569c52abd8fd45327103ddb2e'; "
         "assert hashlib.sha256(resource('benchmark-v1/request.json').read_bytes()).hexdigest() == "
         "'025dc91aeb61a790d5fd36c27f127e04761ae7f1c3d6b542d0cfd9d37bc5c19f'; "
+        "record_schema = read_json('schemas/calibration-record.v3.json'); "
+        "assert record_schema['properties']['calibration_protocol']['const'] == 'calibration/v4'; "
+        "assert record_schema['properties']['search']['properties']['vram_reserve_gib']['const'] "
+        "== 0.3; "
         "policy = read_json('content/calibration-policy.json'); "
         "report_path = 'content/' + policy['evidence'][0]['path']; "
         "report_bytes = resource(report_path).read_bytes(); "
@@ -89,6 +93,7 @@ def _verify_sdist() -> bool:
         print(f"expected exactly one sdist in dist/, found {len(archives)}", file=sys.stderr)
         return False
     required = (
+        "CALIBRATION.md",
         "CHANGELOG.md",
         "CONTRIBUTING.md",
         "IMPLEMENTATION_SPEC.md",

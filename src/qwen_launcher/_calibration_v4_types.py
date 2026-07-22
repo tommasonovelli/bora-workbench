@@ -1,7 +1,8 @@
-"""Define calibration/v3 constants and immutable per-mode evidence.
+"""Define calibration/v4 constants and immutable per-mode evidence.
 
-The universal values have declared provenance in D-039/D-041-D-045 and remain subject to the
-Calibration Gate. Their effect always passes through local measurements; none is machine-specific.
+The universal values have declared provenance in D-039/D-041-D-045 and D-053 and remain subject
+to the Calibration Gate. Their effect always passes through local measurements; none is
+machine-specific.
 """
 
 from __future__ import annotations
@@ -15,8 +16,8 @@ from qwen_launcher._calibration_vram import VramSummary
 from qwen_launcher.benchmark import BenchmarkResult
 from qwen_launcher.profiles import Mode
 
-CALIBRATION_V3_PROTOCOL = "calibration/v3"
-VRAM_RESERVE_GIB = 0.5
+CALIBRATION_V4_PROTOCOL = "calibration/v4"
+VRAM_RESERVE_GIB = 0.3
 RAM_RESERVE_GIB = 2.0
 RELEASE_TOLERANCE_GIB = 0.125
 CONFIRM_ROUNDS = 2
@@ -98,7 +99,7 @@ class ModeCalibration:
 
 
 @dataclass(frozen=True, slots=True)
-class V3Outcome:
+class V4Outcome:
     """Identify calibrations, record lifecycle paths, and retained evidence for one run."""
 
     calibrations: tuple[ModeCalibration, ...]
@@ -131,7 +132,7 @@ class ProgressUpdate:
 
 @dataclass(frozen=True, slots=True)
 class ProgressEvent:
-    """Report phase progress without changing persisted calibration/v3 evidence.
+    """Report phase progress without changing persisted calibration/v4 evidence.
 
     ``completed`` always counts finished trials; while running, the current trial is the next one.
     """
@@ -148,7 +149,7 @@ ProgressCallback = Callable[[ProgressEvent], None]
 
 
 @dataclass(frozen=True, slots=True)
-class V3RunOptions:
+class V4RunOptions:
     """Group optional expert controls without burdening the zero-input default path."""
 
     target_ctx: int | None = None

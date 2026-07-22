@@ -17,9 +17,10 @@ Aggiornato al 22 luglio 2026.
 - [x] Il run release `29739366272` è verde per test Ubuntu/Windows, build e verifica wheel.
 - [x] `llama.cpp b10011`, modello, mmproj, asset, flag, API e salute sono appuntati e verificati.
 - [x] Cache K/V Q8 con mmap è attiva solo su CUDA; i pesi restano `UD-Q4_K_M`.
-- [x] `calibration/v3` e `calibration-record/v2` sono il percorso corrente. Il Gate locale Windows
-  CUDA è accettato per `coding`, `studio` e `vstudio`; i tre candidati originari restano inattivi.
-- [x] Policy e report pubblici v2 distribuiscono metodo ed evidenza, non la busta di un altro host.
+- [x] `calibration/v3` e `calibration-record/v2` hanno prodotto il Gate locale Windows CUDA
+  accettato per `coding`, `studio` e `vstudio`; i tre candidati originari restano inattivi.
+- [x] Policy e report pubblici v2 conservano metodo/evidenza v3 e forniscono a v4 soltanto seed
+  d'ordine, mai la busta di un altro host.
 - [x] Le correzioni post-release D-051 e D-052 sono nel branch: porta temporanea per i trial e
   tolleranza massima di 1 MiB nel confronto del totale RAM.
 
@@ -27,10 +28,11 @@ Aggiornato al 22 luglio 2026.
 
 - [ ] Configurare il Trusted Publisher PyPI e rieseguire solo il job `publish` fallito di
   `29739366272`; non ricostruire gli artefatti `0.1.0`.
-- [ ] Distribuire D-051/D-052 soltanto tramite una nuova versione preparata e autorizzata.
+- [ ] Completare il Gate Windows reale per `calibration/v4`; `0.1.1rc1` non diventa 0.1.1 prima.
+- [ ] Distribuire D-051/D-052 e D-053 soltanto tramite la 0.1.1 dopo il Gate e decisione `RELEASE`.
 - [ ] Stabilizzare ulteriormente la serie 0.1 prima di iniziare la 0.2.
-- [~] Ripetere `calibration/v3 --no-activate` su hardware materialmente diverso. È un follow-up non
-  bloccante; fino ad allora la copertura resta `GATE-PARTIAL`.
+- [~] Ripetere `calibration/v4 --no-activate` su Windows e hardware materialmente diverso. Windows
+  è bloccante per 0.1.1; l'hardware diverso resta follow-up e la copertura è `GATE-PARTIAL`.
 - [ ] Step 7 — skill e router deterministico.
 - [ ] Step 8 — Open WebUI gestita e sync.
 - [ ] Step 9 — benchmark autonomo e doctor definitivo.
@@ -130,6 +132,7 @@ Gli identificatori restano stabili perché codice, test ed evidenza li citano.
 | D-050 | `98304` è target esperto esplicito, fuori dalla scala automatica. |
 | D-051 | I trial usano `llama_port` se libera, altrimenti una porta loopback assegnata dall'OS. |
 | D-052 | Il confronto del totale RAM tollera al massimo 1 MiB; headroom e componenti restano severi. |
+| D-053 | `calibration/v4` conserva scala, ricerca e ABBA v3 ma usa 0,3 GiB di riserva VRAM e produce `calibration-record/v3`; i record v2 restano validi con la propria riserva 0,5 GiB. |
 
 Una nuova decisione durevole aggiorna questa tabella nello stesso step che la autorizza.
 
@@ -224,13 +227,13 @@ Tutti i documenti usano JSON Schema 2020-12, `additionalProperties: false` e ide
 `^[a-z0-9-]+$`.
 
 Contratti supportati: `mode/v1`, `profile/v1`, `calibration-policy/v1` e `/v2`,
-`calibration-report/v1` e `/v2`, `calibration-record/v2`, `engine-lock/v1`.
+`calibration-report/v1` e `/v2`, `calibration-record/v2` e `/v3`, `engine-lock/v1`.
 
 - Un modo contiene descrizione, `services.ui`, `services.vision` e sampling.
 - Un profilo v1 è solo compatibilità/evidenza; nessun profilo di produzione è distribuito.
-- Policy v2 descrive il metodo v3, non buste.
+- Policy v2 descrive il metodo storico v3, non buste; v4 la usa soltanto come seed d'ordine.
 - Report v2 è privacy-safe e produce soltanto seed d'ordine.
-- Record v2 è privato, per modo e legato a identità completa.
+- Record v2/v3 sono privati, per modo e legati a identità completa; v3 registra il metodo v4.
 - Filename, riferimenti e SHA-256 sono controllati semanticamente.
 
 Un nuovo campo incompatibile richiede una nuova versione di schema.
@@ -247,22 +250,24 @@ Il processo figlio CUDA riceve `CUDA_VISIBLE_DEVICES`; il processo padre non vie
 
 ### 5.5 Piano, record e baseline
 
-Solo l'attivo `calibration-record/v2` può fornire la busta. Devono coincidere modello/digest,
-motore/commit/contratto, modo, OS, backend, hardware, driver e headroom. Il totale RAM tollera al
-massimo 1 MiB di deriva; RAM disponibile e VRAM libera restano confronti separati.
+Solo un attivo `calibration-record/v2` o `/v3` può fornire la busta. Devono coincidere
+modello/digest, motore/commit/contratto, modo, OS, backend, hardware, driver e headroom. Il totale
+RAM tollera al massimo 1 MiB di deriva; RAM disponibile e VRAM libera restano confronti separati.
 
 Riuso:
 
 - RAM disponibile ≥ fabbisogno misurato + 2,0 GiB;
-- CUDA: VRAM libera ≥ fabbisogno misurato + 0,5 GiB.
+- CUDA: VRAM libera ≥ fabbisogno misurato + riserva registrata (0,5 GiB per v2, 0,3 GiB per v3).
 
 Fallback: `ctx=8192`; CUDA `n_cpu_moe=48`; CPU senza `n_cpu_moe`. È sempre non ottimizzato.
 `--force` bypassa solo il gate 28/22 GiB del modello predefinito.
 
 ### 5.6 Calibrazione
 
-Il default è `calibration/v3`. È locale, esplicito, confermato dall'utente e non effettua upload,
-commit o modifica config.
+Il default è `calibration/v4`. È locale, esplicito, confermato dall'utente e non effettua upload,
+commit o modifica config. Conserva scala, ricerca del confine, finalisti e conferma ABBA di v3;
+D-053 cambia soltanto riserva VRAM e versione del record. L'esecuzione v3 è ritirata, mentre i suoi
+record e la sua evidenza pubblica restano leggibili.
 
 Costanti:
 
@@ -271,7 +276,7 @@ Costanti:
 - dominio CUDA `[0, block_count]`, atteso `[0, 41]` sul modello corrente;
 - polling RAM/VRAM 250 ms;
 - riserva RAM 2,0 GiB;
-- riserva VRAM 0,5 GiB;
+- riserva VRAM 0,3 GiB;
 - tolleranza rilascio/deriva 0,125 GiB;
 - massimo 12 probe per modo;
 - due round `A→B/B→A`;
@@ -425,11 +430,12 @@ Poi riesegue soltanto il job `publish` fallito del run `29739366272`. Dopo il su
 `qwen-launcher==0.1.0` su Ubuntu e Windows e confronta i digest con GitHub. Gli artefatti esistenti
 non vengono ricostruiti.
 
-### 7.2 Distribuire le correzioni post-release
+### 7.2 Preparare la 0.1.1
 
-D-051 e D-052 sono inedite. La versione che le distribuirà non è selezionata da questo documento:
-richiede richiesta esplicita, changelog, gate locale, build pulita, autorizzazione e nuova release.
-Non modificare metadata o artefatti finché quel lavoro non viene aperto.
+La 0.1.1 distribuirà D-051, D-052, UX di progresso e D-053. Il Gate Ubuntu v4 comprende un primo run
+fallito e un retry valido; questo non sostituisce il Gate Windows reale richiesto da
+`docs/releasing.md`. Metadata e codice possono essere preparati localmente, ma commit finale, tag e
+release restano bloccati fino a prova Windows e decisione umana `RELEASE`.
 
 ### 7.3 Evidenza eterogenea
 
@@ -564,7 +570,8 @@ Push, tag, GitHub Release, PyPI e impostazioni remote restano operazioni autoriz
 - [ ] PyPI contiene gli stessi artefatti `0.1.0` già testati.
 - [ ] Installazione esplicita da PyPI verificata su Ubuntu e Windows.
 - [ ] Correzioni post-release distribuite solo con nuova versione autorizzata.
-- [~] Evidenza v3 eterogenea aggiunta quando disponibile, senza bloccare uso locale.
+- [ ] `calibration/v4` verificata realmente su Ubuntu e Windows prima della 0.1.1.
+- [~] Evidenza eterogenea aggiunta quando disponibile, senza trasferire buste fra host.
 
 ### Milestone 0.2
 

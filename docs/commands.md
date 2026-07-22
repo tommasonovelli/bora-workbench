@@ -158,16 +158,16 @@ Ferma soltanto processi la cui identità coincide con lo stato. Attende fino a 1
 `terminate`, poi usa `kill` e attende fino a 5 secondi. È idempotente: nessun servizio restituisce 0.
 Non cancellare manualmente `services.json` mentre il processo è vivo.
 
-## `calibrate`: protocollo corrente v3
+## `calibrate`: protocollo corrente v4
 
 ```bash
 qwen-launcher calibrate --mode <coding|studio|vstudio|all>
 ```
 
-`--protocol v3` è il default. Il comando mostra un preflight e chiede conferma prima dei processi.
+`--protocol v4` è il default. Il comando mostra un preflight e chiede conferma prima dei processi.
 Per default scrive un candidato per ogni modo completato e lo attiva atomicamente.
 
-Opzioni v3:
+Opzioni v4:
 
 ```bash
 qwen-launcher calibrate --mode all --no-activate
@@ -189,7 +189,7 @@ Le tre opzioni sono gestite dal parser specializzato del comando. `calibrate --h
 nell'epilogo insieme agli extra v1, mentre la tabella generata da Typer contiene soltanto le opzioni
 comuni; la sintassi sopra è quella effettivamente supportata.
 
-Su un terminale interattivo il run v3 mostra una barra viva con fase, trial, tempo trascorso e stima
+Su un terminale interattivo il run v4 mostra una barra viva con fase, trial, tempo trascorso e stima
 adattiva; l'output rediretto resta line-oriented. Lo screening mostra `≤12` e una proiezione della
 durata fino a quel cap, non un limite o una promessa. Il riepilogo finale include la motivazione
 della selezione e i minimi RAM/VRAM osservati.
@@ -219,7 +219,8 @@ Su CUDA ogni candidato usa `ID:CTX:N_CPU_MOE` e le impostazioni usano
 contiene solo `RUNS`. `--candidate` è ripetibile. Se candidati o impostazioni mancano, la CLI li
 chiede interattivamente; non assegna default impliciti.
 
-Le opzioni v3 non sono valide con `--protocol v1`. Candidati o `--settings` non sono validi con v3.
+Le opzioni v4 non sono valide con `--protocol v1`. Candidati o `--settings` non sono validi con v4.
+`--protocol v3` non avvia nuovi run; i record storici v3 restano comunque supportati.
 
 ## `uninstall`
 

@@ -1,4 +1,4 @@
-"""Coordinate calibration/v3 modes, evidence retention, and candidate-record activation."""
+"""Coordinate calibration/v4 modes, evidence retention, and candidate-record activation."""
 
 from __future__ import annotations
 
@@ -19,19 +19,19 @@ from qwen_launcher._calibration_record import (
     promote_candidate,
     write_record,
 )
-from qwen_launcher._calibration_v3_mode import mode_request, run_mode
-from qwen_launcher._calibration_v3_types import ModeCalibration, V3Outcome, V3RunOptions
+from qwen_launcher._calibration_v4_mode import mode_request, run_mode
+from qwen_launcher._calibration_v4_types import ModeCalibration, V4Outcome, V4RunOptions
 from qwen_launcher._calibration_vram import VramEnvironmentError
 from qwen_launcher.calibration import CalibrationRunError, CalibrationTarget
 from qwen_launcher.paths import data_dir
 
 
 @dataclass(frozen=True, slots=True)
-class _V3RunContext:
+class _V4RunContext:
     """Group immutable options, runtime path, and the one run-scoped GPU baseline."""
 
     runtime_root: Path
-    options: V3RunOptions
+    options: V4RunOptions
     gpu_context_baseline: GpuContextBaseline | None
 
 
@@ -41,7 +41,7 @@ def _preserve_on_failure(root: Path, runtime_root: Path, run_id: str) -> None:
         preserve_evidence(root, runtime_root, run_id)
 
 
-def _run_modes(target: CalibrationTarget, context: _V3RunContext) -> tuple[ModeCalibration, ...]:
+def _run_modes(target: CalibrationTarget, context: _V4RunContext) -> tuple[ModeCalibration, ...]:
     """Run selected modes against one immutable context population and driver identity."""
     calibrations: list[ModeCalibration] = []
     drivers: set[str] = set()
@@ -92,19 +92,19 @@ def _capture_context_baseline(target: CalibrationTarget) -> GpuContextBaseline |
         raise CalibrationRunError(f"calibration run invalidated: {error}") from error
 
 
-def run_calibration_v3(
+def run_calibration_v4(
     target: CalibrationTarget,
-    options: V3RunOptions | None = None,
+    options: V4RunOptions | None = None,
     destination_root: Path | None = None,
-) -> V3Outcome:
+) -> V4Outcome:
     """Search, retain evidence, write candidates, and optionally activate each selected mode."""
-    selected = options or V3RunOptions()
+    selected = options or V4RunOptions()
     root = data_dir() / "calibration" if destination_root is None else destination_root
     context_baseline = _capture_context_baseline(target)
     run_id = uuid4().hex
     runtime_root = root / f".runtime-{run_id}"
     runtime_root.mkdir(parents=True, exist_ok=False)
-    context = _V3RunContext(runtime_root, selected, context_baseline)
+    context = _V4RunContext(runtime_root, selected, context_baseline)
     try:
         calibrations = _run_modes(target, context)
     except (VramEnvironmentError, RamError) as error:
@@ -118,6 +118,6 @@ def run_calibration_v3(
         records_root = root / "records"
         candidates = _write_candidates(target, calibrations, (records_root, run_id))
         active = _activate(calibrations, records_root, selected.is_activate)
-        return V3Outcome(calibrations, candidates, active, evidence_path)
+        return V4Outcome(calibrations, candidates, active, evidence_path)
     except (OSError, RecordError, ValueError) as error:
         raise CalibrationRunError(str(error)) from error

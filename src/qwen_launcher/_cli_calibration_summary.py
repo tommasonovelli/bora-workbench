@@ -1,4 +1,4 @@
-"""Explain calibration/v3 selections and retained record paths."""
+"""Explain calibration/v4 selections and retained record paths."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from statistics import median
 
 from rich.console import Console
 
-from qwen_launcher._calibration_v3_types import (
+from qwen_launcher._calibration_v4_types import (
     SELECTION_CPU_BASELINE,
     SELECTION_DOMINANCE,
     SELECTION_DRIFT,
@@ -14,7 +14,7 @@ from qwen_launcher._calibration_v3_types import (
     SELECTION_PRUDENT,
     SELECTION_SINGLE,
     ModeCalibration,
-    V3Outcome,
+    V4Outcome,
 )
 
 _SELECTION_EXPLANATIONS = {
@@ -67,14 +67,14 @@ def _show_context_hint(calibration: ModeCalibration, console: Console) -> None:
     if calibration.target_ctx is not None or not is_cuda or calibration.ctx != 65536:
         return
     console.print(
-        f"[yellow]{calibration.mode.id}: automatic v3 does not test 98304. "
+        f"[yellow]{calibration.mode.id}: automatic v4 does not test 98304. "
         "To measure that gap without activation, run "
         f"`qwen-launcher calibrate --mode {calibration.mode.id} "
         "--target-ctx 98304 --no-activate`; feasibility is not implied.[/yellow]"
     )
 
 
-def show_calibration_outcome(outcome: V3Outcome, console: Console) -> None:
+def show_calibration_outcome(outcome: V4Outcome, console: Console) -> None:
     """Print record paths, selection reasons, and actionable context gaps."""
     console.print("[green]Local calibration completed.[/green]")
     for calibration in outcome.calibrations:

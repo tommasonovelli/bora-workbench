@@ -9,8 +9,8 @@ modelli: conserva soltanto conclusioni verificabili.
 
 ## Esito sintetico
 
-`calibration/v3` è conservativo e adatto a trovare una busta valida nel proprio dominio, ma il suo
-nome “best fit” va interpretato con precisione:
+`calibration/v4` deriva da v3 ed è conservativo nel proprio dominio, ma il suo nome “best fit” va
+interpretato con precisione:
 
 - massimizza il contesto fra `131072`, `65536`, `32768`, `16384`, `8192`;
 - su CUDA trova il confine di memoria di `n_cpu_moe` e confronta soltanto quel valore e l'adiacente
@@ -21,9 +21,11 @@ nome “best fit” va interpretato con precisione:
 - non calibra thread, batch, parametri MTP, cache draft, sampling o quantizzazione;
 - su CPU conferma per default `ctx=8192`, pur accettando un target esperto esplicito.
 
-La modifica implementata in questo audit migliora osservabilità e interpretazione senza cambiare il
-metodo v3 o invalidare record esistenti. Un ampliamento degli assi richiede un protocollo successivo,
-nuovo schema/evidenza e gate reali multipiattaforma.
+La prima modifica dell'audit ha migliorato osservabilità e interpretazione. D-053 implementa ora un
+cambio stretto e versionato: v4 conserva scala, ricerca e ABBA di v3, riduce la riserva VRAM a 0,3
+GiB (circa 307 MiB nelle unità binarie del progetto) e produce `calibration-record/v3`. I record v2
+storici restano leggibili e mantengono 0,5 GiB al
+riuso. Gli altri ampliamenti elencati qui restano proposte, non funzionalità implementate.
 
 ## Gerarchia delle fonti
 
@@ -42,19 +44,19 @@ Per questo audit restano invariati:
   `5bc3e238d916f48a861bac2f8a1990a0e9b7e98d` e SHA-256 appuntato;
 - `llama.cpp b10011`, commit `bf2c86ddc0685f580595954056c2e77ebabfab4f`;
 - MTP draft massimo 2, parallelismo 1, flash attention, mmap e cache K/V Q8 su CUDA;
-- dominio `n_cpu_moe=[0,41]`, riserva RAM 2 GiB, riserva VRAM 0,5 GiB e tolleranza
-  di rilascio 0,125 GiB;
+- dominio `n_cpu_moe=[0,41]`, riserva RAM 2 GiB e tolleranza di rilascio 0,125 GiB;
+- riserva VRAM v4 0,3 GiB; i record prodotti da `calibration/v3` conservano 0,5 GiB;
 - stato della Calibration Gate `GATE-PARTIAL`.
 
 ## Analisi del contesto
 
 La model card Qwen dichiara 262.144 token nativi e consiglia almeno 128K quando possibile. Il tetto
-v3 di 131.072 soddisfa quella raccomandazione quando è fattibile, ma usa soltanto metà del contesto
+v4 di 131.072 soddisfa quella raccomandazione quando è fattibile, ma usa soltanto metà del contesto
 nativo dichiarato. Non è corretto estendere automaticamente il dominio usando una pagina corrente:
 la compatibilità locale dipende anche da release motore, cache, MTP, quantizzazione e memoria.
 
 La scala `128K → 64K` può saltare un best fit a 96K. Il target 98.304 già autorizzato consente di
-misurare il gap senza cambiare v3. La CLI ora lo suggerisce, con `--no-activate`, soltanto quando una
+misurare il gap senza cambiare la scala v4. La CLI lo suggerisce, con `--no-activate`, soltanto quando una
 ricerca automatica CUDA termina a 65.536; non ne promette la fattibilità. Inserire 96K nella scala o
 provare 262K automaticamente cambierebbe budget, ordine ed evidenza del protocollo e va versionato.
 
@@ -64,7 +66,7 @@ validi. Una vera ricerca automatica del massimo contesto CPU è lavoro per un pr
 ## RAM, VRAM e ambiente operativo
 
 Il fit non può derivare dalla sola somma nominale RAM+VRAM. Mmap, pagine residenti, KV cache, pesi
-MoE, MTP e processi desktop producono pressioni diverse e in parte sovrapposte. v3 prende la decisione
+MoE, MTP e processi desktop producono pressioni diverse e in parte sovrapposte. v4 prende la decisione
 sulle misure locali durante ogni processo fresco e rivalida l'headroom al riuso del record.
 
 Le differenze ambientali sono già trattate nel punto corretto:
@@ -81,7 +83,7 @@ pubblica attuale copre un solo host Windows.
 ## Analisi di `n_cpu_moe`
 
 Valori più bassi lasciano più pesi MoE sulla GPU; valori più alti risparmiano VRAM ma aumentano il
-lavoro e il traffico lato CPU/RAM. Il throughput non è assunto monotono. v3 usa una ricerca adattiva
+lavoro e il traffico lato CPU/RAM. Il throughput non è assunto monotono. v4 usa una ricerca adattiva
 per trovare il primo valore fattibile, poi conferma soltanto `boundary` e `boundary+1` in ordine ABBA.
 
 Questo è efficiente per trovare il confine di memoria, non per dimostrare il massimo throughput sul
@@ -93,7 +95,7 @@ banda, MTP o scheduling. Un protocollo successivo dovrebbe separare:
 3. conferma accoppiata dei finalisti prodotti dal secondo stadio.
 
 Il disegno deve fissare prima budget, stop rule, gestione del rumore e ricostruzione del record; non
-va aggiunto uno sweep opportunistico a v3.
+va aggiunto uno sweep opportunistico a v4.
 
 ## Assi disponibili ma non calibrati
 
@@ -142,15 +144,15 @@ Senza alterare prove, schema o selezione, il comando ora:
 - spiega la regola di selezione e mostra i minimi RAM/VRAM del finalista;
 - rende visibili in `calibrate --help` gli extra gestiti dal parser specializzato.
 
-Gli eventi di progresso sono interni e non persistiti; non richiedono un nuovo schema. Timestamp,
-ordine ABBA, benchmark e record restano invariati.
+Gli eventi di progresso sono interni e non persistiti; non richiedono un nuovo schema. D-053 è un
+cambio separato: timestamp, ordine ABBA e benchmark restano invariati, mentre protocollo e record
+passano rispettivamente a v4 e v3.
 
 ## Calibrazione empirica locale
 
-È stato eseguito un run reale `coding`, CUDA, automatico e `--no-activate` in radici isolate. Nessun
-record o candidato utente è stato modificato; record, log e transcript temporanei sono stati
-eliminati dopo l'estrazione degli aggregati. Questa è una verifica locale del commit, non nuova
-evidenza pubblica e non modifica `GATE-PARTIAL`.
+Tutti i run reali sono stati eseguiti su `coding`, CUDA, automatici e `--no-activate` in radici
+isolate. Nessun record o candidato utente è stato modificato; dopo l'estrazione degli aggregati le
+radici temporanee sono eliminate. Queste sono verifiche locali, non evidenza pubblica portabile.
 
 Host osservato:
 
@@ -159,56 +161,65 @@ Host osservato:
 - NVIDIA RTX 2060 SUPER 8 GiB, driver 595.71.05;
 - modello e motore appuntati sopra.
 
-Esito del run (4 min 47 s, exit code 0):
+### Baseline v3 a 0,5 GiB
+
+Il run originario (4 min 47 s, exit 0) ha selezionato `ctx=131072, n_cpu_moe=38`: 37 e 38 hanno vinto
+un round ciascuno e il tie-break ha preferito 1,248 GiB di VRAM libera minima contro 0,783 GiB. Il
+valore 36 non rispettava la riserva. Le mediane 37/38 erano 34,745/34,671 tok/s.
+
+### Gate v4 a 0,3 GiB
+
+Sono stati conservati anche gli esiti negativi:
+
+| Run | Esito | Osservazione |
+|---|---:|---|
+| 1, 5 min 20 s | exit 1 | confine 36; 36 viola 0,3 GiB in conferma e 37 non rilascia entro tolleranza; nessun finalista valido |
+| 2, 4 min 50 s | exit 0 | confine 37; 36 scende a 0,051 GiB ed è scartato; 37 e 38 sono validi |
+
+Aggregati del retry valido:
 
 | Campo | Osservazione |
 |---|---:|
 | probe screening | 7 |
-| massimo contesto v3 | 131.072, fattibile |
-| confine | `n_cpu_moe=37` fattibile; 36 non rispetta la riserva VRAM |
-| finalisti | 37 e 38, entrambi validi |
-| vincitore round 1 / round 2 | 38 / 37 |
-| regola finale | equivalente, preferire VRAM libera |
-| selezione | `n_cpu_moe=38` |
-| mediana tok/s, 37 | 34,745 |
-| mediana tok/s, 38 | 34,671 |
-| VRAM libera minima, 37 / 38 | 0,783 / 1,248 GiB |
-| RAM disponibile minima selezionata | 25,788 GiB |
-| deriva baseline VRAM | 0,0166 GiB, sotto 0,125 GiB |
+| massimo contesto v4 | 131.072, fattibile |
+| finalisti | 37 e 38 |
+| vincitore round 1 / round 2 | 37 / 37 |
+| selezione | `n_cpu_moe=37`, dominanza unanime |
+| mediane round, 37 | 34,907 / 34,258 tok/s |
+| mediane round, 38 | 34,647 / 34,067 tok/s |
+| mediana aggregata selezionata | 34,763 tok/s |
+| VRAM libera minima, 37 / 38 | 0,509 / 0,962 GiB |
+| RAM disponibile minima selezionata | 25,577 GiB |
+| deriva baseline VRAM | 0,0117 GiB |
 
-La differenza di mediana fra i finalisti è circa 0,21% e ciascuno vince un round: non c'è evidenza di
-una vittoria throughput unanime. Scegliere 38 sacrifica una differenza marginale e rumorosa, aumenta
-la VRAM libera minima di circa 0,465 GiB e lascia circa 0,748 GiB oltre la riserva obbligatoria. Il
-risultato è quindi ragionevole e prudente secondo v3. Il contesto 128K raggiunge il tetto automatico
-e la raccomandazione minima della model card, quindi non serve il probe esperto 96K su questo host.
-
-Il run non dimostra però un ottimo globale: copre un solo modo, un solo host Ubuntu, un solo run e i
-soli finalisti adiacenti, con thread/MTP/batch/quantizzazione fissati. Non autorizza modifica dei seed
-pubblici né attivazione automatica dei candidati locali esistenti.
+Il risultato non autorizza `n_cpu_moe=36`: il benchmark completo lo porta quasi a esaurimento VRAM.
+Inoltre non dimostra il beneficio della soglia 0,3, perché il finalista selezionato resta sopra 0,5
+GiB e un run su due è fallito. La 0.1.1 resta quindi bloccata fino a un Gate reale Windows v4 e a una
+successiva decisione umana `RELEASE`; test offline o il Gate Windows v3 non sono sostituti.
 
 ## Priorità consigliate per un protocollo successivo
 
-1. Definire e versionare un protocollo v4 prima di cambiare scala o finalisti.
+1. D-053 ha versionato come v4 il solo cambio di riserva; scala e finalisti restano invariati.
 2. Valutare 96K nella scala e 262K come asse sperimentale, con budget e requisiti memoria espliciti.
 3. Separare ricerca del confine e ricerca throughput nel dominio `n_cpu_moe` fattibile.
 4. Aggiungere una vera ricerca del contesto CPU, mantenendo un percorso breve per la baseline.
 5. Eseguire spike monovariati su thread, batch e MTP; solo dopo provare le interazioni principali.
 6. Trattare sampling/thinking e quantizzazione come audit di contratto e qualità separati.
-7. Ripetere Ubuntu e Windows con stesso hardware quando possibile, poi su hardware materialmente
-   diverso; pubblicare soltanto report redatti e manifestati.
+7. Completare prima il Gate Windows v4, poi ripetere su hardware materialmente diverso; pubblicare
+   soltanto report redatti e manifestati.
 
-Qualunque v4 deve restare deterministico, limitato nel budget, interrompibile, ricostruibile dal
-record e validato offline con fake prima dei gate reali.
+Qualunque metodo successivo deve restare deterministico, limitato nel budget, interrompibile,
+ricostruibile dal record e validato offline con fake prima dei gate reali.
 
 ## Consultazione Claude Fable
 
-Claude Fable è stato consultato due volte con `--model fable --effort max` e accesso in sola lettura.
-La prima revisione ha confermato che v3 cerca soprattutto il confine di memoria, che hardcodare
-compromessi per OS sarebbe scorretto e che 96K/CPU richiedono un nuovo protocollo. La seconda ha
-revisionato il disegno UX e ha corretto tre formulazioni recepite qui: 8K è baseline CPU, non tetto;
-l'ETA screening è un massimo; `min_p` comporta una cascata di contratto/record e non è una modifica
-innocua. Nessun output del consulente è trattato come evidenza empirica e nessun file è stato da lui
-modificato.
+Claude Fable è stato consultato tre volte con `--model fable --effort max` e accesso in sola lettura.
+Le prime due revisioni hanno coperto confine di memoria, UX, baseline CPU e cascata di `min_p`. La
+terza ha revisionato D-053 e i due run v4: ha identificato che il primo codice applicava 0,3 GiB anche
+al riuso dei record v2 storici. La migrazione è stata corretta affinché ogni record mantenga la
+propria riserva, con test dedicati. Ha inoltre confermato che assenza del Gate Windows e incoerenza
+fra codice/spec/docs bloccano una release stabile; queste conclusioni sono recepite qui. Nessun
+output del consulente è evidenza empirica e nessun file è stato modificato dal consulente.
 
 ## Fonti primarie consultate
 

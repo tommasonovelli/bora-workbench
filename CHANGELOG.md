@@ -5,6 +5,11 @@ changelog: sono in `IMPLEMENTATION_SPEC.md`.
 
 ## [Unreleased]
 
+### Added
+
+- `calibration-record/v3` registra esplicitamente `calibration/v4` e la sua riserva, mantenendo
+  caricamento e ricostruzione semantica dei record v2 storici.
+
 ### Fixed
 
 - I server temporanei di calibrazione usano una porta loopback assegnata dal sistema quando
@@ -14,7 +19,9 @@ changelog: sono in `IMPLEMENTATION_SPEC.md`.
 
 ### Changed
 
-- La calibrazione v3 mostra trial in corso, avanzamento live ed ETA per fase sui terminali, conserva
+- `calibration/v4` sostituisce l'esecuzione v3 mantenendone scala, ricerca e conferma ABBA, ma usa
+  0,3 GiB di riserva VRAM; al riuso ogni record conserva la propria riserva originaria.
+- La calibrazione v4 mostra trial in corso, avanzamento live ed ETA per fase sui terminali, conserva
   output lineare quando rediretta e riepiloga motivazione della selezione e headroom misurato.
 - La documentazione è stata riscritta come percorso lineare per nuovi utenti e descrive soltanto il
   comportamento corrente.
@@ -22,6 +29,11 @@ changelog: sono in `IMPLEMENTATION_SPEC.md`.
   stati rimossi.
 - `IMPLEMENTATION_SPEC.md` conserva lo stato sintetico e il solo lavoro ancora da realizzare, senza
   i piani dettagliati delle milestone concluse.
+
+### Known limitations
+
+- La pubblicazione 0.1.1 resta bloccata finché `calibration/v4` non supera un Gate reale Windows; il
+  Gate Ubuntu ha avuto un primo run fallito e un retry valido, senza rendere `n_cpu_moe=36` sicuro.
 
 ## [0.1.0] - 2026-07-20
 

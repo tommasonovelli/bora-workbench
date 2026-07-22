@@ -4,7 +4,7 @@
 
 La calibrazione serve a trovare una configurazione adatta **a questo PC**. Non cambia il modello e
 non migliora la qualità delle risposte: massimizza prima il contesto fattibile e poi confronta
-throughput e margine di memoria nel dominio verificato dal protocollo v3.
+throughput e margine di memoria nel dominio verificato dal protocollo v4.
 
 Per iniziare non occorre conoscere i parametri di `llama.cpp`:
 
@@ -156,9 +156,9 @@ la CLI propone il comando 98304 con `--no-activate` come misura separata, senza 
 fattibilità. I candidati vengono sempre confrontati allo stesso contesto.
 
 `131072` è il tetto automatico del protocollo corrente, non una prova che il modello non supporti
-contesti maggiori. Perciò “best fit” significa il migliore nel dominio v3 sopra elencato.
+contesti maggiori. Perciò “best fit” significa il migliore nel dominio v4 sopra elencato.
 
-## Come funziona la ricerca v3
+## Come funziona la ricerca v4
 
 Questa sezione spiega l'algoritmo; non è necessaria per usare il comando.
 
@@ -179,7 +179,8 @@ Per ogni modo il calibratore:
 2. cerca il confine CUDA con al massimo 12 probe e processi freschi;
 3. monitora RAM e VRAM ogni 250 ms;
 4. richiede almeno 2,0 GiB RAM disponibili durante ogni trial;
-5. su CUDA richiede almeno 0,5 GiB VRAM libera e rilascio entro 0,125 GiB dalla baseline;
+5. su CUDA richiede almeno 0,3 GiB VRAM libera (circa 307 MiB) e rilascio entro 0,125 GiB dalla
+   baseline;
 6. considera la monotonia solo fra probe completati; un OOM parziale non inventa un picco;
 7. sceglie il primo valore fattibile al confine e, se disponibile, il solo adiacente più prudente;
 8. li conferma in due round accoppiati: `A→B` e `B→A`;
@@ -191,14 +192,14 @@ Una deriva della baseline VRAM oltre 0,125 GiB disabilita la vittoria per throug
 un finalista che ha rispettato le riserve assolute. Telemetria come utilizzo, clock, temperatura,
 potenza e throttle è raccolta quando disponibile solo per spiegare l'evidenza; non introduce soglie.
 
-Su CPU non esiste un asse di tuning verificato: per default v3 conferma la baseline del motore a
+Su CPU non esiste un asse di tuning verificato: per default v4 conferma la baseline del motore a
 `ctx=8192` invece di simulare una ricerca. Un `--target-ctx` esperto può fissare uno degli altri
 valori approvati, ma non introduce un asse automatico.
 
 La ricerca CUDA trova quindi un confine di memoria e confronta due valori adiacenti: non esegue uno
 sweep globale di `n_cpu_moe` e non dimostra che nessun valore lontano abbia throughput maggiore.
-Cambiare scala, assi, benchmark o finalisti sarebbe un nuovo metodo con nuovi record, non una
-correzione silenziosa di `calibration/v3`.
+v4 conserva scala, ricerca, benchmark e finalisti di v3; cambia soltanto la riserva VRAM e produce
+`calibration-record/v3`. Ulteriori cambi ad assi o selezione richiedono un altro metodo versionato.
 
 ## `benchmark/v1`
 
@@ -227,12 +228,13 @@ Un record attivo viene rivalidato a ogni lancio. Devono coincidere:
 - memoria disponibile corrente.
 
 Il totale RAM registrato resta esatto; nel branch corrente il confronto ammette al massimo 1 MiB di
-differenza per assorbire il rumore di reporting osservato. Per il riuso servono fabbisogno RAM
-misurato + 2,0 GiB e, su CUDA, fabbisogno VRAM + 0,5 GiB.
+differenza per assorbire il rumore di reporting osservato. Per il riuso servono fabbisogno RAM più
+la riserva registrata e, su CUDA, fabbisogno VRAM più 0,3 GiB per un record v3 oppure 0,5 GiB per un
+record storico v2. La migrazione non indebolisce quindi l'headroom di record già misurati.
 
 Un file candidato, previous, invalido o con schema non supportato non pilota mai il lancio. I record
-`calibration-record/v1` sono diagnosticati come superati; il rimedio è rieseguire `calibrate`, non
-convertirli a mano.
+`calibration-record/v2` e `/v3` restano supportati; `/v1` è diagnosticato come superato. Il rimedio è
+rieseguire `calibrate`, non convertire file a mano.
 
 ## File privati
 
@@ -255,7 +257,8 @@ pubblicati senza revisione.
 ## Evidenza condivisa e limite empirico
 
 La wheel distribuisce una policy `calibration-policy/v2` e un report
-`calibration-report/v2`. Il report copre realmente un solo scope:
+`calibration-report/v2` del metodo storico v3. v4 usa quel report soltanto come seed d'ordine; non lo
+presenta come prova della nuova riserva. Il report copre realmente un solo scope:
 
 - Windows 11 build 10.0.26200;
 - CUDA, driver NVIDIA 610.47;
@@ -263,8 +266,8 @@ La wheel distribuisce una policy `calibration-policy/v2` e un report
 - 31,92 GiB RAM;
 - tutti e tre i modi.
 
-Lo stato complessivo resta `GATE-PARTIAL`: le costanti non sono state ripetute su hardware
-materialmente diverso. I valori osservati non vengono trasferiti. Il loader estrae soltanto
+Lo stato complessivo resta `GATE-PARTIAL`: v4 ha un gate Ubuntu locale ma non il gate Windows reale
+necessario alla release 0.1.1. I valori osservati non vengono trasferiti. Il loader estrae soltanto
 `n_cpu_moe` come seed d'ordine per modello, motore, backend e modo esatti; la macchina dell'utente
 esegue comunque la ricerca completa.
 
@@ -274,43 +277,34 @@ Le fonti con checksum sono in
 ## Contribuire nuova evidenza
 
 La pubblicazione è manuale: il launcher non esegue login, upload, commit, branch remoto, issue o
-pull request.
+pull request. Il contratto pubblico corrente descrive soltanto v3; non convertire un record privato
+v4 in un report v2. Un contributo v4 richiede uno step dichiarativo separato con nuovo schema,
+revisione privacy, manifest e checksum.
 
-1. Eseguire un run reale senza attivazione:
+Per preparare il Gate senza attivare risultati:
 
-   ```bash
-   qwen-launcher calibrate --mode all --no-activate
-   ```
+```bash
+qwen-launcher calibrate --mode all --no-activate
+```
 
-2. Non copiare record o log grezzi nel repository. Preparare un report `calibration-report/v2`
-   privacy-safe con soli modi completati e misure reali.
-3. Usare un id ASCII minuscolo con trattini, per esempio `<os>-<gpu>-v3`, e salvare il report in
-   `src/qwen_launcher/resources/content/calibrations/<id>.json`.
-4. Aggiungere fonti revisionate e un manifest sotto `evidence/calibration/<id>/`.
-5. Aggiornare il riferimento e lo SHA-256 esatto nella policy.
-6. Mantenere `gate-partial` finché il nuovo insieme di prove non autorizza onestamente uno scope più
-   ampio.
-7. Eseguire validazione, suite, build e verifica wheel.
-
-Non includere hostname, username, seriali, UUID, percorsi assoluti, credenziali, configurazione,
-prompt utente o record privati. Non aggiungere `profile/v1`, nearest-match o promesse tok/s.
+Conservare privatamente esito riuscito e fallimenti, senza hostname, username, seriali, UUID,
+percorsi assoluti, credenziali, prompt o log grezzi. La 0.1.1 richiede ancora un Gate reale Windows
+v4; test offline o il report Windows v3 non lo sostituiscono.
 
 Checklist per la pull request:
 
-- [ ] run `calibration/v3` reale sul modello e motore appuntati;
-- [ ] report limitato ai modi completati, senza campi ricostruiti;
-- [ ] `privacy_reviewed=true` dopo revisione dei byte finali;
-- [ ] scope e limite di portabilità espliciti;
-- [ ] seed di solo ordinamento;
-- [ ] SHA-256 e manifest aggiornati;
-- [ ] PR di contenuto, senza modifiche al core Python;
+- [ ] schema pubblico versionato e metodo v4 coerenti;
+- [ ] run riusciti e falliti riportati senza ricostruire campi mancanti;
+- [ ] `privacy_reviewed=true` soltanto dopo revisione dei byte finali;
+- [ ] scope, limite di portabilità, seed, SHA-256 e manifest espliciti;
+- [ ] PR dichiarativa senza modifiche al core Python;
 - [ ] `qwen-launcher validate`, Ruff, pytest, build e verifica wheel verdi.
 
 ## Laboratorio v1
 
 `--protocol v1` resta disponibile per prove esplicite e compatibilità del bundle. Richiede candidati
 e impostazioni tecniche, misura solo la lista fornita e produce una bozza sotto
-`data_dir()/calibrations/`. Non monitora la RAM, non crea un record v3 e non attiva risultati. Per un
-nuovo utente il percorso corretto è sempre il protocollo v3 predefinito.
+`data_dir()/calibrations/`. Non monitora la RAM, non crea un `calibration-record/v3` e non attiva
+risultati. Per un nuovo utente il percorso corretto è sempre il protocollo v4 predefinito.
 
 **Successivo:** [Operazioni e diagnostica](operations.md)

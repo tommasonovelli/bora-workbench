@@ -1,4 +1,4 @@
-"""Define one calibration/v3 trial request, result, and candidate failure."""
+"""Define one calibration/v4 trial request, result, and candidate failure."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import psutil
 
 from qwen_launcher._calibration_gpu_contexts import GpuContextBaseline
 from qwen_launcher._calibration_ram import RamSummary
-from qwen_launcher._calibration_v3_types import TrialEvidence, TrialOrder
+from qwen_launcher._calibration_v4_types import TrialEvidence, TrialOrder
 from qwen_launcher._calibration_vram import VramSummary
 from qwen_launcher._gpu_process_identity import GpuProcessIdentity
 from qwen_launcher.benchmark import BenchmarkResult

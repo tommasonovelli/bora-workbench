@@ -39,9 +39,9 @@ Se è la prima volta che apri il progetto, il percorso più semplice è:
 > senza verifiche indipendenti e backup dei dati locali.
 
 La GitHub Release `v0.1.0` è pubblica. PyPI attende ancora la configurazione del Trusted Publisher.
-Il branch `main` contiene questa riorganizzazione documentale e due correzioni runtime successive,
-elencate sotto `Unreleased` nel [CHANGELOG](CHANGELOG.md), che non fanno parte degli artefatti
-immutabili `0.1.0`.
+Il branch `main` prepara `0.1.1` con correzioni runtime e `calibration/v4`, ma la pubblicazione è
+bloccata finché manca il Gate Windows reale del nuovo protocollo. Le modifiche sono sotto
+`Unreleased` nel [CHANGELOG](CHANGELOG.md) e non fanno parte degli artefatti immutabili `0.1.0`.
 
 ## Requisiti
 

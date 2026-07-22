@@ -172,7 +172,7 @@ Una divergenza fra output, archivio, digest e lock interrompe l'aggiornamento.
 Seguire la sezione [Contribuire nuova evidenza](calibration.md#contribuire-nuova-evidenza). In
 sintesi, una PR di evidenza:
 
-- usa `calibration/v3`, `benchmark/v1`, modello e motore appuntati;
+- usa `calibration/v4`, `benchmark/v1`, modello e motore appuntati;
 - contiene un report `calibration-report/v2` privacy-safe;
 - dichiara lo scope realmente misurato e il limite di portabilità;
 - aggiorna policy e SHA-256 dei byte esatti;

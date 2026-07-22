@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from qwen_launcher._calibration_v3_search import ProbeMeasurement, ScreeningPlan, screen
-from qwen_launcher._calibration_v3_seed import seed_probe_value
+from qwen_launcher._calibration_v4_search import ProbeMeasurement, ScreeningPlan, screen
+from qwen_launcher._calibration_v4_seed import seed_probe_value
 from qwen_launcher.config import Config
 from qwen_launcher.hardware import HardwareInfo
 from qwen_launcher.profiles import load_catalog

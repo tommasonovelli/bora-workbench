@@ -176,8 +176,8 @@ This bundle is local and unaccepted. It does not modify the repository or publis
 2. Confirm privacy manually; the report intentionally keeps `privacy_reviewed=false`.
 3. Run `qwen-launcher validate --path <this-directory>`.
 4. Keep this laboratory bundle local unless it is needed for diagnostics.
-5. Do not submit it as v3 evidence or copy its proposal into packaged profiles; shared evidence
-   requires a separate calibration/v3 run and the project's calibration contribution review.
+5. Do not submit it as v4 evidence or copy its proposal into packaged profiles; shared evidence
+   requires a separate calibration/v4 run and the project's calibration contribution review.
 """
     path.write_text(text, encoding="utf-8", newline="\n")
 

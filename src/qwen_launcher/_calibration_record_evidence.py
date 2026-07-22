@@ -1,11 +1,11 @@
-"""Serialize calibration/v3 per-process resource and benchmark evidence for local records."""
+"""Serialize current per-process resource and benchmark evidence for local records."""
 
 from __future__ import annotations
 
 from statistics import median
 
 from qwen_launcher._calibration_ram import RamSummary
-from qwen_launcher._calibration_v3_types import FinalistEvidence, TrialEvidence
+from qwen_launcher._calibration_v4_types import FinalistEvidence, TrialEvidence
 from qwen_launcher._calibration_vram import VramSummary
 from qwen_launcher.benchmark import BenchmarkResult
 

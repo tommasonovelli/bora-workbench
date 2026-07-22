@@ -46,7 +46,7 @@ modelli, release, flag, porte o asset diversi.
 | `profiles.py`, `_profile_*` | modi runtime, seed condivisi, gate e `LaunchPlan` |
 | `engine.py`, `_engine_*` | lock, modello, asset, download/build, installazione e comando |
 | `process.py`, `_process_*` | porta, lock di avvio, processo, salute, stato, status e stop |
-| `calibration.py`, `_calibration_*` | laboratorio v1, ricerca v3, record, evidenza e riuso |
+| `calibration.py`, `_calibration_*` | laboratorio v1, ricerca v4, record, evidenza e riuso |
 | `benchmark.py` | protocollo immutabile `benchmark/v1` usato dalla calibrazione |
 | `validation.py`, `_validation_*` | JSON Schema e invarianti semantiche incrociate |
 | `resources/` | lock, schemi, modi, policy, report, benchmark e notice nella wheel |
@@ -70,12 +70,13 @@ wheel sia estratta su disco. Gli schemi sono JSON Schema 2020-12 e vietano propr
 | `profile/v1` | compatibilità con evidenza a classi; nessuna busta di produzione distribuita |
 | `calibration-policy/v1` | contratto del laboratorio esplicito |
 | `calibration-report/v1` | bundle del laboratorio v1 |
-| `calibration-policy/v2` | metodo pubblico di ricerca v3 |
-| `calibration-report/v2` | evidenza condivisa privacy-safe e seed di ordine |
-| `calibration-record/v2` | record privato prodotto localmente |
+| `calibration-policy/v2` | metodo pubblico storico v3, usato da v4 solo per seed |
+| `calibration-report/v2` | evidenza v3 privacy-safe e seed di ordine |
+| `calibration-record/v2` | record privato storico prodotto da v3 |
+| `calibration-record/v3` | record privato corrente prodotto da v4 |
 | `engine-lock/v1` | identità, comando, API, salute e asset del motore |
 
-Il catalogo installato contiene tre modi, una policy v3 e un report di riferimento. Non contiene
+Il catalogo installato contiene tre modi, una policy v3 storica e un report di riferimento. Non contiene
 profili `profile/v1` di produzione. Il report condiviso espone al runtime soltanto
 `seed_n_cpu_moe`: contesto, hardware, tok/s e busta osservata non possono entrare nel piano di un
 altro host.
@@ -102,10 +103,10 @@ Un modo contiene comportamento, non prestazioni:
 - `ctx` e `n_cpu_moe` dal record attivo o dalla baseline;
 - riferimenti diagnostici e warning.
 
-Il piano usa un record solo se è un `calibration-record/v2` attivo per quel modo, semanticamente
-valido e compatibile con modello, digest, release/commit/contratto motore, OS, backend, componenti,
-driver e memoria corrente. Nel confronto del totale RAM è tollerata una deriva massima di 1 MiB;
-headroom RAM/VRAM resta controllata separatamente.
+Il piano usa un record solo se è un `calibration-record/v2` o `/v3` attivo per quel modo,
+semanticamente valido e compatibile con modello, digest, release/commit/contratto motore, OS,
+backend, componenti, driver e memoria corrente. Nel confronto del totale RAM è tollerata una deriva
+massima di 1 MiB; headroom RAM/VRAM usa la riserva registrata dal protocollo del record.
 
 Se il record manca o non è riusabile, la baseline è `ctx=8192` e, su CUDA, `n_cpu_moe=48`. È sempre
 presentata come non ottimizzata. Le vecchie classi hardware e i report condivisi non producono
@@ -195,7 +196,7 @@ Lo stato ha versione 1 ed è sostituito tramite file temporaneo nella stessa dir
 ## Calibrazione
 
 La calibrazione usa gli stessi contratti di modello, comando, salute e workload del lancio, ma ogni
-trial vive in uno stato isolato. La ricerca v3 monitora RAM e VRAM, usa processi freschi e produce
+trial vive in uno stato isolato. La ricerca v4 monitora RAM e VRAM, usa processi freschi e produce
 record privati atomici. Il benchmark non è un comando autonomo: è un componente interno eseguito su
 ogni sessione di conferma.
 
