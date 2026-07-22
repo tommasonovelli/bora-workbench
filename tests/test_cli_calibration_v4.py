@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from rich.text import Text
 from typer.testing import CliRunner
 
 import qwen_launcher._cli_calibration_v4 as calibration_v4_cli
@@ -174,8 +175,9 @@ def test_calibrate_help_lists_specialized_options() -> None:
     result = runner.invoke(app, ["calibrate", "--help"])
 
     assert result.exit_code == 0
+    plain_output = Text.from_ansi(result.stdout).plain
     for option in ("--no-activate", "--activate", "--target-ctx", "--candidate", "--settings"):
-        assert option in result.stdout
+        assert option in plain_output
 
 
 def test_keyboard_interrupt_closes_progress_and_returns_130(monkeypatch) -> None:
