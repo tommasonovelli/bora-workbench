@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
 ArchiveKind = Literal["zip", "tar.gz"]
 Backend = Literal["cpu", "cuda"]
+InstallStage = Literal["asset", "extract", "compile", "verify", "activate"]
+InstallProgress = Callable[[InstallStage, str | None], None]
 PlatformKey = Literal["ubuntu", "windows"]
 Role = Literal["server", "cuda-runtime", "source"]
 
@@ -62,6 +65,7 @@ class InstallRequest:
     lock: dict[str, object]
     notice_resources: tuple[str, ...]
     set_executable_mode: bool
+    progress: InstallProgress | None = None
 
 
 @dataclass(frozen=True, slots=True)

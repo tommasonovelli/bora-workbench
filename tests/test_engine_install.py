@@ -111,6 +111,30 @@ def test_install_no_op_force_and_backend_change(tmp_path, monkeypatch) -> None:
     assert manifest["backend"] == "cuda"
 
 
+def test_install_reports_blocking_phases_in_execution_order(tmp_path, monkeypatch) -> None:
+    """Expose download, extraction, probe, and activation so installation never looks idle."""
+    patch_artifacts(monkeypatch)
+    source = replace(server_asset(), role="source")
+    monkeypatch.setattr(installer, "select_assets", lambda lock, platform_key, backend: (source,))
+    monkeypatch.setattr(
+        installer, "build_cuda_server", lambda staging, lock: staging / "llama-server.exe"
+    )
+    observed: list[tuple[str, str | None]] = []
+    selected = replace(
+        request(tmp_path), progress=lambda stage, detail: observed.append((stage, detail))
+    )
+
+    installer.install_engine(selected)
+
+    assert observed == [
+        ("asset", "engine.zip"),
+        ("extract", "engine.zip"),
+        ("compile", None),
+        ("verify", None),
+        ("activate", None),
+    ]
+
+
 def test_staging_failure_leaves_previous_activation_intact(tmp_path, monkeypatch) -> None:
     """Clean failed staging without changing the active installation or current manifest."""
     patch_artifacts(monkeypatch)

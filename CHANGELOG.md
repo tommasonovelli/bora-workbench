@@ -12,6 +12,9 @@ changelog: sono in `IMPLEMENTATION_SPEC.md`.
 
 ### Fixed
 
+- L'installazione del motore mostra la fase corrente durante download, estrazione, compilazione,
+  verifica e attivazione; i probe restano limitati ma portano da 10 a 60 secondi il margine per il
+  primo avvio lento dell'asset CUDA Windows.
 - I server temporanei di calibrazione usano una porta loopback assegnata dal sistema quando
   `llama_port` è occupata; gli avvii normali continuano a richiedere la porta configurata.
 - Il riuso di un record tollera al massimo 1 MiB di variazione nel totale RAM riportato, mantenendo

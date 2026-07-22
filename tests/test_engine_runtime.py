@@ -9,6 +9,7 @@ from unittest.mock import Mock
 
 import pytest
 
+import qwen_launcher._engine_probe as engine_probe
 import qwen_launcher.engine as engine
 from qwen_launcher.config import Config
 from qwen_launcher.profiles import LaunchPlan, load_catalog
@@ -95,17 +96,18 @@ def test_engine_probe_requires_version_and_complete_help(tmp_path, monkeypatch) 
         SimpleNamespace(returncode=0, stdout=flags, stderr=""),
     ]
     run = Mock(side_effect=outputs)
-    monkeypatch.setattr(engine.subprocess, "run", run)
+    monkeypatch.setattr(engine_probe.subprocess, "run", run)
     executable = tmp_path / "llama-server"
 
     assert engine.verify_engine(executable, lock) == executable.resolve()
     assert all("shell" not in call.kwargs for call in run.call_args_list)
+    assert all(call.kwargs["timeout"] == 60 for call in run.call_args_list)
 
     outputs = [
         SimpleNamespace(returncode=0, stdout="version: 10011 bf2c86ddc", stderr=""),
         SimpleNamespace(returncode=0, stdout="--help", stderr=""),
     ]
-    monkeypatch.setattr(engine.subprocess, "run", Mock(side_effect=outputs))
+    monkeypatch.setattr(engine_probe.subprocess, "run", Mock(side_effect=outputs))
     with pytest.raises(engine.EngineError, match="missing verified flags"):
         engine.verify_engine(executable, lock)
 

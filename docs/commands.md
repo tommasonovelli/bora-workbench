@@ -87,8 +87,11 @@ estrae in staging, verifica l'eseguibile e attiva una nuova directory immutabile
 attivo e compatibile è un no-op. `--force` reinstalla comunque lo stesso target; non disabilita TLS,
 checksum, confinamento o probe di compatibilità.
 
-Il comando può usare la rete e, su Ubuntu CUDA, eseguire CMake e compilazione. Non installa
-prerequisiti di sistema e non eleva i privilegi.
+Il comando mostra la fase corrente durante download, estrazione, compilazione, verifica e
+attivazione. Può usare la rete e, su Ubuntu CUDA, eseguire CMake e una compilazione di diversi
+minuti: la fase resta visibile anche quando CMake non ha ancora terminato. I probe `--version` e
+`--help` sono limitati a 60 secondi ciascuno. Il comando non installa prerequisiti di sistema e non
+eleva i privilegi.
 
 ## Modi di esecuzione
 

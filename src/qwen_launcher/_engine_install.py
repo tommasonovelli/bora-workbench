@@ -17,8 +17,15 @@ from qwen_launcher._engine_types import (
     EngineStatus,
     InstallRequest,
     InstallResult,
+    InstallStage,
 )
 from qwen_launcher.resources import resource
+
+
+def _report(request: InstallRequest, stage: InstallStage, detail: str | None = None) -> None:
+    """Forward an installation phase when the caller requested progress updates."""
+    if request.progress is not None:
+        request.progress(stage, detail)
 
 
 def _remove_staging(path: Path, engine_root: Path) -> None:
@@ -61,13 +68,16 @@ def _prepare_staging(request: InstallRequest, staging: Path) -> Path:
     assets = select_assets(request.lock, request.platform_key, request.backend)
     staging.mkdir(parents=False)
     for asset in assets:
+        _report(request, "asset", asset.filename)
         archive = download_asset(asset, request.cache_root)
+        _report(request, "extract", asset.filename)
         extract_asset(asset, archive, staging)
     _install_notices(request, staging)
     server_asset = _server_asset(assets)
     assert server_asset.executable is not None
     declared = staging / server_asset.executable
     if server_asset.role == "source":
+        _report(request, "compile")
         built = build_cuda_server(staging, request.lock)
         if built.resolve() != declared.resolve():
             raise EngineError("Ubuntu CUDA build output differs from engine.lock executable")
@@ -115,9 +125,11 @@ def install_engine(request: InstallRequest) -> InstallResult:
     try:
         request.engine_root.mkdir(parents=True, exist_ok=True)
         staged = _prepare_staging(request, staging)
+        _report(request, "verify")
         verified = _verify_staged(staged, request)
         promoted = _promote(staging, request, verified)
         activation = Activation(str(request.lock["release"]), request.backend, promoted)
+        _report(request, "activate")
         activate(request.engine_root, activation)
         status = EngineStatus(
             True,

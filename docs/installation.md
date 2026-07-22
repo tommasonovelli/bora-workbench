@@ -120,8 +120,10 @@ Windows CUDA combina server e runtime CUDA 13.3 verificati; Ubuntu CUDA compila 
 elenca senza eseguire `sudo` o package manager.
 
 Download, checksum, estrazione, verifica e attivazione devono completare tutti prima che
-`current.json` punti alla nuova installazione. Vedere [architettura](architecture.md#motore-e-modello)
-per il contratto.
+`current.json` punti alla nuova installazione. La CLI mostra la fase corrente; in particolare, è
+normale che la compilazione CUDA Ubuntu richieda diversi minuti. I probe finali di versione e help
+restano limitati a 60 secondi ciascuno. Vedere
+[architettura](architecture.md#motore-e-modello) per il contratto.
 
 ## 6. Primo utilizzo
 

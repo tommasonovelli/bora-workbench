@@ -22,16 +22,20 @@ def test_engine_install_uses_detected_backend_and_reports_activation(monkeypatch
         lambda: SimpleNamespace(backend="cuda", warnings=()),
     )
     status = EngineStatus(True, "b10011", "cuda", Path("llama-server.exe"), True)
-    monkeypatch.setattr(
-        engine_cli,
-        "install_engine",
-        lambda backend, force: InstallResult(status, True),
-    )
+
+    def install(backend, force, progress):
+        """Report the long-running phase before returning a successful fake install."""
+        del backend, force
+        progress("compile", None)
+        return InstallResult(status, True)
+
+    monkeypatch.setattr(engine_cli, "install_engine", install)
 
     result = runner.invoke(app, ["engine", "install"])
 
     assert result.exit_code == 0
     assert "backend=cuda" in result.stdout
+    assert "Configuring and compiling Ubuntu CUDA" in result.stdout
     assert "Installed and activated" in result.stdout
     assert "NVIDIA CUDA EULA" in result.stdout
 
