@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from qwen_launcher._calibration_port import select_trial_port
 from qwen_launcher._calibration_process import StartFailure, StartSpec, run_start
 from qwen_launcher._calibration_types import (
     CandidateTrial,
@@ -51,7 +52,7 @@ def _plan(target: CalibrationTarget, mode: Mode, candidate: Candidate) -> Launch
         target.config.model,
         target.model_path,
         target.mmproj_path if mode.services.vision else None,
-        target.config.llama_port,
+        select_trial_port(target.config.llama_port),
         None,
         candidate.ctx,
         candidate.n_cpu_moe,

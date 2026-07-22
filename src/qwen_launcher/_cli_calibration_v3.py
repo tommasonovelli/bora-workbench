@@ -61,6 +61,10 @@ def _show_preflight(
         f"release tolerance {RELEASE_TOLERANCE_GIB} GiB, {CONFIRM_ROUNDS} ABBA rounds, "
         f"at most {MODE_PROBE_CAP} probes, context {scale}."
     )
+    console.print(
+        f"Trial ports: use configured {target.config.llama_port} when free; "
+        "otherwise use a temporary loopback port."
+    )
     lifecycle = "candidate only" if options.no_activate else "candidate then atomic activation"
     console.print(f"Records: {records_directory()} ({lifecycle}).")
     console.print("Latest-run logs and evidence are retained in one rotated private slot.")

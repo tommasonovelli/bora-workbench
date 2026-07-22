@@ -1,6 +1,6 @@
-# qwen-launcher — Specifica centrale di implementazione (v4.9)
+# qwen-launcher — Specifica centrale di implementazione (v5.0)
 
-## 0. Tracker di avanzamento — aggiornato al 20 luglio 2026
+## 0. Tracker di avanzamento — aggiornato al 22 luglio 2026
 
 > Questo blocco registra lo stato reale del repository. Questo è il documento normativo
 > `IMPLEMENTATION_SPEC.md` alla radice, unica copia normativa nel repository come previsto dallo
@@ -59,6 +59,10 @@
   Publisher previsto per repository, workflow e ambiente `pypi`. `0.1.0` è una prima release
   pubblica per valutazione, senza garanzie di stabilità di interfacce, configurazione, record,
   operazioni, prestazioni o compatibilità futura.
+- [x] **Stabilizzazione post-release 0.1 — D-051/D-052:** i trial isolati ripiegano su una porta
+  loopback temporanea quando `llama_port` è occupata e il riuso tollera al massimo 1 MiB di deriva
+  nel totale RAM. Le correzioni sono successive a `v0.1.0`, non modificano i suoi artefatti pubblici
+  e richiedono una nuova versione per essere distribuite.
 - [ ] **Step 7 — Skill e router.**
 - [ ] **Step 8 — Open WebUI e sync.**
 - [ ] **Step 9 — Benchmark autonomo e doctor definitivo.**
@@ -304,34 +308,50 @@
   che resta `131072 → 65536 → 32768 → 16384 → 8192`. L'enum additivo del record v2 conserva la
   validità dell'evidenza precedente e `validate` impone che il target coincida con la busta misurata.
 
+### Stabilizzazione post-release 0.1 — dettaglio
+
+- [x] Correzione D-051: i server temporanei di `calibrate` usano la porta configurata quando libera
+  e altrimenti una porta loopback assegnata dal sistema operativo. Tre run reali Ubuntu CUDA
+  `--target-ctx 8192 --no-activate` hanno completato screening e ABBA per coding/studio/vstudio con
+  la `8080` intenzionalmente occupata: 8/8/5 probe e candidati `n_cpu_moe=34/34/36`, tutti inattivi.
+  Lo smoke sequenziale `studio → stop → vstudio → stop` ha inoltre verificato READY, health, UI,
+  workload testuale e vision, exit zero e cleanup; gli avvii normali restano severi sulla porta.
+- [x] Correzione D-052: il riuso tollera al massimo 1 MiB di variazione nel totale RAM riportato dal
+  sistema operativo. La correzione copre la deriva reale di 12 KiB che rendeva subito obsoleti
+  record dello stesso host; capacità materiali, componenti, driver e headroom restano controllati
+  separatamente. Sync frozen, Ruff, suite completa, `validate`, build e verifica wheel isolata sono
+  verdi localmente; nessun artefatto pubblico `v0.1.0` è stato ricostruito o sostituito.
+
 ### Prossima azione obbligatoria
 
 Tommaso deve configurare su PyPI il Trusted Publisher di `qwen-launcher` per
 `tommasonovelli/qwen-launcher`, workflow `release.yml` e ambiente `pypi`, quindi rieseguire soltanto
 il job fallito del run `29739366272`. Gli artefatti GitHub già pubblicati non vanno ricostruiti o
-sostituiti. Dopo PyPI occorre verificare l'installazione esplicita `qwen-launcher==0.1.0`; qualunque
-correzione successiva usa una nuova versione. La 0.1 va stabilizzata prima di iniziare lo Step 7. La
-ripetizione `calibration/v3 --no-activate` su hardware materialmente diverso resta un follow-up
-futuro non bloccante e la copertura empirica resta `GATE-PARTIAL`.
+sostituiti. Dopo PyPI occorre verificare l'installazione esplicita `qwen-launcher==0.1.0`; D-051 e
+D-052 restano inedite finché una nuova versione non viene preparata e autorizzata. La 0.1 va
+stabilizzata prima di iniziare lo Step 7. La ripetizione `calibration/v3 --no-activate` su hardware
+materialmente diverso resta un follow-up futuro non bloccante e la copertura empirica resta
+`GATE-PARTIAL`.
 
 ---
 
 > **Stato:** documento normativo centrale, pronto a guidare l'implementazione per step.  
-> **Data di consolidamento:** 20 luglio 2026; la v4.9 registra tag e GitHub Release pubblici e il
-> blocco PyPI `invalid-publisher`, senza reinterpretare il successo dei job test/build. La v4.8
-> registrava la decisione umana `RELEASE` e la finalizzazione locale di `0.1.0`, mantenendo esplicite
-> le verifiche pulite non strutturate e i limiti residui. La v4.7 registrava D-050 e il target
-> contesto esperto `98304`, separato dalla scala
-> automatica. La v4.6 registrava D-049 e la correzione pre-Gate della
-> RAM disponibile da 24 a 22 GiB, senza indebolire il minimo totale o la riserva dinamica v3. La v4.5
-> registrava la conclusione locale dello Step 6A e il passaggio allo Human Gate 0.1, senza
+> **Data di consolidamento:** 22 luglio 2026; la v5.0 registra D-051/D-052 come stabilizzazione
+> successiva alla release pubblica, senza attribuirle agli artefatti immutabili `v0.1.0`. La v4.9
+> registrava tag e GitHub Release pubblici e il blocco PyPI `invalid-publisher`, senza reinterpretare
+> il successo dei job test/build. La v4.8 registrava la decisione umana `RELEASE` e la finalizzazione
+> locale di `0.1.0`, mantenendo esplicite le verifiche pulite non strutturate e i limiti residui. La
+> v4.7 registrava D-050 e il target contesto esperto `98304`, separato dalla scala automatica. La v4.6
+> registrava D-049 e la correzione pre-Gate della RAM disponibile da 24 a 22 GiB, senza indebolire il
+> minimo totale o la riserva dinamica v3. La v4.5 registrava la conclusione locale dello Step 6A e il
+> passaggio allo Human Gate 0.1, senza
 > pubblicazione. La v4.4 registrava D-048 e la conclusione dello Step 5B con policy/report v2,
 > evidenza Windows privacy-safe e seed di solo ordine. La v4.3 registrava D-047, che accetta il Gate
 > locale Windows CUDA e rinvia la prova hardware eterogenea a un follow-up non bloccante. La v4.2
 > registrava CI verde e il Gate v3 locale accettato per i tre modi; la v4.1 registrava il Gate v2
 > respinto e `calibration/v3` implementato (D-041–D-046, `docs/calibrate_v3.md`).  
-> **Sostituisce:** la v4.8, la v4.7, la v4.6, la v4.5, la v4.4, la v4.3, la v4.2, la v4.1, la v3.4,
-> la v3.1,
+> **Sostituisce:** la v4.9, la v4.8, la v4.7, la v4.6, la v4.5, la v4.4, la v4.3, la v4.2, la
+> v4.1, la v3.4, la v3.1,
 > `PIANO_IMPLEMENTAZIONE_v2.md`, le due revisioni
 > successive e la v3 non corretta.  
 > **Regola d'uso:** una sessione di sviluppo esegue un solo step, nell'ordine indicato. Prima di
@@ -490,6 +510,8 @@ Regole conseguenti:
 | D-048 | la policy pubblica di `calibration/v3` usa `calibration-policy/v2` e l'evidenza condivisa usa `calibration-report/v2`; il loader proietta da un report soltanto `n_cpu_moe` come suggerimento d'ordine per modello, motore, backend e modo esatti, senza esporre al piano contesto, hardware o busta osservata | i contratti v1 sono storici e il record v2 è privato; nuovi contratti espliciti impediscono di fingere v1 e rendono strutturale il divieto D-047 di trasferire l'optimum 32/8 |
 | D-049 | il gate statico del modello predefinito richiede 28 GiB di RAM totale e 22 GiB disponibili su tutti i target supportati; il monitor v3 continua a imporre almeno 2 GiB disponibili durante ogni trial e il riuso conserva il fabbisogno misurato più la stessa riserva | il preflight reale Windows si è fermato a circa 23,7 GiB con un browser aperto prima di poter misurare, rendendo 24 GiB troppo restrittivi per un desktop idoneo. La soglia comune evita diramazioni OS non autorizzate e non sostituisce le protezioni dinamiche; la copertura eterogenea resta il follow-up D-047 |
 | D-050 | `98304` è un target contesto esperto ammesso da `--target-ctx` e dal record `calibration-record/v2`, ma non entra nella scala automatica `131072 → 65536 → 32768 → 16384 → 8192`; il confronto resta a contesto fisso e il target serializzato deve coincidere con la busta misurata | consente al maintainer di misurare esplicitamente coding a 96 Ki token senza cambiare l'obiettivo contesto-prima, la policy pubblica, il report accettato o la validità dei record v2 precedenti; l'estensione degli enum è additiva e l'esito resta candidato inattivo finché non viene autorizzato separatamente |
+| D-051 | ogni processo isolato di calibrazione usa `llama_port` se libera e altrimenti seleziona tramite bind loopback a porta zero una porta temporanea assegnata dal sistema operativo; i normali avvii continuano a rifiutare la porta configurata occupata | il primo run Ubuntu con `8080` occupata classificava il conflitto come candidato non fattibile e suggeriva erroneamente di liberare memoria. I trial non espongono un endpoint stabile all'utente e tre run reali corretti coding/studio/vstudio hanno completato con l'occupante ancora vivo; uno smoke sequenziale dei due modi UI ha confermato stop e riavvio, senza indebolire host `127.0.0.1`, lifecycle o controllo porta di produzione |
+| D-052 | nel confronto dell'identità locale il totale RAM conserva il valore GiB esatto nel record ma ammette una differenza assoluta massima di 1 MiB; disponibilità corrente, fabbisogno misurato e riserva restano confronti separati e invariati | sullo stesso host Ubuntu il totale esposto da `psutil` è variato di 12 KiB fra record e riuso, probabilmente per contabilità a pagine del sistema, invalidando subito calibrazioni altrimenti identiche. Un MiB assorbe questo rumore di reporting ma resta ordini di grandezza sotto qualunque variazione materiale di capacità |
 
 Le sole decisioni lasciate allo spike sono: release esatta di `llama.cpp`, nomi esatti dei flag per
 quella release, forma reale della salute, asset ufficiali disponibili, compatibilità della UI e
@@ -837,8 +859,10 @@ blocca l'avvio CUDA multi-GPU con errore operativo invece di promettere un isola
 
 Un record è calibrato per l'avvio soltanto quando è l'attivo `calibration-record/v2` prodotto
 localmente da `calibration/v3` e coincidono modello/artefatto, release/commit e contratto del motore,
-modo, backend e identità hardware stabile. La RAM disponibile deve coprire il fabbisogno misurato
-più 2,0 GiB; su CUDA la VRAM libera deve coprire il fabbisogno misurato più 0,5 GiB. Candidato,
+modo, backend e identità hardware stabile. D-052 conserva esatto il totale RAM serializzato ma, nel
+solo confronto d'identità, considera coincidenti valori entro 1 MiB per assorbire la contabilità a
+pagine osservata; ogni differenza maggiore invalida il record. La RAM disponibile deve coprire il
+fabbisogno misurato più 2,0 GiB; su CUDA la VRAM libera deve coprire il fabbisogno misurato più 0,5 GiB. Candidato,
 previous, schema superato o divergenza usano baseline o nuova calibrazione; non esiste nearest-match.
 
 Le finestre RAM/VRAM di `profile/v1` riconoscono capacità nominali e possono ordinare seed condivisi,
@@ -909,8 +933,11 @@ riutilizzabile, quindi non può alimentare profili di produzione.
 
 `qwen-launcher calibrate --mode <id|all>` è un'operazione locale, esplicita e potenzialmente lunga.
 Non parte durante un normale lancio, non modifica config o sorgenti, non crea commit, non usa API
-GitHub e non effettua upload. Richiede modello e motore compatibili già disponibili, hardware sopra
-il gate RAM e sopra la VRAM minima della policy per l'avvio automatico oppure il valore confermato
+GitHub e non effettua upload. D-051 consente ai soli processi isolati di prova di usare la porta
+configurata quando libera e altrimenti una porta loopback temporanea assegnata dal sistema; la porta
+occupata resta invece un errore per `coding`, `studio` e `vstudio`. Richiede modello e motore
+compatibili già disponibili, hardware sopra il gate RAM e sopra la VRAM minima della policy per
+l'avvio automatico oppure il valore confermato
 esplicitamente nel primo run guidato, nessun servizio gestito concorrente e conferma dell'utente dopo
 avere mostrato durata,
 spazio, log e rischio di scarto/crash del solo processo di prova.

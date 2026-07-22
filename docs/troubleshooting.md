@@ -78,10 +78,15 @@ manager. Vedere [`engine-lock.md`](engine-lock.md).
 
 ## Porta occupata o secondo avvio
 
-`llama_port` deve essere libera. Usare `qwen-launcher status` per trovare un servizio gestito e
-`qwen-launcher stop` per fermarlo identity-safe. Non cancellare manualmente `services.json` mentre il
-processo è vivo. Un lock sicuramente obsoleto viene pulito dal launcher; un proprietario vivo blocca
-il secondo avvio.
+Per `coding`, `studio` e `vstudio`, `llama_port` deve essere libera. Usare `qwen-launcher status` per
+trovare un servizio gestito e `qwen-launcher stop` per fermarlo identity-safe. Non cancellare
+manualmente `services.json` mentre il processo è vivo. Un lock sicuramente obsoleto viene pulito dal
+launcher; un proprietario vivo blocca il secondo avvio.
+
+I processi isolati di `calibrate` preferiscono la porta configurata ma, se è occupata da un servizio
+locale non gestito, scelgono automaticamente una porta loopback temporanea. Non è quindi necessario
+fermare un servizio estraneo soltanto perché usa la `8080`; resta invece obbligatorio fermare servizi
+gestiti e workload GPU concorrenti.
 
 ## Timeout, crash o salute incompatibile
 

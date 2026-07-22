@@ -50,7 +50,10 @@ invalida il run. Il processo gestito coincide soltanto per `pid + create_time`. 
 qualunque contesto compute iniziale blocca la calibrazione.
 
 Il comando non scarica il modello, non installa il motore, non modifica `config.toml`, non crea
-commit e non effettua upload.
+commit e non effettua upload. Ogni server di prova usa `llama_port` quando è libera; se è già
+occupata, la calibrazione sceglie una porta loopback temporanea assegnata dal sistema operativo.
+Questo fallback riguarda soltanto i processi isolati di calibrazione: gli avvii normali continuano a
+richiedere libera la porta configurata.
 
 ## Percorso predefinito
 

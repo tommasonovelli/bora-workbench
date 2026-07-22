@@ -22,6 +22,16 @@ from qwen_launcher._calibration_v3_types import RAM_RESERVE_GIB, VRAM_RESERVE_GI
 from qwen_launcher._hardware_monitoring import query_gpu_snapshot
 from qwen_launcher.hardware import HardwareError
 
+_RAM_IDENTITY_TOLERANCE_GIB = 1 / 1024
+
+
+def _ram_identity_mismatch(recorded: object, current: float) -> str | None:
+    """Ignore sub-MiB OS reporting jitter without hiding a material RAM capacity change."""
+    difference_gib = abs(float(cast(float, recorded)) - current)
+    if difference_gib <= _RAM_IDENTITY_TOLERANCE_GIB:
+        return None
+    return f"total RAM GiB changed (recorded {recorded!r}, current {current!r})"
+
 
 def _identity_mismatches(record: JsonObject, query: ReuseQuery) -> list[str]:
     """List every identity divergence between the record and current state."""
@@ -42,16 +52,19 @@ def _identity_mismatches(record: JsonObject, query: ReuseQuery) -> list[str]:
         ("backend", record["backend"], current.backend),
         ("CPU", hardware["cpu_name"], current.cpu_name),
         ("CPU cores", hardware["cpu_cores"], current.cpu_cores),
-        ("total RAM GiB", hardware["ram_total_gib"], current.ram_total_gib),
         ("GPU count", hardware["gpu_count"], current.gpu_count),
         ("GPU", hardware["gpu_name"], current.gpu_name),
         ("total VRAM GiB", hardware["vram_total_gib"], current.vram_total_gib),
     )
-    return [
+    mismatches = [
         f"{label} changed (recorded {recorded!r}, current {value!r})"
         for label, recorded, value in expected
         if recorded != value
     ]
+    ram_mismatch = _ram_identity_mismatch(hardware["ram_total_gib"], current.ram_total_gib)
+    if ram_mismatch is not None:
+        mismatches.append(ram_mismatch)
+    return mismatches
 
 
 def _cuda_state(record: JsonObject, query: ReuseQuery) -> tuple[list[str], float | None]:

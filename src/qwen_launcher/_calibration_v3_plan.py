@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Protocol
 
+from qwen_launcher._calibration_port import select_trial_port
 from qwen_launcher.calibration import CalibrationTarget
 from qwen_launcher.profiles import LaunchPlan, Mode
 
@@ -23,7 +24,7 @@ def build_plan(run: ModeRun, ctx: int, n_cpu_moe: int | None) -> LaunchPlan:
         target.config.model,
         target.model_path,
         target.mmproj_path if run.mode.services.vision else None,
-        target.config.llama_port,
+        select_trial_port(target.config.llama_port),
         None,
         ctx,
         n_cpu_moe,

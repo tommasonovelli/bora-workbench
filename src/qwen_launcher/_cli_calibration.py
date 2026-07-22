@@ -125,6 +125,10 @@ def _show_preflight(
     console.print(
         "Duration: potentially hours; exact duration depends on measured hardware performance."
     )
+    console.print(
+        f"Trial ports: use configured {target.config.llama_port} when free; "
+        "otherwise use a temporary loopback port."
+    )
     console.print(f"Destination: {data_dir() / 'calibrations'}")
     console.print("Disk: redacted process logs and JSON evidence are retained in the destination.")
     console.print("Risk: a trial process may crash or be discarded; production state is isolated.")

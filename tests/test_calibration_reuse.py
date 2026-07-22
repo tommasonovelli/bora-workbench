@@ -76,6 +76,27 @@ def test_hardware_identity_divergence_invalidates_with_diagnostics(tmp_path, mon
     assert any("CPU changed" in message for message in evaluation.diagnostics)
 
 
+def test_page_level_total_ram_jitter_keeps_record_compatible(tmp_path, monkeypatch) -> None:
+    """Ignore tiny OS MemTotal drift while preserving exact capacity in the record."""
+    install_record(tmp_path, monkeypatch, cpu_calibration, cpu_hardware())
+    changed = replace(cpu_hardware(), ram_total_gib=32 + (3 * 4096 / 1024**3))
+
+    evaluation = evaluate_record(query(changed))
+
+    assert evaluation.status == "valid"
+
+
+def test_material_total_ram_change_invalidates_record(tmp_path, monkeypatch) -> None:
+    """Keep a real RAM capacity change outside the narrow reporting tolerance."""
+    install_record(tmp_path, monkeypatch, cpu_calibration, cpu_hardware())
+    changed = replace(cpu_hardware(), ram_total_gib=31.5)
+
+    evaluation = evaluate_record(query(changed))
+
+    assert evaluation.status == "incompatible"
+    assert any("total RAM GiB changed" in message for message in evaluation.diagnostics)
+
+
 def test_engine_contract_divergence_invalidates_the_record(tmp_path, monkeypatch) -> None:
     """Ignore a record measured against a different engine release."""
     install_record(tmp_path, monkeypatch, cpu_calibration, cpu_hardware())

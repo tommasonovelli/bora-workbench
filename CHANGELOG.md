@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- Calibration trial servers now fall back to an OS-assigned loopback port when the configured
+  `llama_port` is occupied; normal mode launches still require their configured port.
+- Local record reuse now tolerates at most 1 MiB of total-RAM reporting drift while preserving exact
+  recorded values, strict component identity, and current RAM/VRAM headroom checks.
+
 ## [0.1.0] - 2026-07-20
 
 ### Added

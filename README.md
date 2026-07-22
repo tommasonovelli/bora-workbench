@@ -124,7 +124,10 @@ risultato:
 qwen-launcher calibrate --mode all --no-activate
 ```
 
-Dettagli: [motore](docs/engine-lock.md) e [calibrazione](docs/calibration.md).
+I server di prova usano la porta configurata quando è libera e ripiegano su una porta loopback
+temporanea quando, per esempio, la `8080` è già occupata; gli avvii normali restano invece severi.
+Dettagli: [motore](docs/engine-lock.md), [calibrazione](docs/calibration.md) e
+[contribuzione dell'evidenza](docs/calibration-contributing.md).
 
 ## Modi disponibili
 

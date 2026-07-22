@@ -39,6 +39,7 @@ def test_default_calibrate_runs_v3_and_shows_active_record(tmp_path, monkeypatch
     assert result.exit_code == 0
     assert "calibration/v3" in result.stdout
     assert "zero mandatory technical inputs" in result.stdout
+    assert "Trial ports:" in result.stdout
     assert "ctx=131072, n_cpu_moe=38" in result.stdout
     assert "Active record:" in result.stdout
 
