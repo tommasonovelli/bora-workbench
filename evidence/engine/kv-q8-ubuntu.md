@@ -62,26 +62,17 @@ generico del motore a usare no-mmap non prevale quindi sulle misure di questa ma
 calibrazione deve usare una lista per modo più prudente e includere valori superiori attorno al
 confine. Questo dato non è un profilo e non seleziona ancora una busta.
 
-La compatibilità CPU è confermata, ma il vantaggio Q8 è specificamente VRAM CUDA e non esiste qui un
-confronto CPU simultaneo sufficiente a cambiare il contratto CPU. La modifica proposta deve quindi
-aggiungere cache K/V Q8 soltanto a `command_contract.backend_args.cuda`, conservando `--mmap` nei
-`fixed_args` e lasciando il ramo CPU invariato.
-
-## Passi successivi
-
-1. Eseguire su Windows 11 lo smoke b10011 CUDA 13.3 con Q8+mmap per coding, studio e vstudio.
-2. Con GO Windows, aggiornare in una PR dichiarativa separata `engine.lock`: aggiungere
-   `--cache-type-k` e `--cache-type-v` ai flag verificati e i due argomenti Q8 al solo ramo CUDA.
-   Non aggiungere `--no-mmap`.
-3. Ripetere `calibrate` su Ubuntu con un solo contesto per run e liste esplicite per modo; infittire
-   i candidati attorno al confine, in particolare per `vstudio`.
-4. Solo un report corretto e revisionato può ricevere `CALIBRATION-ACCEPTED` e aprire Step 5B.
+La compatibilità CPU è confermata, ma il vantaggio Q8 osservato riguarda la VRAM CUDA e queste
+misure non giustificano un cambio del ramo CPU. Insieme alla controprova Windows conservata accanto,
+questa evidenza sostiene il contratto corrente: cache K/V Q8 solo in
+`command_contract.backend_args.cuda`, `--mmap` ancora attivo e ramo CPU invariato. `--no-mmap`
+resta escluso.
 
 ## Evidenza
 
-- `docs/mini-spike-kv-q8-ubuntu/coding-results.json`;
-- `docs/mini-spike-kv-q8-ubuntu/extended-results.json`;
-- `docs/mini-spike-kv-q8-ubuntu/logs/`;
-- `docs/mini-spike-kv-q8-ubuntu/system-info.txt`;
-- `docs/mini-spike-kv-q8-ubuntu/flag-help.txt`;
-- `docs/mini-spike-kv-q8-ubuntu/SHA256SUMS`.
+- `evidence/engine/kv-q8-ubuntu/coding-results.json`;
+- `evidence/engine/kv-q8-ubuntu/extended-results.json`;
+- `evidence/engine/kv-q8-ubuntu/logs/`;
+- `evidence/engine/kv-q8-ubuntu/system-info.txt`;
+- `evidence/engine/kv-q8-ubuntu/flag-help.txt`;
+- `evidence/engine/kv-q8-ubuntu/SHA256SUMS`.

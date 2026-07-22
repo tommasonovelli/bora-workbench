@@ -95,8 +95,8 @@ preesistente b9987 trovata sulla macchina.
   `6180cc2a02db890cf87ba52f078b7a222b04dcb3c2650865763d4f32ad663a5c`.
   La sezione 2.6 Attachment A elenca come redistribuibili le varianti Windows di CUDA Runtime
   (`cudart`) e CUDA BLAS (`cublas`, `cublasLt`), soggette ai requisiti di distribuzione della
-  sezione 1.1.2. Lo zip runtime contiene soltanto tali tre DLL ma non la EULA; lo Step 4 dovrà
-  presentare o includere gli avvisi richiesti quando implementerà l'installazione gestita.
+  sezione 1.1.2. Lo zip runtime contiene soltanto tali tre DLL ma non la EULA; l'installazione
+  gestita corrente conserva quindi l'avviso NVIDIA verificato insieme agli asset.
 - Modello e mmproj non vengono redistribuiti dal launcher.
 
 Questa è una verifica tecnica dei termini applicabili agli asset, non consulenza legale.
@@ -178,14 +178,14 @@ layer, RAM o VRAM.
 
 ## Evidenza e integrità
 
-- `docs/spike-0/SHA256SUMS`: manifest globale dell'evidenza attiva;
-- `docs/spike-0/windows-b10011/SHA256SUMS`: tutti i 229 output Windows grezzi;
-- `docs/spike-0/research/`: metadati release/modello e testi di licenza acquisiti.
+- `evidence/engine/spike-0/SHA256SUMS`: manifest globale dell'evidenza attiva;
+- `evidence/engine/spike-0/windows-b10011/SHA256SUMS`: tutti i 229 output Windows grezzi;
+- `evidence/engine/spike-0/research/`: metadati release/modello e testi di licenza acquisiti.
 
 ## Decisione
 
-`GO` per completare lo Step 1. Release, commit, asset Windows CPU/CUDA 13.3, runtime, help/versione,
-contratto comandi, salute, API, UI, vision, MTP, sampling, metriche, stop/log e benchmark sono stati
-verificati senza inventare dati. Restano vincoli espliciti per gli step futuri: nessun profilo viene
-creato nello Step 1, CUDA multi-GPU resta bloccato e lo Step 4 deve rispettare gli avvisi MIT/NVIDIA.
-Non si avvia lo Step 2.
+L'esito è `GO` per il contratto oggi appuntato. Release, commit, asset Windows CPU/CUDA 13.3,
+runtime, help/versione, comando, salute, API, UI, vision, MTP, sampling, metriche, stop/log e
+benchmark sono stati verificati senza inventare dati. Queste misure dimostrano fattibilità, non una
+busta ottima o un profilo trasferibile. CUDA multi-GPU resta fuori dallo scope verificato e le
+installazioni gestite conservano gli avvisi MIT/NVIDIA richiesti.

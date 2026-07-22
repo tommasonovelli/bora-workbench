@@ -1,10 +1,9 @@
-"""Offline tests for the Step 6A installer scripts (install.sh / install.ps1).
+"""Offline tests for the explicit-source installer scripts.
 
 These exercise the host-platform installer with uv replaced by a PATH-shadowing fake, so no
-network, package install, real uv, or user configuration is touched. They verify the explicit
-single-source contract, the local-wheel SHA-256 gate, and the exact command handed to uv
-(IMPLEMENTATION_SPEC.md sections 5.10-5.12 and "Step 6A"). Installer scripts are inherently
-platform-specific, so the test selects and runs the script for the host it runs on.
+network, package install, real uv, or user configuration is touched. They verify the single-source
+contract, local-wheel SHA-256 gate, and exact command handed to uv (spec sections 5.10-5.12).
+Installer scripts are platform-specific, so the test selects the script for its current host.
 """
 
 from __future__ import annotations

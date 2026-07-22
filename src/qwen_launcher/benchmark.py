@@ -50,10 +50,10 @@ def _load_request(path: str) -> JsonObject:
 
 
 def verify_protocol_resources() -> None:
-    """Require byte-identical protocol resources from Spike 0 (section 7, Step 5A).
+    """Require byte-identical benchmark resources from measured evidence (section 5.6).
 
     The vision request digest is the one measured for the Ubuntu Spike 0 evidence copies in
-    ``docs/spike-0/SHA256SUMS``, which the packaged resource matches byte for byte.
+    ``evidence/engine/spike-0/SHA256SUMS``, which the resource matches byte for byte.
     """
     expected = (
         (_PROMPT_PATH, PROMPT_SHA256),

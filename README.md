@@ -5,40 +5,65 @@
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-31213/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-`qwen-launcher` installa e governa una distribuzione locale e riproducibile del modello
-`unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M`, servito dall'esatta release verificata
-`llama.cpp b10011`.
+`qwen-launcher` installa, calibra e governa in locale una configurazione precisa di Qwen e
+`llama.cpp`. È pensato per chi vuole avviare il modello senza ricostruire ogni volta flag, checksum,
+profili e lifecycle del server.
 
-Non è un model manager generico: modello, motore, flag, salute, modi e protocollo di calibrazione
-sono vincolati da lock e contratti versionati. I servizi ascoltano soltanto su `127.0.0.1`.
+Il progetto fissa:
 
-## Stato e maturità
+- modello `unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M`;
+- `llama.cpp b10011` al commit verificato;
+- tre modalità d'uso (`coding`, `studio`, `vstudio`);
+- installazione sicura del motore;
+- calibrazione locale per la macchina corrente;
+- stato, log, health check e stop identity-safe.
+
+Non è un model manager generico e non esegue plugin. I servizi ascoltano soltanto su `127.0.0.1`.
+
+## Inizia da qui
+
+Se è la prima volta che apri il progetto, il percorso più semplice è:
+
+1. controlla i [requisiti](#requisiti);
+2. [installa la release](#installazione);
+3. rendi disponibile il [modello appuntato](#modello);
+4. esegui `engine install`;
+5. avvia `coding` oppure calibra prima la macchina;
+6. usa la [documentazione completa](docs/README.md) quando vuoi capire configurazione e dettagli.
+
+## Stato del progetto
 
 > [!WARNING]
-> `0.1.0` è la **prima release pubblica**, destinata a valutazione ed early adopter. Non è garantita
-> alcuna stabilità di CLI, configurazione, formati dei record, procedure operative, prestazioni o
-> compatibilità con versioni future. Non usarla per workload critici senza verifiche indipendenti e
-> senza conservare copie dei propri dati locali.
+> `0.1.0` è la prima release pubblica ed è destinata a valutazione. CLI, configurazione, formati dei
+> record, procedure e prestazioni non hanno garanzia di stabilità. Non usarla per workload critici
+> senza verifiche indipendenti e backup dei dati locali.
 
-I test e i lock documentano ciò che è stato verificato sulla versione corrente; non costituiscono una
-garanzia di disponibilità, assenza di difetti, qualità delle risposte del modello o prestazioni su
-hardware diverso. Il software è fornito “as is” secondo la licenza MIT. Problemi e correzioni saranno
-gestiti con nuove versioni, senza sostituire gli artefatti `0.1.0` già pubblicati.
+La GitHub Release `v0.1.0` è pubblica. PyPI attende ancora la configurazione del Trusted Publisher.
+Il branch `main` contiene questa riorganizzazione documentale e due correzioni runtime successive,
+elencate sotto `Unreleased` nel [CHANGELOG](CHANGELOG.md), che non fanno parte degli artefatti
+immutabili `0.1.0`.
+
+## Requisiti
+
+- Ubuntu 22.04+ x86-64 oppure Windows 11 x86-64;
+- CPU oppure una singola GPU NVIDIA CUDA;
+- almeno **28 GiB RAM totali** e **22 GiB disponibili** per il modello predefinito;
+- spazio per GGUF (22.663.387.424 byte), mmproj (902.822.528 byte), motore e log;
+- modello già presente nella cache Hugging Face appuntata;
+- rete HTTPS per installare tool e motore, salvo artefatti già disponibili.
+
+CUDA su host multi-GPU è bloccato perché l'isolamento è stato verificato solo su host a GPU singola.
+Se `nvidia-smi` non è disponibile o affidabile, il launcher usa CPU e mostra un warning.
 
 ## Installazione
 
-La release corrente è **`0.1.0`**. Gli installer ufficiali fissano uv `0.11.28` e CPython `3.12.13`,
-non richiedono privilegi amministrativi e verificano la wheel prima di installarla. PyPI è in attesa
-della configurazione del Trusted Publisher; gli artefatti GitHub qui sotto sono già pubblici e sono
-gli stessi costruiti e verificati dalla CI release su Ubuntu e Windows.
-
-SHA-256 della wheel `0.1.0`:
+La wheel `0.1.0` verificata dalla CI ha SHA-256:
 
 ```text
 8966539a9e257f532d14fab821bf507a9c0327fa7fb246e5d8803fa69289c482
 ```
 
-### Ubuntu 22.04+
+### Ubuntu
 
 ```bash
 base="https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.0"
@@ -50,7 +75,7 @@ sh ./install.sh \
   --sha256 8966539a9e257f532d14fab821bf507a9c0327fa7fb246e5d8803fa69289c482
 ```
 
-### Windows 11
+### Windows
 
 Da PowerShell:
 
@@ -64,16 +89,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 `
   -Sha256 8966539a9e257f532d14fab821bf507a9c0327fa7fb246e5d8803fa69289c482
 ```
 
-`ExecutionPolicy Bypass` vale soltanto per quel processo e non modifica la policy di sistema.
+Gli installer fissano uv `0.11.28` e CPython `3.12.13`, richiedono una sorgente esplicita e non
+usano privilegi amministrativi. Dettagli e alternative sono in
+[Installazione e primo avvio](docs/installation.md).
 
-### Se uv è già installato
-
-```bash
-uv tool install --python 3.12.13 \
-  "qwen-launcher @ https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.0/qwen_launcher-0.1.0-py3-none-any.whl"
-```
-
-Verificare subito l'installazione:
+Verifica subito:
 
 ```bash
 qwen-launcher --version
@@ -81,117 +101,114 @@ qwen-launcher validate
 qwen-launcher doctor
 ```
 
-La pagina [GitHub Releases](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.0)
-contiene installer, wheel, sdist e `SHA256SUMS`. Per l'installazione da commit Git completo e lo stato
-della pubblicazione PyPI consultare [la procedura di release](docs/releasing.md).
+## Modello
 
-## Requisiti
+I pesi non sono inclusi e il launcher non li scarica. Per il modello predefinito legge in sola
+lettura lo snapshot Hugging Face della revisione `5bc3e238d916f48a861bac2f8a1990a0e9b7e98d` e verifica
+nome, dimensione e SHA-256 di:
 
-- Ubuntu 22.04+ x86-64 oppure Windows 11 x86-64;
-- CPU oppure una singola GPU NVIDIA CUDA;
-- almeno **28 GiB di RAM totale** e **22 GiB disponibili** per il modello predefinito;
-- modello e mmproj appuntati già presenti nella cache Hugging Face, oppure `model_path` esplicito per
-  un modello diverso;
-- spazio per modello, mmproj, motore e log;
-- rete HTTPS per installare dipendenze e motore, salvo disponibilità locale degli artefatti.
+```text
+Qwen3.6-35B-A3B-UD-Q4_K_M.gguf
+mmproj-BF16.gguf
+```
 
-I pesi non sono inclusi: il GGUF appuntato occupa 22.663.387.424 byte e il mmproj 902.822.528 byte.
-Il launcher verifica revisione, dimensione e SHA-256 senza modificare la cache Hugging Face.
-
-CUDA su host multi-GPU resta bloccato perché la selezione fisica è stata verificata soltanto su host
-a GPU singola. La copertura empirica della calibrazione resta `GATE-PARTIAL`: il metodo è stato
-accettato localmente su Windows 11/CUDA per i tre modi, ma manca ancora una prova su hardware
-materialmente diverso.
+Il mmproj serve solo a `vstudio`. I file vanno acquisiti separatamente dalla
+[revisione fissata del repository](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF/tree/5bc3e238d916f48a861bac2f8a1990a0e9b7e98d)
+con uno strumento scelto dall'utente. La cache Hugging Face non viene modificata né rimossa da
+`uninstall`.
 
 ## Primo avvio
 
+Installa il motore adatto all'hardware rilevato:
+
 ```bash
 qwen-launcher engine install
-qwen-launcher doctor
-qwen-launcher calibrate --mode all
+qwen-launcher engine status
+```
+
+Poi puoi partire subito con la baseline verificata:
+
+```bash
 qwen-launcher coding
 ```
 
-`engine install` scarica o costruisce soltanto gli asset descritti da `engine.lock`, ne verifica i
-checksum e attiva il motore tramite un manifest atomico. Su Ubuntu CUDA, se mancano prerequisiti di
-compilazione, il launcher mostra i comandi necessari ma non esegue `sudo` o package manager.
+La baseline usa `ctx=8192` e, su CUDA, `n_cpu_moe=48`. È funzionale ma non ottimizzata.
 
-La calibrazione è locale e potenzialmente lunga. Senza un record locale compatibile, il launcher usa
-la baseline verificata `ctx=8192`, dichiarandola non ottimizzata. Per misurare senza attivare il
-risultato:
+Per misurare prima il PC e attivare una configurazione locale per tutti i modi:
 
 ```bash
-qwen-launcher calibrate --mode all --no-activate
+qwen-launcher calibrate --mode all
 ```
 
-I server di prova usano la porta configurata quando è libera e ripiegano su una porta loopback
-temporanea quando, per esempio, la `8080` è già occupata; gli avvii normali restano invece severi.
-Dettagli: [motore](docs/engine-lock.md), [calibrazione](docs/calibration.md) e
-[contribuzione dell'evidenza](docs/calibration-contributing.md).
+La calibrazione può durare a lungo e avvia molti processi temporanei; mostra sempre un preflight e
+chiede conferma. Leggi [Calibrazione locale](docs/calibration.md) prima di eseguirla.
+
+## Concetti in un minuto
+
+- **Motore**: l'eseguibile `llama-server` della release fissata.
+- **Modo**: comportamento del servizio (UI, vision e sampling).
+- **Baseline**: configurazione verificata usata quando manca una calibrazione locale.
+- **Record locale**: risultato privato della calibrazione su questo PC e per un solo modo.
+- **Seed condiviso**: suggerimento sull'ordine delle prove; non copia la configurazione di un altro
+  PC.
+
+Il launcher usa un record solo se macchina, modello, motore, modo e memoria corrente sono ancora
+compatibili. In caso contrario spiega il motivo e torna alla baseline.
 
 ## Modi disponibili
 
-| Comando | UI | Vision | Uso principale |
-|---|---:|---:|---|
-| `qwen-launcher coding` | no | no | API locale per coding e integrazioni |
-| `qwen-launcher studio` | sì | no | chat nella UI integrata di llama.cpp |
-| `qwen-launcher vstudio` | sì | sì | chat e input immagine tramite mmproj |
+| Comando | Esperienza |
+|---|---|
+| `qwen-launcher coding` | API OpenAI-compatible testuale, UI e vision disabilitate |
+| `qwen-launcher studio` | chat testuale nella UI integrata di llama.cpp |
+| `qwen-launcher vstudio` | UI integrata con proiettore vision appuntato |
 
-Comandi di controllo:
+Dopo READY la CLI mostra URL API/UI e log. `studio` e `vstudio` aprono il browser solo se
+`open_browser=true`. Il processo rimane in foreground; `Ctrl-C` lo ferma e pulisce lo stato.
+
+Controllo da un altro terminale:
 
 ```bash
 qwen-launcher status
 qwen-launcher stop
 ```
 
-`studio` e `vstudio` aprono il browser soltanto dopo lo stato READY e solo quando
-`open_browser=true`. Open WebUI, skill e router appartengono alla roadmap 0.2.
+## Configurazione minima
 
-## Configurazione
+Il file è `config_dir()/config.toml`; la precedenza è ambiente > TOML > default.
 
-Il file è `config_dir()/config.toml`. La precedenza è **ambiente > TOML > default**; chiavi
-sconosciute e valori malformati sono errori. Il launcher non modifica mai automaticamente il file.
-
-| Chiave | Variabile ambiente | Default |
-|---|---|---|
-| `model` | `QWEN_LAUNCHER_MODEL` | modello appuntato |
-| `model_path` | `QWEN_LAUNCHER_MODEL_PATH` | `None` |
-| `llama_port` | `QWEN_LAUNCHER_LLAMA_PORT` | `8080` |
-| `engine_path` | `QWEN_LAUNCHER_ENGINE_PATH` | `None` |
-| `open_browser` | `QWEN_LAUNCHER_OPEN_BROWSER` | `true` |
-
-Un modello diverso richiede `model_path` esplicito e non eredita gate, record o calibrazione del
-modello predefinito.
-
-## Dati locali e disinstallazione
-
-```bash
-qwen-launcher stop
-qwen-launcher uninstall
-uv tool uninstall qwen-launcher
+```toml
+llama_port = 8080
+open_browser = true
 ```
 
-`uninstall` mostra in anteprima le radici gestite, richiede conferma e rifiuta servizi vivi, symlink
-o percorsi alterati. Non cancella mai la cache Hugging Face. La rimozione del tool Python resta
-separata tramite uv.
+Le chiavi disponibili sono `model`, `model_path`, `llama_port`, `engine_path` e `open_browser`.
+Chiavi sconosciute e valori malformati sono errori; il launcher non riscrive il file.
+
+Vedere [Configurazione e dati locali](docs/configuration.md) per percorsi Linux/Windows, variabili
+ambiente e layout dei record.
 
 ## Sicurezza e privacy
 
-- nessun bind implicito su `0.0.0.0`;
-- download HTTPS e SHA-256 obbligatori;
-- estrazione degli archivi confinata e nessuna elevazione automatica;
-- identità processo basata su `pid + create_time`;
-- `CUDA_VISIBLE_DEVICES` impostata soltanto nell'ambiente del processo figlio;
-- configurazione, record e log locali mai caricati automaticamente;
-- bundle condivisibili redatti e validati contro hostname, username e percorsi assoluti;
-- report pubblici usati soltanto per ordinare la ricerca, mai come busta calibrata remota.
+- bind esclusivo a `127.0.0.1`;
+- HTTPS e SHA-256 obbligatori per gli asset;
+- estrazione confinata e attivazione atomica del motore;
+- nessun `shell=True`, `sudo` o elevazione automatica;
+- stop basato su `pid + create_time`, non sul solo PID;
+- `CUDA_VISIBLE_DEVICES` solo nell'ambiente figlio;
+- config, record e log mai caricati automaticamente;
+- cache Hugging Face mai modificata o eliminata.
 
-Per errori di installazione, modello, RAM, CUDA, porte o record consultare
-[troubleshooting](docs/troubleshooting.md).
+## Documentazione
+
+La [documentazione completa](docs/README.md) segue un percorso per chi parte da zero:
+installazione → comandi → configurazione → architettura → calibrazione → operazioni → sviluppo →
+release.
+
+Il lavoro non ancora implementato vive soltanto in [IMPLEMENTATION_SPEC.md](IMPLEMENTATION_SPEC.md).
+Le prove misurate che sostengono lock e report sono separate in [`evidence/`](evidence/README.md).
 
 ## Sviluppo
-
-Prerequisiti: CPython `3.12.13` e uv `0.11.28`.
 
 ```bash
 uv sync --frozen
@@ -199,16 +216,20 @@ uv run --frozen ruff check .
 uv run --frozen ruff format --check .
 uv run --frozen pytest
 uv run --frozen qwen-launcher validate
+```
+
+Per packaging o risorse:
+
+```bash
 uv build
 uv run --frozen python scripts/verify_wheel.py
 ```
 
-I test sono deterministici e non usano rete, GPU, modello o server reali. La CI copre Ubuntu e
-Windows. Leggere [CONTRIBUTING.md](CONTRIBUTING.md) prima di modificare il progetto;
-`IMPLEMENTATION_SPEC.md` resta l'unico piano normativo.
+Leggere [CONTRIBUTING.md](CONTRIBUTING.md) e [Sviluppo e contributi](docs/development.md) prima di
+modificare il repository.
 
 ## Licenze
 
-Il launcher è distribuito con licenza [MIT](LICENSE). Le installazioni gestite conservano il testo
-MIT di `llama.cpp` e, su Windows CUDA, la NVIDIA CUDA Toolkit EULA richiesta. Modello e mmproj non
-sono redistribuiti e restano soggetti alla licenza del modello.
+Il launcher è distribuito con licenza [MIT](LICENSE). Le installazioni gestite conservano la licenza
+MIT di `llama.cpp` e, per Windows CUDA, la NVIDIA CUDA Toolkit EULA. Modello e mmproj non sono
+redistribuiti e restano soggetti alla licenza del modello.

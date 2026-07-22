@@ -83,7 +83,7 @@ def _isolated_environment(root: Path) -> dict[str, str]:
 
 
 def _verify_sdist() -> bool:
-    """Require one sdist containing the installers and release documentation."""
+    """Require one sdist containing installers, current documentation, and evidence."""
     archives = list(Path("dist").glob("*.tar.gz"))
     if len(archives) != 1:
         print(f"expected exactly one sdist in dist/, found {len(archives)}", file=sys.stderr)
@@ -92,11 +92,17 @@ def _verify_sdist() -> bool:
         "CHANGELOG.md",
         "CONTRIBUTING.md",
         "IMPLEMENTATION_SPEC.md",
-        "docs/anatomy/mode.md",
-        "docs/anatomy/profile.md",
-        "docs/benchmarks.md",
+        "docs/README.md",
+        "docs/architecture.md",
+        "docs/calibration.md",
+        "docs/commands.md",
+        "docs/configuration.md",
+        "docs/development.md",
+        "docs/installation.md",
+        "docs/operations.md",
         "docs/releasing.md",
-        "docs/troubleshooting.md",
+        "evidence/README.md",
+        "evidence/calibration/windows-11-rtx-2060-super-v3/SHA256SUMS",
         "install.ps1",
         "install.sh",
     )

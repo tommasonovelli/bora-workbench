@@ -116,7 +116,7 @@ def _json_children(directory: Traversable, prefix: str) -> tuple[tuple[Traversab
 
 
 def _content_files(root: Traversable) -> tuple[tuple[Traversable, str], ...]:
-    """Enumerate only the versioned content locations defined for milestone 0.1."""
+    """Enumerate only the versioned content locations supported by the package."""
     content = root.joinpath("content")
     files = list(_json_children(content.joinpath("modes"), "content/modes"))
     files.extend(_json_children(content.joinpath("profiles"), "content/profiles"))
@@ -148,7 +148,7 @@ def _validate_schema(document: Document, schemas: dict[str, JsonObject]) -> list
 
 
 def _load_engine(root: Traversable) -> tuple[JsonObject, list[ValidationIssue]]:
-    """Load and validate the machine lock while retaining the Step 4 asset warning."""
+    """Load and validate the machine lock while retaining its incomplete-asset warning."""
     from qwen_launcher._validation_engine import validate_engine_lock
 
     document, issues = _read_object(root.joinpath("engine.lock"), "engine.lock")
@@ -156,7 +156,7 @@ def _load_engine(root: Traversable) -> tuple[JsonObject, list[ValidationIssue]]:
         return {}, issues
     issues.extend(validate_engine_lock(document.data))
     if document.data.get("assets_complete") is not True:
-        message = "engine assets remain incomplete until Step 4"
+        message = "engine assets are incomplete; managed installation is unavailable"
         issues.append(ValidationIssue("warning", "engine.lock", "$.assets_complete", message))
     return document.data, issues
 

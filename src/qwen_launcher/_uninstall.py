@@ -1,10 +1,9 @@
 """Remove only the exact public managed roots during uninstall.
 
-Step 6A requires an uninstall that deletes managed data, cache, state, and configuration after
-confirmation, never touches the Hugging Face cache, and stays idempotent. This module owns the
-confined removal so `cli.py` keeps to input, presentation, and exit-code mapping (spec sections 4.1,
-5.2, and Step 6A). It computes nothing about the operating system: the four public roots already
-come from `paths.py`.
+The uninstall contract deletes managed data, cache, state, and configuration after confirmation,
+never touches the Hugging Face cache, and stays idempotent. This module owns confined removal so
+`cli.py` keeps to presentation and exit-code mapping (spec sections 4.1, 5.2, and 5.10). It does not
+branch on the operating system: the four public roots already come from `paths.py`.
 """
 
 from __future__ import annotations
@@ -50,7 +49,7 @@ def _named_roots() -> tuple[tuple[str, Path], ...]:
 def managed_roots() -> tuple[ManagedRoot, ...]:
     """Return the exact configuration, data, cache, and state roots as a removal preview.
 
-    The Hugging Face cache is excluded from the deletion set by construction (Step 6A).
+    The Hugging Face cache is excluded from the deletion set by construction (section 5.10).
     """
     return tuple(
         ManagedRoot(label, path, path.exists() or path.is_symlink())
@@ -63,7 +62,7 @@ def _remove_one(path: Path) -> bool:
 
     Removal is confined to the given root: a symlinked root is refused rather than followed, so
     deletion can never escape the managed tree, and an absent root is a no-op that keeps uninstall
-    idempotent (spec security rules and Step 6A).
+    idempotent (specification sections 5.10 and 5.12).
     """
     if path.is_symlink():
         raise UninstallError(f"refusing to remove a symlinked managed root: {path}")
@@ -77,7 +76,7 @@ def _remove_one(path: Path) -> bool:
 
 
 def _validate_roots(roots: tuple[ManagedRoot, ...]) -> None:
-    """Refuse any deletion set other than the current exact public roots (Step 6A)."""
+    """Refuse any deletion set other than the current exact public roots (section 5.10)."""
     expected = _named_roots()
     actual = tuple((root.label, root.path) for root in roots)
     if actual != expected:

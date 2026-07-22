@@ -119,7 +119,7 @@ def test_multi_gpu_cuda_startup_is_blocked_by_unverified_spike_boundary(monkeypa
 
 
 def test_detection_does_not_mutate_parent_cuda_environment(monkeypatch) -> None:
-    """Leave CUDA_VISIBLE_DEVICES untouched because only Step 3 builds child environments."""
+    """Leave CUDA_VISIBLE_DEVICES untouched because only launch mutates child environments."""
     patch_host(monkeypatch)
     monkeypatch.setenv("CUDA_VISIBLE_DEVICES", "parent-value")
     result = SimpleNamespace(stdout="0, Test GPU, 8192, 7000\n")

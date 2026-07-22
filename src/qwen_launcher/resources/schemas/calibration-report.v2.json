@@ -196,7 +196,7 @@
           "const": false
         },
         "heterogeneous_hardware_follow_up": {
-          "description": "The heterogeneous run remains open without blocking Step 5B.",
+          "description": "The heterogeneous run remains an open non-blocking follow-up.",
           "const": "open-non-blocking"
         }
       }

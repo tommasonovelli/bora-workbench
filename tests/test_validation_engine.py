@@ -72,7 +72,7 @@ def test_engine_lock_requires_model_path_placeholder(tmp_path) -> None:
 
 
 def test_engine_lock_rejects_unknown_placeholder(tmp_path) -> None:
-    """Refuse template values that the Step 3 builder cannot expand safely."""
+    """Refuse template values that the command builder cannot expand safely."""
     root, path = _engine_path(tmp_path)
     lock = read_json(path)
     lock["command_contract"]["context_args"][1] = "{guessed_value}"

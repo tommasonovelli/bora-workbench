@@ -157,11 +157,11 @@
   "performance_portability": "observed-values-are-not-promises",
   "source_references": [
     {
-      "path": "docs/calibration-gate-v3-windows.md",
+      "path": "evidence/calibration/windows-11-rtx-2060-super-v3/gate.md",
       "sha256": "d1fed2710fcab2e1ec85385eef2f23101eee2146310dbfaab4e2c921458f259f"
     },
     {
-      "path": "docs/calibrate_v3.md",
+      "path": "evidence/calibration/windows-11-rtx-2060-super-v3/protocol.md",
       "sha256": "5229eb200db8102f060fec8eaf02a652a028161bb9cd248d90a50aaa65d29517"
     }
   ]

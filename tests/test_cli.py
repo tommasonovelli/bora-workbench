@@ -71,7 +71,7 @@ def test_version() -> None:
 
 
 def test_validate_passes_with_complete_engine_assets() -> None:
-    """Return zero for packaged content with the complete Step 4 engine lock."""
+    """Return zero for packaged content with the complete engine lock."""
     result = runner.invoke(app, ["validate"])
 
     assert result.exit_code == 0
@@ -90,7 +90,7 @@ def test_validate_maps_errors_to_exit_1(monkeypatch) -> None:
 
 
 def test_doctor_is_read_only_and_reports_hardware(tmp_path, monkeypatch) -> None:
-    """Describe Step 2B hardware and empty profiles without creating directories."""
+    """Describe hardware and empty profiles without creating directories."""
     patch_directories(tmp_path, monkeypatch)
     monkeypatch.setattr(doctor_cli, "detect_hardware", fake_hardware)
 

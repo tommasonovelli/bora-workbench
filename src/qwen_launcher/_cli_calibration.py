@@ -1,4 +1,4 @@
-"""Collect explicit Step 5A inputs and present calibration draft evidence."""
+"""Collect explicit calibration/v1 inputs and present draft evidence."""
 
 from __future__ import annotations
 

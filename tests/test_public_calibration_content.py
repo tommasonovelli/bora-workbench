@@ -1,4 +1,4 @@
-"""Acceptance tests for the distributed Step 5B policy, evidence, and manual flow."""
+"""Acceptance tests for the distributed calibration policy, evidence, and manual flow."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from qwen_launcher.resources import read_json, resource
 from qwen_launcher.validation import validate_resources
 
 _REPORT_PATH = "content/calibrations/windows-11-rtx-2060-super-v3.json"
-_MANIFEST = Path("docs/calibrations/windows-11-rtx-2060-super-v3/SHA256SUMS")
+_MANIFEST = Path("evidence/calibration/windows-11-rtx-2060-super-v3/SHA256SUMS")
 
 
 def _probe(order: list[int]):
@@ -44,7 +44,7 @@ def test_packaged_policy_and_reference_evidence_are_valid() -> None:
     }
 
 
-def test_d047_scope_is_exact_and_not_a_heterogeneous_claim() -> None:
+def test_empirical_scope_is_exact_and_not_a_heterogeneous_claim() -> None:
     """Name the only real v3 hardware while leaving the heterogeneous follow-up open."""
     policy = read_json("content/calibration-policy.json")
     scope = policy["empirical_coverage"]["measured_scope"]  # type: ignore[index]
@@ -81,7 +81,7 @@ def test_policy_and_source_references_bind_exact_bytes() -> None:
         assert hashlib.sha256(path.read_bytes()).hexdigest() == source["sha256"]
 
 
-def test_manifest_reproduces_every_step5b_reference() -> None:
+def test_manifest_reproduces_every_public_reference() -> None:
     """Verify the checked-in SHA256SUMS without relying on platform-specific shell tools."""
     for line in _MANIFEST.read_text(encoding="utf-8").splitlines():
         digest, name = line.split(maxsplit=1)
@@ -118,14 +118,13 @@ def test_ignoring_packaged_seed_keeps_complete_domain_and_result() -> None:
 
 def test_contribution_guide_keeps_publication_manual_and_checklisted() -> None:
     """Ship naming, validation, privacy, PR text, and explicit no-automation instructions."""
-    guide = Path("docs/calibration-contributing.md").read_text(encoding="utf-8")
+    guide = Path("docs/calibration.md").read_text(encoding="utf-8")
     normalized = " ".join(guide.split())
     template = Path(".github/pull_request_template.md").read_text(encoding="utf-8")
 
     for required in (
-        "## 2. Naming",
-        "## 5. Checklist della pull request",
-        "## 6. Testo PR",
+        "## Contribuire nuova evidenza",
+        "Checklist per la pull request:",
         "qwen-launcher validate",
         "privacy_reviewed",
         "non esegue login, upload, commit, branch remoto, issue o pull request",
@@ -134,14 +133,14 @@ def test_contribution_guide_keeps_publication_manual_and_checklisted() -> None:
     assert "Seed di solo ordinamento" in template
 
 
-def test_shareable_step5b_files_pass_privacy_scan(tmp_path) -> None:
+def test_shareable_public_files_pass_privacy_scan(tmp_path) -> None:
     """Reject local identity or private-path leaks across distributed evidence and guidance."""
     root = tmp_path / "shareable"
     names = (
         "src/qwen_launcher/resources/content/calibration-policy.json",
         "src/qwen_launcher/resources/content/calibrations/windows-11-rtx-2060-super-v3.json",
-        "docs/calibrations/windows-11-rtx-2060-super-v3/README.md",
-        "docs/calibration-contributing.md",
+        "evidence/calibration/windows-11-rtx-2060-super-v3/README.md",
+        "docs/calibration.md",
     )
     for name in names:
         destination = root / name

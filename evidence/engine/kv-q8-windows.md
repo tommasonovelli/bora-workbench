@@ -96,24 +96,17 @@ Dispersione relativa `(max − min) / mediana` delle cinque misure:
 | CPU coding Q8 | 6,3% |
 
 Sullo stesso hardware fisico, l'host Ubuntu quieto misurava 0,14–2,4%. La dispersione non è quindi
-una proprietà della configurazione ma dell'ambiente: qualunque fascia fissa di equivalenza
-giudicherebbe male uno dei due casi. Questo dato fonda il criterio di dominanza locale di
-`calibration/v2` (`docs/calibration-v2-design.md`).
+una proprietà della configurazione ma dell'ambiente: una fascia fissa di equivalenza giudicherebbe
+male almeno uno dei due casi. Il protocollo corrente affronta questo limite con round temporali
+accoppiati e dominanza per unanimità, descritti in `docs/calibration.md`.
 
 `benchmark/v1` non misura la qualità semantica; il GO attesta compatibilità funzionale, vision,
 MTP e comportamento di memoria, non una regressione qualitativa nulla.
 
-## Passi successivi
-
-1. Implementare `calibration/v2` come da progettazione (D-038/D-039).
-2. Eseguire il Calibration Gate col protocollo implementato, anche su un caso materialmente
-   diverso.
-3. Solo un report corretto e revisionato può ricevere `CALIBRATION-ACCEPTED` e aprire lo Step 5B.
-
 ## Evidenza
 
-- `docs/mini-spike-kv-q8-windows/results.json`;
-- `docs/mini-spike-kv-q8-windows/logs/`;
-- `docs/mini-spike-kv-q8-windows/system-info.txt`;
-- `docs/mini-spike-kv-q8-windows/flag-help.txt`;
-- `docs/mini-spike-kv-q8-windows/SHA256SUMS`.
+- `evidence/engine/kv-q8-windows/results.json`;
+- `evidence/engine/kv-q8-windows/logs/`;
+- `evidence/engine/kv-q8-windows/system-info.txt`;
+- `evidence/engine/kv-q8-windows/flag-help.txt`;
+- `evidence/engine/kv-q8-windows/SHA256SUMS`.

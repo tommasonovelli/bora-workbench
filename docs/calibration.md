@@ -1,179 +1,299 @@
-# Calibrazione locale (`calibration/v3`) e laboratorio v1
+# Calibrazione locale
 
-La calibrazione non è un normale avvio né un singolo benchmark. Il comando usa per default
-`calibration/v3`: cerca la busta sul PC corrente, conferma i finalisti in finestre temporali
-accoppiate e crea un record privato. `calibration/v2` è stato respinto dal Gate del 18 luglio 2026
-perché misurava i finalisti in finestre disgiunte; il relativo design è conservato come evidenza
-storica in [`calibration-v2-design.md`](calibration-v2-design.md). Il design v3 implementato è in
-[`calibrate_v3.md`](calibrate_v3.md).
+## In breve
 
-I profili condivisi sono soltanto seed. Nessun vincitore misurato su un altro PC diventa una busta
-locale senza una nuova misura.
+La calibrazione serve a trovare una configurazione adatta **a questo PC**. Non cambia il modello e
+non migliora la qualità delle risposte: cerca il miglior compromesso misurato fra contesto,
+throughput e margine di memoria.
 
-## Stato del Calibration Gate
+Per iniziare non occorre conoscere i parametri di `llama.cpp`:
 
-Il run Windows 11/CUDA del 19 luglio 2026 ha completato `--mode all --no-activate` e ha prodotto
-candidati validi per coding, studio e vstudio, senza attivarli. L'esito locale è
-`CALIBRATION-ACCEPTED`; la copertura empirica complessiva resta `GATE-PARTIAL`. D-047 autorizza
-Step 5B e rinvia lo stesso protocollo su hardware materialmente diverso a un follow-up futuro non
-bloccante. Risultati, riserve e limiti sono registrati in
-[`calibration-gate-v3-windows.md`](calibration-gate-v3-windows.md).
-
-## Policy pubblica ed evidenza
-
-Step 5B distribuisce `calibration-policy/v2`, che appunta modello, motore, dominio derivato dal GGUF,
-scala contesti, riserve, tetto probe, ABBA e selezione. Non contiene le buste 37/37/39. L'unico
-`calibration-report/v2` reale copre Windows 11/CUDA su RTX 2060 SUPER 8 GiB e 31,92 GiB RAM; le
-costanti non sono presentate come validate su hardware materialmente diverso.
-
-Dal report il loader costruisce soltanto un seed `n_cpu_moe` per modello, motore, backend e modo
-compatibili. Il seed può anticipare un probe dentro la staffa ma non restringe `[0, block_count]`,
-non salta gradini di contesto e non entra nel `LaunchPlan`. Se il report viene rimosso o ignorato,
-la ricerca locale
-completa produce lo stesso dominio e applica le stesse regole. Manifest e procedura manuale sono in
-[`calibration-contributing.md`](calibration-contributing.md).
-
-## Prerequisiti
-
-Prima di iniziare:
-
-- modello predefinito appuntato e motore `b10011` compatibile già disponibili;
-- almeno 28 GiB di RAM totale e 22 GiB disponibili al preflight;
-- nessun servizio gestito attivo;
-- una sola GPU NVIDIA quando il backend rilevato è CUDA;
-- nessun altro workload compute o grafico intensivo sulla GPU selezionata.
-
-Su WDDM i contesti persistenti del desktop riportati come compute entrano in una baseline
-immutabile per l'intero run. Un respawn dello stesso file eseguibile è ammesso entro la molteplicità
-iniziale e contato come evidenza; un file nuovo, un'identità illeggibile o un'istanza aggiuntiva
-invalida il run. Il processo gestito coincide soltanto per `pid + create_time`. Fuori da WDDM
-qualunque contesto compute iniziale blocca la calibrazione.
-
-Il comando non scarica il modello, non installa il motore, non modifica `config.toml`, non crea
-commit e non effettua upload. Ogni server di prova usa `llama_port` quando è libera; se è già
-occupata, la calibrazione sceglie una porta loopback temporanea assegnata dal sistema operativo.
-Questo fallback riguarda soltanto i processi isolati di calibrazione: gli avvii normali continuano a
-richiedere libera la porta configurata.
-
-## Percorso predefinito
-
-L'utente sceglie soltanto il modo oppure `all`:
-
-```console
-qwen-launcher calibrate --mode <coding|studio|vstudio|all>
+```bash
+qwen-launcher calibrate --mode all
 ```
 
-L'obiettivo lessicografico dichiarato è:
+Il comando:
 
-1. massimo contesto fattibile sulla scala approvata;
-2. a quel contesto, throughput confermato dai round accoppiati;
-3. a parità, maggiore margine di memoria;
-4. a parità, configurazione più prudente.
+1. controlla modello, motore, memoria e processi concorrenti;
+2. mostra cosa eseguirà e chiede conferma;
+3. avvia più server temporanei, quindi può durare da molti minuti a ore;
+4. misura separatamente `coding`, `studio` e `vstudio`;
+5. salva un record privato per ogni modo completato;
+6. attiva per default i record, che saranno valutati al lancio successivo.
 
-Per ogni modo il v3:
+Non effettua upload, non modifica `config.toml` e non pubblica risultati.
 
-1. legge dai metadati GGUF il dominio CUDA `[0, block_count]`; su CPU conferma la baseline del
-   motore perché non esiste ancora un asse CPU verificato;
-2. prova la scala `131072 → 65536 → 32768 → 16384 → 8192` e scende solo quando la busta più prudente
-   non è fattibile;
-3. cerca il confine con processi freschi entro 12 probe. La bisezione può scegliere il prossimo
-   punto tramite interpolazione dei soli picchi fattibili, ma la previsione ordina e non esclude;
-4. verifica la monotonia VRAM soltanto sui caricamenti completati: un picco OOM troncato non forza
-   una scansione lineare spuria;
-5. monitora ogni 250 ms RAM su tutti i backend e VRAM aggregata su CUDA. Ogni trial deve lasciare
-   almeno 2,0 GiB di RAM disponibile; CUDA deve lasciare almeno 0,5 GiB di VRAM libera;
-6. conferma due finalisti con due round ABBA: `A→B`, poi `B→A`. Ognuno dei quattro avvii esegue un
-   `benchmark/v1` completo (warm-up escluso più cinque misure);
-7. dichiara dominanza solo se lo stesso finalista ha mediana di sessione maggiore in entrambi i
-   round. Round discordi o pari ripiegano sul margine VRAM e poi sulla prudenza;
-8. se le baseline VRAM derivano oltre 0,125 GiB, non scarta i finalisti: disabilita la dominanza e
-   registra `equivalent-after-baseline-drift`, perché le riserve assolute sono comunque verificate;
-9. raccoglie, quando il driver le espone, utilizzo, clock SM, temperatura, potenza e motivi di
-   throttling. Questi dati sono solo evidenza e non introducono soglie decisionali;
-10. conserva log ed evidenza dell'ultimo run in `data_dir()/calibration/evidence/<run-id>/` con un
-    solo slot ruotato.
+## Termini essenziali
 
-La CLI mostra il progresso per fase. Dopo due processi locali aggiunge una stima best-effort del
-tempo rimanente; la stima non cambia il protocollo.
+- **Baseline**: configurazione verificata ma non ottimizzata (`ctx=8192`; su CUDA
+  `n_cpu_moe=48`). Permette di usare il launcher senza calibrazione.
+- **Busta**: coppia di parametri prestazionali scelta per un modo, principalmente `ctx` e, su CUDA,
+  `n_cpu_moe`.
+- **`ctx`**: limite della finestra di contesto del server, espresso in token.
+- **`n_cpu_moe`**: numero di blocchi MoE lasciati sulla CPU; valori maggiori sono più prudenti verso
+  la VRAM, ma spostano più lavoro sulla CPU.
+- **Record locale**: JSON privato che conserva misure, identità della macchina e busta selezionata.
+- **Candidato**: record valido ma non ancora usato dai lanci.
+- **Record attivo**: unico record che può entrare nel piano di lancio.
+- **Seed condiviso**: suggerimento sull'ordine dei probe proveniente da evidenza pubblica; non è una
+  configurazione da copiare.
+- **Headroom**: memoria libera oltre il fabbisogno misurato.
+- **Benchmark**: misura ripetibile di una busta già scelta; da solo non è una calibrazione.
 
-## Record candidato e attivazione
+## Prima di iniziare
 
-Il risultato è `calibration-record/v2`. Prima viene scritto e validato come:
+Servono:
+
+- modello predefinito e, per `vstudio`, mmproj già presenti e verificabili;
+- `llama.cpp b10011` compatibile già disponibile;
+- almeno 28 GiB RAM totali e 22 GiB disponibili al preflight;
+- nessun servizio gestito attivo;
+- su CUDA, una sola GPU NVIDIA e nessun workload GPU intensivo concorrente.
+
+Controllare prima:
+
+```bash
+qwen-launcher validate
+qwen-launcher doctor
+qwen-launcher engine status
+qwen-launcher status
+```
+
+La calibrazione usa `llama_port` quando è libera. Nel branch corrente, se la porta è occupata,
+ciascun trial sceglie una porta temporanea su `127.0.0.1`; gli avvii ordinari restano severi sulla
+porta configurata. Questa correzione non è presente negli artefatti pubblici `0.1.0`.
+
+### Contesti GPU concorrenti
+
+Fuori da WDDM un processo compute già presente rende la misura inaffidabile e blocca il run. Su
+Windows/WDDM alcuni processi desktop sono inevitabili: il launcher cattura una popolazione iniziale
+per l'intero run usando PID, tempo di creazione e identità opaca dell'eseguibile. Un respawn dello
+stesso eseguibile è ammesso entro la molteplicità iniziale; file nuovi, identità illeggibili o istanze
+aggiuntive invalidano il run.
+
+## Uso normale
+
+Calibrare tutti i modi e attivare i risultati:
+
+```bash
+qwen-launcher calibrate --mode all
+```
+
+Calibrare un solo modo:
+
+```bash
+qwen-launcher calibrate --mode coding
+```
+
+La CLI mostra fasi e numero di operazioni. Dopo due processi completati aggiunge una stima
+best-effort del tempo rimanente. Un crash di un trial è isolato dal servizio di produzione; il
+motivo e i log vengono conservati.
+
+Al termine verificare:
+
+```bash
+qwen-launcher doctor
+qwen-launcher coding
+```
+
+Se il record è valido e ha headroom sufficiente, l'avvio mostra `local-calibration-record`; altrimenti
+spiega il motivo e usa la baseline.
+
+## Misurare senza attivare
+
+Per un esperimento o per preparare evidenza:
+
+```bash
+qwen-launcher calibrate --mode all --no-activate
+```
+
+I risultati vengono scritti come:
 
 ```text
 data_dir()/calibration/records/<modo>.candidate.json
 ```
 
-Nel percorso predefinito il candidato viene promosso atomicamente a `<modo>.json`; l'attivo
-precedente viene copiato in `<modo>.previous.json` come singolo slot di rollback. Quindi il normale
-comando resta sufficiente per calibrare e usare subito la busta.
+I lanci continuano a usare il record attivo precedente o la baseline. Dopo aver controllato
+`doctor`, promuovere i candidati senza ripetere i trial:
 
-Per il Gate o per esperimenti:
-
-```console
-qwen-launcher calibrate --mode coding --no-activate
-qwen-launcher calibrate --mode coding --activate
+```bash
+qwen-launcher calibrate --mode all --activate
 ```
 
-`--no-activate` lascia il risultato candidato e non cambia il piano di lancio. `--activate` promuove
-un candidato già validato senza rieseguire modello, hardware o benchmark. `doctor` distingue attivo,
-candidato, assente, invalido, superato e privo di headroom.
+La promozione è atomica. Se esiste già un attivo, ne viene conservata una copia in:
 
-I record storici `calibration-record/v1` prodotti da `calibration/v2` sono classificati come
-**superati** e non possono pilotare un lancio; il rimedio è rieseguire `calibrate`. Non esiste
-migrazione automatica.
+```text
+<modo>.previous.json
+```
 
-## Contesto esperto
+Esiste un solo slot precedente; non c'è un comando CLI di rollback automatico. Non rinominare o
+modificare manualmente i record.
 
-Un utente esperto può fissare un solo contesto approvato, incluso `98304` fra i gradini della scala
-automatica:
+## Contesto esplicito per utenti esperti
 
-```console
+La ricerca normale prova in ordine:
+
+```text
+131072 → 65536 → 32768 → 16384 → 8192
+```
+
+È possibile fissare uno dei target approvati:
+
+```bash
 qwen-launcher calibrate --mode coding --target-ctx 98304
 ```
 
-Il confronto resta a contesto fisso. Il percorso predefinito senza questa opzione continua a usare
-la scala `131072 → 65536 → 32768 → 16384 → 8192` e a massimizzare il contesto fattibile.
+Valori ammessi: `131072`, `98304`, `65536`, `32768`, `16384`, `8192`. `98304` è disponibile solo
+come target esplicito e non cambia la scala automatica. I candidati vengono sempre confrontati allo
+stesso contesto.
 
-## Riuso e headroom
+## Come funziona la ricerca v3
 
-Ogni caricamento ricostruisce schema, sessioni ABBA, mediane, vincitori dei round, deriva, tie-break,
-modello/digest, release/commit/contratto motore, OS, backend, hardware e driver. Il record attivo è
-usabile soltanto se:
+Questa sezione spiega l'algoritmo; non è necessaria per usare il comando.
 
-- RAM disponibile corrente ≥ fabbisogno RAM misurato + 2,0 GiB;
-- su CUDA, VRAM libera corrente ≥ fabbisogno VRAM misurato + 0,5 GiB.
+L'obiettivo è lessicografico:
 
-Una divergenza usa la baseline non ottimizzata con diagnostica. Un candidato non attivo non viene
-mai usato da `LaunchPlan`. Non esistono nearest-match o upload automatici.
+1. massimo contesto fattibile;
+2. throughput confermato a quel contesto;
+3. maggiore margine di memoria;
+4. configurazione più prudente.
 
-## Laboratorio storico `calibration/v1`
+Su CUDA il dominio di `n_cpu_moe` viene letto dai metadati del GGUF ed è `[0, block_count]`; per il
+modello appuntato il massimo atteso e verificato è 41. Un report condiviso può suggerire il primo
+punto, ma non restringe il dominio.
 
-`calibration/v1` resta disponibile per riprodurre il laboratorio esplicito:
+Per ogni modo il calibratore:
 
-```console
-qwen-launcher calibrate \
-  --mode coding \
-  --protocol v1 \
-  --candidate <id-1>:<ctx>:<n-cpu-moe-1> \
-  --candidate <id-2>:<ctx>:<n-cpu-moe-2> \
-  --settings <avvii>:<riserva-vram-gib>:<tolleranza-rilascio-gib>
+1. scende nella scala dei contesti solo se la configurazione più prudente non è fattibile;
+2. cerca il confine CUDA con al massimo 12 probe e processi freschi;
+3. monitora RAM e VRAM ogni 250 ms;
+4. richiede almeno 2,0 GiB RAM disponibili durante ogni trial;
+5. su CUDA richiede almeno 0,5 GiB VRAM libera e rilascio entro 0,125 GiB dalla baseline;
+6. considera la monotonia solo fra probe completati; un OOM parziale non inventa un picco;
+7. sceglie fino a due finalisti;
+8. li conferma in due round accoppiati: `A→B` e `B→A`;
+9. esegue un `benchmark/v1` completo in ciascuno dei quattro avvii;
+10. usa il throughput solo se lo stesso finalista vince entrambi i round; altrimenti preferisce
+    margine e prudenza.
+
+Una deriva della baseline VRAM oltre 0,125 GiB disabilita la vittoria per throughput, ma non elimina
+un finalista che ha rispettato le riserve assolute. Telemetria come utilizzo, clock, temperatura,
+potenza e throttle è raccolta quando disponibile solo per spiegare l'evidenza; non introduce soglie.
+
+Su CPU non esiste un asse di tuning verificato: v3 conferma la baseline del motore a `ctx=8192`
+invece di simulare una ricerca.
+
+## `benchmark/v1`
+
+Ogni sessione valida esegue:
+
+1. un warm-up completo escluso dai risultati;
+2. cinque richieste misurate;
+3. esattamente 256 completion token per richiesta;
+4. `max_tokens=256`, `ignore_eos=true` e seed `424242`;
+5. controllo di `finish_reason=length`, conteggio token e timing;
+6. riepilogo minimo, mediana e massimo.
+
+Le risorse del prompt e della richiesta sono immutabili nella wheel. Tok/s misura la velocità della
+busta nelle condizioni osservate, non la qualità semantica e non una promessa per un'altra macchina.
+La CLI corrente non espone un comando autonomo `benchmark`.
+
+## Record e riuso
+
+Un record attivo viene rivalidato a ogni lancio. Devono coincidere:
+
+- schema e ricostruzione di probe, sessioni, mediane e selezione;
+- modello, filename e digest;
+- release, commit e digest del contratto motore;
+- modo e backend;
+- OS, CPU/GPU, driver e identità hardware stabile;
+- memoria disponibile corrente.
+
+Il totale RAM registrato resta esatto; nel branch corrente il confronto ammette al massimo 1 MiB di
+differenza per assorbire il rumore di reporting osservato. Per il riuso servono fabbisogno RAM
+misurato + 2,0 GiB e, su CUDA, fabbisogno VRAM + 0,5 GiB.
+
+Un file candidato, previous, invalido o con schema non supportato non pilota mai il lancio. I record
+`calibration-record/v1` sono diagnosticati come superati; il rimedio è rieseguire `calibrate`, non
+convertirli a mano.
+
+## File privati
+
+I record vivono in:
+
+```text
+data_dir()/calibration/records/
 ```
 
-Su CPU un candidato usa `ID:CTX` e `--settings` contiene soltanto gli avvii. I valori sono sempre
-espliciti; v1 non monitora RAM, non attiva il risultato e genera soltanto un bundle bozza.
+I log e l'evidenza dettagliata dell'ultimo run vivono in:
 
-## Cache KV Q8
+```text
+data_dir()/calibration/evidence/<run-id>/
+```
 
-Il modello resta `UD-Q4_K_M`. Il ramo CUDA imposta `--cache-type-k q8_0 --cache-type-v q8_0` con
-mmap dopo i GO Ubuntu e Windows; il ramo CPU è invariato. `--no-mmap` è stato rifiutato dalle misure.
+Dopo che un nuovo run è stato preservato, il launcher elimina soltanto le precedenti directory di
+evidenza con nome UUID gestito. Questi file possono contenere dettagli operativi e non vanno
+pubblicati senza revisione.
 
-## Bundle e privacy
+## Evidenza condivisa e limite empirico
 
-Il bundle condivisibile del laboratorio resta separato dai record privati. Contiene report, misure,
-proposta non distribuibile, log redatti, manifest e guida. `validate --path <bundle>` verifica
-schema, digest, riferimenti relativi e pattern privati POSIX/Windows. Per l'evidenza pubblica v3 si
-usa il flusso manuale `calibration-report/v2` di
-[`calibration-contributing.md`](calibration-contributing.md), senza copiare record o log locali.
-Nessun comando crea branch, issue, PR o upload; la revisione umana resta obbligatoria. Per la
-separazione fra misura, calibrazione e regressione vedere [`benchmarks.md`](benchmarks.md).
+La wheel distribuisce una policy `calibration-policy/v2` e un report
+`calibration-report/v2`. Il report copre realmente un solo scope:
+
+- Windows 11 build 10.0.26200;
+- CUDA, driver NVIDIA 610.47;
+- RTX 2060 SUPER 8 GiB;
+- 31,92 GiB RAM;
+- tutti e tre i modi.
+
+Lo stato complessivo resta `GATE-PARTIAL`: le costanti non sono state ripetute su hardware
+materialmente diverso. I valori osservati non vengono trasferiti. Il loader estrae soltanto
+`n_cpu_moe` come seed d'ordine per modello, motore, backend e modo esatti; la macchina dell'utente
+esegue comunque la ricerca completa.
+
+Le fonti con checksum sono in
+[`evidence/calibration/windows-11-rtx-2060-super-v3/`](../evidence/calibration/windows-11-rtx-2060-super-v3/).
+
+## Contribuire nuova evidenza
+
+La pubblicazione è manuale: il launcher non esegue login, upload, commit, branch remoto, issue o
+pull request.
+
+1. Eseguire un run reale senza attivazione:
+
+   ```bash
+   qwen-launcher calibrate --mode all --no-activate
+   ```
+
+2. Non copiare record o log grezzi nel repository. Preparare un report `calibration-report/v2`
+   privacy-safe con soli modi completati e misure reali.
+3. Usare un id ASCII minuscolo con trattini, per esempio `<os>-<gpu>-v3`, e salvare il report in
+   `src/qwen_launcher/resources/content/calibrations/<id>.json`.
+4. Aggiungere fonti revisionate e un manifest sotto `evidence/calibration/<id>/`.
+5. Aggiornare il riferimento e lo SHA-256 esatto nella policy.
+6. Mantenere `gate-partial` finché il nuovo insieme di prove non autorizza onestamente uno scope più
+   ampio.
+7. Eseguire validazione, suite, build e verifica wheel.
+
+Non includere hostname, username, seriali, UUID, percorsi assoluti, credenziali, configurazione,
+prompt utente o record privati. Non aggiungere `profile/v1`, nearest-match o promesse tok/s.
+
+Checklist per la pull request:
+
+- [ ] run `calibration/v3` reale sul modello e motore appuntati;
+- [ ] report limitato ai modi completati, senza campi ricostruiti;
+- [ ] `privacy_reviewed=true` dopo revisione dei byte finali;
+- [ ] scope e limite di portabilità espliciti;
+- [ ] seed di solo ordinamento;
+- [ ] SHA-256 e manifest aggiornati;
+- [ ] PR di contenuto, senza modifiche al core Python;
+- [ ] `qwen-launcher validate`, Ruff, pytest, build e verifica wheel verdi.
+
+## Laboratorio v1
+
+`--protocol v1` resta disponibile per prove esplicite e compatibilità del bundle. Richiede candidati
+e impostazioni tecniche, misura solo la lista fornita e produce una bozza sotto
+`data_dir()/calibrations/`. Non monitora la RAM, non crea un record v3 e non attiva risultati. Per un
+nuovo utente il percorso corretto è sempre il protocollo v3 predefinito.
+
+**Successivo:** [Operazioni e diagnostica](operations.md)

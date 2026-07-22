@@ -37,6 +37,7 @@ source-include = [
     "CONTRIBUTING.md",
     "IMPLEMENTATION_SPEC.md",
     "docs/**",
+    "evidence/**",
     "install.ps1",
     "install.sh",
 ]

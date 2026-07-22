@@ -1,4 +1,4 @@
-"""Uninstall CLI tests for preview, confirmation, confinement, and idempotence (Step 6A)."""
+"""Test uninstall preview, confirmation, confinement, and idempotence."""
 
 from pathlib import Path
 from types import SimpleNamespace

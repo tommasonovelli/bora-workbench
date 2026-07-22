@@ -1,8 +1,7 @@
 """Present the uninstall preview, confirmation, and confined removal.
 
-Step 6A requires an exact preview and an explicit confirmation before any managed root is deleted,
-a reminder about removing the tool with uv, and contractual exit-code mapping (spec sections 5.11
-and Step 6A).
+The uninstall contract requires an exact preview and explicit confirmation before deletion,
+a reminder about removing the tool with uv, and the exit-code mapping in spec sections 5.10-5.11.
 """
 
 from __future__ import annotations
@@ -58,7 +57,7 @@ def _perform(roots: tuple[ManagedRoot, ...], stdout: Console, stderr: Console) -
 
 
 def _require_services_stopped(stderr: Console) -> None:
-    """Refuse to orphan a live managed process by deleting its state (Step 6A)."""
+    """Refuse to orphan a live managed process by deleting its state (section 5.10)."""
     try:
         report = status_services()
     except ProcessError as error:

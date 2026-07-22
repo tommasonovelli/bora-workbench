@@ -1,4 +1,4 @@
-"""Synthetic content builders used only by Step 2B validation tests."""
+"""Provide synthetic content builders used only by validation tests."""
 
 from __future__ import annotations
 

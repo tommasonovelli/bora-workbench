@@ -36,7 +36,7 @@ class Candidate:
 
 @dataclass(frozen=True, slots=True)
 class CalibrationSettings:
-    """Hold policy-free Step 5A values supplied explicitly by the operator."""
+    """Hold policy-free calibration/v1 values supplied explicitly by the operator."""
 
     candidates: tuple[Candidate, ...]
     stable_start_runs: int
@@ -117,7 +117,7 @@ def _validate_candidate_set(candidates: tuple[Candidate, ...], backend: Backend)
 
 
 def validate_settings(settings: CalibrationSettings, backend: Backend) -> None:
-    """Require complete explicit Step 5A settings without comparing unlike contexts."""
+    """Require complete calibration/v1 settings without comparing unlike contexts."""
     if not settings.candidates:
         raise CalibrationError("at least one explicit candidate is required without a policy")
     _validate_candidate_set(settings.candidates, backend)

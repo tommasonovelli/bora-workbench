@@ -159,7 +159,7 @@ def _proposal(root: Path, document: Document | None) -> list[ValidationIssue]:
 
 
 def validate_bundle(root: Path) -> ValidationResult:
-    """Validate one local Step 5A bundle, including its shareable privacy boundary."""
+    """Validate one local calibration/v1 bundle and its shareable privacy boundary."""
     if not root.is_dir():
         return ValidationResult((_issue(str(root), "$", "bundle path must be a directory"),))
     document, issues = _report(root)

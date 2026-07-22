@@ -9,7 +9,7 @@ from tests.content_fixtures import build_valid_content, copy_resource_root, read
 
 
 def test_installed_content_and_complete_engine_lock_are_valid() -> None:
-    """Accept production modes and the complete verified Step 4 asset matrix."""
+    """Accept production modes and the complete verified engine asset matrix."""
     result = validate_resources()
 
     assert result.errors == ()

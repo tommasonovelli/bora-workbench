@@ -1,4 +1,4 @@
-"""Release-workflow tests for immutable actions and least-privilege publication (Step 6A)."""
+"""Test release workflow immutability and least-privilege publication."""
 
 from __future__ import annotations
 

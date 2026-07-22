@@ -30,7 +30,7 @@ def show_validation(result: ValidationResult, stdout: Console, stderr: Console) 
 
 
 def run_validate(source: Path | None, stdout: Console, stderr: Console) -> None:
-    """Validate installed content by default or one explicit local Step 5A bundle."""
+    """Validate installed content or one explicit local calibration/v1 bundle."""
     if source is None:
         result = validate_resources()
     else:

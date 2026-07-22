@@ -171,10 +171,10 @@
     "redistributed_by_launcher": false
   },
   "raw_evidence": {
-    "windows": "docs/spike-0/windows-b10011",
-    "windows_checksums": "docs/spike-0/windows-b10011/SHA256SUMS",
-    "ubuntu": "docs/spike-0/ubuntu-b10011",
-    "ubuntu_and_research_checksums": "docs/spike-0/SHA256SUMS"
+    "windows": "evidence/engine/spike-0/windows-b10011",
+    "windows_checksums": "evidence/engine/spike-0/windows-b10011/SHA256SUMS",
+    "ubuntu": "evidence/engine/spike-0/ubuntu-b10011",
+    "ubuntu_and_research_checksums": "evidence/engine/spike-0/SHA256SUMS"
   },
   "command_contract_status": {
     "ubuntu_cpu": "verified",
@@ -288,9 +288,9 @@
   ],
   "benchmark_protocol": {
     "id": "benchmark/v1",
-    "prompt": "docs/spike-0/benchmark-v1-prompt.txt",
+    "prompt": "evidence/engine/spike-0/benchmark-v1-prompt.txt",
     "prompt_sha256": "1c7182235411da2d4fe6fca130e3effb0b0d965569c52abd8fd45327103ddb2e",
-    "request": "docs/spike-0/benchmark-v1-request.json",
+    "request": "evidence/engine/spike-0/benchmark-v1-request.json",
     "request_sha256": "025dc91aeb61a790d5fd36c27f127e04761ae7f1c3d6b542d0cfd9d37bc5c19f",
     "completion_tokens": 256,
     "exact_token_mechanism": "max_tokens=256 plus ignore_eos=true; require finish_reason=length, completion_tokens=256 and predicted_n=256",
@@ -322,7 +322,7 @@
         "median": 11.042477607602365,
         "max": 11.233961106973464
       },
-      "raw_summary": "docs/spike-0/ubuntu-b10011/benchmarks/cpu-coding/summary.json"
+      "raw_summary": "evidence/engine/spike-0/ubuntu-b10011/benchmarks/cpu-coding/summary.json"
     },
     {
       "os": "ubuntu-24.04-x86_64",
@@ -344,7 +344,7 @@
         "median": 11.2612835531813,
         "max": 11.506972955916606
       },
-      "raw_summary": "docs/spike-0/ubuntu-b10011/benchmarks/cpu-studio/summary.json"
+      "raw_summary": "evidence/engine/spike-0/ubuntu-b10011/benchmarks/cpu-studio/summary.json"
     },
     {
       "os": "ubuntu-24.04-x86_64",
@@ -366,7 +366,7 @@
         "median": 11.457451879709108,
         "max": 11.490032329629638
       },
-      "raw_summary": "docs/spike-0/ubuntu-b10011/benchmarks/cpu-vstudio/summary.json"
+      "raw_summary": "evidence/engine/spike-0/ubuntu-b10011/benchmarks/cpu-vstudio/summary.json"
     },
     {
       "os": "ubuntu-24.04-x86_64",
@@ -388,7 +388,7 @@
         "median": 31.523719936868826,
         "max": 31.54728074763112
       },
-      "raw_summary": "docs/spike-0/ubuntu-b10011/benchmarks/cuda-coding/summary.json"
+      "raw_summary": "evidence/engine/spike-0/ubuntu-b10011/benchmarks/cuda-coding/summary.json"
     },
     {
       "os": "ubuntu-24.04-x86_64",
@@ -410,7 +410,7 @@
         "median": 34.29393411304701,
         "max": 34.38803403878057
       },
-      "raw_summary": "docs/spike-0/ubuntu-b10011/benchmarks/cuda-studio/summary.json"
+      "raw_summary": "evidence/engine/spike-0/ubuntu-b10011/benchmarks/cuda-studio/summary.json"
     },
     {
       "os": "ubuntu-24.04-x86_64",
@@ -432,7 +432,7 @@
         "median": 35.213737759443404,
         "max": 35.2533510995534
       },
-      "raw_summary": "docs/spike-0/ubuntu-b10011/benchmarks/cuda-vstudio/summary.json"
+      "raw_summary": "evidence/engine/spike-0/ubuntu-b10011/benchmarks/cuda-vstudio/summary.json"
     },
     {
       "os": "windows-11-x86_64",
@@ -454,7 +454,7 @@
         "median": 8.709636110042442,
         "max": 8.966579317239818
       },
-      "raw_summary": "docs/spike-0/windows-b10011/cpu-coding/benchmark-summary.json"
+      "raw_summary": "evidence/engine/spike-0/windows-b10011/cpu-coding/benchmark-summary.json"
     },
     {
       "os": "windows-11-x86_64",
@@ -476,7 +476,7 @@
         "median": 9.086863565038534,
         "max": 9.2666885640448
       },
-      "raw_summary": "docs/spike-0/windows-b10011/cpu-studio/benchmark-summary.json"
+      "raw_summary": "evidence/engine/spike-0/windows-b10011/cpu-studio/benchmark-summary.json"
     },
     {
       "os": "windows-11-x86_64",
@@ -498,7 +498,7 @@
         "median": 8.39381305155303,
         "max": 8.49847993399337
       },
-      "raw_summary": "docs/spike-0/windows-b10011/cpu-vstudio/benchmark-summary.json"
+      "raw_summary": "evidence/engine/spike-0/windows-b10011/cpu-vstudio/benchmark-summary.json"
     },
     {
       "os": "windows-11-x86_64",
@@ -520,7 +520,7 @@
         "median": 19.28079472423229,
         "max": 19.597561022288396
       },
-      "raw_summary": "docs/spike-0/windows-b10011/cuda-coding/benchmark-summary.json"
+      "raw_summary": "evidence/engine/spike-0/windows-b10011/cuda-coding/benchmark-summary.json"
     },
     {
       "os": "windows-11-x86_64",
@@ -542,7 +542,7 @@
         "median": 24.39289095872732,
         "max": 24.786720437067338
       },
-      "raw_summary": "docs/spike-0/windows-b10011/cuda-studio/benchmark-summary.json"
+      "raw_summary": "evidence/engine/spike-0/windows-b10011/cuda-studio/benchmark-summary.json"
     },
     {
       "os": "windows-11-x86_64",
@@ -564,7 +564,7 @@
         "median": 24.364556194850206,
         "max": 24.495280017889208
       },
-      "raw_summary": "docs/spike-0/windows-b10011/cuda-vstudio/benchmark-summary.json"
+      "raw_summary": "evidence/engine/spike-0/windows-b10011/cuda-vstudio/benchmark-summary.json"
     }
   ],
   "observations": {
@@ -592,7 +592,7 @@
   "license_verification": {
     "engine": {
       "license": "MIT",
-      "evidence": "docs/spike-0/research/llama.cpp-bf2c86ddc-LICENSE",
+      "evidence": "evidence/engine/spike-0/research/llama.cpp-bf2c86ddc-LICENSE",
       "sha256": "94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d",
       "asset_archives_include_license": false,
       "redistribution_condition": "preserve the MIT copyright and permission notice"
@@ -600,7 +600,7 @@
     "cuda_runtime": {
       "license": "NVIDIA CUDA Toolkit EULA v13.3",
       "last_updated": "2026-01-26",
-      "evidence": "docs/spike-0/research/nvidia-cuda-eula.html",
+      "evidence": "evidence/engine/spike-0/research/nvidia-cuda-eula.html",
       "sha256": "6180cc2a02db890cf87ba52f078b7a222b04dcb3c2650865763d4f32ad663a5c",
       "asset_archive_members": [
         "cublas64_13.dll",
