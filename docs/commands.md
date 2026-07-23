@@ -55,7 +55,7 @@ Mostra versione, configurazione risolta, OS, CPU, RAM, backend, GPU/VRAM, numero
 motore gestito, quattro directory pubbliche e validazione dei contenuti. Per ogni modo valuta anche
 lo stato del record locale:
 
-- attivo e valido;
+- attivo e valido, con i parametri calibrati applicati ai lanci (`ctx` e, su CUDA, `--n-cpu-moe`);
 - candidato in attesa di attivazione;
 - assente;
 - incompatibile o obsoleto;

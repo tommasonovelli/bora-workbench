@@ -9,6 +9,8 @@ changelog: sono in `IMPLEMENTATION_SPEC.md`.
 
 - `calibration/v5` aggiunge 96K (`98304`) e 48K (`49152`) alla scala automatica, porta il cap a 14
   probe e produce `calibration-record/v4`; i record v2/v3 storici restano leggibili.
+- `doctor` mostra i parametri calibrati del record attivo valido (`ctx` e, su CUDA,
+  `--n-cpu-moe`) invece della sola etichetta "valid".
 
 ## [0.1.1] - 2026-07-23
 

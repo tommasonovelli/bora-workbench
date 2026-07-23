@@ -73,6 +73,15 @@ def build_doctor_table(data: DoctorData) -> Table:
     return table
 
 
+def _calibrated_parameters(ctx: int | None, n_cpu_moe: int | None) -> str:
+    """Show the record's launch parameters so "calibrated" is verifiable at a glance."""
+    if ctx is None:
+        return ""
+    if n_cpu_moe is None:
+        return f" (ctx {ctx})"
+    return f" (ctx {ctx}, --n-cpu-moe {n_cpu_moe})"
+
+
 def _record_line(mode_id: str, evaluation: object) -> str:
     """Describe active, candidate, superseded, invalid, and headroom record states."""
     from qwen_launcher._calibration_reuse import RecordEvaluation
@@ -87,7 +96,8 @@ def _record_line(mode_id: str, evaluation: object) -> str:
         candidate_detail = evaluation.candidate_diagnostics[0]
         suffix = f" Pending candidate is {evaluation.candidate_status}: {candidate_detail}"
     if evaluation.status == "valid":
-        return f"[green]Calibration[/green] {mode_id}: active record valid.{suffix}"
+        parameters = _calibrated_parameters(evaluation.ctx, evaluation.n_cpu_moe)
+        return f"[green]Calibration[/green] {mode_id}: active record valid{parameters}.{suffix}"
     if evaluation.status == "missing":
         return (
             f"[yellow]Calibration[/yellow] {mode_id}: no active record; "
