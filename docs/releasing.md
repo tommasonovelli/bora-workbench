@@ -5,13 +5,12 @@ serve sempre un'autorizzazione umana esplicita per push, tag, GitHub Release e P
 
 ## Stato pubblico
 
-- versione pubblica corrente: `0.1.1`;
-- tag remoti: `v0.1.0` e `v0.1.1`;
-- GitHub Release `v0.1.1`: pubblicata con installer, wheel, sdist e `SHA256SUMS`;
-- i digest `0.1.1` sono quelli del manifest allegato alla release e derivano dal build job verde;
-- PyPI: non ancora pubblicata e fuori dall'autorizzazione di `0.1.1`;
-- release pubblica `v0.1.1`: correzioni e `calibration/v4`;
-- branch `main`: modifiche unreleased con `calibration/v5`.
+- versione pubblica corrente: `0.1.2`;
+- tag remoti: `v0.1.0`, `v0.1.1` e `v0.1.2`;
+- GitHub Release `v0.1.2`: pubblicata con installer, wheel, sdist e `SHA256SUMS`;
+- i digest `0.1.2` sono quelli del manifest allegato alla release e derivano dal build job verde;
+- PyPI: non ancora pubblicata ed esclusa dall'autorizzazione di `0.1.2`;
+- release pubblica `v0.1.2`: `calibration/v5` e stabilizzazione successiva a `0.1.1`.
 
 Gli artefatti pubblicati sono immutabili. Non ricostruire, sostituire o ricaricare file con la stessa
 versione per includere correzioni successive: serve una nuova versione.
@@ -51,6 +50,17 @@ Controllare:
 Ogni modifica successiva alla build invalida gli artefatti: rimuovere `dist/`, ripetere tutti i
 controlli e ricostruire.
 
+### Release 0.1.2
+
+La `0.1.2` include `calibration/v5`, i parametri calibrati in `doctor`, la presentazione Rich
+condivisa con valori dinamici letterali, la percentuale reale della compilazione Ubuntu CUDA, le
+action Node 24 appuntate e la rimozione automatica dell'installazione `uv tool` corrente.
+
+Il 23 luglio 2026 il maintainer ha deciso `RELEASE` e autorizzato commit, push, tag e GitHub Release,
+rinunciando esplicitamente a ripetere prima un Gate manuale multipiattaforma. Questo non equivale a
+un Gate superato: upgrade reale da `0.1.1`, calibrazione v5 e percorsi completi su macchine pulite
+restano verifiche post-release. PyPI è escluso e i tre candidati locali restano inattivi.
+
 ## Release candidate e gate umano
 
 Una release candidate viene preparata localmente senza tag o upload. Prima della finalizzazione il
@@ -70,8 +80,8 @@ attestato anche il Gate reale Windows v4, incluso il riuso del record, e ha deci
 test sui due sistemi. I dettagli privati del Gate Windows non vengono ricostruiti come misure o
 aggiunti all'evidenza pubblica.
 
-Limiti e controlli non eseguiti devono essere espliciti. La pubblicazione `0.1.1` è stata autorizzata
-per push, tag e GitHub Release, escludendo PyPI.
+Limiti e controlli non eseguiti devono essere espliciti. La `0.1.2` è stata autorizzata per commit,
+push, tag e GitHub Release senza un nuovo Gate manuale; PyPI resta escluso.
 
 ## Versione, tag e commit
 
@@ -101,7 +111,7 @@ Un push di un tag `v*` attiva `.github/workflows/release.yml`:
 
 Le action sono appuntate a SHA completo. I permessi globali sono `contents: read`; solo il job
 `publish`, protetto dall'environment `pypi`, riceve `id-token: write`. Non esiste un token PyPI nel
-repository. Per `v0.1.1` la variabile resta assente e il job viene saltato.
+repository. Per `v0.1.2` la variabile resta assente e il job viene saltato.
 
 ## Trusted Publishing PyPI
 
@@ -134,7 +144,7 @@ La release allega gli stessi file prodotti dal job build:
 - `SHA256SUMS`.
 
 Titolo, note e prerelease flag devono essere coerenti con changelog e metadata. Non caricare una
-build locale diversa da quella passata attraverso la matrice release. La `v0.1.1` è una release
+build locale diversa da quella passata attraverso la matrice release. La `v0.1.2` è una release
 GitHub stabile e non una prerelease.
 
 ## Verifica dopo la pubblicazione

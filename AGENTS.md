@@ -19,16 +19,15 @@ apply here.
 - This is a Python 3.12 launcher for a local, calibrated Qwen model served by an exact, verified
   `llama.cpp` release. It is not a generic model manager or plugin framework.
 - Work one implementation step at a time and do not anticipate later milestones.
-- **Steps 3, 4, 5, 5A, 5B, 6A and 6B are complete.** Versions `0.1.0` and `0.1.1`, their tags and
-  GitHub Releases are public; release artifacts come only from their green release test/build jobs.
-  The maintainer attested real Ubuntu and Windows v4 Gates and decided `RELEASE` on 23 July 2026.
-  PyPI remains unconfigured and `0.1.1` was explicitly authorized for GitHub only; do not upload,
-  rebuild or replace published artifacts. Version 0.1.1 uses `calibration/v4`, a 0,3 GiB VRAM
-  reserve and `calibration-record/v3`; historical v2 records keep their 0,5 GiB reuse reserve. The
-  unreleased branch uses `calibration/v5` and `calibration-record/v4`, with 96K and 48K in the
-  automatic scale. Q8 remains pinned, the `n_cpu_moe` domain is `[0, 41]`, and calibration coverage
-  remains `GATE-PARTIAL`. The three local candidates remain inactive. Do not activate candidates or
-  begin Step 7 without an explicit request.
+- **Steps 3, 4, 5, 5A, 5B, 6A and 6B are complete.** Versions `0.1.0`, `0.1.1` and `0.1.2`, their
+  tags and GitHub Releases are public; release artifacts come only from their green release
+  test/build jobs. The maintainer authorized `0.1.2` on 23 July 2026 while explicitly waiving a new
+  manual cross-platform Gate; do not claim that Gate passed. PyPI remains unconfigured and excluded;
+  do not upload, rebuild or replace published artifacts. Version 0.1.2 uses `calibration/v5` and
+  `calibration-record/v4`, with 96K and 48K in the automatic scale; historical v2/v3 records remain
+  readable with their original reserves. Q8 remains pinned, the `n_cpu_moe` domain is `[0, 41]`, and
+  calibration coverage remains `GATE-PARTIAL`. The three local candidates remain inactive. Do not
+  activate candidates or begin Step 7 without an explicit request.
 - Never invent engine flags, checksums, source commits, benchmark results, hardware support, profiles,
   health responses, or compatibility claims.
 

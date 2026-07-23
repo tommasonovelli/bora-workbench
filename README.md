@@ -1,7 +1,7 @@
 # qwen-launcher
 
 [![CI](https://github.com/tommasonovelli/qwen-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/tommasonovelli/qwen-launcher/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/tommasonovelli/qwen-launcher.svg)](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.1)
+[![Release](https://img.shields.io/github/v/release/tommasonovelli/qwen-launcher.svg)](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.2)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-31213/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -38,11 +38,10 @@ Se è la prima volta che apri il progetto, il percorso più semplice è:
 > prestazioni non hanno garanzia di stabilità. Non usarla per workload critici senza verifiche
 > indipendenti e backup dei dati locali.
 
-La release corrente è **`0.1.1`**, pubblicata su
-[GitHub Releases](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.1). Include
-`calibration/v4`, isolamento delle porte temporanee e progresso visibile durante calibrazione e
-installazione del motore. Il branch successivo alla release usa `calibration/v5`, che prova anche
-96K e 48K nella scala automatica. PyPI non fa parte di questa pubblicazione e resta indisponibile.
+La release corrente è **`0.1.2`**, pubblicata su
+[GitHub Releases](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.2). Usa
+`calibration/v5`, uniforma la presentazione terminale, mostra il progresso della compilazione Ubuntu
+CUDA e completa `uninstall` per le installazioni `uv tool`. PyPI resta indisponibile.
 
 ## Requisiti
 
@@ -64,8 +63,8 @@ multipiattaforma. Usare il digest della wheel riportato nel manifest allegato.
 ### Ubuntu
 
 ```bash
-base="https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.1"
-wheel="qwen_launcher-0.1.1-py3-none-any.whl"
+base="https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.2"
+wheel="qwen_launcher-0.1.2-py3-none-any.whl"
 curl --fail --location "$base/install.sh" --output install.sh
 curl --fail --location "$base/$wheel" --output "$wheel"
 curl --fail --location "$base/SHA256SUMS" --output SHA256SUMS
@@ -80,8 +79,8 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 Da PowerShell:
 
 ```powershell
-$base = "https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.1"
-$wheel = "qwen_launcher-0.1.1-py3-none-any.whl"
+$base = "https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.2"
+$wheel = "qwen_launcher-0.1.2-py3-none-any.whl"
 Invoke-WebRequest "$base/install.ps1" -OutFile install.ps1
 Invoke-WebRequest "$base/$wheel" -OutFile $wheel
 Invoke-WebRequest "$base/SHA256SUMS" -OutFile SHA256SUMS

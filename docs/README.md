@@ -12,7 +12,7 @@ La lettura consigliata è lineare:
    directory gestite;
 4. [Architettura](architecture.md) — componenti, flussi, contratti, lifecycle e confini di
    sicurezza;
-5. [Calibrazione](calibration.md) — ricerca locale v4, benchmark, record, riuso ed evidenza
+5. [Calibrazione](calibration.md) — ricerca locale v5, benchmark, record, riuso ed evidenza
    condivisa;
 6. [Operazioni e diagnostica](operations.md) — controlli ordinari, errori e recupero;
 7. [Sviluppo](development.md) — struttura del repository, contenuti, test, packaging e contributi;
@@ -37,13 +37,12 @@ quotidiano del launcher.
 
 ## Stato corrente
 
-La release pubblica è `0.1.1`, con correzioni runtime, progresso interattivo e `calibration/v4` con
-record v3 e riserva VRAM 0,3 GiB. Il branch successivo usa `calibration/v5`, record v4 e una scala
-che include 96K e 48K. Il maintainer ha attestato i Gate reali Ubuntu e Windows della release e ha
-autorizzato la pubblicazione su GitHub il 23 luglio 2026.
+La release pubblica è `0.1.2`: usa `calibration/v5`, record v4 e una scala che include 96K e 48K;
+aggiunge inoltre UX terminale uniforme, progresso della compilazione Ubuntu CUDA e disinstallazione
+completa del tool uv.
 
-PyPI resta indisponibile ed è escluso da questa pubblicazione. Gli artefatti verificati sono nella
-GitHub Release `v0.1.1`; non vanno ricostruiti o sostituiti.
+PyPI resta indisponibile. Gli artefatti verificati sono nella GitHub Release `v0.1.2` e non vanno
+ricostruiti o sostituiti.
 
 ## Limiti attuali
 

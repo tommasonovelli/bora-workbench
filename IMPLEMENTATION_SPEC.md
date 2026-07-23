@@ -29,11 +29,17 @@ Aggiornato al 23 luglio 2026.
   progresso runtime; PyPI è escluso dall'autorizzazione di questa release.
 - [x] Sul branch successivo alla release, `calibration/v5` inserisce 96K e 48K nella scala automatica
   e conserva la lettura dei record v2/v3.
+- [x] Versione `0.1.2`, tag `v0.1.2` e GitHub Release distribuiscono `calibration/v5` e la
+  stabilizzazione successiva a `0.1.1`; PyPI resta escluso.
+- [x] Il maintainer ha deciso `RELEASE` il 23 luglio 2026 rinunciando esplicitamente a un nuovo Gate
+  manuale multipiattaforma; questa rinuncia non viene descritta come Gate superato.
 
 ### Lavoro aperto
 
 - [ ] Configurare il Trusted Publisher PyPI e rieseguire solo il job `publish` fallito di
   `29739366272`; non ricostruire gli artefatti `0.1.0`.
+- [ ] Eseguire come verifica post-release `0.1.2` l'upgrade reale da `0.1.1`, la calibrazione v5
+  senza attivazione e la disinstallazione completa su Ubuntu e Windows.
 - [ ] Stabilizzare ulteriormente la serie 0.1 prima di iniziare la 0.2.
 - [~] Ripetere `calibration/v5 --no-activate` su hardware materialmente diverso; la copertura resta
   `GATE-PARTIAL` e nessuna busta viene trasferita fra host.
@@ -140,6 +146,7 @@ Gli identificatori restano stabili perché codice, test ed evidenza li citano.
 | D-054 | Il job PyPI del workflow release è opt-in tramite `PYPI_PUBLISH_ENABLED`; `v0.1.1` pubblica soltanto su GitHub come autorizzato. |
 | D-055 | `calibration/v5` inserisce `98304` e `49152` nella scala automatica, porta il cap a 14 probe e produce `calibration-record/v4`; l'esecuzione v4 è ritirata ma i record v2/v3 restano leggibili. |
 | D-056 | `uninstall` rimuove con una sola conferma le quattro radici e la propria installazione `uv tool`; un helper sul Python base attende l'uscita del processo per evitare lock Windows. Installazioni non gestite da uv restano esplicitamente invariate e uv stesso non viene rimosso. |
+| D-057 | La `0.1.2` raccoglie `calibration/v5` e la stabilizzazione terminale, build, CI e uninstall successiva a `0.1.1`; il maintainer autorizza commit, push, tag e GitHub Release senza un nuovo Gate manuale, mantiene inattivi i candidati ed esclude PyPI. |
 
 Una nuova decisione durevole aggiorna questa tabella nello stesso step che la autorizza.
 
@@ -449,9 +456,21 @@ La 0.1.1 distribuisce D-051, D-052, UX di progresso e D-053. Il maintainer ha at
 Ubuntu e Windows v4, incluso il riuso del record, e ha deciso `RELEASE` il 23 luglio 2026. La
 pubblicazione autorizzata è limitata a tag e GitHub Release; il job PyPI resta disabilitato.
 
-### 7.3 Evidenza eterogenea
+### 7.3 Release 0.1.2
 
-Quando disponibile, ripetere v4 con `--no-activate` su hardware materialmente diverso, revisionare
+La versione `0.1.2` raccoglie `calibration/v5`, i parametri calibrati in `doctor`, la presentazione
+terminale condivisa con testo dinamico letterale, la percentuale di compilazione Ubuntu CUDA, le
+action Node 24 e la disinstallazione automatica del tool uv.
+
+Il 23 luglio 2026 il maintainer ha deciso `RELEASE` e autorizzato commit, push, tag e GitHub Release
+senza ripetere prima installazione pulita, upgrade da `0.1.1`, calibrazione v5 e uninstall completa
+su entrambe le piattaforme. Il workflow release deve comunque essere verde e resta l'unica fonte
+degli artefatti. Le verifiche manuali omesse diventano post-release, non un Gate superato. PyPI e
+l'attivazione dei tre candidati locali restano esclusi.
+
+### 7.4 Evidenza eterogenea
+
+Quando disponibile, ripetere v5 con `--no-activate` su hardware materialmente diverso, revisionare
 privacy e aggiornare report/policy in una PR dichiarativa. L'esito non viene ricostruito a mano e non
 trasforma retroattivamente l'unico host corrente in prova universale.
 
@@ -583,6 +602,10 @@ Push, tag, GitHub Release, PyPI e impostazioni remote restano operazioni autoriz
 - [ ] Installazione esplicita da PyPI verificata su Ubuntu e Windows.
 - [x] Correzioni post-release distribuite solo con la nuova versione autorizzata `0.1.1`.
 - [x] `calibration/v4` verificata realmente su Ubuntu e Windows prima della 0.1.1.
+- [x] La decisione `RELEASE` per `0.1.2` è esplicita e registra che il Gate manuale non è stato
+  ripetuto.
+- [x] La pubblicazione `0.1.2` usa soltanto gli artefatti del workflow verde autorizzato.
+- [ ] Completare le verifiche manuali post-release `0.1.2` su Ubuntu e Windows.
 - [~] Evidenza eterogenea aggiunta quando disponibile, senza trasferire buste fra host.
 
 ### Milestone 0.2

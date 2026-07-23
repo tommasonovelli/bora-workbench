@@ -23,7 +23,7 @@ def _resource_probe() -> str:
         "from importlib.metadata import version; "
         "from qwen_launcher.profiles import load_catalog; "
         "from qwen_launcher.resources import read_json, read_text, resource; "
-        "assert version('qwen-launcher') == '0.1.1'; "
+        "assert version('qwen-launcher') == '0.1.2'; "
         "assert 'Spike 0' in read_text('README.txt'); "
         "lock = read_json('engine.lock'); "
         "assert lock['release'] == 'b10011' and lock['assets_complete']; "

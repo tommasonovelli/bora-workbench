@@ -67,7 +67,7 @@ def test_version() -> None:
     """Expose the package version through the eager global option."""
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert result.stdout.strip() == "0.1.1"
+    assert result.stdout.strip() == "0.1.2"
 
 
 def test_validate_passes_with_complete_engine_assets() -> None:

@@ -5,6 +5,16 @@ changelog: sono in `IMPLEMENTATION_SPEC.md`.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-07-23
+
+Release di stabilizzazione con `calibration/v5`, UX terminale uniforme, progresso della compilazione
+Ubuntu CUDA e disinstallazione completa delle installazioni gestite da uv.
+
+### Fixed
+
+- I valori dinamici della CLI vengono resi come testo letterale: parentesi quadre e sequenze simili
+  al markup Rich non vengono più nascoste, reinterpretate o trasformate in errori non gestiti.
+
 ### Changed
 
 - `calibration/v5` aggiunge 96K (`98304`) e 48K (`49152`) alla scala automatica, porta il cap a 14
@@ -17,6 +27,13 @@ changelog: sono in `IMPLEMENTATION_SPEC.md`.
   indicatore indeterminato.
 - `uninstall` usa una sola conferma per rimuovere le radici gestite e la propria installazione
   `uv tool`, senza rimuovere uv o la cache Hugging Face.
+- I workflow CI e release usano release Node 24 delle action, sempre appuntate a SHA completo.
+
+### Known limitations
+
+- La copertura di calibrazione resta `GATE-PARTIAL` finché manca hardware materialmente diverso.
+- Il maintainer ha autorizzato la pubblicazione GitHub senza ripetere un Gate manuale multipiattaforma
+  per `0.1.2`; PyPI resta indisponibile ed escluso.
 
 ## [0.1.1] - 2026-07-23
 
