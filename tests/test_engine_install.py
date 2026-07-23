@@ -11,7 +11,14 @@ import pytest
 
 import qwen_launcher._engine_install as installer
 import qwen_launcher.engine as engine
-from qwen_launcher._engine_types import Backend, EngineAsset, EngineError, InstallRequest
+from qwen_launcher._engine_types import (
+    Backend,
+    EngineAsset,
+    EngineError,
+    InstallProgressEvent,
+    InstallRequest,
+    TransferProgress,
+)
 
 
 def server_asset(backend: str = "cpu") -> EngineAsset:
@@ -52,14 +59,21 @@ def patch_artifacts(monkeypatch) -> None:
         "select_assets",
         lambda lock, platform_key, backend: (server_asset(backend),),
     )
-    monkeypatch.setattr(installer, "download_asset", lambda asset, root: root / asset.filename)
 
-    def extract(asset, archive, destination):
+    def download(asset, root, progress):
+        """Represent an already verified cached archive and report its known size."""
+        progress(TransferProgress(6, 6, True))
+        return root / asset.filename
+
+    monkeypatch.setattr(installer, "download_asset", download)
+
+    def extract(request):
         """Materialize the synthetic server instead of opening a real archive."""
-        del archive
-        path = destination / str(asset.executable)
+        path = request.destination / str(request.asset.executable)
         path.parent.mkdir(parents=True, exist_ok=True)
+        request.progress(TransferProgress(0, 6))
         path.write_bytes(b"server")
+        request.progress(TransferProgress(6, 6))
 
     monkeypatch.setattr(installer, "extract_asset", extract)
     monkeypatch.setattr(engine, "verify_engine", lambda executable, lock: executable.resolve())
@@ -93,12 +107,10 @@ def test_ubuntu_verification_requests_executable_mode(tmp_path, monkeypatch) -> 
 def test_install_no_op_force_and_backend_change(tmp_path, monkeypatch) -> None:
     """No-op an identical target but promote new immutable directories for force and backend."""
     patch_artifacts(monkeypatch)
-
     first = installer.install_engine(request(tmp_path))
     second = installer.install_engine(request(tmp_path))
     forced = installer.install_engine(request(tmp_path, force=True))
     changed = installer.install_engine(request(tmp_path, backend="cuda"))
-
     assert first.was_installed is True
     assert second.was_installed is False
     assert forced.status.executable != first.status.executable
@@ -119,19 +131,18 @@ def test_install_reports_blocking_phases_in_execution_order(tmp_path, monkeypatc
     monkeypatch.setattr(
         installer, "build_cuda_server", lambda staging, lock: staging / "llama-server.exe"
     )
-    observed: list[tuple[str, str | None]] = []
-    selected = replace(
-        request(tmp_path), progress=lambda stage, detail: observed.append((stage, detail))
-    )
-
+    observed: list[InstallProgressEvent] = []
+    selected = replace(request(tmp_path), progress=observed.append)
     installer.install_engine(selected)
-
     assert observed == [
-        ("asset", "engine.zip"),
-        ("extract", "engine.zip"),
-        ("compile", None),
-        ("verify", None),
-        ("activate", None),
+        InstallProgressEvent("asset", "engine.zip", 1, 1),
+        InstallProgressEvent("download", "engine.zip", 1, 1, 6, 6, True),
+        InstallProgressEvent("extract", "engine.zip", 1, 1),
+        InstallProgressEvent("extract", "engine.zip", 1, 1, 0, 6),
+        InstallProgressEvent("extract", "engine.zip", 1, 1, 6, 6),
+        InstallProgressEvent("compile"),
+        InstallProgressEvent("verify"),
+        InstallProgressEvent("activate"),
     ]
 
 
@@ -141,9 +152,9 @@ def test_staging_failure_leaves_previous_activation_intact(tmp_path, monkeypatch
     installer.install_engine(request(tmp_path))
     previous = manifest_bytes(tmp_path)
 
-    def fail_extract(asset, archive, destination):
+    def fail_extract(extraction):
         """Simulate an extraction failure after a prior activation exists."""
-        del asset, archive, destination
+        del extraction
         raise EngineError("synthetic extraction failure")
 
     monkeypatch.setattr(installer, "extract_asset", fail_extract)

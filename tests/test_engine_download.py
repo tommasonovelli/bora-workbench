@@ -8,16 +8,17 @@ from pathlib import Path
 import pytest
 
 import qwen_launcher._engine_download as downloader
-from qwen_launcher._engine_types import EngineAsset, EngineError
+from qwen_launcher._engine_types import EngineAsset, EngineError, TransferProgress
 
 
 class FakeResponse:
     """Provide the bounded httpx streaming surface used by the downloader."""
 
-    def __init__(self, chunks, url="https://example.invalid/engine.zip"):
-        """Store deterministic chunks, final URL, or an iterator that raises."""
+    def __init__(self, chunks, url="https://example.invalid/engine.zip", total=None):
+        """Store deterministic chunks, final URL, length, or a failing iterator."""
         self.chunks = chunks
         self.url = url
+        self.headers = {} if total is None else {"Content-Length": str(total)}
 
     def __enter__(self):
         """Enter the fake response context."""
@@ -57,12 +58,18 @@ def test_streams_to_part_then_promotes_verified_download(tmp_path, monkeypatch) 
     monkeypatch.setattr(
         downloader.httpx,
         "stream",
-        lambda *args, **kwargs: FakeResponse([payload[:8], payload[8:]]),
+        lambda *args, **kwargs: FakeResponse([payload[:8], payload[8:]], total=len(payload)),
     )
+    observed: list[TransferProgress] = []
 
-    path = downloader.download_asset(asset(payload), tmp_path)
+    path = downloader.download_asset(asset(payload), tmp_path, observed.append)
 
     assert path.read_bytes() == payload
+    assert observed == [
+        TransferProgress(0, len(payload)),
+        TransferProgress(8, len(payload)),
+        TransferProgress(len(payload), len(payload)),
+    ]
     assert not list(tmp_path.glob("*.part"))
 
 
@@ -125,4 +132,7 @@ def test_reuses_only_a_valid_cached_archive(tmp_path, monkeypatch) -> None:
         lambda *args, **kwargs: pytest.fail("network must not be used"),
     )
 
-    assert downloader.download_asset(asset(payload), tmp_path) == cached
+    observed: list[TransferProgress] = []
+
+    assert downloader.download_asset(asset(payload), tmp_path, observed.append) == cached
+    assert observed == [TransferProgress(len(payload), len(payload), True)]

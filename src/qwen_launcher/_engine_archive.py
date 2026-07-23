@@ -2,13 +2,28 @@
 
 from __future__ import annotations
 
-import shutil
 import stat
 import tarfile
 import zipfile
+from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
-from qwen_launcher._engine_types import EngineAsset, EngineError
+from qwen_launcher._engine_transfer import ByteTracker
+from qwen_launcher._engine_types import (
+    EngineAsset,
+    EngineError,
+    TransferProgressCallback,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class ExtractionRequest:
+    """Group one verified archive, its staging destination, and byte reporter."""
+
+    asset: EngineAsset
+    archive_path: Path
+    destination: Path
+    progress: TransferProgressCallback | None = None
 
 
 def _member_parts(name: str) -> tuple[str, ...]:
@@ -46,11 +61,14 @@ def _prepare_file(target: Path, name: str) -> None:
         raise EngineError(f"archive contains a duplicate member: {name!r}")
 
 
-def _extract_zip(archive_path: Path, destination: Path) -> None:
-    """Extract regular ZIP files and directories while rejecting Unix links."""
-    with zipfile.ZipFile(archive_path) as archive:
-        for member in archive.infolist():
-            target = _target_path(destination, member.filename)
+def _extract_zip(request: ExtractionRequest) -> None:
+    """Extract regular ZIP files while reporting their total uncompressed bytes."""
+    with zipfile.ZipFile(request.archive_path) as archive:
+        members = archive.infolist()
+        tracker = ByteTracker(sum(member.file_size for member in members), request.progress)
+        tracker.start()
+        for member in members:
+            target = _target_path(request.destination, member.filename)
             mode = member.external_attr >> 16
             if stat.S_ISLNK(mode):
                 raise EngineError(f"archive links are forbidden: {member.filename!r}")
@@ -61,7 +79,7 @@ def _extract_zip(archive_path: Path, destination: Path) -> None:
                 raise EngineError(f"non-regular archive member: {member.filename!r}")
             _prepare_file(target, member.filename)
             with archive.open(member) as source, target.open("xb") as output:
-                shutil.copyfileobj(source, output)
+                tracker.copy(source, output)
 
 
 def _member_key(name: str) -> str:
@@ -95,18 +113,21 @@ def _create_tar_symlink(
     target.symlink_to(member.linkname)
 
 
-def _extract_tar(archive_path: Path, destination: Path) -> None:
-    """Extract regular tar members and only confined declared relative symlinks."""
-    with tarfile.open(archive_path, mode="r:gz") as archive:
+def _extract_tar(request: ExtractionRequest) -> None:
+    """Extract safe tar members while reporting their total regular-file bytes."""
+    with tarfile.open(request.archive_path, mode="r:gz") as archive:
         members = archive.getmembers()
         indexed = {_member_key(member.name): member for member in members}
+        total_bytes = sum(member.size for member in members if member.isfile())
+        tracker = ByteTracker(total_bytes, request.progress)
+        tracker.start()
         symlinks: list[tarfile.TarInfo] = []
         for member in members:
-            target = _target_path(destination, member.name)
+            target = _target_path(request.destination, member.name)
             if member.isdir():
                 target.mkdir(parents=True, exist_ok=True)
             elif member.issym():
-                _safe_symlink_target(destination, member, indexed)
+                _safe_symlink_target(request.destination, member, indexed)
                 symlinks.append(member)
             elif member.isfile():
                 source = archive.extractfile(member)
@@ -114,23 +135,23 @@ def _extract_tar(archive_path: Path, destination: Path) -> None:
                     raise EngineError(f"cannot read archive member: {member.name!r}")
                 _prepare_file(target, member.name)
                 with source, target.open("xb") as output:
-                    shutil.copyfileobj(source, output)
+                    tracker.copy(source, output)
                 target.chmod(member.mode & 0o777)
             else:
                 raise EngineError(f"non-regular archive member: {member.name!r}")
         for member in symlinks:
-            _create_tar_symlink(destination, member, indexed)
+            _create_tar_symlink(request.destination, member, indexed)
 
 
-def extract_asset(asset: EngineAsset, archive_path: Path, destination: Path) -> None:
+def extract_asset(request: ExtractionRequest) -> None:
     """Extract one verified asset using only its lock-declared archive format."""
-    destination.mkdir(parents=True, exist_ok=True)
+    request.destination.mkdir(parents=True, exist_ok=True)
     try:
-        if asset.archive == "zip":
-            _extract_zip(archive_path, destination)
-        elif asset.archive == "tar.gz":
-            _extract_tar(archive_path, destination)
+        if request.asset.archive == "zip":
+            _extract_zip(request)
+        elif request.asset.archive == "tar.gz":
+            _extract_tar(request)
         else:
-            raise EngineError(f"unsupported archive format: {asset.archive}")
+            raise EngineError(f"unsupported archive format: {request.asset.archive}")
     except (tarfile.TarError, zipfile.BadZipFile, OSError) as error:
-        raise EngineError(f"cannot safely extract {asset.filename}: {error}") from error
+        raise EngineError(f"cannot safely extract {request.asset.filename}: {error}") from error

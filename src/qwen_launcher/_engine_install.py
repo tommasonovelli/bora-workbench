@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import shutil
+from dataclasses import replace
+from functools import partial
 from pathlib import Path
 from uuid import uuid4
 
-from qwen_launcher._engine_archive import extract_asset
+from qwen_launcher._engine_archive import ExtractionRequest, extract_asset
 from qwen_launcher._engine_assets import select_assets
 from qwen_launcher._engine_build import build_cuda_server
 from qwen_launcher._engine_download import download_asset
@@ -15,17 +17,31 @@ from qwen_launcher._engine_types import (
     EngineAsset,
     EngineError,
     EngineStatus,
+    InstallProgressEvent,
     InstallRequest,
     InstallResult,
-    InstallStage,
+    TransferProgress,
 )
 from qwen_launcher.resources import resource
 
 
-def _report(request: InstallRequest, stage: InstallStage, detail: str | None = None) -> None:
-    """Forward an installation phase when the caller requested progress updates."""
+def _report(request: InstallRequest, event: InstallProgressEvent) -> None:
+    """Forward one installation update when the caller requested progress."""
     if request.progress is not None:
-        request.progress(stage, detail)
+        request.progress(event)
+
+
+def _report_transfer(
+    request: InstallRequest, event: InstallProgressEvent, update: TransferProgress
+) -> None:
+    """Attach measured transfer bytes to one asset phase before forwarding it."""
+    measured = replace(
+        event,
+        completed_bytes=update.completed_bytes,
+        total_bytes=update.total_bytes,
+        is_cached=update.is_cached,
+    )
+    _report(request, measured)
 
 
 def _remove_staging(path: Path, engine_root: Path) -> None:
@@ -67,17 +83,22 @@ def _prepare_staging(request: InstallRequest, staging: Path) -> Path:
     """Download and extract the complete target asset set into one staging directory."""
     assets = select_assets(request.lock, request.platform_key, request.backend)
     staging.mkdir(parents=False)
-    for asset in assets:
-        _report(request, "asset", asset.filename)
-        archive = download_asset(asset, request.cache_root)
-        _report(request, "extract", asset.filename)
-        extract_asset(asset, archive, staging)
+    for index, asset in enumerate(assets, start=1):
+        common = InstallProgressEvent("asset", asset.filename, index, len(assets))
+        _report(request, common)
+        download_event = replace(common, stage="download")
+        download_progress = partial(_report_transfer, request, download_event)
+        archive = download_asset(asset, request.cache_root, download_progress)
+        extract_event = replace(common, stage="extract")
+        _report(request, extract_event)
+        extract_progress = partial(_report_transfer, request, extract_event)
+        extract_asset(ExtractionRequest(asset, archive, staging, extract_progress))
     _install_notices(request, staging)
     server_asset = _server_asset(assets)
     assert server_asset.executable is not None
     declared = staging / server_asset.executable
     if server_asset.role == "source":
-        _report(request, "compile")
+        _report(request, InstallProgressEvent("compile"))
         built = build_cuda_server(staging, request.lock)
         if built.resolve() != declared.resolve():
             raise EngineError("Ubuntu CUDA build output differs from engine.lock executable")
@@ -125,11 +146,11 @@ def install_engine(request: InstallRequest) -> InstallResult:
     try:
         request.engine_root.mkdir(parents=True, exist_ok=True)
         staged = _prepare_staging(request, staging)
-        _report(request, "verify")
+        _report(request, InstallProgressEvent("verify"))
         verified = _verify_staged(staged, request)
         promoted = _promote(staging, request, verified)
         activation = Activation(str(request.lock["release"]), request.backend, promoted)
-        _report(request, "activate")
+        _report(request, InstallProgressEvent("activate"))
         activate(request.engine_root, activation)
         status = EngineStatus(
             True,

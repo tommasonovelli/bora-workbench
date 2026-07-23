@@ -87,11 +87,13 @@ estrae in staging, verifica l'eseguibile e attiva una nuova directory immutabile
 attivo e compatibile è un no-op. `--force` reinstalla comunque lo stesso target; non disabilita TLS,
 checksum, confinamento o probe di compatibilità.
 
-Il comando mostra la fase corrente durante download, estrazione, compilazione, verifica e
-attivazione. Può usare la rete e, su Ubuntu CUDA, eseguire CMake e una compilazione di diversi
-minuti: la fase resta visibile anche quando CMake non ha ancora terminato. I probe `--version` e
-`--help` sono limitati a 60 secondi ciascuno. Il comando non installa prerequisiti di sistema e non
-eleva i privilegi.
+Il comando mostra la fase corrente durante controllo cache, download, estrazione, compilazione,
+verifica e attivazione. Su un terminale, download ed estrazione hanno una barra a byte con posizione
+dell'asset, velocità media ed ETA calcolata; senza una misura attendibile le altre fasi non mostrano
+una stima inventata. L'output rediretto resta line-oriented. Può usare la rete e, su Ubuntu CUDA,
+eseguire CMake e una compilazione di diversi minuti: la fase resta visibile anche quando CMake non ha
+ancora terminato. I probe `--version` e `--help` sono limitati a 60 secondi ciascuno. Il comando non
+installa prerequisiti di sistema e non eleva i privilegi.
 
 ## Modi di esecuzione
 

@@ -9,14 +9,41 @@ from typing import Literal
 
 ArchiveKind = Literal["zip", "tar.gz"]
 Backend = Literal["cpu", "cuda"]
-InstallStage = Literal["asset", "extract", "compile", "verify", "activate"]
-InstallProgress = Callable[[InstallStage, str | None], None]
+InstallStage = Literal["asset", "download", "extract", "compile", "verify", "activate"]
 PlatformKey = Literal["ubuntu", "windows"]
 Role = Literal["server", "cuda-runtime", "source"]
 
 
 class EngineError(RuntimeError):
     """Report an absent, incompatible, or unsafe engine artifact."""
+
+
+@dataclass(frozen=True, slots=True)
+class TransferProgress:
+    """Report measured bytes for one download or extraction operation."""
+
+    completed_bytes: int
+    total_bytes: int | None
+    is_cached: bool = False
+
+
+TransferProgressCallback = Callable[[TransferProgress], None]
+
+
+@dataclass(frozen=True, slots=True)
+class InstallProgressEvent:
+    """Describe one truthful managed-engine installation progress update."""
+
+    stage: InstallStage
+    detail: str | None = None
+    item_index: int | None = None
+    item_count: int | None = None
+    completed_bytes: int | None = None
+    total_bytes: int | None = None
+    is_cached: bool = False
+
+
+InstallProgress = Callable[[InstallProgressEvent], None]
 
 
 @dataclass(frozen=True, slots=True)

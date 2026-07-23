@@ -11,7 +11,12 @@ from uuid import uuid4
 
 import httpx
 
-from qwen_launcher._engine_types import EngineAsset, EngineError
+from qwen_launcher._engine_types import (
+    EngineAsset,
+    EngineError,
+    TransferProgress,
+    TransferProgressCallback,
+)
 
 _CHUNK_SIZE = 1024 * 1024
 
@@ -31,25 +36,49 @@ def _discard(path: Path) -> None:
         path.unlink()
 
 
-def _stream_to_file(asset: EngineAsset, partial: Path) -> str:
-    """Stream one HTTPS response into a partial file and return its digest."""
+def _content_length(response: httpx.Response) -> int | None:
+    """Read optional response length for UX without weakening byte verification."""
+    value = response.headers.get("Content-Length")
+    try:
+        total = int(value) if value is not None else None
+    except ValueError:
+        return None
+    return total if total is not None and total >= 0 else None
+
+
+def _stream_to_file(
+    asset: EngineAsset, partial: Path, progress: TransferProgressCallback | None
+) -> str:
+    """Stream one HTTPS response into a partial file and report measured transfer bytes."""
     digest = hashlib.sha256()
     timeout = httpx.Timeout(60.0, connect=10.0)
     with httpx.stream("GET", asset.url, follow_redirects=True, timeout=timeout) as response:
         response.raise_for_status()
         if urlparse(str(response.url)).scheme != "https":
             raise EngineError(f"download redirected away from HTTPS: {response.url}")
+        total, completed = _content_length(response), 0
+        if progress is not None:
+            progress(TransferProgress(0, total))
         with partial.open("xb") as output:
             for chunk in response.iter_bytes(_CHUNK_SIZE):
                 output.write(chunk)
                 digest.update(chunk)
+                completed += len(chunk)
+                if progress is not None:
+                    progress(TransferProgress(completed, total))
             output.flush()
             os.fsync(output.fileno())
+    if progress is not None and total is None:
+        progress(TransferProgress(completed, completed))
     return digest.hexdigest()
 
 
-def download_asset(asset: EngineAsset, cache_root: Path) -> Path:
-    """Return a verified cached archive, downloading through a unique ``.part`` file."""
+def download_asset(
+    asset: EngineAsset,
+    cache_root: Path,
+    progress: TransferProgressCallback | None = None,
+) -> Path:
+    """Return a verified cached archive, reporting bytes for download progress and ETA."""
     partial = cache_root / f".{asset.filename}-{uuid4().hex}.part"
     try:
         cache_root.mkdir(parents=True, exist_ok=True)
@@ -57,12 +86,15 @@ def download_asset(asset: EngineAsset, cache_root: Path) -> Path:
         if target.is_symlink():
             target.unlink()
         if target.is_file() and file_sha256(target) == asset.sha256:
+            if progress is not None:
+                size = target.stat().st_size
+                progress(TransferProgress(size, size, True))
             return target
         if target.exists() and not target.is_file():
             raise EngineError(f"managed cache target is not a regular file: {target}")
         if target.exists():
             target.unlink()
-        digest = _stream_to_file(asset, partial)
+        digest = _stream_to_file(asset, partial, progress)
         if digest != asset.sha256:
             raise EngineError(
                 f"checksum mismatch for {asset.filename}: expected {asset.sha256}, got {digest}"

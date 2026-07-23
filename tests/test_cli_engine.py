@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from typer.testing import CliRunner
 
 import qwen_launcher._cli_engine as engine_cli
-from qwen_launcher._engine_types import EngineStatus, InstallResult
+from qwen_launcher._engine_types import EngineStatus, InstallProgressEvent, InstallResult
 from qwen_launcher.cli import app
 
 runner = CliRunner()
@@ -26,7 +26,7 @@ def test_engine_install_uses_detected_backend_and_reports_activation(monkeypatch
     def install(backend, force, progress):
         """Report the long-running phase before returning a successful fake install."""
         del backend, force
-        progress("compile", None)
+        progress(InstallProgressEvent("compile"))
         return InstallResult(status, True)
 
     monkeypatch.setattr(engine_cli, "install_engine", install)

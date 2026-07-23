@@ -11,8 +11,8 @@ from typing import cast
 
 import pytest
 
-from qwen_launcher._engine_archive import extract_asset
-from qwen_launcher._engine_types import ArchiveKind, EngineAsset, EngineError
+from qwen_launcher._engine_archive import ExtractionRequest, extract_asset
+from qwen_launcher._engine_types import ArchiveKind, EngineAsset, EngineError, TransferProgress
 
 
 def asset(archive: str) -> EngineAsset:
@@ -36,7 +36,7 @@ def test_extracts_regular_zip_and_tar_files(tmp_path) -> None:
     with zipfile.ZipFile(zip_path, "w") as archive:
         archive.writestr("bin/llama-server.exe", b"windows")
     zip_out = tmp_path / "zip-out"
-    extract_asset(asset("zip"), zip_path, zip_out)
+    extract_asset(ExtractionRequest(asset("zip"), zip_path, zip_out))
 
     tar_path = tmp_path / "engine.tar.gz"
     with tarfile.open(tar_path, "w:gz") as archive:
@@ -45,10 +45,25 @@ def test_extracts_regular_zip_and_tar_files(tmp_path) -> None:
         info.mode = 0o755
         archive.addfile(info, io.BytesIO(b"ubuntu"))
     tar_out = tmp_path / "tar-out"
-    extract_asset(asset("tar.gz"), tar_path, tar_out)
+    extract_asset(ExtractionRequest(asset("tar.gz"), tar_path, tar_out))
 
     assert (zip_out / "bin/llama-server.exe").read_bytes() == b"windows"
     assert (tar_out / "bin/llama-server").read_bytes() == b"ubuntu"
+
+
+def test_reports_uncompressed_extraction_bytes(tmp_path) -> None:
+    """Drive a determinate extraction bar from measured regular-member bytes."""
+    archive_path = tmp_path / "engine.zip"
+    with zipfile.ZipFile(archive_path, "w") as archive:
+        archive.writestr("first.bin", b"first")
+        archive.writestr("second.bin", b"second")
+    observed: list[TransferProgress] = []
+    request = ExtractionRequest(asset("zip"), archive_path, tmp_path / "out", observed.append)
+
+    extract_asset(request)
+
+    assert observed[0] == TransferProgress(0, 11)
+    assert observed[-1] == TransferProgress(11, 11)
 
 
 def test_accepts_confined_declared_tar_symlink(tmp_path, monkeypatch) -> None:
@@ -70,7 +85,7 @@ def test_accepts_confined_declared_tar_symlink(tmp_path, monkeypatch) -> None:
 
     monkeypatch.setattr(Path, "symlink_to", capture_symlink)
     destination = tmp_path / "safe-link-out"
-    extract_asset(asset("tar.gz"), path, destination)
+    extract_asset(ExtractionRequest(asset("tar.gz"), path, destination))
 
     assert (destination / "lib/libengine.so.1").read_bytes() == b"library"
     assert observed == [(destination / "lib/libengine.so", "libengine.so.1")]
@@ -82,7 +97,7 @@ def test_rejects_zip_traversal_and_symlinks(tmp_path) -> None:
     with zipfile.ZipFile(traversal, "w") as archive:
         archive.writestr("../outside", b"bad")
     with pytest.raises(EngineError, match="unsafe archive member"):
-        extract_asset(asset("zip"), traversal, tmp_path / "traversal-out")
+        extract_asset(ExtractionRequest(asset("zip"), traversal, tmp_path / "traversal-out"))
 
     linked = tmp_path / "link.zip"
     info = zipfile.ZipInfo("llama-server")
@@ -91,7 +106,7 @@ def test_rejects_zip_traversal_and_symlinks(tmp_path) -> None:
     with zipfile.ZipFile(linked, "w") as archive:
         archive.writestr(info, "outside")
     with pytest.raises(EngineError, match="links are forbidden"):
-        extract_asset(asset("zip"), linked, tmp_path / "link-out")
+        extract_asset(ExtractionRequest(asset("zip"), linked, tmp_path / "link-out"))
 
 
 @pytest.mark.parametrize("link_type", [tarfile.SYMTYPE, tarfile.LNKTYPE])
@@ -105,4 +120,4 @@ def test_rejects_escaping_symlink_and_all_hardlinks(tmp_path, link_type) -> None
         archive.addfile(info)
 
     with pytest.raises(EngineError, match=r"unsafe archive member|non-regular archive member"):
-        extract_asset(asset("tar.gz"), path, tmp_path / "out")
+        extract_asset(ExtractionRequest(asset("tar.gz"), path, tmp_path / "out"))
