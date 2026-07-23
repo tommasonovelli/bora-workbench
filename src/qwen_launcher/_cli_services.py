@@ -9,6 +9,7 @@ from typing import cast
 import typer
 from rich.console import Console
 
+from qwen_launcher._cli_theme import print_error, print_note, print_success, print_warning
 from qwen_launcher.config import ConfigError, load_config
 from qwen_launcher.engine import (
     EngineError,
@@ -91,10 +92,10 @@ def _prepare_mode(mode_id: str, force: bool, stderr: Console) -> PreparedMode:
         running = start_service(StartRequest(command, plan, lock))
         return PreparedMode(running, plan, api_url, ui_url, config.open_browser)
     except ConfigError as error:
-        stderr.print(f"[red]Configuration error:[/red] {error}")
+        print_error(stderr, "Configuration error", str(error))
         raise typer.Exit(code=2) from error
     except (ContentError, EngineError, HardwareError, PlanError, ProcessError) as error:
-        stderr.print(f"[red]Launch error:[/red] {error}")
+        print_error(stderr, "Launch error", str(error))
         raise typer.Exit(code=1) from error
 
 
@@ -102,15 +103,15 @@ def _show_ready(session: PreparedMode, stdout: Console) -> None:
     """Present the ready mode, endpoints, active envelope, and operational warnings."""
     plan = session.plan
     profile = plan.profile_id or "verified non-optimized baseline"
-    stdout.print(f"[green]Ready[/green] mode={plan.mode.id} backend={plan.backend}")
-    stdout.print(f"Profile: {profile}")
-    stdout.print(f"API endpoint: {session.api_url}")
+    print_success(stdout, "Ready", f"mode={plan.mode.id} backend={plan.backend}")
+    print_note(stdout, "Profile", profile)
+    print_note(stdout, "API endpoint", session.api_url)
     if session.ui_url is not None:
-        stdout.print(f"UI: {session.ui_url}")
+        print_note(stdout, "UI", session.ui_url)
         stdout.print("Interface: essential integrated llama.cpp UI; Open WebUI is not included.")
-    stdout.print(f"Log: {session.running.state.log_path}")
+    print_note(stdout, "Log", str(session.running.state.log_path))
     for warning in (*session.running.warnings, *plan.warnings):
-        stdout.print(f"[yellow]WARNING[/yellow] {warning}")
+        print_warning(stdout, warning)
 
 
 def _open_ui(session: PreparedMode, stdout: Console) -> None:
@@ -120,10 +121,10 @@ def _open_ui(session: PreparedMode, stdout: Console) -> None:
     try:
         is_opened = webbrowser.open(session.ui_url, new=2)
     except (OSError, webbrowser.Error) as error:
-        stdout.print(f"[yellow]WARNING[/yellow] Could not open the browser: {error}")
+        print_warning(stdout, f"Could not open the browser: {error}")
         return
     if not is_opened:
-        stdout.print("[yellow]WARNING[/yellow] Could not open the browser; use the UI URL above.")
+        print_warning(stdout, "Could not open the browser; use the UI URL above.")
 
 
 def _wait_for_mode(session: PreparedMode, output: ServiceOutput) -> None:
@@ -131,10 +132,10 @@ def _wait_for_mode(session: PreparedMode, output: ServiceOutput) -> None:
     try:
         wait_foreground(session.running)
     except KeyboardInterrupt as error:
-        output.stdout.print("[yellow]Stopped after Ctrl-C.[/yellow]")
+        print_warning(output.stdout, "Stopped after Ctrl-C.")
         raise typer.Exit(code=130) from error
     except ProcessError as error:
-        output.stderr.print(f"[red]Process error:[/red] {error}")
+        print_error(output.stderr, "Process error", str(error))
         raise typer.Exit(code=1) from error
 
 

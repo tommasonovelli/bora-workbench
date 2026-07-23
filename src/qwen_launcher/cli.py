@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import Annotated
 
 import typer
-from rich.console import Console
 
 from qwen_launcher._cli_calibration import (
     CalibrationCliInput,
@@ -19,6 +18,7 @@ from qwen_launcher._cli_control import run_stop, show_status
 from qwen_launcher._cli_doctor import run_doctor
 from qwen_launcher._cli_engine import run_engine_install, show_engine_status
 from qwen_launcher._cli_services import run_coding, run_studio, run_vstudio
+from qwen_launcher._cli_theme import create_console, print_error
 from qwen_launcher._cli_uninstall import run_uninstall
 from qwen_launcher._cli_validation import run_validate
 from qwen_launcher.calibration import CalibrationError
@@ -30,8 +30,8 @@ app = typer.Typer(
 )
 engine_app = typer.Typer(help="Install and inspect the pinned managed llama.cpp engine.")
 app.add_typer(engine_app, name="engine")
-_stdout = Console()
-_stderr = Console(stderr=True)
+_stdout = create_console()
+_stderr = create_console(stderr=True)
 _MEMORY_GATE_HELP = "Bypass only the default-model total and available RAM gate."
 _CALIBRATION_EPILOG = (
     "v5 extras: --no-activate keeps candidates; --activate promotes them; --target-ctx N fixes "
@@ -143,7 +143,7 @@ def calibrate(
     try:
         parsed = parse_calibration_options(context.args)
     except CalibrationError as error:
-        _stderr.print(f"[red]Calibration input error:[/red] {error}")
+        print_error(_stderr, "Calibration input error", str(error))
         raise typer.Exit(code=2) from error
     options = CalibrationCliInput(
         mode,

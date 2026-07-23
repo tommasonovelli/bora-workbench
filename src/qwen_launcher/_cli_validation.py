@@ -7,6 +7,7 @@ from pathlib import Path
 import typer
 from rich.console import Console
 
+from qwen_launcher._cli_theme import print_error, print_success, print_warning
 from qwen_launcher.validation import ValidationIssue, ValidationResult, validate_resources
 
 
@@ -14,9 +15,9 @@ def _print_issue(item: ValidationIssue, stdout: Console, stderr: Console) -> Non
     """Print one validation issue to the stream appropriate for its severity."""
     label = f"{item.file}:{item.field_path}: {item.message}"
     if item.severity == "error":
-        stderr.print(f"[red]ERROR[/red] {label}")
+        print_error(stderr, "Invalid resource", label)
     else:
-        stdout.print(f"[yellow]WARNING[/yellow] {label}")
+        print_warning(stdout, label)
 
 
 def show_validation(result: ValidationResult, stdout: Console, stderr: Console) -> None:
@@ -24,9 +25,9 @@ def show_validation(result: ValidationResult, stdout: Console, stderr: Console) 
     for item in result.issues:
         _print_issue(item, stdout, stderr)
     if result.errors:
-        stderr.print(f"[red]Validation failed:[/red] {len(result.errors)} error(s)")
+        print_error(stderr, "Validation failed", f"{len(result.errors)} error(s)")
     else:
-        stdout.print(f"[green]Validation passed[/green] with {len(result.warnings)} warning(s)")
+        print_success(stdout, "Validation passed", f"with {len(result.warnings)} warning(s)")
 
 
 def run_validate(source: Path | None, stdout: Console, stderr: Console) -> None:

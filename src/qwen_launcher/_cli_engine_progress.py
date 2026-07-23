@@ -7,8 +7,13 @@ from time import monotonic
 from types import TracebackType
 
 from rich.console import Console
-from rich.progress import BarColumn, Progress, SpinnerColumn, TaskID, TextColumn
+from rich.progress import Progress, TaskID
 
+from qwen_launcher._cli_theme import (
+    metric_column,
+    phase_result_style,
+    progress_columns,
+)
 from qwen_launcher._engine_types import InstallProgressEvent
 
 
@@ -73,11 +78,7 @@ class EngineInstallProgress:
         self._get_time = get_time
         self._is_live = console.is_terminal
         self._progress = Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(bar_width=None),
-            TextColumn("{task.fields[metrics]}"),
-            TextColumn("{task.fields[eta]}"),
+            *progress_columns(metric_column("metrics"), metric_column("eta")),
             console=console,
             refresh_per_second=4,
             transient=True,
@@ -188,8 +189,9 @@ class EngineInstallProgress:
             state = "complete" if is_success else "stopped"
             if event.stage == "download" and event.is_cached:
                 state = "cached"
+            style = phase_result_style(is_success)
             self._progress.console.print(
-                f"[cyan]{_phase_message(event)}[/cyan] {state} in {elapsed}."
+                f"[{style}]{_phase_message(event)} {state} in {elapsed}.[/{style}]"
             )
         self._task_id = None
         self._phase_key = None

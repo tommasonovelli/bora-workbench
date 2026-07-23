@@ -4,9 +4,15 @@ from __future__ import annotations
 
 import typer
 from rich.console import Console
-from rich.table import Table
 
 from qwen_launcher._cli_engine_progress import EngineInstallProgress
+from qwen_launcher._cli_theme import (
+    print_error,
+    print_note,
+    print_success,
+    print_warning,
+    status_table,
+)
 from qwen_launcher._engine_types import Backend, EngineStatus, InstallResult
 from qwen_launcher.engine import EngineError, engine_status, install_engine
 from qwen_launcher.hardware import HardwareError, detect_hardware
@@ -14,7 +20,7 @@ from qwen_launcher.hardware import HardwareError, detect_hardware
 
 def _print_status(status: EngineStatus, stdout: Console) -> None:
     """Render one already inspected managed-engine status."""
-    table = Table(title="managed llama.cpp engine")
+    table = status_table("managed llama.cpp engine")
     table.add_column("Item")
     table.add_column("Value")
     table.add_row("Active", "yes" if status.is_active else "no")
@@ -24,7 +30,7 @@ def _print_status(status: EngineStatus, stdout: Console) -> None:
     table.add_row("Compatible", "yes" if status.is_compatible else "no")
     stdout.print(table)
     for difference in status.differences:
-        stdout.print(f"[yellow]Difference:[/yellow] {difference}")
+        print_warning(stdout, f"Difference: {difference}")
 
 
 def _install_with_progress(backend: Backend, force: bool, stdout: Console) -> InstallResult:
@@ -38,19 +44,19 @@ def run_engine_install(force: bool, stdout: Console, stderr: Console) -> None:
     try:
         hardware = detect_hardware()
         for warning in hardware.warnings:
-            stdout.print(f"[yellow]WARNING[/yellow] {warning}")
+            print_warning(stdout, warning)
         stdout.print(f"Installing llama.cpp for backend={hardware.backend} from engine.lock.")
         stdout.print("Third-party notices will be retained inside the managed installation.")
         if hardware.backend == "cuda":
             stdout.print("Managed Windows CUDA runtime assets are subject to the NVIDIA CUDA EULA.")
         result = _install_with_progress(hardware.backend, force, stdout)
     except (EngineError, HardwareError) as error:
-        stderr.print(f"[red]Engine installation error:[/red] {error}")
+        print_error(stderr, "Engine installation error", str(error))
         raise typer.Exit(code=1) from error
     action = "Installed and activated" if result.was_installed else "Already active"
-    stdout.print(f"[green]{action}[/green] llama.cpp {result.status.release}")
-    stdout.print(f"Backend: {result.status.backend}")
-    stdout.print(f"Executable: {result.status.executable}")
+    print_success(stdout, action, f"llama.cpp {result.status.release}")
+    print_note(stdout, "Backend", result.status.backend or "none")
+    print_note(stdout, "Executable", str(result.status.executable))
 
 
 def show_engine_status(stdout: Console) -> None:

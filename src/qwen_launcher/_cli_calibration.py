@@ -7,6 +7,12 @@ from dataclasses import dataclass
 import typer
 from rich.console import Console
 
+from qwen_launcher._cli_theme import (
+    print_error,
+    print_heading,
+    print_success,
+    print_warning,
+)
 from qwen_launcher.calibration import (
     CalibrationError,
     CalibrationOutcome,
@@ -97,10 +103,8 @@ def _show_preflight(
     target: CalibrationTarget, settings: CalibrationSettings, console: Console
 ) -> None:
     """Show exact workload, risk, evidence location, and detected baseline before confirmation."""
-    console.print("[bold]Calibration preflight[/bold]")
-    console.print(
-        "[yellow]calibration/v1 is gate-only and cannot create a portable profile.[/yellow]"
-    )
+    print_heading(console, "Calibration preflight")
+    print_warning(console, "calibration/v1 is gate-only and cannot create a portable profile.")
     console.print(f"Modes: {', '.join(mode.id for mode in target.modes)}")
     console.print(f"Backend: {target.hardware.backend}; engine: {target.lock['release']}")
     console.print(
@@ -137,18 +141,18 @@ def _show_preflight(
 def _show_outcome(outcome: CalibrationOutcome, console: Console) -> None:
     """Print candidate outcomes, shareable files, and the manual review boundary."""
     path = outcome.bundle_path
-    console.print(f"[green]Draft bundle created:[/green] {path}")
+    print_success(console, "Draft bundle created", str(path))
     console.print("Proposed selections are not accepted profiles and no data was uploaded.")
     for mode_id, candidate_id in outcome.proposed_selections:
         if candidate_id is None:
-            message = f"{mode_id}: no valid candidate; bundle contains discards only."
-            console.print(f"[yellow]{message}[/yellow]")
+            print_warning(console, f"{mode_id}: no valid candidate; bundle contains discards only.")
         else:
             console.print(f"{mode_id}: proposed candidate {candidate_id}")
     files = sorted(file for file in path.rglob("*") if file.is_file())
     for file in files:
         relative = file.relative_to(path).as_posix()
-        console.print(f"\n[bold]Exact shareable preview: {relative}[/bold]")
+        console.print()
+        print_heading(console, f"Exact shareable preview: {relative}")
         console.print(file.read_text(encoding="utf-8", errors="replace"), markup=False)
     console.print("Review every file above; privacy_reviewed remains false until human review.")
 
@@ -187,14 +191,14 @@ def run_calibrate(options: CalibrationCliInput, output: CalibrationCliOutput) ->
         outcome = run_calibration(target, settings)
         _show_outcome(outcome, output.stdout)
     except (KeyboardInterrupt, typer.Abort, CalibrationCancelled) as error:
-        output.stderr.print(f"[yellow]Calibration cancelled:[/yellow] {error}")
+        print_warning(output.stderr, f"Calibration cancelled: {error}")
         raise typer.Exit(code=130) from error
     except CalibrationRunError as error:
-        output.stderr.print(f"[red]Calibration error:[/red] {error}")
+        print_error(output.stderr, "Calibration error", str(error))
         raise typer.Exit(code=1) from error
     except (ConfigError, CalibrationError, ValueError) as error:
-        output.stderr.print(f"[red]Calibration input error:[/red] {error}")
+        print_error(output.stderr, "Calibration input error", str(error))
         raise typer.Exit(code=2) from error
     except (ContentError, EngineError, HardwareError, PlanError, ProcessError, OSError) as error:
-        output.stderr.print(f"[red]Calibration error:[/red] {error}")
+        print_error(output.stderr, "Calibration error", str(error))
         raise typer.Exit(code=1) from error

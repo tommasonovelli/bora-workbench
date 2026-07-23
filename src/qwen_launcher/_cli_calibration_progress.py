@@ -7,9 +7,14 @@ from time import monotonic
 from types import TracebackType
 
 from rich.console import Console
-from rich.progress import BarColumn, Progress, SpinnerColumn, TaskID, TextColumn, TimeElapsedColumn
+from rich.progress import Progress, TaskID, TimeElapsedColumn
 
 from qwen_launcher._calibration_v5_types import ProgressEvent
+from qwen_launcher._cli_theme import (
+    metric_column,
+    phase_result_style,
+    progress_columns,
+)
 
 
 def _format_duration(seconds: float) -> str:
@@ -57,12 +62,9 @@ class CalibrationProgress:
         self._get_time = get_time
         self._is_live = console.is_terminal
         self._progress = Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(bar_width=None),
-            TextColumn("{task.fields[count]}"),
-            TimeElapsedColumn(),
-            TextColumn("{task.fields[remaining]}"),
+            *progress_columns(
+                metric_column("count"), TimeElapsedColumn(), metric_column("remaining")
+            ),
             console=console,
             refresh_per_second=4,
             transient=True,
@@ -157,8 +159,9 @@ class CalibrationProgress:
         mode_id, phase = self._phase_key
         completed = self._last_event.completed
         self._progress.remove_task(self._task_id)
+        style = phase_result_style(is_success)
         self._progress.console.print(
-            f"[cyan]{mode_id}[/cyan] {phase} {state}: {completed} trial(s) in {elapsed}."
+            f"[{style}]{mode_id} {phase} {state}: {completed} trial(s) in {elapsed}.[/{style}]"
         )
         self._task_id = None
         self._phase_key = None

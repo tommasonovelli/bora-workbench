@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import typer
 from rich.console import Console
-from rich.table import Table
 
+from qwen_launcher._cli_theme import print_error, print_warning, status_table
 from qwen_launcher.process import ProcessError, status_services, stop_services
 
 
 def _print_warnings(warnings: tuple[str, ...], stdout: Console) -> None:
     """Present state cleanup warnings consistently for status and stop."""
     for warning in warnings:
-        stdout.print(f"[yellow]WARNING[/yellow] {warning}")
+        print_warning(stdout, warning)
 
 
 def show_status(stdout: Console, stderr: Console) -> None:
@@ -20,13 +20,15 @@ def show_status(stdout: Console, stderr: Console) -> None:
     try:
         report = status_services()
     except ProcessError as error:
-        stderr.print(f"[red]Status error:[/red] {error}")
+        print_error(stderr, "Status error", str(error))
         raise typer.Exit(code=1) from error
     _print_warnings(report.warnings, stdout)
     if not report.services:
         stdout.print("No managed services are running.")
         return
-    table = Table("Service", "PID", "Mode", "Backend", "Port", "Log")
+    table = status_table()
+    for header in ("Service", "PID", "Mode", "Backend", "Port", "Log"):
+        table.add_column(header)
     for service in report.services:
         table.add_row(
             service.label,
@@ -44,7 +46,7 @@ def run_stop(stdout: Console, stderr: Console) -> None:
     try:
         report = stop_services()
     except ProcessError as error:
-        stderr.print(f"[red]Stop error:[/red] {error}")
+        print_error(stderr, "Stop error", str(error))
         raise typer.Exit(code=1) from error
     _print_warnings(report.warnings, stdout)
     if report.stopped:

@@ -9,6 +9,7 @@ import typer
 from rich.console import Console
 from rich.table import Table
 
+from qwen_launcher._cli_theme import print_error, print_warning, status_table
 from qwen_launcher._engine_types import EngineStatus
 from qwen_launcher.config import Config, ConfigError, load_config
 from qwen_launcher.hardware import HardwareError, HardwareInfo, detect_hardware
@@ -41,7 +42,7 @@ def _gpu_label(hardware: HardwareInfo) -> str:
 def build_doctor_table(data: DoctorData) -> Table:
     """Build the read-only diagnostics table from already collected service values."""
     config, hardware = data.config, data.hardware
-    table = Table(title="qwen-launcher diagnostics")
+    table = status_table("qwen-launcher diagnostics")
     table.add_column("Item")
     table.add_column("Value")
     rows = [
@@ -140,12 +141,12 @@ def run_doctor(version: str, stdout: Console, stderr: Console) -> None:
     try:
         config = load_config()
     except ConfigError as error:
-        stderr.print(f"[red]Configuration error:[/red] {error}")
+        print_error(stderr, "Configuration error", str(error))
         raise typer.Exit(code=2) from error
     try:
         hardware = detect_hardware()
     except HardwareError as error:
-        stderr.print(f"[red]Hardware error:[/red] {error}")
+        print_error(stderr, "Hardware error", str(error))
         raise typer.Exit(code=1) from error
     validation = validate_resources()
     shared_seeds = 0
@@ -159,11 +160,11 @@ def run_doctor(version: str, stdout: Console, stderr: Console) -> None:
     data = DoctorData(config, hardware, shared_seeds, version, directories, managed_engine)
     stdout.print(build_doctor_table(data))
     for warning in hardware.warnings:
-        stdout.print(f"[yellow]WARNING[/yellow] {warning}")
+        print_warning(stdout, warning)
     for line in record_lines:
         stdout.print(line)
     for difference in managed_engine.differences:
-        stdout.print(f"[yellow]Engine:[/yellow] {difference}")
+        print_warning(stdout, f"Engine: {difference}")
     show_validation(validation, stdout, stderr)
     if validation.errors:
         raise typer.Exit(code=1)

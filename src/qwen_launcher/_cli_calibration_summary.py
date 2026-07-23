@@ -16,6 +16,7 @@ from qwen_launcher._calibration_v5_types import (
     ModeCalibration,
     V5Outcome,
 )
+from qwen_launcher._cli_theme import print_note, print_success
 
 _SELECTION_EXPLANATIONS = {
     SELECTION_CPU_BASELINE: "confirmed the fixed CPU baseline",
@@ -63,15 +64,15 @@ def _mode_summary(calibration: ModeCalibration) -> str:
 
 def show_calibration_outcome(outcome: V5Outcome, console: Console) -> None:
     """Print record paths, selection reasons, and measured resource summaries."""
-    console.print("[green]Local calibration completed.[/green]")
+    print_success(console, "Local calibration completed.")
     for calibration in outcome.calibrations:
         console.print(_mode_summary(calibration))
     for path in outcome.active_paths:
-        console.print(f"Active record: {path}")
+        print_note(console, "Active record", str(path))
     if not outcome.active_paths:
         for path in outcome.candidate_paths:
             if path.exists():
-                console.print(f"Candidate record: {path}")
+                print_note(console, "Candidate record", str(path))
         console.print("Review candidate records, then activate with `calibrate --activate`.")
     console.print(f"Private run evidence: {outcome.evidence_path}")
     console.print("No private record or process log was uploaded.")

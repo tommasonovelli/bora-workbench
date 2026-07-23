@@ -25,6 +25,7 @@ from qwen_launcher._cli_calibration import (
 )
 from qwen_launcher._cli_calibration_progress import CalibrationProgress
 from qwen_launcher._cli_calibration_summary import show_calibration_outcome
+from qwen_launcher._cli_theme import print_heading, print_success
 from qwen_launcher.calibration import (
     CalibrationError,
     CalibrationRunError,
@@ -38,7 +39,7 @@ def _show_preflight(
     target: CalibrationTarget, options: CalibrationCliInput, console: Console
 ) -> None:
     """Show objective, workload, constants, lifecycle, and risk before process confirmation."""
-    console.print("[bold]Calibration preflight (calibration/v5)[/bold]")
+    print_heading(console, "Calibration preflight (calibration/v5)")
     console.print("Paired adaptive local search with zero mandatory technical inputs; no upload.")
     console.print(f"Objective: {OBJECTIVE}")
     console.print(f"Modes: {', '.join(mode.id for mode in target.modes)}")
@@ -92,7 +93,7 @@ def _activate_candidates(options: CalibrationCliInput, console: Console) -> None
             path = promote_candidate(mode_id)
         except RecordError as error:
             raise CalibrationRunError(str(error)) from error
-        console.print(f"[green]Activated calibration candidate:[/green] {path}")
+        print_success(console, "Activated calibration candidate", str(path))
 
 
 def run_calibrate_v5(options: CalibrationCliInput, output: CalibrationCliOutput) -> None:
