@@ -13,6 +13,7 @@ from rich.box import ROUNDED
 from rich.console import Console
 from rich.progress import BarColumn, ProgressColumn, SpinnerColumn, TextColumn
 from rich.table import Table
+from rich.text import Text
 
 # Semantic palette. Built-in Rich style names stay valid on every console, themed or not.
 # Colour never carries meaning alone; a plain-text label survives when colour is stripped
@@ -73,26 +74,28 @@ def metric_column(field: str) -> TextColumn:
 
 
 def print_heading(console: Console, text: str) -> None:
-    """Print a section heading in the shared heading style."""
-    console.print(f"[{STYLE_HEADING}]{text}[/{STYLE_HEADING}]")
+    """Print a section heading without interpreting dynamic text as Rich markup."""
+    console.print(Text(text, style=STYLE_HEADING))
 
 
 def print_success(console: Console, headline: str, detail: str = "") -> None:
-    """Print a success headline in the success style, leaving detail unstyled for readability."""
-    tail = f" {detail}" if detail else ""
-    console.print(f"[{STYLE_SUCCESS}]{headline}[/{STYLE_SUCCESS}]{tail}")
+    """Print a styled success headline followed by an optional literal detail."""
+    line = Text(headline, style=STYLE_SUCCESS)
+    if detail:
+        line.append(f" {detail}")
+    console.print(line)
 
 
 def print_warning(console: Console, message: str) -> None:
-    """Print a warning or cancellation with a text label that survives colour-stripping."""
-    console.print(f"[{STYLE_WARNING}]warning:[/{STYLE_WARNING}] {message}")
+    """Print a warning label and literal message that remain meaningful without colour."""
+    console.print(Text.assemble(("warning:", STYLE_WARNING), " ", message))
 
 
 def print_error(console: Console, category: str, detail: str) -> None:
-    """Print an actionable error with a styled category label and unstyled detail (spec 5.11)."""
-    console.print(f"[{STYLE_ERROR}]{category}:[/{STYLE_ERROR}] {detail}")
+    """Print an actionable error while preserving literal details (specification section 5.11)."""
+    console.print(Text.assemble((f"{category}:", STYLE_ERROR), " ", detail))
 
 
 def print_note(console: Console, label: str, detail: str) -> None:
-    """Print a labelled informational line with the shared accent on its label only."""
-    console.print(f"[{STYLE_ACCENT}]{label}:[/{STYLE_ACCENT}] {detail}")
+    """Print a styled informational label followed by a literal detail."""
+    console.print(Text.assemble((f"{label}:", STYLE_ACCENT), " ", detail))

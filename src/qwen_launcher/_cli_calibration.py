@@ -7,12 +7,7 @@ from dataclasses import dataclass
 import typer
 from rich.console import Console
 
-from qwen_launcher._cli_theme import (
-    print_error,
-    print_heading,
-    print_success,
-    print_warning,
-)
+from qwen_launcher._cli_theme import print_error, print_heading, print_success, print_warning
 from qwen_launcher.calibration import (
     CalibrationError,
     CalibrationOutcome,
