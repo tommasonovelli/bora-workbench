@@ -15,8 +15,8 @@ from qwen_launcher._calibration_record_sessions import (
     verify_finalists,
     verify_vram_entry,
 )
-from qwen_launcher._calibration_v4_search import select_candidate_index
-from qwen_launcher._calibration_v4_types import (
+from qwen_launcher._calibration_v5_search import select_candidate_index
+from qwen_launcher._calibration_v5_types import (
     RELEASE_TOLERANCE_GIB,
     SELECTION_CPU_BASELINE,
     SelectionCandidate,

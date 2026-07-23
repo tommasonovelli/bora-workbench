@@ -1,4 +1,4 @@
-"""Present calibration/v4, candidate activation, progress, and plain-language outcomes."""
+"""Present calibration/v5, candidate activation, progress, and plain-language outcomes."""
 
 from __future__ import annotations
 
@@ -6,17 +6,17 @@ import typer
 from rich.console import Console
 
 from qwen_launcher._calibration_record import RecordError, promote_candidate, records_directory
-from qwen_launcher._calibration_v4_runner import run_calibration_v4
-from qwen_launcher._calibration_v4_types import (
+from qwen_launcher._calibration_v5_runner import run_calibration_v5
+from qwen_launcher._calibration_v5_types import (
+    APPROVED_CONTEXT_TARGETS,
     CONFIRM_ROUNDS,
     CONTEXT_SCALE,
-    EXPERT_CONTEXT_TARGETS,
     MODE_PROBE_CAP,
     OBJECTIVE,
     RAM_RESERVE_GIB,
     RELEASE_TOLERANCE_GIB,
     VRAM_RESERVE_GIB,
-    V4RunOptions,
+    V5RunOptions,
 )
 from qwen_launcher._cli_calibration import (
     CalibrationCancelled,
@@ -38,7 +38,7 @@ def _show_preflight(
     target: CalibrationTarget, options: CalibrationCliInput, console: Console
 ) -> None:
     """Show objective, workload, constants, lifecycle, and risk before process confirmation."""
-    console.print("[bold]Calibration preflight (calibration/v4)[/bold]")
+    console.print("[bold]Calibration preflight (calibration/v5)[/bold]")
     console.print("Paired adaptive local search with zero mandatory technical inputs; no upload.")
     console.print(f"Objective: {OBJECTIVE}")
     console.print(f"Modes: {', '.join(mode.id for mode in target.modes)}")
@@ -95,10 +95,10 @@ def _activate_candidates(options: CalibrationCliInput, console: Console) -> None
         console.print(f"[green]Activated calibration candidate:[/green] {path}")
 
 
-def run_calibrate_v4(options: CalibrationCliInput, output: CalibrationCliOutput) -> None:
+def run_calibrate_v5(options: CalibrationCliInput, output: CalibrationCliOutput) -> None:
     """Activate pending evidence or run paired adaptive search for selected modes."""
-    if options.target_ctx is not None and options.target_ctx not in EXPERT_CONTEXT_TARGETS:
-        allowed = ", ".join(str(value) for value in EXPERT_CONTEXT_TARGETS)
+    if options.target_ctx is not None and options.target_ctx not in APPROVED_CONTEXT_TARGETS:
+        allowed = ", ".join(str(value) for value in APPROVED_CONTEXT_TARGETS)
         raise CalibrationError(f"target context must be one of: {allowed}")
     if options.activate:
         _activate_candidates(options, output.stdout)
@@ -108,10 +108,10 @@ def run_calibrate_v4(options: CalibrationCliInput, output: CalibrationCliOutput)
     if not typer.confirm("Start local calibration?", default=False):
         raise CalibrationCancelled("calibration cancelled before process start")
     with CalibrationProgress(output.stdout) as progress:
-        run_options = V4RunOptions(
+        run_options = V5RunOptions(
             target_ctx=options.target_ctx,
             is_activate=not options.no_activate,
             progress=progress,
         )
-        outcome = run_calibration_v4(target, run_options)
+        outcome = run_calibration_v5(target, run_options)
     show_calibration_outcome(outcome, output.stdout)

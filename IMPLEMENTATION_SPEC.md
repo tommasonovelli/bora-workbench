@@ -27,13 +27,15 @@ Aggiornato al 23 luglio 2026.
   riuso del record, e ha deciso `RELEASE` il 23 luglio 2026.
 - [x] Versione `0.1.1`, tag `v0.1.1` e GitHub Release distribuiscono D-051, D-052, D-053 e il
   progresso runtime; PyPI è escluso dall'autorizzazione di questa release.
+- [x] Sul branch successivo alla release, `calibration/v5` inserisce 96K e 48K nella scala automatica
+  e conserva la lettura dei record v2/v3.
 
 ### Lavoro aperto
 
 - [ ] Configurare il Trusted Publisher PyPI e rieseguire solo il job `publish` fallito di
   `29739366272`; non ricostruire gli artefatti `0.1.0`.
 - [ ] Stabilizzare ulteriormente la serie 0.1 prima di iniziare la 0.2.
-- [~] Ripetere `calibration/v4 --no-activate` su hardware materialmente diverso; la copertura resta
+- [~] Ripetere `calibration/v5 --no-activate` su hardware materialmente diverso; la copertura resta
   `GATE-PARTIAL` e nessuna busta viene trasferita fra host.
 - [ ] Step 7 — skill e router deterministico.
 - [ ] Step 8 — Open WebUI gestita e sync.
@@ -131,11 +133,12 @@ Gli identificatori restano stabili perché codice, test ed evidenza li citano.
 | D-047 | Il Gate locale è sufficiente per il metodo; copertura `GATE-PARTIAL` finché manca hardware diverso. |
 | D-048 | Policy/report pubblici v2; il loader proietta soltanto `n_cpu_moe` come ordine di probe. |
 | D-049 | Gate modello predefinito: 28 GiB RAM totali e 22 GiB disponibili. |
-| D-050 | `98304` è target esperto esplicito, fuori dalla scala automatica. |
+| D-050 | In v4, `98304` era un target esperto esplicito fuori dalla scala automatica. |
 | D-051 | I trial usano `llama_port` se libera, altrimenti una porta loopback assegnata dall'OS. |
 | D-052 | Il confronto del totale RAM tollera al massimo 1 MiB; headroom e componenti restano severi. |
 | D-053 | `calibration/v4` conserva scala, ricerca e ABBA v3 ma usa 0,3 GiB di riserva VRAM e produce `calibration-record/v3`; i record v2 restano validi con la propria riserva 0,5 GiB. |
 | D-054 | Il job PyPI del workflow release è opt-in tramite `PYPI_PUBLISH_ENABLED`; `v0.1.1` pubblica soltanto su GitHub come autorizzato. |
+| D-055 | `calibration/v5` inserisce `98304` e `49152` nella scala automatica, porta il cap a 14 probe e produce `calibration-record/v4`; l'esecuzione v4 è ritirata ma i record v2/v3 restano leggibili. |
 
 Una nuova decisione durevole aggiorna questa tabella nello stesso step che la autorizza.
 
@@ -230,13 +233,13 @@ Tutti i documenti usano JSON Schema 2020-12, `additionalProperties: false` e ide
 `^[a-z0-9-]+$`.
 
 Contratti supportati: `mode/v1`, `profile/v1`, `calibration-policy/v1` e `/v2`,
-`calibration-report/v1` e `/v2`, `calibration-record/v2` e `/v3`, `engine-lock/v1`.
+`calibration-report/v1` e `/v2`, `calibration-record/v2`, `/v3` e `/v4`, `engine-lock/v1`.
 
 - Un modo contiene descrizione, `services.ui`, `services.vision` e sampling.
 - Un profilo v1 è solo compatibilità/evidenza; nessun profilo di produzione è distribuito.
-- Policy v2 descrive il metodo storico v3, non buste; v4 la usa soltanto come seed d'ordine.
+- Policy v2 descrive il metodo storico v3, non buste; v4/v5 la usano soltanto come seed d'ordine.
 - Report v2 è privacy-safe e produce soltanto seed d'ordine.
-- Record v2/v3 sono privati, per modo e legati a identità completa; v3 registra il metodo v4.
+- Record v2/v3/v4 sono privati, per modo e legati a identità completa; v4 registra il metodo v5.
 - Filename, riferimenti e SHA-256 sono controllati semanticamente.
 
 Un nuovo campo incompatibile richiede una nuova versione di schema.
@@ -253,35 +256,35 @@ Il processo figlio CUDA riceve `CUDA_VISIBLE_DEVICES`; il processo padre non vie
 
 ### 5.5 Piano, record e baseline
 
-Solo un attivo `calibration-record/v2` o `/v3` può fornire la busta. Devono coincidere
+Solo un attivo `calibration-record/v2`, `/v3` o `/v4` può fornire la busta. Devono coincidere
 modello/digest, motore/commit/contratto, modo, OS, backend, hardware, driver e headroom. Il totale
 RAM tollera al massimo 1 MiB di deriva; RAM disponibile e VRAM libera restano confronti separati.
 
 Riuso:
 
 - RAM disponibile ≥ fabbisogno misurato + 2,0 GiB;
-- CUDA: VRAM libera ≥ fabbisogno misurato + riserva registrata (0,5 GiB per v2, 0,3 GiB per v3).
+- CUDA: VRAM libera ≥ fabbisogno misurato + riserva registrata (0,5 GiB per v2, 0,3 GiB per v3/v4).
 
 Fallback: `ctx=8192`; CUDA `n_cpu_moe=48`; CPU senza `n_cpu_moe`. È sempre non ottimizzato.
 `--force` bypassa solo il gate 28/22 GiB del modello predefinito.
 
 ### 5.6 Calibrazione
 
-Il default è `calibration/v4`. È locale, esplicito, confermato dall'utente e non effettua upload,
-commit o modifica config. Conserva scala, ricerca del confine, finalisti e conferma ABBA di v3;
-D-053 cambia soltanto riserva VRAM e versione del record. L'esecuzione v3 è ritirata, mentre i suoi
-record e la sua evidenza pubblica restano leggibili.
+Il default è `calibration/v5`. È locale, esplicito, confermato dall'utente e non effettua upload,
+commit o modifica config. Conserva ricerca del confine, finalisti e conferma ABBA di v4; D-055
+aggiunge due gradini alla scala e una posizione al cap. Le esecuzioni v3/v4 sono ritirate, mentre i
+loro record e l'evidenza pubblica restano leggibili.
 
 Costanti:
 
-- scala automatica `131072 → 65536 → 32768 → 16384 → 8192`;
-- target esperti aggiuntivi ammessi: `98304`;
+- scala automatica `131072 → 98304 → 65536 → 49152 → 32768 → 16384 → 8192`;
+- gli stessi gradini sono ammessi come target espliciti;
 - dominio CUDA `[0, block_count]`, atteso `[0, 41]` sul modello corrente;
 - polling RAM/VRAM 250 ms;
 - riserva RAM 2,0 GiB;
 - riserva VRAM 0,3 GiB;
 - tolleranza rilascio/deriva 0,125 GiB;
-- massimo 12 probe per modo;
+- massimo 14 probe per modo;
 - due round `A→B/B→A`;
 - `benchmark/v1` completo su ogni avvio di conferma.
 
@@ -295,7 +298,7 @@ Record: `<modo>.candidate.json`, attivo `<modo>.json`, rollback `<modo>.previous
 promozione atomica; `--no-activate` conserva il candidato; `--activate` promuove senza nuove prove.
 
 `calibration/v1` resta laboratorio esplicito e produce solo bundle bozza. Record v1 sono superati e
-inerti.
+inerti. `calibration/v4` non avvia nuovi run; i record prodotti restano supportati.
 
 ### 5.7 Comando motore
 

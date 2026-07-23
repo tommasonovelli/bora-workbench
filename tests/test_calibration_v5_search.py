@@ -1,14 +1,14 @@
-"""Offline tests for calibration/v4 screening, interpolation, and paired selection."""
+"""Offline tests for calibration/v5 screening, interpolation, and paired selection."""
 
 from __future__ import annotations
 
-from qwen_launcher._calibration_v4_search import (
+from qwen_launcher._calibration_v5_search import (
     ProbeMeasurement,
     ScreeningPlan,
     screen,
     select_candidate_index,
 )
-from qwen_launcher._calibration_v4_types import (
+from qwen_launcher._calibration_v5_types import (
     SELECTION_DOMINANCE,
     SELECTION_DRIFT,
     SELECTION_FREE_VRAM,

@@ -1,6 +1,6 @@
 # Audit della calibrazione hardware
 
-Data dell'audit: 2026-07-22. Addendum release: 2026-07-23.
+Data dell'audit: 2026-07-22. Addendum release: 2026-07-23. Addendum scala v5: 2026-07-23.
 
 Questo documento è il resoconto tecnico non normativo richiesto per la revisione della calibrazione.
 Descrive fonti, misure, limiti e decisioni; non sostituisce `IMPLEMENTATION_SPEC.md`, i lock o la
@@ -9,10 +9,10 @@ modelli: conserva soltanto conclusioni verificabili.
 
 ## Esito sintetico
 
-`calibration/v4` deriva da v3 ed è conservativo nel proprio dominio, ma il suo nome “best fit” va
-interpretato con precisione:
+Il metodo corrente `calibration/v5` deriva da v4 ed è conservativo nel proprio dominio, ma il suo
+nome “best fit” va interpretato con precisione:
 
-- massimizza il contesto fra `131072`, `65536`, `32768`, `16384`, `8192`;
+- massimizza il contesto fra `131072`, `98304`, `65536`, `49152`, `32768`, `16384`, `8192`;
 - su CUDA trova il confine di memoria di `n_cpu_moe` e confronta soltanto quel valore e l'adiacente
   più prudente;
 - misura localmente RAM, VRAM e carico ambientale, quindi non deve introdurre compromessi hardcoded
@@ -21,11 +21,11 @@ interpretato con precisione:
 - non calibra thread, batch, parametri MTP, cache draft, sampling o quantizzazione;
 - su CPU conferma per default `ctx=8192`, pur accettando un target esperto esplicito.
 
-La prima modifica dell'audit ha migliorato osservabilità e interpretazione. D-053 implementa ora un
-cambio stretto e versionato: v4 conserva scala, ricerca e ABBA di v3, riduce la riserva VRAM a 0,3
-GiB (circa 307 MiB nelle unità binarie del progetto) e produce `calibration-record/v3`. I record v2
-storici restano leggibili e mantengono 0,5 GiB al
-riuso. Gli altri ampliamenti elencati qui restano proposte, non funzionalità implementate.
+La prima modifica dell'audit ha migliorato osservabilità e interpretazione. D-053 ha introdotto v4
+con 0,3 GiB di riserva VRAM e `calibration-record/v3`. D-055 introduce ora v5: aggiunge 96K e 48K
+alla scala, porta il cap a 14 e produce `calibration-record/v4`, senza cambiare ricerca del confine,
+ABBA o riserve. I record v2/v3 storici restano leggibili e mantengono le proprie riserve. Gli altri
+ampliamenti elencati qui restano proposte, non funzionalità implementate.
 
 ## Gerarchia delle fonti
 
@@ -55,10 +55,10 @@ v4 di 131.072 soddisfa quella raccomandazione quando è fattibile, ma usa soltan
 nativo dichiarato. Non è corretto estendere automaticamente il dominio usando una pagina corrente:
 la compatibilità locale dipende anche da release motore, cache, MTP, quantizzazione e memoria.
 
-La scala `128K → 64K` può saltare un best fit a 96K. Il target 98.304 già autorizzato consente di
-misurare il gap senza cambiare la scala v4. La CLI lo suggerisce, con `--no-activate`, soltanto quando una
-ricerca automatica CUDA termina a 65.536; non ne promette la fattibilità. Inserire 96K nella scala o
-provare 262K automaticamente cambierebbe budget, ordine ed evidenza del protocollo e va versionato.
+La scala v4 `128K → 64K` poteva saltare un best fit a 96K. D-055 risolve il gap con un nuovo metodo
+versionato: v5 prova automaticamente 98.304 e 49.152 token e usa un cap di 14 probe, sufficiente per
+i due gradini aggiuntivi e la ricerca completa sul dominio `[0,41]`. Provare 262K automaticamente
+resta fuori dal protocollo corrente.
 
 Su CPU, 8.192 è la baseline automatica e non un massimo tecnico: i target esperti approvati restano
 validi. Una vera ricerca automatica del massimo contesto CPU è lavoro per un protocollo successivo.
@@ -139,7 +139,7 @@ Senza alterare prove, schema o selezione, il comando ora:
 - usa una barra Rich con spinner, fase, conteggio, elapsed e tempo residuo su TTY;
 - conserva una riga per trial completato quando l'output è rediretto;
 - separa le durate per fase: screening dopo due campioni, conferma dopo uno e poi mediana;
-- mostra `≤12` nello screening e proietta la durata fino al cap senza chiamarla limite garantito;
+- mostra `≤14` nello screening e proietta la durata fino al cap senza chiamarla limite garantito;
 - chiude il live display su errori e `Ctrl-C`, mantenendo un riepilogo di fase;
 - spiega la regola di selezione e mostra i minimi RAM/VRAM del finalista;
 - rende visibili in `calibrate --help` gli extra gestiti dal parser specializzato.
@@ -149,6 +149,9 @@ cambio separato: timestamp, ordine ABBA e benchmark restano invariati, mentre pr
 passano rispettivamente a v4 e v3.
 
 ## Calibrazione empirica locale
+
+D-055 è verificata soltanto da fake offline in questo commit; un Gate reale v5 resta manuale. Tutti
+i run reali descritti sotto appartengono a v3/v4 e non vengono reinterpretati come prova di v5.
 
 Tutti i run reali sono stati eseguiti su `coding`, CUDA, automatici e `--no-activate` in radici
 isolate. Nessun record o candidato utente è stato modificato; dopo l'estrazione degli aggregati le
@@ -202,7 +205,7 @@ privato del Gate è stato ricostruito o aggiunto all'evidenza pubblica; la coper
 ## Priorità consigliate per un protocollo successivo
 
 1. D-053 ha versionato come v4 il solo cambio di riserva; scala e finalisti restano invariati.
-2. Valutare 96K nella scala e 262K come asse sperimentale, con budget e requisiti memoria espliciti.
+2. Valutare 262K come asse sperimentale, con budget e requisiti memoria espliciti.
 3. Separare ricerca del confine e ricerca throughput nel dominio `n_cpu_moe` fattibile.
 4. Aggiungere una vera ricerca del contesto CPU, mantenendo un percorso breve per la baseline.
 5. Eseguire spike monovariati su thread, batch e MTP; solo dopo provare le interazioni principali.

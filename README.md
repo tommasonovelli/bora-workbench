@@ -41,7 +41,8 @@ Se è la prima volta che apri il progetto, il percorso più semplice è:
 La release corrente è **`0.1.1`**, pubblicata su
 [GitHub Releases](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.1). Include
 `calibration/v4`, isolamento delle porte temporanee e progresso visibile durante calibrazione e
-installazione del motore. PyPI non fa parte di questa pubblicazione e resta indisponibile.
+installazione del motore. Il branch successivo alla release usa `calibration/v5`, che prova anche
+96K e 48K nella scala automatica. PyPI non fa parte di questa pubblicazione e resta indisponibile.
 
 ## Requisiti
 

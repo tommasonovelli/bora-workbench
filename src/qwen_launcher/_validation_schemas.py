@@ -9,4 +9,5 @@ SCHEMA_FILES = {
     "calibration-report/v2": "calibration-report.v2.json",
     "calibration-record/v2": "calibration-record.v2.json",
     "calibration-record/v3": "calibration-record.v3.json",
+    "calibration-record/v4": "calibration-record.v4.json",
 }

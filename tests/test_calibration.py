@@ -53,7 +53,7 @@ def benchmark(rate: float) -> BenchmarkResult:
 
 
 def test_v1_laboratory_still_requires_explicit_values() -> None:
-    """Keep historical v1 explicit after the packaged policy uses calibration/v4 by default."""
+    """Keep historical v1 explicit after the packaged policy uses calibration/v5 by default."""
     assert resource("content/calibration-policy.json").is_file()
     with pytest.raises(CalibrationError, match="explicit candidate"):
         validate_settings(CalibrationSettings((), 0, None, None), "cuda")

@@ -1,4 +1,4 @@
-"""Implement pure calibration/v4 screening and paired-round finalist selection.
+"""Implement pure calibration/v5 screening and paired-round finalist selection.
 
 Screening preserves measured bisection and may use safe interpolation only to choose the next probe;
 it never excludes a value. Peak monotonicity is checked only on completed feasible loads because an
@@ -11,8 +11,8 @@ import math
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from qwen_launcher._calibration_v4_selection import select_candidate_index
-from qwen_launcher._calibration_v4_types import RELEASE_TOLERANCE_GIB
+from qwen_launcher._calibration_v5_selection import select_candidate_index
+from qwen_launcher._calibration_v5_types import RELEASE_TOLERANCE_GIB
 
 __all__ = [
     "ProbeMeasurement",

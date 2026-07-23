@@ -7,7 +7,7 @@ from pathlib import Path
 from statistics import median
 from typing import cast
 
-from qwen_launcher._calibration_v4_types import RELEASE_TOLERANCE_GIB
+from qwen_launcher._calibration_v5_types import RELEASE_TOLERANCE_GIB
 
 JsonObject = dict[str, object]
 

@@ -1,4 +1,4 @@
-"""Verify calibration/v4 launch-time VRAM headroom."""
+"""Verify protocol-specific launch-time VRAM headroom."""
 
 from __future__ import annotations
 
@@ -18,12 +18,14 @@ def _install_v2(tmp_path, monkeypatch) -> None:
     document = build_record(record_target(cuda_hardware()), cuda_calibration(mode), RUN_ID)
     document["schema"] = "calibration-record/v2"
     document["calibration_protocol"] = "calibration/v3"
+    document["search"]["context_scale"] = [131072, 65536, 32768, 16384, 8192]
+    document["search"]["probe_cap"] = 12
     document["search"]["vram_reserve_gib"] = 0.5
     write_record(document, record_module.record_path("coding"))
 
 
 def test_reuse_requires_measured_need_plus_point_three_gib(tmp_path, monkeypatch) -> None:
-    """Enforce the v4 reserve exactly instead of retaining v3's 0.5 GiB threshold."""
+    """Enforce the v5 reserve exactly instead of retaining v3's 0.5 GiB threshold."""
     install_record(tmp_path, monkeypatch, cuda_calibration, cuda_hardware())
     monkeypatch.setattr(reuse_module, "query_gpu_snapshot", lambda index: snapshot(free=5.399))
 

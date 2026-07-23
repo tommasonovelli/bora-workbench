@@ -38,7 +38,8 @@ quotidiano del launcher.
 ## Stato corrente
 
 La release pubblica è `0.1.1`, con correzioni runtime, progresso interattivo e `calibration/v4` con
-record v3 e riserva VRAM 0,3 GiB. Il maintainer ha attestato i Gate reali Ubuntu e Windows e ha
+record v3 e riserva VRAM 0,3 GiB. Il branch successivo usa `calibration/v5`, record v4 e una scala
+che include 96K e 48K. Il maintainer ha attestato i Gate reali Ubuntu e Windows della release e ha
 autorizzato la pubblicazione su GitHub il 23 luglio 2026.
 
 PyPI resta indisponibile ed è escluso da questa pubblicazione. Gli artefatti verificati sono nella

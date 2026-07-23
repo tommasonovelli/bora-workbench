@@ -34,8 +34,8 @@ _stdout = Console()
 _stderr = Console(stderr=True)
 _MEMORY_GATE_HELP = "Bypass only the default-model total and available RAM gate."
 _CALIBRATION_EPILOG = (
-    "v4 extras: --no-activate keeps candidates; --activate promotes them; --target-ctx N fixes "
-    "one of 131072, 98304, 65536, 32768, 16384, 8192. "
+    "v5 extras: --no-activate keeps candidates; --activate promotes them; --target-ctx N fixes "
+    "one of 131072, 98304, 65536, 49152, 32768, 16384, 8192. "
     "v1 extras: --candidate ID:CTX[:N_CPU_MOE] (repeatable), --settings VALUES. "
     "Specialized extras are parsed strictly after Typer's common options."
 )
@@ -135,11 +135,11 @@ def calibrate(
         str,
         typer.Option(
             "--protocol",
-            help="calibration protocol: paired zero-input 'v4' or gate-only lab 'v1'.",
+            help="calibration protocol: paired zero-input 'v5' or gate-only lab 'v1'.",
         ),
-    ] = "v4",
+    ] = "v5",
 ) -> None:
-    """Run v4 with --activate/--no-activate/--target-ctx, or v1 with candidate/settings."""
+    """Run v5 with --activate/--no-activate/--target-ctx, or v1 with candidate/settings."""
     try:
         parsed = parse_calibration_options(context.args)
     except CalibrationError as error:

@@ -1,0 +1,385 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-launcher.dev/schemas/calibration-record.v4.json",
+  "title": "qwen-launcher calibration-record/v4",
+  "description": "Private local candidate or active record produced by calibration/v5 with paired per-session evidence.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "mode",
+    "created_at",
+    "launcher_version",
+    "calibration_protocol",
+    "benchmark_protocol",
+    "objective",
+    "evidence_run_id",
+    "model",
+    "model_sha256",
+    "engine_release",
+    "engine_source_commit",
+    "command_contract_sha256",
+    "os_name",
+    "backend",
+    "hardware",
+    "envelope",
+    "observed",
+    "benchmark",
+    "search",
+    "selection_rule"
+  ],
+  "properties": {
+    "schema": {
+      "description": "Versioned schema identifier for this private local record.",
+      "const": "calibration-record/v4"
+    },
+    "mode": {
+      "description": "Packaged mode calibrated by this record.",
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "created_at": {
+      "description": "UTC time when the candidate record was generated.",
+      "type": "string",
+      "format": "date-time"
+    },
+    "launcher_version": {
+      "description": "Exact launcher version that generated the record.",
+      "type": "string",
+      "minLength": 1
+    },
+    "calibration_protocol": {
+      "description": "Versioned search and confirmation algorithm.",
+      "const": "calibration/v5"
+    },
+    "benchmark_protocol": {
+      "description": "Unchanged benchmark protocol used in every confirmation session.",
+      "const": "benchmark/v1"
+    },
+    "objective": {
+      "description": "Declared lexicographic optimization objective.",
+      "const": "maximum-context-then-paired-throughput-then-memory-margin-then-prudence"
+    },
+    "evidence_run_id": {
+      "description": "Managed local evidence-directory identifier for this run.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "model": {
+      "description": "Complete calibrated model identifier.",
+      "type": "string",
+      "minLength": 1
+    },
+    "model_sha256": {
+      "description": "SHA-256 of the pinned model artifact.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "engine_release": {
+      "description": "Exact llama.cpp release used for calibration.",
+      "type": "string",
+      "minLength": 1
+    },
+    "engine_source_commit": {
+      "description": "Full source commit of the calibrated llama.cpp release.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "command_contract_sha256": {
+      "description": "SHA-256 of the canonical engine command contract.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "os_name": {
+      "description": "Operating system on which the record was measured.",
+      "enum": ["linux", "windows"]
+    },
+    "backend": {
+      "description": "Measured engine backend.",
+      "enum": ["cuda", "cpu"]
+    },
+    "hardware": {
+      "description": "Stable hardware identity required for reuse.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cpu_name",
+        "cpu_cores",
+        "ram_total_gib",
+        "gpu_count",
+        "gpu_name",
+        "gpu_driver",
+        "vram_total_gib"
+      ],
+      "properties": {
+        "cpu_name": { "description": "Detected CPU name.", "type": "string", "minLength": 1 },
+        "cpu_cores": { "description": "Detected logical CPU cores.", "type": "integer", "minimum": 1 },
+        "ram_total_gib": { "description": "Detected total RAM in exact GiB.", "type": "number", "exclusiveMinimum": 0 },
+        "gpu_count": { "description": "Detected NVIDIA GPU count.", "type": "integer", "minimum": 0 },
+        "gpu_name": { "description": "Selected GPU name, or null on CPU.", "type": ["string", "null"], "minLength": 1 },
+        "gpu_driver": { "description": "Measured GPU driver, or null on CPU.", "type": ["string", "null"], "minLength": 1 },
+        "vram_total_gib": { "description": "Selected GPU total VRAM, or null on CPU.", "type": ["number", "null"], "exclusiveMinimum": 0 }
+      }
+    },
+    "envelope": {
+      "description": "Locally selected launch envelope.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ctx", "n_cpu_moe"],
+      "properties": {
+        "ctx": { "description": "Selected approved context.", "enum": [131072, 98304, 65536, 49152, 32768, 16384, 8192] },
+        "n_cpu_moe": { "description": "Selected CPU MoE block count, or null on CPU.", "type": ["integer", "null"], "minimum": 0 }
+      }
+    },
+    "observed": {
+      "description": "Conservative selected-finalist resource requirements for launch-time headroom.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ram_needed_gib", "minimum_ram_available_gib", "vram_needed_gib", "minimum_vram_free_gib"],
+      "properties": {
+        "ram_needed_gib": { "description": "Maximum measured RAM range across confirmation sessions.", "type": "number", "minimum": 0 },
+        "minimum_ram_available_gib": { "description": "Minimum available RAM across confirmation sessions.", "type": "number", "minimum": 0 },
+        "vram_needed_gib": { "description": "Maximum measured incremental VRAM need, or null on CPU.", "type": ["number", "null"], "minimum": 0 },
+        "minimum_vram_free_gib": { "description": "Minimum free VRAM across confirmation sessions, or null on CPU.", "type": ["number", "null"], "minimum": 0 }
+      }
+    },
+    "benchmark": {
+      "description": "Combined benchmark/v1 evidence for the selected finalist's two sessions.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["warmup_tok_s", "measured_tok_s", "round_medians", "tok_s"],
+      "properties": {
+        "warmup_tok_s": { "description": "Two excluded warm-up rates.", "$ref": "#/$defs/two_rates" },
+        "measured_tok_s": { "description": "Ten included rates, five per paired session.", "$ref": "#/$defs/ten_rates" },
+        "round_medians": { "description": "Median of each selected-finalist session.", "$ref": "#/$defs/two_rates" },
+        "tok_s": { "$ref": "#/$defs/token_summary" }
+      }
+    },
+    "search": {
+      "description": "Algorithm constants and exact screening and confirmation evidence.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "context_scale",
+        "target_ctx",
+        "probe_cap",
+        "vram_reserve_gib",
+        "ram_reserve_gib",
+        "release_tolerance_gib",
+        "confirm_rounds",
+        "did_degrade",
+        "baseline_drift_gib",
+        "round_winners",
+        "probes",
+        "finalists"
+      ],
+      "properties": {
+        "context_scale": { "description": "Approved descending context scale.", "const": [131072, 98304, 65536, 49152, 32768, 16384, 8192] },
+        "context_identity_model": { "description": "Evidence-only run-scoped GPU process identity model, or null on CPU.", "type": ["string", "null"], "enum": ["executable-file-id/v1", null] },
+        "target_ctx": { "description": "Optional fixed context target.", "type": ["integer", "null"], "enum": [131072, 98304, 65536, 49152, 32768, 16384, 8192, null] },
+        "probe_cap": { "description": "Maximum screening probes per mode.", "const": 14 },
+        "vram_reserve_gib": { "description": "Universal minimum free VRAM during CUDA trials.", "const": 0.3 },
+        "ram_reserve_gib": { "description": "Universal minimum available RAM during every trial.", "const": 2.0 },
+        "release_tolerance_gib": { "description": "VRAM release and drift interpretation tolerance.", "const": 0.125 },
+        "confirm_rounds": { "description": "Paired ABBA confirmation rounds.", "const": 2 },
+        "did_degrade": { "description": "Whether feasible peaks forced linear screening.", "type": "boolean" },
+        "baseline_drift_gib": { "description": "Aggregate confirmation VRAM baseline excursion, or null on CPU.", "type": ["number", "null"], "minimum": 0 },
+        "round_winners": {
+          "description": "Original finalist index winning each round, or null on tie/no comparison.",
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": { "type": ["integer", "null"], "minimum": 0, "maximum": 1 }
+        },
+        "probes": { "description": "Screening probes in execution order.", "type": "array", "maxItems": 14, "items": { "$ref": "#/$defs/probe" } },
+        "finalists": { "description": "One or two finalists in A/B order.", "type": "array", "minItems": 1, "maxItems": 2, "items": { "$ref": "#/$defs/finalist" } }
+      }
+    },
+    "selection_rule": {
+      "description": "Reconstructed rule that selected the active envelope.",
+      "enum": [
+        "dominance-unanimous-rounds",
+        "equivalent-prefer-minimum-free-vram",
+        "equivalent-prefer-prudent",
+        "equivalent-after-baseline-drift",
+        "single-finalist",
+        "cpu-baseline-confirmation"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "backend": { "const": "cpu" } } },
+      "then": {
+        "properties": {
+          "hardware": { "properties": { "gpu_count": { "const": 0 }, "gpu_name": { "type": "null" }, "gpu_driver": { "type": "null" }, "vram_total_gib": { "type": "null" } } },
+          "envelope": { "properties": { "n_cpu_moe": { "type": "null" } } },
+          "observed": { "properties": { "vram_needed_gib": { "type": "null" }, "minimum_vram_free_gib": { "type": "null" } } },
+          "search": { "properties": { "context_identity_model": { "type": "null" }, "baseline_drift_gib": { "type": "null" }, "probes": { "maxItems": 0 }, "finalists": { "maxItems": 1 } } },
+          "selection_rule": { "const": "cpu-baseline-confirmation" }
+        }
+      },
+      "else": {
+        "properties": {
+          "hardware": { "properties": { "gpu_count": { "type": "integer", "minimum": 1 }, "gpu_name": { "type": "string" }, "gpu_driver": { "type": "string" }, "vram_total_gib": { "type": "number" } } },
+          "envelope": { "properties": { "n_cpu_moe": { "type": "integer" } } },
+          "observed": { "properties": { "vram_needed_gib": { "type": "number" }, "minimum_vram_free_gib": { "type": "number" } } },
+          "search": { "properties": { "context_identity_model": { "const": "executable-file-id/v1" } } },
+          "selection_rule": { "enum": ["dominance-unanimous-rounds", "equivalent-prefer-minimum-free-vram", "equivalent-prefer-prudent", "equivalent-after-baseline-drift", "single-finalist"] }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "rate": { "description": "Non-negative token rate.", "type": "number", "minimum": 0 },
+    "two_rates": { "description": "Exactly two round rates.", "type": "array", "minItems": 2, "maxItems": 2, "items": { "$ref": "#/$defs/rate" } },
+    "ten_rates": { "description": "Exactly ten included rates.", "type": "array", "minItems": 10, "maxItems": 10, "items": { "$ref": "#/$defs/rate" } },
+    "five_rates": { "description": "Exactly five included benchmark/v1 rates.", "type": "array", "minItems": 5, "maxItems": 5, "items": { "$ref": "#/$defs/rate" } },
+    "token_summary": {
+      "description": "Minimum, median, and maximum of included rates.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "median", "max"],
+      "properties": {
+        "min": { "$ref": "#/$defs/rate" },
+        "median": { "$ref": "#/$defs/rate" },
+        "max": { "$ref": "#/$defs/rate" }
+      }
+    },
+    "benchmark_session": {
+      "description": "One unchanged benchmark/v1 session.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["warmup_tok_s", "measured_tok_s", "tok_s"],
+      "properties": {
+        "warmup_tok_s": { "$ref": "#/$defs/rate" },
+        "measured_tok_s": { "$ref": "#/$defs/five_rates" },
+        "tok_s": { "$ref": "#/$defs/token_summary" }
+      }
+    },
+    "ram": {
+      "description": "Available-RAM evidence for one process.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseline_available_gib", "minimum_available_gib"],
+      "properties": {
+        "baseline_available_gib": { "description": "Pre-trial available RAM.", "type": "number", "minimum": 0 },
+        "minimum_available_gib": { "description": "Minimum available RAM during the trial.", "type": "number", "minimum": 0 }
+      }
+    },
+    "telemetry": {
+      "description": "Evidence-only optional telemetry extrema.",
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["maximum_utilization_percent", "minimum_sm_clock_mhz", "maximum_temperature_celsius", "maximum_power_draw_watts", "throttle_reasons"],
+      "properties": {
+        "maximum_utilization_percent": { "description": "Maximum reported GPU utilization.", "type": ["number", "null"], "minimum": 0 },
+        "minimum_sm_clock_mhz": { "description": "Minimum reported SM clock.", "type": ["number", "null"], "minimum": 0 },
+        "maximum_temperature_celsius": { "description": "Maximum reported GPU temperature.", "type": ["number", "null"], "minimum": 0 },
+        "maximum_power_draw_watts": { "description": "Maximum reported power draw.", "type": ["number", "null"], "minimum": 0 },
+        "throttle_reasons": { "description": "Driver-declared active throttle reasons, or null when unsupported.", "type": ["array", "null"], "uniqueItems": true, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "vram": {
+      "description": "Aggregate VRAM, release duration, WDDM contexts, and optional telemetry.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["baseline_used_gib", "peak_used_gib", "minimum_free_gib", "release_used_gib", "release_duration_seconds", "driver_version", "initial_compute_context_count", "telemetry"],
+      "properties": {
+        "baseline_used_gib": { "description": "Aggregate used VRAM before the trial.", "type": "number", "minimum": 0 },
+        "peak_used_gib": { "description": "Maximum aggregate used VRAM.", "type": "number", "minimum": 0 },
+        "minimum_free_gib": { "description": "Minimum aggregate free VRAM.", "type": "number", "minimum": 0 },
+        "release_used_gib": { "description": "Aggregate used VRAM at release acceptance or timeout.", "type": "number", "minimum": 0 },
+        "release_duration_seconds": { "description": "Measured post-stop release duration.", "type": "number", "minimum": 0 },
+        "driver_version": { "description": "Driver version observed by the monitor.", "type": "string", "minLength": 1 },
+        "initial_compute_context_count": { "description": "WDDM contexts present at this trial's initial sample.", "type": "integer", "minimum": 0 },
+        "context_replacement_count": { "description": "Evidence-only count of admitted same-executable WDDM replacement instances.", "type": "integer", "minimum": 0 },
+        "telemetry": { "$ref": "#/$defs/telemetry" }
+      }
+    },
+    "log_path": { "description": "Run-relative retained log path, or null when no process log was created.", "type": ["string", "null"], "minLength": 1, "pattern": "^(?!/)(?![A-Za-z]:).+" },
+    "probe_trial": {
+      "description": "Reduced evidence for one screening process.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "started_at", "finished_at", "log_path", "ram", "vram"],
+      "properties": {
+        "sequence": { "description": "One-based screening execution position.", "type": "integer", "minimum": 1, "maximum": 14 },
+        "started_at": { "description": "Process trial start UTC time.", "type": "string", "format": "date-time" },
+        "finished_at": { "description": "Process trial end UTC time.", "type": "string", "format": "date-time" },
+        "log_path": { "$ref": "#/$defs/log_path" },
+        "ram": { "$ref": "#/$defs/ram" },
+        "vram": { "anyOf": [{ "$ref": "#/$defs/vram" }, { "type": "null" }] }
+      }
+    },
+    "confirmation_session": {
+      "description": "One fresh paired confirmation process.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["round", "global_position", "started_at", "finished_at", "log_path", "benchmark", "ram", "vram"],
+      "properties": {
+        "round": { "description": "One-based paired round.", "type": "integer", "minimum": 1, "maximum": 2 },
+        "global_position": { "description": "One-based ABBA temporal position.", "type": "integer", "minimum": 1, "maximum": 4 },
+        "started_at": { "description": "Process trial start UTC time.", "type": "string", "format": "date-time" },
+        "finished_at": { "description": "Process trial end UTC time.", "type": "string", "format": "date-time" },
+        "log_path": { "$ref": "#/$defs/log_path" },
+        "benchmark": { "anyOf": [{ "$ref": "#/$defs/benchmark_session" }, { "type": "null" }] },
+        "ram": { "anyOf": [{ "$ref": "#/$defs/ram" }, { "type": "null" }] },
+        "vram": { "anyOf": [{ "$ref": "#/$defs/vram" }, { "type": "null" }] }
+      }
+    },
+    "probe": {
+      "description": "One fixed-context screening probe.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ctx", "n_cpu_moe", "is_feasible", "reason", "trial"],
+      "properties": {
+        "ctx": { "description": "Context used by this probe.", "enum": [131072, 98304, 65536, 49152, 32768, 16384, 8192] },
+        "n_cpu_moe": { "description": "CPU MoE block count used by this probe.", "type": "integer", "minimum": 0 },
+        "is_feasible": { "description": "Whether workload and both reserves completed.", "type": "boolean" },
+        "reason": { "description": "Infeasibility reason, or null.", "type": ["string", "null"], "minLength": 1 },
+        "trial": { "$ref": "#/$defs/probe_trial" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "is_feasible": { "const": true } } },
+          "then": { "properties": { "reason": { "type": "null" } } },
+          "else": { "properties": { "reason": { "type": "string" } } }
+        }
+      ]
+    },
+    "nullable_two_rates": {
+      "description": "Two per-round medians, nullable only for discarded evidence.",
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": { "type": ["number", "null"], "minimum": 0 }
+    },
+    "finalist": {
+      "description": "One paired finalist with two process sessions.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ctx", "n_cpu_moe", "outcome", "discard_reason", "sessions", "round_medians", "ram_needed_gib", "minimum_ram_available_gib", "vram_needed_gib", "minimum_free_vram_gib", "is_selected"],
+      "properties": {
+        "ctx": { "description": "Context shared by all finalists.", "enum": [131072, 98304, 65536, 49152, 32768, 16384, 8192] },
+        "n_cpu_moe": { "description": "Finalist CPU MoE block count, or null on CPU.", "type": ["integer", "null"], "minimum": 0 },
+        "outcome": { "description": "Paired confirmation outcome.", "enum": ["valid", "discarded"] },
+        "discard_reason": { "description": "First confirmation failure, or null.", "type": ["string", "null"], "minLength": 1 },
+        "sessions": { "description": "Two fresh benchmarked confirmation processes.", "type": "array", "minItems": 2, "maxItems": 2, "items": { "$ref": "#/$defs/confirmation_session" } },
+        "round_medians": { "$ref": "#/$defs/nullable_two_rates" },
+        "ram_needed_gib": { "description": "Conservative measured RAM range.", "type": ["number", "null"], "minimum": 0 },
+        "minimum_ram_available_gib": { "description": "Minimum available RAM across sessions.", "type": ["number", "null"], "minimum": 0 },
+        "vram_needed_gib": { "description": "Conservative incremental VRAM need, or null on CPU.", "type": ["number", "null"], "minimum": 0 },
+        "minimum_free_vram_gib": { "description": "Minimum free VRAM across sessions, or null on CPU.", "type": ["number", "null"], "minimum": 0 },
+        "is_selected": { "description": "Whether this finalist produced the envelope.", "type": "boolean" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "outcome": { "const": "valid" } } },
+          "then": { "properties": { "discard_reason": { "type": "null" }, "round_medians": { "$ref": "#/$defs/two_rates" }, "ram_needed_gib": { "type": "number" }, "minimum_ram_available_gib": { "type": "number" } } },
+          "else": { "properties": { "discard_reason": { "type": "string" }, "is_selected": { "const": false } } }
+        }
+      ]
+    }
+  }
+}

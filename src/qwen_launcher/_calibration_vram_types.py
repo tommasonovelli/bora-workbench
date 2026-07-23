@@ -44,5 +44,5 @@ class VramEnvironmentError(VramError):
 
     Specification section 5.6 separates reserve/release candidate failures from concurrent compute,
     monitor, driver, and capacity failures. The subclass keeps calibration/v1 behavior compatible
-    while allowing calibration/v4 to preserve that distinction.
+    while allowing calibration/v5 to preserve that distinction.
     """

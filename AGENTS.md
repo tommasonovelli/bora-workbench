@@ -24,10 +24,11 @@ apply here.
   The maintainer attested real Ubuntu and Windows v4 Gates and decided `RELEASE` on 23 July 2026.
   PyPI remains unconfigured and `0.1.1` was explicitly authorized for GitHub only; do not upload,
   rebuild or replace published artifacts. Version 0.1.1 uses `calibration/v4`, a 0,3 GiB VRAM
-  reserve and `calibration-record/v3`; historical v2 records keep their 0,5 GiB reuse reserve. Q8
-  remains pinned, the `n_cpu_moe` domain is `[0, 41]`, and calibration coverage remains
-  `GATE-PARTIAL`. The three local candidates remain inactive. Do not activate candidates or begin
-  Step 7 without an explicit request.
+  reserve and `calibration-record/v3`; historical v2 records keep their 0,5 GiB reuse reserve. The
+  unreleased branch uses `calibration/v5` and `calibration-record/v4`, with 96K and 48K in the
+  automatic scale. Q8 remains pinned, the `n_cpu_moe` domain is `[0, 41]`, and calibration coverage
+  remains `GATE-PARTIAL`. The three local candidates remain inactive. Do not activate candidates or
+  begin Step 7 without an explicit request.
 - Never invent engine flags, checksums, source commits, benchmark results, hardware support, profiles,
   health responses, or compatibility claims.
 

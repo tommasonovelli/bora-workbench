@@ -10,7 +10,8 @@ serve sempre un'autorizzazione umana esplicita per push, tag, GitHub Release e P
 - GitHub Release `v0.1.1`: pubblicata con installer, wheel, sdist e `SHA256SUMS`;
 - i digest `0.1.1` sono quelli del manifest allegato alla release e derivano dal build job verde;
 - PyPI: non ancora pubblicata e fuori dall'autorizzazione di `0.1.1`;
-- branch `main`: versione `0.1.1` con correzioni e `calibration/v4`.
+- release pubblica `v0.1.1`: correzioni e `calibration/v4`;
+- branch `main`: modifiche unreleased con `calibration/v5`.
 
 Gli artefatti pubblicati sono immutabili. Non ricostruire, sostituire o ricaricare file con la stessa
 versione per includere correzioni successive: serve una nuova versione.

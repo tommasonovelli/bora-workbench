@@ -1,11 +1,11 @@
-"""Synthetic calibration/v4 paired evidence builders shared by record and reuse tests."""
+"""Synthetic calibration/v5 paired evidence builders shared by record and reuse tests."""
 
 from __future__ import annotations
 
 from dataclasses import replace
 
 from qwen_launcher._calibration_ram import RamSummary
-from qwen_launcher._calibration_v4_types import (
+from qwen_launcher._calibration_v5_types import (
     SELECTION_CPU_BASELINE,
     SELECTION_DOMINANCE,
     FinalistEvidence,

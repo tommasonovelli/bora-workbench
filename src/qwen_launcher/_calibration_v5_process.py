@@ -1,4 +1,4 @@
-"""Run one fresh calibration/v4 process with joint resource and timing evidence."""
+"""Run one fresh calibration/v5 process with joint resource and timing evidence."""
 
 from __future__ import annotations
 
@@ -8,14 +8,14 @@ from pathlib import Path
 
 from qwen_launcher._calibration_gpu_contexts import GpuContextBaseline
 from qwen_launcher._calibration_ram import RamError, RamMonitor, RamReserveError, RamSummary
-from qwen_launcher._calibration_v4_process_types import (
+from qwen_launcher._calibration_v5_process_types import (
     SpawnRecord,
     TrialFailure,
     TrialMeasurement,
     TrialSpec,
     managed_gpu_identity,
 )
-from qwen_launcher._calibration_v4_types import (
+from qwen_launcher._calibration_v5_types import (
     RAM_RESERVE_GIB,
     RELEASE_TOLERANCE_GIB,
     VRAM_RESERVE_GIB,
@@ -59,7 +59,7 @@ class _TrialState:
 def _monitors(
     target: CalibrationTarget, context_baseline: GpuContextBaseline | None
 ) -> tuple[VramMonitor | None, RamMonitor]:
-    """Apply universal reserves and calibration/v4's immutable GPU context baseline."""
+    """Apply universal reserves and calibration/v5's immutable GPU context baseline."""
     ram = RamMonitor(minimum_free_gib=RAM_RESERVE_GIB)
     if target.hardware.backend == "cpu":
         return None, ram
@@ -130,7 +130,7 @@ def _finish(
 
 
 def _timestamp() -> str:
-    """Return one strict UTC timestamp suitable for calibration-record/v3."""
+    """Return one strict UTC timestamp suitable for calibration-record/v4."""
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
@@ -161,7 +161,7 @@ def _evidence(spec: TrialSpec, state: _TrialState, completed: _CompletedTrial) -
 
 
 def run_trial(target: CalibrationTarget, spec: TrialSpec) -> TrialMeasurement:
-    """Start, exercise, stop, and verify one isolated calibration/v4 trial."""
+    """Start, exercise, stop, and verify one isolated calibration/v5 trial."""
     state = _TrialState(*_monitors(target, spec.gpu_context_baseline))
     started_at = _timestamp()
     failure: BaseException | None = None

@@ -4,7 +4,7 @@
 
 La calibrazione serve a trovare una configurazione adatta **a questo PC**. Non cambia il modello e
 non migliora la qualità delle risposte: massimizza prima il contesto fattibile e poi confronta
-throughput e margine di memoria nel dominio verificato dal protocollo v4.
+throughput e margine di memoria nel dominio del protocollo v5.
 
 Per iniziare non occorre conoscere i parametri di `llama.cpp`:
 
@@ -89,7 +89,7 @@ qwen-launcher calibrate --mode coding
 Su un terminale interattivo la CLI mostra spinner, barra, tempo trascorso, trial in corso e tempo
 rimanente appreso soltanto dalla fase corrente. Lo screening attende due processi e usa la mediana;
 la conferma, che ha trial omogenei e totale esatto, mostra una prima ETA dopo il primo e la stabilizza
-con la mediana. Nello screening `12` è un cap: il conteggio usa `≤12` e il tempo è una proiezione
+con la mediana. Nello screening `14` è un cap: il conteggio usa `≤14` e il tempo è una proiezione
 fino al cap, non un limite garantito. Se l'output è rediretto, viene mantenuta una riga stabile per
 ogni trial completato. Al termine, il riepilogo spiega la regola di selezione e i minimi RAM/VRAM
 misurati.
@@ -141,7 +141,7 @@ modificare manualmente i record.
 La ricerca normale prova in ordine:
 
 ```text
-131072 → 65536 → 32768 → 16384 → 8192
+131072 → 98304 → 65536 → 49152 → 32768 → 16384 → 8192
 ```
 
 È possibile fissare uno dei target approvati:
@@ -150,15 +150,14 @@ La ricerca normale prova in ordine:
 qwen-launcher calibrate --mode coding --target-ctx 98304
 ```
 
-Valori ammessi: `131072`, `98304`, `65536`, `32768`, `16384`, `8192`. `98304` è disponibile solo
-come target esplicito e non cambia la scala automatica. Se la ricerca automatica si ferma a 65536,
-la CLI propone il comando 98304 con `--no-activate` come misura separata, senza implicarne la
-fattibilità. I candidati vengono sempre confrontati allo stesso contesto.
+Valori ammessi: `131072`, `98304`, `65536`, `49152`, `32768`, `16384`, `8192`. Tutti appartengono
+anche alla scala automatica; `--target-ctx` serve a fissarne uno per una misura separata. I candidati
+vengono sempre confrontati allo stesso contesto.
 
 `131072` è il tetto automatico del protocollo corrente, non una prova che il modello non supporti
-contesti maggiori. Perciò “best fit” significa il migliore nel dominio v4 sopra elencato.
+contesti maggiori. Perciò “best fit” significa il migliore nel dominio v5 sopra elencato.
 
-## Come funziona la ricerca v4
+## Come funziona la ricerca v5
 
 Questa sezione spiega l'algoritmo; non è necessaria per usare il comando.
 
@@ -176,7 +175,7 @@ punto, ma non restringe il dominio.
 Per ogni modo il calibratore:
 
 1. scende nella scala dei contesti solo se la configurazione più prudente non è fattibile;
-2. cerca il confine CUDA con al massimo 12 probe e processi freschi;
+2. cerca il confine CUDA con al massimo 14 probe e processi freschi;
 3. monitora RAM e VRAM ogni 250 ms;
 4. richiede almeno 2,0 GiB RAM disponibili durante ogni trial;
 5. su CUDA richiede almeno 0,3 GiB VRAM libera (circa 307 MiB) e rilascio entro 0,125 GiB dalla
@@ -192,14 +191,15 @@ Una deriva della baseline VRAM oltre 0,125 GiB disabilita la vittoria per throug
 un finalista che ha rispettato le riserve assolute. Telemetria come utilizzo, clock, temperatura,
 potenza e throttle è raccolta quando disponibile solo per spiegare l'evidenza; non introduce soglie.
 
-Su CPU non esiste un asse di tuning verificato: per default v4 conferma la baseline del motore a
+Su CPU non esiste un asse di tuning verificato: per default v5 conferma la baseline del motore a
 `ctx=8192` invece di simulare una ricerca. Un `--target-ctx` esperto può fissare uno degli altri
 valori approvati, ma non introduce un asse automatico.
 
 La ricerca CUDA trova quindi un confine di memoria e confronta due valori adiacenti: non esegue uno
 sweep globale di `n_cpu_moe` e non dimostra che nessun valore lontano abbia throughput maggiore.
-v4 conserva scala, ricerca, benchmark e finalisti di v3; cambia soltanto la riserva VRAM e produce
-`calibration-record/v3`. Ulteriori cambi ad assi o selezione richiedono un altro metodo versionato.
+v5 conserva ricerca, benchmark e finalisti di v4, aggiunge i gradini 96K e 48K e porta il cap da 12
+a 14 per mantenere sufficiente il budget nel caso peggiore. Produce `calibration-record/v4`; i
+record storici v2/v3 restano leggibili.
 
 ## `benchmark/v1`
 
@@ -229,11 +229,11 @@ Un record attivo viene rivalidato a ogni lancio. Devono coincidere:
 
 Il totale RAM registrato resta esatto; nel branch corrente il confronto ammette al massimo 1 MiB di
 differenza per assorbire il rumore di reporting osservato. Per il riuso servono fabbisogno RAM più
-la riserva registrata e, su CUDA, fabbisogno VRAM più 0,3 GiB per un record v3 oppure 0,5 GiB per un
+la riserva registrata e, su CUDA, fabbisogno VRAM più 0,3 GiB per record v3/v4 oppure 0,5 GiB per un
 record storico v2. La migrazione non indebolisce quindi l'headroom di record già misurati.
 
 Un file candidato, previous, invalido o con schema non supportato non pilota mai il lancio. I record
-`calibration-record/v2` e `/v3` restano supportati; `/v1` è diagnosticato come superato. Il rimedio è
+`calibration-record/v2`, `/v3` e `/v4` restano supportati; `/v1` è diagnosticato come superato. Il rimedio è
 rieseguire `calibrate`, non convertire file a mano.
 
 ## File privati
@@ -257,7 +257,7 @@ pubblicati senza revisione.
 ## Evidenza condivisa e limite empirico
 
 La wheel distribuisce una policy `calibration-policy/v2` e un report
-`calibration-report/v2` del metodo storico v3. v4 usa quel report soltanto come seed d'ordine; non lo
+`calibration-report/v2` del metodo storico v3. v5 usa quel report soltanto come seed d'ordine; non lo
 presenta come prova della nuova riserva. Il report copre realmente un solo scope:
 
 - Windows 11 build 10.0.26200;
@@ -279,7 +279,7 @@ Le fonti con checksum sono in
 
 La pubblicazione è manuale: il launcher non esegue login, upload, commit, branch remoto, issue o
 pull request. Il contratto pubblico corrente descrive soltanto v3; non convertire un record privato
-v4 in un report v2. Un contributo v4 richiede uno step dichiarativo separato con nuovo schema,
+v5 in un report v2. Un contributo v5 richiede uno step dichiarativo separato con nuovo schema,
 revisione privacy, manifest e checksum.
 
 Per preparare il Gate senza attivare risultati:
@@ -294,7 +294,7 @@ sostituisce un futuro contributo pubblico redatto e manifestato.
 
 Checklist per la pull request:
 
-- [ ] schema pubblico versionato e metodo v4 coerenti;
+- [ ] schema pubblico versionato e metodo v5 coerenti;
 - [ ] run riusciti e falliti riportati senza ricostruire campi mancanti;
 - [ ] `privacy_reviewed=true` soltanto dopo revisione dei byte finali;
 - [ ] scope, limite di portabilità, seed, SHA-256 e manifest espliciti;
@@ -305,7 +305,7 @@ Checklist per la pull request:
 
 `--protocol v1` resta disponibile per prove esplicite e compatibilità del bundle. Richiede candidati
 e impostazioni tecniche, misura solo la lista fornita e produce una bozza sotto
-`data_dir()/calibrations/`. Non monitora la RAM, non crea un `calibration-record/v3` e non attiva
-risultati. Per un nuovo utente il percorso corretto è sempre il protocollo v4 predefinito.
+`data_dir()/calibrations/`. Non monitora la RAM, non crea un `calibration-record/v4` e non attiva
+risultati. Per un nuovo utente il percorso corretto è sempre il protocollo v5 predefinito.
 
 **Successivo:** [Operazioni e diagnostica](operations.md)

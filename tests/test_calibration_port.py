@@ -7,7 +7,7 @@ from dataclasses import replace
 from types import SimpleNamespace
 
 import qwen_launcher._calibration_runner as v1_runner
-from qwen_launcher._calibration_v4_plan import build_plan
+from qwen_launcher._calibration_v5_plan import build_plan
 from qwen_launcher.calibration import Candidate
 from qwen_launcher.config import Config
 from tests.test_calibration import cpu_target

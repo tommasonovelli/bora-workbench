@@ -70,10 +70,11 @@ wheel sia estratta su disco. Gli schemi sono JSON Schema 2020-12 e vietano propr
 | `profile/v1` | compatibilità con evidenza a classi; nessuna busta di produzione distribuita |
 | `calibration-policy/v1` | contratto del laboratorio esplicito |
 | `calibration-report/v1` | bundle del laboratorio v1 |
-| `calibration-policy/v2` | metodo pubblico storico v3, usato da v4 solo per seed |
+| `calibration-policy/v2` | metodo pubblico storico v3, usato da v5 solo per seed |
 | `calibration-report/v2` | evidenza v3 privacy-safe e seed di ordine |
 | `calibration-record/v2` | record privato storico prodotto da v3 |
-| `calibration-record/v3` | record privato corrente prodotto da v4 |
+| `calibration-record/v3` | record privato storico prodotto da v4 |
+| `calibration-record/v4` | record privato corrente prodotto da v5 |
 | `engine-lock/v1` | identità, comando, API, salute e asset del motore |
 
 Il catalogo installato contiene tre modi, una policy v3 storica e un report di riferimento. Non contiene

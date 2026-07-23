@@ -5,7 +5,7 @@ from __future__ import annotations
 from statistics import median
 
 from qwen_launcher._calibration_ram import RamSummary
-from qwen_launcher._calibration_v4_types import FinalistEvidence, TrialEvidence
+from qwen_launcher._calibration_v5_types import FinalistEvidence, TrialEvidence
 from qwen_launcher._calibration_vram import VramSummary
 from qwen_launcher.benchmark import BenchmarkResult
 

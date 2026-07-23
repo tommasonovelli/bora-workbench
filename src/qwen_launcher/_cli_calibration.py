@@ -36,7 +36,7 @@ class CalibrationCliInput:
     mode: str
     candidate_values: tuple[str, ...]
     settings_value: str | None
-    protocol: str = "v4"
+    protocol: str = "v5"
     no_activate: bool = False
     activate: bool = False
     target_ctx: int | None = None
@@ -154,23 +154,23 @@ def _show_outcome(outcome: CalibrationOutcome, console: Console) -> None:
 
 
 def _dispatch(options: CalibrationCliInput, output: CalibrationCliOutput) -> bool:
-    """Route to calibration/v4 unless the operator explicitly selects the v1 laboratory."""
-    has_v4_options = options.no_activate or options.activate or options.target_ctx is not None
+    """Route to calibration/v5 unless the operator explicitly selects the v1 laboratory."""
+    has_v5_options = options.no_activate or options.activate or options.target_ctx is not None
     if options.protocol == "v1":
-        if has_v4_options:
-            raise CalibrationError("activation and target context options require calibration/v4")
+        if has_v5_options:
+            raise CalibrationError("activation and target context options require calibration/v5")
         return False
-    if options.protocol != "v4":
-        raise CalibrationError(f"unknown calibration protocol {options.protocol!r}; use v4 or v1")
+    if options.protocol != "v5":
+        raise CalibrationError(f"unknown calibration protocol {options.protocol!r}; use v5 or v1")
     if options.no_activate and options.activate:
         raise CalibrationError("--no-activate and --activate are mutually exclusive")
     if options.activate and options.target_ctx is not None:
         raise CalibrationError("--target-ctx cannot be used while activating a pending candidate")
     if options.candidate_values or options.settings_value is not None:
         raise CalibrationError("explicit candidates and settings require --protocol v1")
-    from qwen_launcher._cli_calibration_v4 import run_calibrate_v4
+    from qwen_launcher._cli_calibration_v5 import run_calibrate_v5
 
-    run_calibrate_v4(options, output)
+    run_calibrate_v5(options, output)
     return True
 
 

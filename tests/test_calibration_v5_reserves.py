@@ -1,14 +1,14 @@
-"""Offline finalist-level reserve tests for calibration/v4."""
+"""Offline finalist-level reserve tests for calibration/v5."""
 
 from __future__ import annotations
 
 from qwen_launcher._calibration_ram import RamReserveError, RamSummary
 from qwen_launcher._calibration_record import load_record
-from qwen_launcher._calibration_v4_process import TrialFailure
-from qwen_launcher._calibration_v4_runner import run_calibration_v4
-from qwen_launcher._calibration_v4_types import TrialEvidence
+from qwen_launcher._calibration_v5_process import TrialFailure
+from qwen_launcher._calibration_v5_runner import run_calibration_v5
+from qwen_launcher._calibration_v5_types import TrialEvidence
 from qwen_launcher._calibration_vram import VramSummary
-from tests.test_calibration_v4_runner import cuda_target, fake_trial, install_fakes
+from tests.test_calibration_v5_runner import cuda_target, fake_trial, install_fakes
 
 _START = "2026-07-18T10:00:00Z"
 _END = "2026-07-18T10:01:00Z"
@@ -28,7 +28,7 @@ def test_ram_reserve_violation_discards_only_the_affected_finalist(tmp_path, mon
         return feasible(target, spec)
 
     install_fakes(monkeypatch, run)
-    run_calibration_v4(cuda_target(), destination_root=tmp_path)
+    run_calibration_v5(cuda_target(), destination_root=tmp_path)
 
     record = load_record(tmp_path / "records" / "coding.json")
     assert record["envelope"]["n_cpu_moe"] == 39

@@ -1,4 +1,4 @@
-"""Serialize measured calibration/v4 evidence into calibration-record/v3 documents."""
+"""Serialize measured calibration/v5 evidence into calibration-record/v4 documents."""
 
 from __future__ import annotations
 
@@ -12,8 +12,8 @@ from qwen_launcher._calibration_record_evidence import (
     selected_benchmark_entry,
     vram_needed,
 )
-from qwen_launcher._calibration_v4_types import (
-    CALIBRATION_V4_PROTOCOL,
+from qwen_launcher._calibration_v5_types import (
+    CALIBRATION_V5_PROTOCOL,
     CONFIRM_ROUNDS,
     CONTEXT_SCALE,
     MODE_PROBE_CAP,
@@ -60,7 +60,7 @@ def _observed_entry(calibration: ModeCalibration) -> JsonObject:
 
 def _probe_entry(probe: object) -> JsonObject:
     """Serialize one typed probe without broadening the public record builder interface."""
-    from qwen_launcher._calibration_v4_types import ProbeRecord
+    from qwen_launcher._calibration_v5_types import ProbeRecord
 
     if not isinstance(probe, ProbeRecord):
         raise TypeError("calibration probe has an invalid runtime type")
@@ -98,18 +98,18 @@ def _search_entry(calibration: ModeCalibration, is_cuda: bool) -> JsonObject:
 def build_record_document(
     target: CalibrationTarget, calibration: ModeCalibration, evidence_run_id: str
 ) -> JsonObject:
-    """Build one complete calibration-record/v3 candidate document."""
+    """Build one complete calibration-record/v4 candidate document."""
     from qwen_launcher._calibration_record import command_contract_sha256
 
     selected = calibration.selected
     artifact = cast(JsonObject, target.lock["default_model_artifact"])
     gpu_driver = None if selected.vram is None else selected.vram.driver_version
     return {
-        "schema": "calibration-record/v3",
+        "schema": "calibration-record/v4",
         "mode": calibration.mode.id,
         "created_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "launcher_version": launcher_version(),
-        "calibration_protocol": CALIBRATION_V4_PROTOCOL,
+        "calibration_protocol": CALIBRATION_V5_PROTOCOL,
         "benchmark_protocol": "benchmark/v1",
         "objective": OBJECTIVE,
         "evidence_run_id": evidence_run_id,

@@ -5,6 +5,11 @@ changelog: sono in `IMPLEMENTATION_SPEC.md`.
 
 ## [Unreleased]
 
+### Changed
+
+- `calibration/v5` aggiunge 96K (`98304`) e 48K (`49152`) alla scala automatica, porta il cap a 14
+  probe e produce `calibration-record/v4`; i record v2/v3 storici restano leggibili.
+
 ## [0.1.1] - 2026-07-23
 
 Release di stabilizzazione con `calibration/v4`, isolamento delle porte dei trial e progresso

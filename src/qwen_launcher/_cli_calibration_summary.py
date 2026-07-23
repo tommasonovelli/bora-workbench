@@ -1,4 +1,4 @@
-"""Explain calibration/v4 selections and retained record paths."""
+"""Explain calibration/v5 selections and retained record paths."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from statistics import median
 
 from rich.console import Console
 
-from qwen_launcher._calibration_v4_types import (
+from qwen_launcher._calibration_v5_types import (
     SELECTION_CPU_BASELINE,
     SELECTION_DOMINANCE,
     SELECTION_DRIFT,
@@ -14,7 +14,7 @@ from qwen_launcher._calibration_v4_types import (
     SELECTION_PRUDENT,
     SELECTION_SINGLE,
     ModeCalibration,
-    V4Outcome,
+    V5Outcome,
 )
 
 _SELECTION_EXPLANATIONS = {
@@ -61,25 +61,11 @@ def _mode_summary(calibration: ModeCalibration) -> str:
     )
 
 
-def _show_context_hint(calibration: ModeCalibration, console: Console) -> None:
-    """Expose D-050's approved 96K expert check only at the automatic 64K gap."""
-    is_cuda = calibration.selected.vram is not None
-    if calibration.target_ctx is not None or not is_cuda or calibration.ctx != 65536:
-        return
-    console.print(
-        f"[yellow]{calibration.mode.id}: automatic v4 does not test 98304. "
-        "To measure that gap without activation, run "
-        f"`qwen-launcher calibrate --mode {calibration.mode.id} "
-        "--target-ctx 98304 --no-activate`; feasibility is not implied.[/yellow]"
-    )
-
-
-def show_calibration_outcome(outcome: V4Outcome, console: Console) -> None:
-    """Print record paths, selection reasons, and actionable context gaps."""
+def show_calibration_outcome(outcome: V5Outcome, console: Console) -> None:
+    """Print record paths, selection reasons, and measured resource summaries."""
     console.print("[green]Local calibration completed.[/green]")
     for calibration in outcome.calibrations:
         console.print(_mode_summary(calibration))
-        _show_context_hint(calibration, console)
     for path in outcome.active_paths:
         console.print(f"Active record: {path}")
     if not outcome.active_paths:

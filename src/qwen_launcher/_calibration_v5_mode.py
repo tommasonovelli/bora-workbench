@@ -1,4 +1,4 @@
-"""Confirm and select one calibration/v4 mode after adaptive screening."""
+"""Confirm and select one calibration/v5 mode after adaptive screening."""
 
 from __future__ import annotations
 
@@ -6,24 +6,24 @@ from pathlib import Path
 
 from qwen_launcher._calibration_gguf import GgufError, read_block_count
 from qwen_launcher._calibration_gpu_contexts import GpuContextBaseline
-from qwen_launcher._calibration_v4_confirm import confirm_finalists
-from qwen_launcher._calibration_v4_screening import (
+from qwen_launcher._calibration_v5_confirm import confirm_finalists
+from qwen_launcher._calibration_v5_screening import (
     ModeRunRequest,
     _ModeRun,
     create_mode_run,
     screen_context,
 )
-from qwen_launcher._calibration_v4_search import ScreeningResult, select_candidate_index
-from qwen_launcher._calibration_v4_types import (
+from qwen_launcher._calibration_v5_search import ScreeningResult, select_candidate_index
+from qwen_launcher._calibration_v5_types import (
+    APPROVED_CONTEXT_TARGETS,
     CPU_BASELINE_CTX,
-    EXPERT_CONTEXT_TARGETS,
     MODE_PROBE_CAP,
     RELEASE_TOLERANCE_GIB,
     SELECTION_CPU_BASELINE,
     FinalistEvidence,
     ModeCalibration,
     SelectionCandidate,
-    V4RunOptions,
+    V5RunOptions,
 )
 from qwen_launcher.calibration import CalibrationRunError, CalibrationTarget
 from qwen_launcher.profiles import Mode
@@ -99,8 +99,8 @@ def _cpu_mode(request: ModeRunRequest) -> tuple[ModeCalibration, set[str]]:
     """Confirm the engine's CPU baseline twice with a benchmark in each round."""
     run = create_mode_run(request)
     ctx = run.options.target_ctx or CPU_BASELINE_CTX
-    if ctx not in EXPERT_CONTEXT_TARGETS:
-        allowed = ", ".join(str(value) for value in EXPERT_CONTEXT_TARGETS)
+    if ctx not in APPROVED_CONTEXT_TARGETS:
+        allowed = ", ".join(str(value) for value in APPROVED_CONTEXT_TARGETS)
         raise CalibrationRunError(f"target context must be one of: {allowed}")
     run.finalist_values = (None,)
     confirmation = confirm_finalists(run, ctx)
@@ -132,7 +132,7 @@ def run_mode(request: ModeRunRequest) -> tuple[ModeCalibration, set[str]]:
         block_count = read_block_count(request.target.model_path)
     except GgufError as error:
         raise CalibrationRunError(str(error)) from error
-    from qwen_launcher._calibration_v4_seed import seed_probe_value
+    from qwen_launcher._calibration_v5_seed import seed_probe_value
 
     seed = seed_probe_value(request.target, request.mode, block_count)
     predicted = ModeRunRequest(
@@ -150,7 +150,7 @@ def run_mode(request: ModeRunRequest) -> tuple[ModeCalibration, set[str]]:
 def mode_request(
     target: CalibrationTarget,
     mode: Mode,
-    run_context: tuple[Path, V4RunOptions, GpuContextBaseline | None],
+    run_context: tuple[Path, V5RunOptions, GpuContextBaseline | None],
 ) -> ModeRunRequest:
     """Group runner inputs before model metadata predicts the CUDA domain."""
     runtime_root, options, baseline = run_context

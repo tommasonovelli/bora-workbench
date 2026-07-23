@@ -10,13 +10,23 @@ from tests.record_fixtures import RUN_ID, cuda_calibration, cuda_hardware, recor
 
 
 def _record_document():
-    """Build one coherent synthetic calibration-record/v3 document."""
+    """Build one coherent synthetic calibration-record/v4 document."""
     mode = load_catalog().mode("coding")
     return build_record(record_target(cuda_hardware()), cuda_calibration(mode), RUN_ID)
 
 
+def _as_v3(record):
+    """Convert compatible synthetic evidence to the historical v4 method contract."""
+    record["schema"] = "calibration-record/v3"
+    record["calibration_protocol"] = "calibration/v4"
+    record["search"]["context_scale"] = [131072, 65536, 32768, 16384, 8192]
+    record["search"]["probe_cap"] = 12
+    return record
+
+
 def _as_v2(record):
-    """Convert compatible synthetic evidence to the historical v2 contract."""
+    """Convert compatible synthetic evidence to the historical v3 method contract."""
+    _as_v3(record)
     record["schema"] = "calibration-record/v2"
     record["calibration_protocol"] = "calibration/v3"
     record["search"]["vram_reserve_gib"] = 0.5
@@ -52,11 +62,24 @@ def test_pre_d046_v2_record_remains_compatibly_loadable(tmp_path) -> None:
     assert load_record(path)["calibration_protocol"] == "calibration/v3"
 
 
+def test_historical_v4_record_remains_compatibly_loadable(tmp_path) -> None:
+    """Keep the prior automatic scale readable after 96K and 48K join v5."""
+    document = _as_v3(_record_document())
+    path = write_record(document, tmp_path / "records" / "coding.json")
+
+    assert load_record(path)["calibration_protocol"] == "calibration/v4"
+
+
 def test_each_record_version_enforces_its_own_vram_reserve(tmp_path) -> None:
-    """Accept 0.4 GiB only for v4 while retaining strict v3 reconstruction."""
+    """Accept 0.4 GiB for v4/v5 while retaining strict v3 reconstruction."""
     current = _record_document()
     _set_selected_vram_minimum(current, 0.4)
-    path = write_record(current, tmp_path / "v4" / "coding.json")
+    path = write_record(current, tmp_path / "v5" / "coding.json")
+    assert load_record(path)["calibration_protocol"] == "calibration/v5"
+
+    prior = _as_v3(_record_document())
+    _set_selected_vram_minimum(prior, 0.4)
+    path = write_record(prior, tmp_path / "v4" / "coding.json")
     assert load_record(path)["calibration_protocol"] == "calibration/v4"
 
     historical = _as_v2(_record_document())

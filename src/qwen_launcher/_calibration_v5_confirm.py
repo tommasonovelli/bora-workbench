@@ -1,4 +1,4 @@
-"""Confirm calibration/v4 finalists with paired ABBA rounds and full benchmarks.
+"""Confirm calibration/v5 finalists with paired ABBA rounds and full benchmarks.
 
 Two finalists run A→B then B→A, giving both equal mean temporal position without adding process
 starts. Baseline drift no longer discards either finalist because absolute reserves remain enforced;
@@ -12,9 +12,9 @@ from typing import TYPE_CHECKING
 
 from qwen_launcher._calibration_gpu_evidence import combine_telemetry
 from qwen_launcher._calibration_ram import RamSummary
-from qwen_launcher._calibration_v4_plan import build_plan
-from qwen_launcher._calibration_v4_process import TrialFailure, TrialSpec, run_trial
-from qwen_launcher._calibration_v4_types import (
+from qwen_launcher._calibration_v5_plan import build_plan
+from qwen_launcher._calibration_v5_process import TrialFailure, TrialSpec, run_trial
+from qwen_launcher._calibration_v5_types import (
     CONFIRM_ROUNDS,
     FinalistEvidence,
     ProgressUpdate,
@@ -24,7 +24,7 @@ from qwen_launcher._calibration_v4_types import (
 from qwen_launcher._calibration_vram import VramSummary
 
 if TYPE_CHECKING:
-    from qwen_launcher._calibration_v4_screening import _ModeRun
+    from qwen_launcher._calibration_v5_screening import _ModeRun
 
 
 @dataclass(frozen=True, slots=True)
@@ -116,7 +116,7 @@ def _combine_ram(summaries: list[RamSummary]) -> RamSummary | None:
 def _schedule(count: int) -> tuple[_SessionAssignment, ...]:
     """Build the exact A→B/B→A order, or two rounds for a sole finalist."""
     if CONFIRM_ROUNDS != 2:
-        raise ValueError("calibration/v4 ABBA confirmation requires exactly two rounds")
+        raise ValueError("calibration/v5 ABBA confirmation requires exactly two rounds")
     order = ((0,), (0,)) if count == 1 else ((0, 1), (1, 0))
     assignments: list[_SessionAssignment] = []
     position = 0

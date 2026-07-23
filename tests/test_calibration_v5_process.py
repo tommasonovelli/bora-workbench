@@ -1,4 +1,4 @@
-"""Offline tests for calibration/v4 trial cleanup and failure precedence."""
+"""Offline tests for calibration/v5 trial cleanup and failure precedence."""
 
 from __future__ import annotations
 
@@ -6,11 +6,11 @@ from types import SimpleNamespace
 
 import pytest
 
-import qwen_launcher._calibration_v4_process as process_module
+import qwen_launcher._calibration_v5_process as process_module
 from qwen_launcher._calibration_ram import RamError
-from qwen_launcher._calibration_v4_plan import build_plan
-from qwen_launcher._calibration_v4_process import TrialSpec, run_trial
-from qwen_launcher._calibration_v4_types import TrialOrder
+from qwen_launcher._calibration_v5_plan import build_plan
+from qwen_launcher._calibration_v5_process import TrialSpec, run_trial
+from qwen_launcher._calibration_v5_types import TrialOrder
 from tests.test_calibration import cpu_target
 
 

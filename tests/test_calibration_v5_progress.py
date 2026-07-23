@@ -1,14 +1,14 @@
-"""Verify calibration/v4 progress ordering and phase-local duration learning."""
+"""Verify calibration/v5 progress ordering and phase-local duration learning."""
 
 from __future__ import annotations
 
 import pytest
 
 from qwen_launcher._calibration_ram import RamError
-from qwen_launcher._calibration_v4_runner import run_calibration_v4
-from qwen_launcher._calibration_v4_types import ProgressEvent, V4RunOptions
+from qwen_launcher._calibration_v5_runner import run_calibration_v5
+from qwen_launcher._calibration_v5_types import ProgressEvent, V5RunOptions
 from qwen_launcher.calibration import CalibrationRunError
-from tests.test_calibration_v4_runner import cuda_target, fake_trial, install_fakes
+from tests.test_calibration_v5_runner import cuda_target, fake_trial, install_fakes
 
 
 def test_progress_pairs_started_and_completed_events_by_phase(tmp_path, monkeypatch) -> None:
@@ -17,9 +17,9 @@ def test_progress_pairs_started_and_completed_events_by_phase(tmp_path, monkeypa
     trial = fake_trial(lambda spec: (spec.plan.n_cpu_moe or 0) >= 38)
     install_fakes(monkeypatch, trial)
 
-    run_calibration_v4(
+    run_calibration_v5(
         cuda_target(),
-        V4RunOptions(progress=events.append),
+        V5RunOptions(progress=events.append),
         destination_root=tmp_path,
     )
 
@@ -29,7 +29,7 @@ def test_progress_pairs_started_and_completed_events_by_phase(tmp_path, monkeypa
         assert started.phase == completed.phase
         assert started.completed + 1 == completed.completed
     learned = next(item for item in events if item.phase == "screening" and item.completed == 2)
-    assert learned.estimated_remaining_seconds == 600.0
+    assert learned.estimated_remaining_seconds == 720.0
     confirmation = [item for item in events if item.phase == "confirmation"]
     assert confirmation[0].is_running
     assert confirmation[0].estimated_remaining_seconds is None
@@ -46,9 +46,9 @@ def test_invalidated_run_leaves_the_current_trial_visible(tmp_path, monkeypatch)
 
     install_fakes(monkeypatch, invalidated)
     with pytest.raises(CalibrationRunError, match="run invalidated"):
-        run_calibration_v4(
+        run_calibration_v5(
             cuda_target(),
-            V4RunOptions(progress=events.append),
+            V5RunOptions(progress=events.append),
             destination_root=tmp_path,
         )
 

@@ -28,7 +28,7 @@ from tests.record_fixtures import (
 
 
 def record_document(calibration_builder, hardware):
-    """Build one coherent synthetic calibration-record/v3 document."""
+    """Build one coherent synthetic calibration-record/v4 document."""
     target = record_target(hardware)
     mode = load_catalog().mode("coding")
     return build_record(target, calibration_builder(mode), RUN_ID)
@@ -55,8 +55,8 @@ def test_cuda_and_cpu_records_round_trip_complete_paired_evidence(tmp_path) -> N
     cuda = load_record(cuda_path)
     cpu = load_record(cpu_path)
 
-    assert cuda["schema"] == "calibration-record/v3"
-    assert cuda["calibration_protocol"] == "calibration/v4"
+    assert cuda["schema"] == "calibration-record/v4"
+    assert cuda["calibration_protocol"] == "calibration/v5"
     assert cuda["search"]["vram_reserve_gib"] == 0.3
     assert len(cuda["benchmark"]["measured_tok_s"]) == 10
     assert cuda["search"]["round_winners"] == [0, 0]

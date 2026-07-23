@@ -1,6 +1,6 @@
 """Read the pinned model's MoE block count from its GGUF metadata.
 
-calibration/v4 predicts the legal ``n_cpu_moe`` domain as ``[0, block_count]`` from the artifact's
+calibration/v5 predicts the legal ``n_cpu_moe`` domain as ``[0, block_count]`` from the artifact's
 own metadata instead of remembered candidate lists (D-039; design document section 2.1). Only the
 header is parsed sequentially; tensor data is never read, so the multi-GiB file stays untouched.
 """

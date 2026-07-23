@@ -12,7 +12,7 @@ from uuid import uuid4
 
 from jsonschema import Draft202012Validator, FormatChecker
 
-from qwen_launcher._calibration_v4_types import ModeCalibration
+from qwen_launcher._calibration_v5_types import ModeCalibration
 from qwen_launcher.calibration import CalibrationTarget
 from qwen_launcher.paths import data_dir
 from qwen_launcher.resources import read_json
@@ -21,6 +21,7 @@ JsonObject = dict[str, object]
 _RECORD_SCHEMA_FILES = {
     "calibration-record/v2": "calibration-record.v2.json",
     "calibration-record/v3": "calibration-record.v3.json",
+    "calibration-record/v4": "calibration-record.v4.json",
 }
 
 
@@ -66,7 +67,7 @@ def command_contract_sha256(lock: JsonObject) -> str:
 def build_record(
     target: CalibrationTarget, calibration: ModeCalibration, evidence_run_id: str
 ) -> JsonObject:
-    """Build one complete calibration-record/v3 candidate document."""
+    """Build one complete calibration-record/v4 candidate document."""
     from qwen_launcher._calibration_record_build import build_record_document
 
     return build_record_document(target, calibration, evidence_run_id)
@@ -137,7 +138,7 @@ def _decode_record(path: Path) -> JsonObject:
 
 
 def load_record(path: Path) -> JsonObject:
-    """Load supported v2/v3 records or diagnose historical v1 evidence as superseded."""
+    """Load supported v2/v3/v4 records or diagnose historical v1 evidence as superseded."""
     document = _decode_record(path)
     if document.get("schema") == "calibration-record/v1":
         raise RecordSupersededError(

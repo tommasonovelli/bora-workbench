@@ -163,16 +163,16 @@ Ferma soltanto processi la cui identità coincide con lo stato. Attende fino a 1
 `terminate`, poi usa `kill` e attende fino a 5 secondi. È idempotente: nessun servizio restituisce 0.
 Non cancellare manualmente `services.json` mentre il processo è vivo.
 
-## `calibrate`: protocollo corrente v4
+## `calibrate`: protocollo corrente v5
 
 ```bash
 qwen-launcher calibrate --mode <coding|studio|vstudio|all>
 ```
 
-`--protocol v4` è il default. Il comando mostra un preflight e chiede conferma prima dei processi.
+`--protocol v5` è il default. Il comando mostra un preflight e chiede conferma prima dei processi.
 Per default scrive un candidato per ogni modo completato e lo attiva atomicamente.
 
-Opzioni v4:
+Opzioni v5:
 
 ```bash
 qwen-launcher calibrate --mode all --no-activate
@@ -186,16 +186,16 @@ qwen-launcher calibrate --mode coding --target-ctx 98304
 | `--activate` | promuove candidati già validi, senza nuovi trial |
 | `--target-ctx N` | usa un solo contesto esperto approvato |
 
-I target ammessi sono `131072`, `98304`, `65536`, `32768`, `16384` e `8192`. `98304` è solo
-esplicito e non appartiene alla scala automatica. `--activate` non può essere combinato con
+I target ammessi sono `131072`, `98304`, `65536`, `49152`, `32768`, `16384` e `8192`; sono gli
+stessi gradini usati dalla scala automatica. `--activate` non può essere combinato con
 `--target-ctx`; `--activate` e `--no-activate` sono mutuamente esclusivi.
 
 Le tre opzioni sono gestite dal parser specializzato del comando. `calibrate --help` le elenca
 nell'epilogo insieme agli extra v1, mentre la tabella generata da Typer contiene soltanto le opzioni
 comuni; la sintassi sopra è quella effettivamente supportata.
 
-Su un terminale interattivo il run v4 mostra una barra viva con fase, trial, tempo trascorso e stima
-adattiva; l'output rediretto resta line-oriented. Lo screening mostra `≤12` e una proiezione della
+Su un terminale interattivo il run v5 mostra una barra viva con fase, trial, tempo trascorso e stima
+adattiva; l'output rediretto resta line-oriented. Lo screening mostra `≤14` e una proiezione della
 durata fino a quel cap, non un limite o una promessa. Il riepilogo finale include la motivazione
 della selezione e i minimi RAM/VRAM osservati.
 
@@ -224,8 +224,8 @@ Su CUDA ogni candidato usa `ID:CTX:N_CPU_MOE` e le impostazioni usano
 contiene solo `RUNS`. `--candidate` è ripetibile. Se candidati o impostazioni mancano, la CLI li
 chiede interattivamente; non assegna default impliciti.
 
-Le opzioni v4 non sono valide con `--protocol v1`. Candidati o `--settings` non sono validi con v4.
-`--protocol v3` non avvia nuovi run; i record storici v3 restano comunque supportati.
+Le opzioni v5 non sono valide con `--protocol v1`. Candidati o `--settings` non sono validi con v5.
+`--protocol v3` e `--protocol v4` non avviano nuovi run; i record storici restano supportati.
 
 ## `uninstall`
 

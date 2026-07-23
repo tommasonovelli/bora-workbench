@@ -1,4 +1,4 @@
-"""Render calibration/v4 progress without changing the measured protocol."""
+"""Render calibration/v5 progress without changing the measured protocol."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from types import TracebackType
 from rich.console import Console
 from rich.progress import BarColumn, Progress, SpinnerColumn, TaskID, TextColumn, TimeElapsedColumn
 
-from qwen_launcher._calibration_v4_types import ProgressEvent
+from qwen_launcher._calibration_v5_types import ProgressEvent
 
 
 def _format_duration(seconds: float) -> str:
