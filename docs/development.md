@@ -59,11 +59,12 @@ Se cambiano packaging, installer, documenti inclusi nella sdist o risorse:
 rm -rf dist                       # PowerShell: Remove-Item dist -Recurse -Force
 uv build
 uv run --frozen python scripts/verify_wheel.py
+uv run --frozen python scripts/verify_uninstall.py
 ```
 
-La verifica installa la wheel in un ambiente temporaneo, legge le risorse, esegue CLI/validazione e
-ispeziona la sdist. I test non devono usare rete, GPU, modello, server reale o privilegi
-amministrativi.
+Le verifiche installano la wheel in ambienti temporanei, leggono le risorse, eseguono
+CLI/validazione, ispezionano la sdist e provano la rimozione completa dell'ambiente `uv tool`. I test
+non devono usare rete, GPU, modello, server reale o privilegi amministrativi.
 
 ## Fonti di verità
 

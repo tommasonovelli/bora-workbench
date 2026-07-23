@@ -233,10 +233,12 @@ Le opzioni v5 non sono valide con `--protocol v1`. Candidati o `--settings` non 
 qwen-launcher uninstall
 ```
 
-Rifiuta di procedere se esiste un servizio gestito vivo. Mostra configurazione, dati, cache e stato,
-indicando quali radici esistono, quindi richiede conferma. Un annullamento normale non elimina nulla
-e termina con 0; `Ctrl-C` termina con 130. Il comando non rimuove né il tool Python né la cache
-Hugging Face.
+Rifiuta di procedere se esiste un servizio gestito vivo. Mostra configurazione, dati, cache, stato e
+l'installazione Python corrente, quindi richiede una sola conferma. Se il comando proviene
+dall'installazione supportata `uv tool`, rimuove anche il tool Python tramite uv appena il processo
+termina; uv stesso e la cache Hugging Face restano invariati. Un'installazione Python non gestita da
+uv viene indicata esplicitamente e non viene rimossa per congettura. Un annullamento normale non
+elimina nulla e termina con 0; `Ctrl-C` termina con 130.
 
 ## Exit code
 

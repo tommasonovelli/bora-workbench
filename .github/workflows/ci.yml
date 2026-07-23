@@ -49,3 +49,6 @@ jobs:
 
       - name: Verify wheel in isolation
         run: uv run --frozen python scripts/verify_wheel.py
+
+      - name: Verify complete uninstall in isolation
+        run: uv run --frozen python scripts/verify_uninstall.py

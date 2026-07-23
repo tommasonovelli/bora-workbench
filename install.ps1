@@ -157,5 +157,4 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Output "install.ps1: installed qwen-launcher with uv $UvVersion and Python $PythonVersion."
 Write-Output "install.ps1: re-running this installer is safe."
-Write-Output "install.ps1: to remove the tool later, run: uv tool uninstall qwen-launcher"
-Write-Output "install.ps1: to remove managed data, run: qwen-launcher uninstall"
+Write-Output "install.ps1: to remove the tool and managed data, run: qwen-launcher uninstall"

@@ -171,7 +171,7 @@ def stop() -> None:
 
 @app.command()
 def uninstall() -> None:
-    """Preview and, after confirmation, delete managed data, cache, state, and configuration."""
+    """Remove managed roots and the current uv-managed Python tool after one confirmation."""
     run_uninstall(_stdout, _stderr)
 
 

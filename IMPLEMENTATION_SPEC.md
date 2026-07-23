@@ -139,6 +139,7 @@ Gli identificatori restano stabili perché codice, test ed evidenza li citano.
 | D-053 | `calibration/v4` conserva scala, ricerca e ABBA v3 ma usa 0,3 GiB di riserva VRAM e produce `calibration-record/v3`; i record v2 restano validi con la propria riserva 0,5 GiB. |
 | D-054 | Il job PyPI del workflow release è opt-in tramite `PYPI_PUBLISH_ENABLED`; `v0.1.1` pubblica soltanto su GitHub come autorizzato. |
 | D-055 | `calibration/v5` inserisce `98304` e `49152` nella scala automatica, porta il cap a 14 probe e produce `calibration-record/v4`; l'esecuzione v4 è ritirata ma i record v2/v3 restano leggibili. |
+| D-056 | `uninstall` rimuove con una sola conferma le quattro radici e la propria installazione `uv tool`; un helper sul Python base attende l'uscita del processo per evitare lock Windows. Installazioni non gestite da uv restano esplicitamente invariate e uv stesso non viene rimosso. |
 
 Una nuova decisione durevole aggiorna questa tabella nello stesso step che la autorizza.
 
@@ -159,6 +160,7 @@ Una nuova decisione durevole aggiorna questa tabella nello stesso step che la au
 | `calibration.py` / `_calibration_*` | ricerca locale, record, bundle ed evidenza |
 | `engine.py` / `_engine_*` | lock, modello, asset, comando, installazione e attivazione |
 | `process.py` / `_process_*` | processo, salute, stato, lock, status e stop |
+| `_uninstall.py` / `_tool_uninstall*` | rimozione confinata delle radici e handoff all'installazione uv corrente |
 | `validation.py` / `_validation_*` | schemi e controlli semantici |
 | `resources/__init__.py` | accesso `importlib.resources` |
 | `routing.py` (futuro) | normalizzazione e scoring puro delle skill |
@@ -346,8 +348,12 @@ prima dell'estrazione, staging confinato, installazioni immutabili e manifest at
 L'estrazione rifiuta path assoluti, drive, `..`, file speciali e link in fuga. Cancellazioni limitate
 a data/cache gestiti dopo verifica.
 
-`uninstall` mostra config/data/cache/state, richiede conferma, rifiuta servizi vivi e symlink, non
-tocca mai la cache Hugging Face e non rimuove il tool uv.
+`uninstall` mostra config/data/cache/state e l'installazione Python corrente, richiede una sola
+conferma, rifiuta servizi vivi e symlink, non tocca mai la cache Hugging Face e non rimuove uv.
+Quando il comando in esecuzione coincide esattamente con `uv tool dir/qwen-launcher` e possiede la
+receipt uv, un helper sul Python base attende l'uscita del processo e invoca senza shell
+`uv tool uninstall qwen-launcher`. Un'installazione Python esterna a uv non viene rimossa per
+congettura ed è riportata esplicitamente come invariata.
 
 ### 5.11 Errori ed exit code
 
@@ -411,6 +417,7 @@ Se cambiano packaging o risorse:
 rm -rf dist
 uv build
 uv run --frozen python scripts/verify_wheel.py
+uv run --frozen python scripts/verify_uninstall.py
 ```
 
 Poi `git diff --check`, ispezione del diff/staging e resoconto con file, comportamento, test, limiti e

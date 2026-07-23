@@ -246,11 +246,10 @@ Fermare prima i servizi. Se una radice gestita è un symlink, un file invece di 
 coincide con l'anteprima corrente, il comando si ferma senza rimuovere nulla. Correggere manualmente
 la struttura soltanto dopo aver verificato il percorso.
 
-La cache Hugging Face non viene mai inclusa. Per rimuovere il tool:
-
-```bash
-uv tool uninstall qwen-launcher
-```
+La cache Hugging Face e uv non vengono mai inclusi. Con l'installazione supportata `uv tool`, la
+stessa conferma rimuove anche il comando appena il processo corrente termina. Se il resoconto indica
+che l'installazione Python non è gestita da uv, occorre usare il gestore con cui è stata installata:
+il launcher non indovina né modifica ambienti esterni.
 
 ## Segnalare un problema
 

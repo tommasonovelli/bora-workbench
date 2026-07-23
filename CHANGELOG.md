@@ -11,6 +11,8 @@ changelog: sono in `IMPLEMENTATION_SPEC.md`.
   probe e produce `calibration-record/v4`; i record v2/v3 storici restano leggibili.
 - `doctor` mostra i parametri calibrati del record attivo valido (`ctx` e, su CUDA,
   `--n-cpu-moe`) invece della sola etichetta "valid".
+- `uninstall` usa una sola conferma per rimuovere le radici gestite e la propria installazione
+  `uv tool`, senza rimuovere uv o la cache Hugging Face.
 
 ## [0.1.1] - 2026-07-23
 

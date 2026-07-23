@@ -172,11 +172,11 @@ qwen-launcher stop
 ```bash
 qwen-launcher stop
 qwen-launcher uninstall
-uv tool uninstall qwen-launcher
 ```
 
-`uninstall` mostra le quattro radici gestite e richiede conferma. Rifiuta servizi vivi, radici che
-sono symlink o set di percorsi alterati. La cache Hugging Face è sempre esclusa; l'ultimo comando
-rimuove separatamente il tool Python.
+`uninstall` mostra le quattro radici gestite e l'installazione Python, poi richiede una sola
+conferma. Rifiuta servizi vivi, radici che sono symlink o set di percorsi alterati. Con
+l'installazione supportata degli script rimuove anche il tool Python tramite uv appena il comando
+termina; la cache Hugging Face e uv stesso restano sempre esclusi.
 
 **Successivo:** [Comandi](commands.md)

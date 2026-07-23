@@ -159,5 +159,4 @@ fi
 printf 'install.sh: installed qwen-launcher with uv %s and Python %s.\n' \
     "$UV_VERSION" "$PYTHON_VERSION"
 printf 'install.sh: re-running this installer is safe.\n'
-printf 'install.sh: to remove the tool later, run: uv tool uninstall qwen-launcher\n'
-printf 'install.sh: to remove managed data, run: qwen-launcher uninstall\n'
+printf 'install.sh: to remove the tool and managed data, run: qwen-launcher uninstall\n'

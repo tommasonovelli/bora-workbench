@@ -136,9 +136,11 @@ Dopo conferma vengono eliminate esattamente le quattro radici sopra. Sono esclus
 - cache Hugging Face;
 - GGUF e mmproj esterni;
 - eseguibili indicati da `engine_path` o trovati nel `PATH`;
-- ambiente uv e pacchetto Python;
+- uv, le sue cache e gli altri tool;
 - qualunque percorso fuori dalle radici gestite.
 
-Per rimuovere anche il comando usare separatamente `uv tool uninstall qwen-launcher`.
+Se il comando corrente appartiene esattamente all'ambiente `qwen-launcher` configurato da uv, la
+stessa conferma pianifica anche la rimozione di quell'ambiente e del comando. Installazioni Python
+esterne a `uv tool` restano invariate e vengono indicate nel resoconto.
 
 **Successivo:** [Architettura](architecture.md)

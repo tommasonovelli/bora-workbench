@@ -14,10 +14,17 @@ runner = CliRunner()
 
 
 @pytest.fixture(autouse=True)
-def patch_empty_service_status(monkeypatch) -> None:
-    """Keep uninstall tests isolated from the host process-state directory."""
+def patch_uninstall_dependencies(tmp_path, monkeypatch) -> list[object]:
+    """Isolate service inspection and uv self-removal from the host installation."""
     empty = SimpleNamespace(services=(), warnings=())
+    installation = uninstall_cli.ToolInstallation(
+        tmp_path / "uv-tools" / "qwen-launcher", tmp_path / "bin" / "uv"
+    )
+    scheduled: list[object] = []
     monkeypatch.setattr(uninstall_cli, "status_services", lambda: empty)
+    monkeypatch.setattr(uninstall_cli, "inspect_tool_installation", lambda: installation)
+    monkeypatch.setattr(uninstall_cli, "schedule_tool_removal", scheduled.append)
+    return scheduled
 
 
 def patch_managed_roots(tmp_path, monkeypatch) -> dict[str, Path]:
@@ -44,8 +51,10 @@ def populate(roots: dict[str, Path]) -> None:
         (path / "content.txt").write_text("managed", encoding="utf-8")
 
 
-def test_uninstall_cancellation_preserves_every_root(tmp_path, monkeypatch) -> None:
-    """Declining the confirmation deletes nothing and still reminds about uv removal."""
+def test_uninstall_cancellation_preserves_every_root(
+    tmp_path, monkeypatch, patch_uninstall_dependencies
+) -> None:
+    """Declining the single confirmation deletes neither roots nor the Python tool."""
     roots = patch_managed_roots(tmp_path, monkeypatch)
     populate(roots)
 
@@ -54,7 +63,7 @@ def test_uninstall_cancellation_preserves_every_root(tmp_path, monkeypatch) -> N
     assert result.exit_code == 0
     assert "cancelled" in result.stdout
     assert all(path.exists() for path in roots.values())
-    assert "uv tool uninstall qwen-launcher" in result.stdout
+    assert patch_uninstall_dependencies == []
 
 
 def test_uninstall_removes_only_managed_roots_and_spares_hugging_face_cache(
@@ -70,20 +79,20 @@ def test_uninstall_removes_only_managed_roots_and_spares_hugging_face_cache(
     result = runner.invoke(app, ["uninstall"], input="y\n")
 
     assert result.exit_code == 0
-    assert "The Hugging Face cache is never touched." in result.stdout
+    assert "The Hugging Face cache and uv itself are never touched." in result.stdout
     assert not any(path.exists() for path in roots.values())
     assert (hugging_face_cache / "model.gguf").read_text(encoding="utf-8") == "weights"
-    assert "uv tool uninstall qwen-launcher" in result.stdout
+    assert "Python tool will be removed" in result.stdout
 
 
 def test_uninstall_is_idempotent_when_roots_are_absent(tmp_path, monkeypatch) -> None:
-    """Absent roots produce a clean report, no prompt, and no created directories."""
+    """Absent roots still allow confirmed tool removal without creating directories."""
     roots = patch_managed_roots(tmp_path, monkeypatch)
 
-    result = runner.invoke(app, ["uninstall"])
+    result = runner.invoke(app, ["uninstall"], input="y\n")
 
     assert result.exit_code == 0
-    assert "nothing to remove" in result.stdout
+    assert "Python tool will be removed" in result.stdout
     assert not any(path.exists() for path in roots.values())
     assert not list(tmp_path.iterdir())
 
@@ -158,3 +167,17 @@ def test_uninstall_maps_removal_failure_to_exit_1(tmp_path, monkeypatch) -> None
     assert "Uninstall error" in result.stderr
     assert "locked directory" in result.stderr
     assert "Traceback" not in result.stderr
+
+
+def test_uninstall_leaves_a_non_uv_installation_explicit(tmp_path, monkeypatch) -> None:
+    """Do not guess how to remove a package installed outside the supported uv tool flow."""
+    roots = patch_managed_roots(tmp_path, monkeypatch)
+    roots["cache_dir"].mkdir(parents=True)
+    unmanaged = uninstall_cli.ToolInstallation(tmp_path / "python-environment", None)
+    monkeypatch.setattr(uninstall_cli, "inspect_tool_installation", lambda: unmanaged)
+
+    result = runner.invoke(app, ["uninstall"], input="y\n")
+
+    assert result.exit_code == 0
+    assert "Python tool unchanged" in result.stdout
+    assert not roots["cache_dir"].exists()
