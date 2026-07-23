@@ -65,6 +65,29 @@ def test_terminal_progress_shows_byte_bar_and_eta() -> None:
     assert "Downloading [1/2] engine.zip complete in 5s." in rendered
 
 
+def test_terminal_progress_shows_compile_percentage() -> None:
+    """Render the real CMake percentage beside the compile bar as it advances."""
+    stream = StringIO()
+    now = [0.0]
+
+    def get_time() -> float:
+        """Return deterministic monotonic time so each percentage forces a refresh."""
+        return now[0]
+
+    console = Console(file=stream, force_terminal=True, color_system=None, width=120)
+    with EngineInstallProgress(console, get_time) as progress:
+        progress(InstallProgressEvent("compile"))
+        now[0] = 1.0
+        progress(InstallProgressEvent("compile", percent=42))
+        now[0] = 2.0
+        progress(InstallProgressEvent("compile", percent=100))
+
+    rendered = stream.getvalue()
+    assert "Configuring and compiling Ubuntu CUDA llama-server" in rendered
+    assert "42%" in rendered
+    assert "100%" in rendered
+
+
 def test_terminal_progress_marks_an_interrupted_transfer() -> None:
     """Retain a stopped summary when a measured operation raises an error."""
     stream = StringIO()

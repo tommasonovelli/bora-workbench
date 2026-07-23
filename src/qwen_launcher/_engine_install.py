@@ -31,6 +31,11 @@ def _report(request: InstallRequest, event: InstallProgressEvent) -> None:
         request.progress(event)
 
 
+def _report_compile(request: InstallRequest, percent: int) -> None:
+    """Forward one measured CMake compile percentage as a compile progress event."""
+    _report(request, InstallProgressEvent("compile", percent=percent))
+
+
 def _report_transfer(
     request: InstallRequest, event: InstallProgressEvent, update: TransferProgress
 ) -> None:
@@ -99,7 +104,7 @@ def _prepare_staging(request: InstallRequest, staging: Path) -> Path:
     declared = staging / server_asset.executable
     if server_asset.role == "source":
         _report(request, InstallProgressEvent("compile"))
-        built = build_cuda_server(staging, request.lock)
+        built = build_cuda_server(staging, request.lock, partial(_report_compile, request))
         if built.resolve() != declared.resolve():
             raise EngineError("Ubuntu CUDA build output differs from engine.lock executable")
     return declared

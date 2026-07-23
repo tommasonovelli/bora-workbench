@@ -3,13 +3,24 @@
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import subprocess
+from collections import deque
+from collections.abc import Iterable
 from pathlib import Path
 
-from qwen_launcher._engine_types import EngineError
+from qwen_launcher._engine_types import CompileProgress, EngineError
 
 _REQUIRED_TOOLS = ("cmake", "cc", "c++", "nvcc")
+
+# CMake reports build progress as ``[ NN%]`` under Unix Makefiles and ``[done/total]``
+# under Ninja; both prefixes are the only truthful source of a compile percentage.
+_MAKEFILE_PERCENT = re.compile(r"^\[\s*(\d{1,3})%\]")
+_NINJA_STEP = re.compile(r"^\[(\d+)/(\d+)\]")
+
+# Retain enough trailing build output to keep a compiler failure actionable on stderr.
+_ERROR_TAIL_LINES = 200
 
 
 def _require_tools() -> dict[str, str]:
@@ -52,7 +63,55 @@ def _run_build_command(command: list[str], staging: Path) -> None:
         raise EngineError(f"Ubuntu CUDA build failed with exit {result.returncode}:\n{output}")
 
 
-def build_cuda_server(staging: Path, lock: dict[str, object]) -> Path:
+def _parse_percent(line: str) -> int | None:
+    """Read a compile percentage from one CMake Unix Makefiles or Ninja progress line."""
+    stripped = line.lstrip()
+    if makefile := _MAKEFILE_PERCENT.match(stripped):
+        return min(100, int(makefile.group(1)))
+    if ninja := _NINJA_STEP.match(stripped):
+        done, total = int(ninja.group(1)), int(ninja.group(2))
+        if total > 0:
+            return min(100, done * 100 // total)
+    return None
+
+
+def _forward_percentages(lines: Iterable[str], on_percent: CompileProgress) -> deque[str]:
+    """Forward strictly increasing compile percentages and keep a bounded failure tail."""
+    tail: deque[str] = deque(maxlen=_ERROR_TAIL_LINES)
+    last_percent = -1
+    for line in lines:
+        tail.append(line)
+        percent = _parse_percent(line)
+        if percent is not None and percent > last_percent:
+            last_percent = percent
+            on_percent(percent)
+    return tail
+
+
+def _run_streamed_build(command: list[str], staging: Path, on_percent: CompileProgress) -> None:
+    """Compile without a shell while streaming real CMake percentages to the caller."""
+    try:
+        with subprocess.Popen(
+            command,
+            cwd=staging,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            encoding="utf-8",
+        ) as process:
+            assert process.stdout is not None
+            tail = _forward_percentages(iter(process.stdout.readline, ""), on_percent)
+            returncode = process.wait()
+    except OSError as error:
+        raise EngineError(f"cannot execute Ubuntu CUDA build command: {error}") from error
+    if returncode:
+        output = "".join(tail)[-4000:]
+        raise EngineError(f"Ubuntu CUDA build failed with exit {returncode}:\n{output}")
+
+
+def build_cuda_server(
+    staging: Path, lock: dict[str, object], on_percent: CompileProgress | None = None
+) -> Path:
     """Configure and compile only ``llama-server`` from the exact pinned source commit."""
     tools = _require_tools()
     source, build = _source_directory(staging), staging / "build"
@@ -84,6 +143,7 @@ def build_cuda_server(staging: Path, lock: dict[str, object]) -> Path:
         "--target",
         "llama-server",
     ]
+    report = on_percent if on_percent is not None else (lambda _percent: None)
     _run_build_command(configure, staging)
-    _run_build_command(compile_server, staging)
+    _run_streamed_build(compile_server, staging, report)
     return build / "bin" / "llama-server"

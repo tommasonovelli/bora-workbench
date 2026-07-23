@@ -41,9 +41,13 @@ class InstallProgressEvent:
     completed_bytes: int | None = None
     total_bytes: int | None = None
     is_cached: bool = False
+    percent: int | None = None
 
 
 InstallProgress = Callable[[InstallProgressEvent], None]
+
+# A measured CMake compile percentage in [0, 100] reported by the Ubuntu build.
+CompileProgress = Callable[[int], None]
 
 
 @dataclass(frozen=True, slots=True)

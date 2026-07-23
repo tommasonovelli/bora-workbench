@@ -129,7 +129,7 @@ def test_install_reports_blocking_phases_in_execution_order(tmp_path, monkeypatc
     source = replace(server_asset(), role="source")
     monkeypatch.setattr(installer, "select_assets", lambda lock, platform_key, backend: (source,))
     monkeypatch.setattr(
-        installer, "build_cuda_server", lambda staging, lock: staging / "llama-server.exe"
+        installer, "build_cuda_server", lambda staging, *_: staging / "llama-server.exe"
     )
     observed: list[InstallProgressEvent] = []
     selected = replace(request(tmp_path), progress=observed.append)

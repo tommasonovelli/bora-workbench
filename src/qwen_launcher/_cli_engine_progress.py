@@ -126,27 +126,28 @@ class EngineInstallProgress:
         self, event: InstallProgressEvent, phase_key: tuple[str, str | None, int | None]
     ) -> None:
         """Create or refresh the single visible installation task."""
+        if event.stage == "compile":
+            total = None if event.percent is None else 100
+            completed = event.percent or 0
+        else:
+            total, completed = event.total_bytes, event.completed_bytes or 0
         if phase_key != self._phase_key:
             self._finish_phase(True)
             self._phase_key = phase_key
             self._phase_started_at = self._get_time()
             self._last_refresh_at = self._phase_started_at
             self._task_id = self._progress.add_task(
-                _phase_message(event), total=event.total_bytes, metrics="", eta=""
+                _phase_message(event), total=total, metrics="", eta=""
             )
         assert self._task_id is not None
-        metrics, eta = self._transfer_fields(event)
+        metrics, eta = self._phase_fields(event)
         now = self._get_time()
-        is_complete = bool(
-            event.total_bytes is not None
-            and event.completed_bytes is not None
-            and event.completed_bytes >= event.total_bytes
-        )
+        is_complete = total is not None and completed >= total
         should_refresh = is_complete or now - self._last_refresh_at >= 0.25
         self._progress.update(
             self._task_id,
-            total=event.total_bytes,
-            completed=event.completed_bytes or 0,
+            total=total,
+            completed=completed,
             metrics=metrics,
             eta=eta,
             refresh=should_refresh,
@@ -155,8 +156,10 @@ class EngineInstallProgress:
             self._last_refresh_at = now
         self._last_event = event
 
-    def _transfer_fields(self, event: InstallProgressEvent) -> tuple[str, str]:
-        """Calculate byte count, average rate, and remaining transfer time."""
+    def _phase_fields(self, event: InstallProgressEvent) -> tuple[str, str]:
+        """Show the compile percentage, or the transfer byte count, rate, and estimate."""
+        if event.stage == "compile":
+            return (f"{event.percent}%" if event.percent is not None else ""), ""
         if event.completed_bytes is None:
             return "", ""
         completed = event.completed_bytes
