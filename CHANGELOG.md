@@ -5,6 +5,11 @@ changelog: sono in `IMPLEMENTATION_SPEC.md`.
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-23
+
+Release di stabilizzazione con `calibration/v4`, isolamento delle porte dei trial e progresso
+visibile durante calibrazione e installazione del motore.
+
 ### Added
 
 - `calibration-record/v3` registra esplicitamente `calibration/v4` e la sua riserva, mantenendo
@@ -35,8 +40,10 @@ changelog: sono in `IMPLEMENTATION_SPEC.md`.
 
 ### Known limitations
 
-- La pubblicazione 0.1.1 resta bloccata finché `calibration/v4` non supera un Gate reale Windows; il
-  Gate Ubuntu ha avuto un primo run fallito e un retry valido, senza rendere `n_cpu_moe=36` sicuro.
+- I Gate reali Ubuntu e Windows sono stati attestati dal maintainer, ma la copertura resta
+  `GATE-PARTIAL` finché manca hardware materialmente diverso; il Gate Ubuntu non rende
+  `n_cpu_moe=36` sicuro.
+- `0.1.1` è pubblicata soltanto su GitHub Releases; PyPI resta fuori da questa pubblicazione.
 
 ## [0.1.0] - 2026-07-20
 

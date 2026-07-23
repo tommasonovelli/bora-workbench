@@ -1,6 +1,6 @@
 # Audit della calibrazione hardware
 
-Data dell'audit: 2026-07-22.
+Data dell'audit: 2026-07-22. Addendum release: 2026-07-23.
 
 Questo documento è il resoconto tecnico non normativo richiesto per la revisione della calibrazione.
 Descrive fonti, misure, limiti e decisioni; non sostituisce `IMPLEMENTATION_SPEC.md`, i lock o la
@@ -194,8 +194,10 @@ Aggregati del retry valido:
 
 Il risultato non autorizza `n_cpu_moe=36`: il benchmark completo lo porta quasi a esaurimento VRAM.
 Inoltre non dimostra il beneficio della soglia 0,3, perché il finalista selezionato resta sopra 0,5
-GiB e un run su due è fallito. La 0.1.1 resta quindi bloccata fino a un Gate reale Windows v4 e a una
-successiva decisione umana `RELEASE`; test offline o il Gate Windows v3 non sono sostituti.
+GiB e un run su due è fallito. Il 23 luglio 2026 il maintainer ha attestato il Gate reale Windows v4,
+incluso il riuso del record, e ha deciso `RELEASE` dopo i test Ubuntu e Windows. Nessun valore o log
+privato del Gate è stato ricostruito o aggiunto all'evidenza pubblica; la copertura resta quindi
+`GATE-PARTIAL` finché manca hardware materialmente diverso.
 
 ## Priorità consigliate per un protocollo successivo
 
@@ -205,8 +207,8 @@ successiva decisione umana `RELEASE`; test offline o il Gate Windows v3 non sono
 4. Aggiungere una vera ricerca del contesto CPU, mantenendo un percorso breve per la baseline.
 5. Eseguire spike monovariati su thread, batch e MTP; solo dopo provare le interazioni principali.
 6. Trattare sampling/thinking e quantizzazione come audit di contratto e qualità separati.
-7. Completare prima il Gate Windows v4, poi ripetere su hardware materialmente diverso; pubblicare
-   soltanto report redatti e manifestati.
+7. Dopo il Gate Windows v4 attestato dal maintainer, ripetere su hardware materialmente diverso e
+   pubblicare soltanto report redatti e manifestati.
 
 Qualunque metodo successivo deve restare deterministico, limitato nel budget, interrompibile,
 ricostruibile dal record e validato offline con fake prima dei gate reali.
@@ -217,9 +219,10 @@ Claude Fable è stato consultato tre volte con `--model fable --effort max` e ac
 Le prime due revisioni hanno coperto confine di memoria, UX, baseline CPU e cascata di `min_p`. La
 terza ha revisionato D-053 e i due run v4: ha identificato che il primo codice applicava 0,3 GiB anche
 al riuso dei record v2 storici. La migrazione è stata corretta affinché ogni record mantenga la
-propria riserva, con test dedicati. Ha inoltre confermato che assenza del Gate Windows e incoerenza
-fra codice/spec/docs bloccano una release stabile; queste conclusioni sono recepite qui. Nessun
-output del consulente è evidenza empirica e nessun file è stato modificato dal consulente.
+propria riserva, con test dedicati. Ha inoltre confermato che, al momento dell'audit, assenza del Gate
+Windows e incoerenza fra codice/spec/docs bloccavano una release stabile; il successivo Gate umano è
+registrato sopra senza attribuirgli misure non conservate. Nessun output del consulente è evidenza
+empirica e nessun file è stato modificato dal consulente.
 
 ## Fonti primarie consultate
 

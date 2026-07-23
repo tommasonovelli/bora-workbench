@@ -19,27 +19,23 @@ launcher usa il backend CPU e mostra il motivo.
 
 ## 2. Installare la release pubblica
 
-La release pubblica è `0.1.0`. PyPI è ancora indisponibile; usare gli artefatti della
-[GitHub Release v0.1.0](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.0).
-La wheel verificata dalla CI ha SHA-256:
-
-```text
-8966539a9e257f532d14fab821bf507a9c0327fa7fb246e5d8803fa69289c482
-```
-
-Gli artefatti `v0.1.0` non includono le correzioni elencate sotto `Unreleased` nel changelog. Una
-release pubblicata non viene modificata in place.
+La release pubblica è `0.1.1`. PyPI è ancora indisponibile; usare gli artefatti della
+[GitHub Release v0.1.1](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.1).
+La release allega wheel, sdist, installer e `SHA256SUMS` ottenuti dal run test/build
+multipiattaforma. Una release pubblicata non viene modificata in place.
 
 ### Ubuntu
 
 ```bash
-base="https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.0"
+base="https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.1"
+wheel="qwen_launcher-0.1.1-py3-none-any.whl"
 curl --fail --location "$base/install.sh" --output install.sh
-curl --fail --location "$base/qwen_launcher-0.1.0-py3-none-any.whl" \
-  --output qwen_launcher-0.1.0-py3-none-any.whl
-sh ./install.sh \
-  --wheel ./qwen_launcher-0.1.0-py3-none-any.whl \
-  --sha256 8966539a9e257f532d14fab821bf507a9c0327fa7fb246e5d8803fa69289c482
+curl --fail --location "$base/$wheel" --output "$wheel"
+curl --fail --location "$base/SHA256SUMS" --output SHA256SUMS
+sha256sum --check --ignore-missing SHA256SUMS
+wheel_sha256="$(awk -v wheel="$wheel" '$2 == wheel { print $1 }' SHA256SUMS)"
+test "${#wheel_sha256}" -eq 64
+sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 ```
 
 ### Windows
@@ -47,13 +43,20 @@ sh ./install.sh \
 Da PowerShell:
 
 ```powershell
-$base = "https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.0"
+$base = "https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.1"
+$wheel = "qwen_launcher-0.1.1-py3-none-any.whl"
 Invoke-WebRequest "$base/install.ps1" -OutFile install.ps1
-Invoke-WebRequest "$base/qwen_launcher-0.1.0-py3-none-any.whl" `
-  -OutFile qwen_launcher-0.1.0-py3-none-any.whl
+Invoke-WebRequest "$base/$wheel" -OutFile $wheel
+Invoke-WebRequest "$base/SHA256SUMS" -OutFile SHA256SUMS
+$pattern = "^[0-9a-f]{64}\s+$([regex]::Escape($wheel))$"
+$entry = Select-String -Path .\SHA256SUMS -Pattern $pattern
+if ($null -eq $entry) { throw "Wheel digest missing from SHA256SUMS" }
+$sha256 = ($entry.Line -split "\s+")[0]
+if ((Get-FileHash $wheel -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sha256) {
+  throw "Wheel SHA-256 mismatch"
+}
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 `
-  -Wheel .\qwen_launcher-0.1.0-py3-none-any.whl `
-  -Sha256 8966539a9e257f532d14fab821bf507a9c0327fa7fb246e5d8803fa69289c482
+  -Wheel ".\$wheel" -Sha256 $sha256
 ```
 
 `ExecutionPolicy Bypass` vale soltanto per quel processo. Lo script non cambia la policy di sistema
@@ -71,8 +74,8 @@ install.ps1 -GitCommit COMMIT_COMPLETO
 install.ps1 -PypiVersion VERSIONE
 ```
 
-`--pypi-version 0.1.0` / `-PypiVersion 0.1.0` non è utilizzabile finché la pubblicazione PyPI non è
-completata.
+`--pypi-version` / `-PypiVersion` non è utilizzabile finché una versione non è realmente presente
+su PyPI.
 
 ## 3. Verificare il tool
 

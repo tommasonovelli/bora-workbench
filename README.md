@@ -1,7 +1,7 @@
 # qwen-launcher
 
 [![CI](https://github.com/tommasonovelli/qwen-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/tommasonovelli/qwen-launcher/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/tommasonovelli/qwen-launcher.svg)](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.0)
+[![Release](https://img.shields.io/github/v/release/tommasonovelli/qwen-launcher.svg)](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.1)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-31213/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -34,14 +34,14 @@ Se è la prima volta che apri il progetto, il percorso più semplice è:
 ## Stato del progetto
 
 > [!WARNING]
-> `0.1.0` è la prima release pubblica ed è destinata a valutazione. CLI, configurazione, formati dei
-> record, procedure e prestazioni non hanno garanzia di stabilità. Non usarla per workload critici
-> senza verifiche indipendenti e backup dei dati locali.
+> La serie `0.1` è destinata a valutazione. CLI, configurazione, formati dei record, procedure e
+> prestazioni non hanno garanzia di stabilità. Non usarla per workload critici senza verifiche
+> indipendenti e backup dei dati locali.
 
-La GitHub Release `v0.1.0` è pubblica. PyPI attende ancora la configurazione del Trusted Publisher.
-Il branch `main` prepara `0.1.1` con correzioni runtime e `calibration/v4`, ma la pubblicazione è
-bloccata finché manca il Gate Windows reale del nuovo protocollo. Le modifiche sono sotto
-`Unreleased` nel [CHANGELOG](CHANGELOG.md) e non fanno parte degli artefatti immutabili `0.1.0`.
+La release corrente è **`0.1.1`**, pubblicata su
+[GitHub Releases](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.1). Include
+`calibration/v4`, isolamento delle porte temporanee e progresso visibile durante calibrazione e
+installazione del motore. PyPI non fa parte di questa pubblicazione e resta indisponibile.
 
 ## Requisiti
 
@@ -57,22 +57,21 @@ Se `nvidia-smi` non è disponibile o affidabile, il launcher usa CPU e mostra un
 
 ## Installazione
 
-La wheel `0.1.0` verificata dalla CI ha SHA-256:
-
-```text
-8966539a9e257f532d14fab821bf507a9c0327fa7fb246e5d8803fa69289c482
-```
+La release allega wheel, sdist, installer e `SHA256SUMS` prodotti a partire dal run test/build
+multipiattaforma. Usare il digest della wheel riportato nel manifest allegato.
 
 ### Ubuntu
 
 ```bash
-base="https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.0"
+base="https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.1"
+wheel="qwen_launcher-0.1.1-py3-none-any.whl"
 curl --fail --location "$base/install.sh" --output install.sh
-curl --fail --location "$base/qwen_launcher-0.1.0-py3-none-any.whl" \
-  --output qwen_launcher-0.1.0-py3-none-any.whl
-sh ./install.sh \
-  --wheel ./qwen_launcher-0.1.0-py3-none-any.whl \
-  --sha256 8966539a9e257f532d14fab821bf507a9c0327fa7fb246e5d8803fa69289c482
+curl --fail --location "$base/$wheel" --output "$wheel"
+curl --fail --location "$base/SHA256SUMS" --output SHA256SUMS
+sha256sum --check --ignore-missing SHA256SUMS
+wheel_sha256="$(awk -v wheel="$wheel" '$2 == wheel { print $1 }' SHA256SUMS)"
+test "${#wheel_sha256}" -eq 64
+sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 ```
 
 ### Windows
@@ -80,13 +79,20 @@ sh ./install.sh \
 Da PowerShell:
 
 ```powershell
-$base = "https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.0"
+$base = "https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.1"
+$wheel = "qwen_launcher-0.1.1-py3-none-any.whl"
 Invoke-WebRequest "$base/install.ps1" -OutFile install.ps1
-Invoke-WebRequest "$base/qwen_launcher-0.1.0-py3-none-any.whl" `
-  -OutFile qwen_launcher-0.1.0-py3-none-any.whl
+Invoke-WebRequest "$base/$wheel" -OutFile $wheel
+Invoke-WebRequest "$base/SHA256SUMS" -OutFile SHA256SUMS
+$pattern = "^[0-9a-f]{64}\s+$([regex]::Escape($wheel))$"
+$entry = Select-String -Path .\SHA256SUMS -Pattern $pattern
+if ($null -eq $entry) { throw "Wheel digest missing from SHA256SUMS" }
+$sha256 = ($entry.Line -split "\s+")[0]
+if ((Get-FileHash $wheel -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sha256) {
+  throw "Wheel SHA-256 mismatch"
+}
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 `
-  -Wheel .\qwen_launcher-0.1.0-py3-none-any.whl `
-  -Sha256 8966539a9e257f532d14fab821bf507a9c0327fa7fb246e5d8803fa69289c482
+  -Wheel ".\$wheel" -Sha256 $sha256
 ```
 
 Gli installer fissano uv `0.11.28` e CPython `3.12.13`, richiedono una sorgente esplicita e non

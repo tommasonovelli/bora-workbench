@@ -18,12 +18,13 @@ def test_release_actions_are_pinned_to_full_commit_shas() -> None:
 
 
 def test_publish_job_uses_tested_artifact_oidc_and_protected_environment() -> None:
-    """Keep OIDC permission confined to the protected job that depends on the tested build."""
+    """Keep opt-in OIDC publication confined to the job consuming the tested build."""
     text = WORKFLOW.read_text(encoding="utf-8")
     prefix, publish = text.split("\n  publish:\n", maxsplit=1)
 
     assert "permissions:\n  contents: read" in prefix
     assert "needs: build" in publish
+    assert "vars.PYPI_PUBLISH_ENABLED == 'true'" in publish
     assert "name: pypi" in publish
     assert "id-token: write" in publish
     assert "actions/download-artifact@" in publish

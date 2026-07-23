@@ -5,14 +5,12 @@ serve sempre un'autorizzazione umana esplicita per push, tag, GitHub Release e P
 
 ## Stato pubblico
 
-- versione pubblica: `0.1.0`;
-- tag remoto: `v0.1.0`;
-- GitHub Release: pubblicata con installer, wheel, sdist e `SHA256SUMS`;
-- wheel SHA-256:
-  `8966539a9e257f532d14fab821bf507a9c0327fa7fb246e5d8803fa69289c482`;
-- PyPI: non ancora pubblicata, per Trusted Publisher mancante;
-- branch `main`: usa `0.1.1rc1` per preparare `0.1.1` con correzioni e `calibration/v4`, ma tag e
-  release sono bloccati finché manca il Gate Windows reale del nuovo metodo.
+- versione pubblica corrente: `0.1.1`;
+- tag remoti: `v0.1.0` e `v0.1.1`;
+- GitHub Release `v0.1.1`: pubblicata con installer, wheel, sdist e `SHA256SUMS`;
+- i digest `0.1.1` sono quelli del manifest allegato alla release e derivano dal build job verde;
+- PyPI: non ancora pubblicata e fuori dall'autorizzazione di `0.1.1`;
+- branch `main`: versione `0.1.1` con correzioni e `calibration/v4`.
 
 Gli artefatti pubblicati sono immutabili. Non ricostruire, sostituire o ricaricare file con la stessa
 versione per includere correzioni successive: serve una nuova versione.
@@ -66,11 +64,13 @@ maintainer prova almeno:
 - uninstall confinato e preservazione della cache Hugging Face;
 - upgrade dalla versione pubblica quando applicabile.
 
-Per 0.1.1 il Gate Ubuntu v4 ha un run fallito e un retry valido; serve ancora una calibrazione v4
-reale Windows, incluso il riuso del record. CI e fake offline non sostituiscono questa prova.
+Per 0.1.1 il Gate Ubuntu v4 ha un run fallito e un retry valido. Il 23 luglio 2026 il maintainer ha
+attestato anche il Gate reale Windows v4, incluso il riuso del record, e ha deciso `RELEASE` dopo i
+test sui due sistemi. I dettagli privati del Gate Windows non vengono ricostruiti come misure o
+aggiunti all'evidenza pubblica.
 
-Limiti e controlli non eseguiti devono essere espliciti. Solo una decisione umana `RELEASE` dopo i
-Gate autorizza la versione finale; non autorizza automaticamente le singole operazioni remote.
+Limiti e controlli non eseguiti devono essere espliciti. La pubblicazione `0.1.1` è stata autorizzata
+per push, tag e GitHub Release, escludendo PyPI.
 
 ## Versione, tag e commit
 
@@ -95,11 +95,12 @@ Un push di un tag `v*` attiva `.github/workflows/release.yml`:
 3. build unica dopo i test;
 4. verifica isolata della wheel e ispezione della sdist;
 5. upload dell'artefatto testato fra job;
-6. pubblicazione PyPI dello stesso artefatto.
+6. pubblicazione PyPI dello stesso artefatto solo quando la variabile repository
+   `PYPI_PUBLISH_ENABLED` vale esattamente `true`.
 
 Le action sono appuntate a SHA completo. I permessi globali sono `contents: read`; solo il job
 `publish`, protetto dall'environment `pypi`, riceve `id-token: write`. Non esiste un token PyPI nel
-repository.
+repository. Per `v0.1.1` la variabile resta assente e il job viene saltato.
 
 ## Trusted Publishing PyPI
 
@@ -115,10 +116,11 @@ environment:  pypi
 
 Dopo la configurazione va rieseguito soltanto il job di pubblicazione fallito del run
 `29739366272`. Test e build di quel run sono già verdi e gli stessi artefatti sono nella GitHub
-Release; non vanno ricostruiti.
+Release; non vanno ricostruiti. La variabile opt-in riguarda i workflow successivi e può essere
+impostata solo con una distinta autorizzazione remota.
 
-Finché PyPI non contiene realmente la versione, gli installer non devono usare
-`--pypi-version 0.1.0` / `-PypiVersion 0.1.0`.
+Finché PyPI non contiene realmente una versione, gli installer non devono usare
+`--pypi-version` / `-PypiVersion` per quella versione.
 
 ## GitHub Release
 
@@ -131,7 +133,8 @@ La release allega gli stessi file prodotti dal job build:
 - `SHA256SUMS`.
 
 Titolo, note e prerelease flag devono essere coerenti con changelog e metadata. Non caricare una
-build locale diversa da quella passata attraverso la matrice release.
+build locale diversa da quella passata attraverso la matrice release. La `v0.1.1` è una release
+GitHub stabile e non una prerelease.
 
 ## Verifica dopo la pubblicazione
 

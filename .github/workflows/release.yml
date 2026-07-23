@@ -89,6 +89,7 @@ jobs:
   publish:
     name: Publish to PyPI
     needs: build
+    if: ${{ vars.PYPI_PUBLISH_ENABLED == 'true' }}
     runs-on: ubuntu-22.04
     environment:
       name: pypi

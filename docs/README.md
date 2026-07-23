@@ -37,14 +37,12 @@ quotidiano del launcher.
 
 ## Stato corrente
 
-La release pubblica è `0.1.0`. Il branch `main` prepara `0.1.1` con le correzioni runtime,
-progresso interattivo e `calibration/v4` con record v3 e riserva VRAM 0,3 GiB. La release resta
-bloccata finché manca il Gate Windows reale del nuovo metodo. La sezione `Unreleased` del changelog
-riassume le differenze.
+La release pubblica è `0.1.1`, con correzioni runtime, progresso interattivo e `calibration/v4` con
+record v3 e riserva VRAM 0,3 GiB. Il maintainer ha attestato i Gate reali Ubuntu e Windows e ha
+autorizzato la pubblicazione su GitHub il 23 luglio 2026.
 
-PyPI non ospita ancora `0.1.0`: il job di pubblicazione attende la configurazione del Trusted
-Publisher. Gli artefatti verificati sono disponibili nella GitHub Release `v0.1.0`; non vanno
-ricostruiti o sostituiti.
+PyPI resta indisponibile ed è escluso da questa pubblicazione. Gli artefatti verificati sono nella
+GitHub Release `v0.1.1`; non vanno ricostruiti o sostituiti.
 
 ## Limiti attuali
 

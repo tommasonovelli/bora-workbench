@@ -266,10 +266,11 @@ presenta come prova della nuova riserva. Il report copre realmente un solo scope
 - 31,92 GiB RAM;
 - tutti e tre i modi.
 
-Lo stato complessivo resta `GATE-PARTIAL`: v4 ha un gate Ubuntu locale ma non il gate Windows reale
-necessario alla release 0.1.1. I valori osservati non vengono trasferiti. Il loader estrae soltanto
-`n_cpu_moe` come seed d'ordine per modello, motore, backend e modo esatti; la macchina dell'utente
-esegue comunque la ricerca completa.
+Lo stato complessivo resta `GATE-PARTIAL`: il maintainer ha attestato Gate v4 reali su Ubuntu e
+Windows prima della 0.1.1, ma manca ancora hardware materialmente diverso e il Gate Windows v4 non è
+stato trasformato in evidenza pubblica. I valori osservati non vengono trasferiti. Il loader estrae
+soltanto `n_cpu_moe` come seed d'ordine per modello, motore, backend e modo esatti; la macchina
+dell'utente esegue comunque la ricerca completa.
 
 Le fonti con checksum sono in
 [`evidence/calibration/windows-11-rtx-2060-super-v3/`](../evidence/calibration/windows-11-rtx-2060-super-v3/).
@@ -288,8 +289,8 @@ qwen-launcher calibrate --mode all --no-activate
 ```
 
 Conservare privatamente esito riuscito e fallimenti, senza hostname, username, seriali, UUID,
-percorsi assoluti, credenziali, prompt o log grezzi. La 0.1.1 richiede ancora un Gate reale Windows
-v4; test offline o il report Windows v3 non lo sostituiscono.
+percorsi assoluti, credenziali, prompt o log grezzi. Il Gate Windows v4 attestato per la 0.1.1 non
+sostituisce un futuro contributo pubblico redatto e manifestato.
 
 Checklist per la pull request:
 

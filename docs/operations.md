@@ -26,7 +26,7 @@ Gli errori attesi non mostrano traceback. In generale:
 
 ### L'installer chiede una sorgente
 
-È intenzionale: non esiste un default implicito. Per `0.1.0` usare wheel e digest della GitHub
+È intenzionale: non esiste un default implicito. Per `0.1.1` usare wheel e digest della GitHub
 Release come descritto in [Installazione](installation.md). La sorgente PyPI non è ancora disponibile.
 
 ### `uv` non è nel `PATH`
@@ -174,9 +174,9 @@ qwen-launcher status
 qwen-launcher stop
 ```
 
-Non eliminare `services.json` per liberare la porta. Nel branch corrente i soli trial di calibrazione
-possono scegliere automaticamente una porta temporanea; `v0.1.0` pubblico non contiene questa
-correzione.
+Non eliminare `services.json` per liberare la porta. Dalla `v0.1.1` i soli trial di calibrazione
+possono scegliere automaticamente una porta temporanea; gli avvii ordinari restano severi sulla
+porta configurata.
 
 ### Un secondo avvio è rifiutato
 

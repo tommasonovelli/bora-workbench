@@ -7,7 +7,7 @@ in [`docs/`](docs/README.md); la provenienza misurata di lock e report è conser
 
 ## 0. Stato reale e tracker
 
-Aggiornato al 22 luglio 2026.
+Aggiornato al 23 luglio 2026.
 
 ### Baseline completata
 
@@ -23,16 +23,18 @@ Aggiornato al 22 luglio 2026.
   d'ordine, mai la busta di un altro host.
 - [x] Le correzioni post-release D-051 e D-052 sono nel branch: porta temporanea per i trial e
   tolleranza massima di 1 MiB nel confronto del totale RAM.
+- [x] Il maintainer ha attestato i Gate reali Ubuntu e Windows per `calibration/v4`, incluso il
+  riuso del record, e ha deciso `RELEASE` il 23 luglio 2026.
+- [x] Versione `0.1.1`, tag `v0.1.1` e GitHub Release distribuiscono D-051, D-052, D-053 e il
+  progresso runtime; PyPI è escluso dall'autorizzazione di questa release.
 
 ### Lavoro aperto
 
 - [ ] Configurare il Trusted Publisher PyPI e rieseguire solo il job `publish` fallito di
   `29739366272`; non ricostruire gli artefatti `0.1.0`.
-- [ ] Completare il Gate Windows reale per `calibration/v4`; `0.1.1rc1` non diventa 0.1.1 prima.
-- [ ] Distribuire D-051/D-052 e D-053 soltanto tramite la 0.1.1 dopo il Gate e decisione `RELEASE`.
 - [ ] Stabilizzare ulteriormente la serie 0.1 prima di iniziare la 0.2.
-- [~] Ripetere `calibration/v4 --no-activate` su Windows e hardware materialmente diverso. Windows
-  è bloccante per 0.1.1; l'hardware diverso resta follow-up e la copertura è `GATE-PARTIAL`.
+- [~] Ripetere `calibration/v4 --no-activate` su hardware materialmente diverso; la copertura resta
+  `GATE-PARTIAL` e nessuna busta viene trasferita fra host.
 - [ ] Step 7 — skill e router deterministico.
 - [ ] Step 8 — Open WebUI gestita e sync.
 - [ ] Step 9 — benchmark autonomo e doctor definitivo.
@@ -133,6 +135,7 @@ Gli identificatori restano stabili perché codice, test ed evidenza li citano.
 | D-051 | I trial usano `llama_port` se libera, altrimenti una porta loopback assegnata dall'OS. |
 | D-052 | Il confronto del totale RAM tollera al massimo 1 MiB; headroom e componenti restano severi. |
 | D-053 | `calibration/v4` conserva scala, ricerca e ABBA v3 ma usa 0,3 GiB di riserva VRAM e produce `calibration-record/v3`; i record v2 restano validi con la propria riserva 0,5 GiB. |
+| D-054 | Il job PyPI del workflow release è opt-in tramite `PYPI_PUBLISH_ENABLED`; `v0.1.1` pubblica soltanto su GitHub come autorizzato. |
 
 Una nuova decisione durevole aggiorna questa tabella nello stesso step che la autorizza.
 
@@ -430,16 +433,15 @@ Poi riesegue soltanto il job `publish` fallito del run `29739366272`. Dopo il su
 `qwen-launcher==0.1.0` su Ubuntu e Windows e confronta i digest con GitHub. Gli artefatti esistenti
 non vengono ricostruiti.
 
-### 7.2 Preparare la 0.1.1
+### 7.2 Release 0.1.1 completata
 
-La 0.1.1 distribuirà D-051, D-052, UX di progresso e D-053. Il Gate Ubuntu v4 comprende un primo run
-fallito e un retry valido; questo non sostituisce il Gate Windows reale richiesto da
-`docs/releasing.md`. Metadata e codice possono essere preparati localmente, ma commit finale, tag e
-release restano bloccati fino a prova Windows e decisione umana `RELEASE`.
+La 0.1.1 distribuisce D-051, D-052, UX di progresso e D-053. Il maintainer ha attestato i Gate reali
+Ubuntu e Windows v4, incluso il riuso del record, e ha deciso `RELEASE` il 23 luglio 2026. La
+pubblicazione autorizzata è limitata a tag e GitHub Release; il job PyPI resta disabilitato.
 
 ### 7.3 Evidenza eterogenea
 
-Quando disponibile, ripetere v3 con `--no-activate` su hardware materialmente diverso, revisionare
+Quando disponibile, ripetere v4 con `--no-activate` su hardware materialmente diverso, revisionare
 privacy e aggiornare report/policy in una PR dichiarativa. L'esito non viene ricostruito a mano e non
 trasforma retroattivamente l'unico host corrente in prova universale.
 
@@ -569,8 +571,8 @@ Push, tag, GitHub Release, PyPI e impostazioni remote restano operazioni autoriz
 
 - [ ] PyPI contiene gli stessi artefatti `0.1.0` già testati.
 - [ ] Installazione esplicita da PyPI verificata su Ubuntu e Windows.
-- [ ] Correzioni post-release distribuite solo con nuova versione autorizzata.
-- [ ] `calibration/v4` verificata realmente su Ubuntu e Windows prima della 0.1.1.
+- [x] Correzioni post-release distribuite solo con la nuova versione autorizzata `0.1.1`.
+- [x] `calibration/v4` verificata realmente su Ubuntu e Windows prima della 0.1.1.
 - [~] Evidenza eterogenea aggiunta quando disponibile, senza trasferire buste fra host.
 
 ### Milestone 0.2
