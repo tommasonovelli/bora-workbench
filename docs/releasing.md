@@ -76,8 +76,9 @@ mirroring prompt constant in `scripts/spike_ctx/quick.py`.
 migration, a production quick-bench, the `_calibration_v6_*` engine, `calibration-record/v5` records,
 the `--protocol v6 --preference` CLI, and v5 reuse/`doctor`. `calibration/v5` remains the default;
 promoting v6 to the default remains conditional on a human GO verdict from the cross-context spike.
-The logic is tested offline with fakes; the real trial adapter is validated by the maintainer on
-Ubuntu and Windows. The maintainer authorized the commit, push, tag, and GitHub Release; PyPI
+The logic is tested offline with fakes. The claim that the real trial adapter had been validated on
+hardware was premature: it has not, and `--protocol v6` does not work yet (corrected in 0.1.5 by
+D-066). The maintainer authorized the commit, push, tag, and GitHub Release; PyPI
 remains excluded.
 
 ### Release 0.1.3

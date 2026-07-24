@@ -41,9 +41,9 @@ If this is your first time opening the project, the simplest path is:
 The current release is **`0.1.5`**, published on
 [GitHub Releases](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.5). It is the
 first fully English release and republishes the calibration evidence with a regenerated digest
-chain; the runtime is unchanged. `calibration/v5` remains the default and `calibration/v6-lite`
-remains opt-in (`--protocol v6 --preference`, `calibration-record/v5` records) under a recorded
-maintainer override (D-063). Promoting v6 to the default remains conditional on a human GO verdict.
+chain; the runtime is unchanged. `calibration/v5` remains the default and the only protocol to use for a
+real calibration: `calibration/v6-lite` ships opt-in (`--protocol v6`) but **does not work yet**,
+because its real trial adapter has never been validated on hardware (D-066).
 PyPI remains unavailable.
 
 ## Requirements

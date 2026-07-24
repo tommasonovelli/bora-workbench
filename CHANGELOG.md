@@ -27,9 +27,15 @@ regenerated digest chain. No runtime behavior changes: `calibration/v5` remains 
 
 ### Known limitations
 
+- **`calibrate --protocol v6` does not work.** `calibration/v6-lite` ships as code, but its real
+  trial adapter has never been validated on hardware; only the search, selection, confirmation,
+  gate, and record logic is exercised, by offline tests with fakes. The `0.1.4` entry below, and the
+  matching statements in D-063 and the documentation, claimed the adapter was validated on hardware:
+  that claim was premature and is withdrawn here (D-066). `calibration/v5` stays the default and is
+  the only protocol to use for a real calibration.
 - The artifacts published for `0.1.0`–`0.1.4` embed the previous evidence digests and therefore no
   longer match this branch. No published artifact was rebuilt or replaced; the alignment travels
-  with the next version.
+  with this version.
 
 ## [0.1.4] - 2026-07-24
 
@@ -37,6 +43,10 @@ Implements `calibration/v6-lite` as an **opt-in** experimental protocol. Under a
 decision (D-063) the engine was built before the GO verdict of the cross-context spike;
 `calibration/v5` remains the default and promoting v6 to the default remains a human decision. The
 logic is tested offline with fakes; the real trial adapter is validated on hardware.
+
+> **Correction (0.1.5, D-066):** the last sentence was wrong. The real trial adapter was never
+> validated on hardware and `--protocol v6` does not work. The text above is kept as the record of
+> what this release claimed.
 
 ### Added
 

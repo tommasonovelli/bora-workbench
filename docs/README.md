@@ -40,9 +40,9 @@ of the launcher.
 
 The public release is `0.1.5`: the first fully English release, which also republishes the
 calibration evidence with a regenerated digest chain. The runtime is unchanged — it keeps
-`calibration/v5` and v4 records as the default, and `calibration/v6-lite` stays an opt-in
-experimental protocol (`--protocol v6`, `v5` records) under a recorded maintainer override (D-063).
-Promoting v6 to the default remains conditional on a committed GO.
+`calibration/v5` and v4 records as the default. `calibration/v6-lite` ships opt-in
+(`--protocol v6`) but **does not work yet**: its real trial adapter has never been validated on
+hardware (D-066), so v5 is the only protocol to use for a real calibration.
 
 PyPI remains unavailable. The verified artifacts are in the `v0.1.5` GitHub Release and must not be
 rebuilt or replaced.

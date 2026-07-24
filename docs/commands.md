@@ -209,6 +209,10 @@ Algorithm and record details: [Calibration](calibration.md).
 
 ## `calibrate`: experimental v6 protocol
 
+> [!WARNING]
+> **`--protocol v6` does not work yet.** Its real trial adapter has never been validated on
+> hardware. Use the default `v5` for any real calibration.
+
 ```bash
 qwen-launcher calibrate --mode all --protocol v6 --preference balanced
 ```

@@ -30,7 +30,10 @@ apply here.
   the spike GO; `calibration/v5` and `calibration-record/v4` stay the default, with 96K and 48K in
   the automatic scale. Version 0.1.5 (D-065) makes the repository fully English and republishes the
   calibration evidence with a regenerated digest chain; it changes no runtime behavior, and the
-  artifacts of `0.1.0`–`0.1.4` embed the previous digests. Historical v2/v3 records remain readable,
+  artifacts of `0.1.0`–`0.1.4` embed the previous digests. **`--protocol v6` does not work** (D-066):
+  its real trial adapter was never validated on hardware, so never describe v6 as usable,
+  benchmarked or validated, and never present it as an alternative to v5 for a real calibration.
+  Historical v2/v3 records remain readable,
   but D-060 invalidates reuse of
   records with the old command digest. Q8 remains pinned, `n_cpu_moe` is `[0, 41]`, and calibration
   coverage remains `GATE-PARTIAL`. The three local candidates remain inactive. Do not promote v6-lite

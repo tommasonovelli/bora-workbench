@@ -331,6 +331,12 @@ Pull request checklist:
 
 ## calibration/v6-lite (experimental)
 
+> [!WARNING]
+> **`--protocol v6` does not work yet.** The protocol ships as code, but its real trial adapter has
+> never been validated on hardware: only the search, selection, confirmation, gate, and record logic
+> is exercised, by offline tests with fakes. Use `calibration/v5` — the default — for any real
+> calibration. The section below describes the intended design, not behavior you can rely on today.
+
 `calibration/v6-lite` is an **opt-in** protocol (`--protocol v6`); `calibration/v5` remains the
 default. It was implemented on a recorded maintainer decision (D-063) before the GO verdict of the
 cross-context spike: promoting it to the default remains a human decision recorded in
@@ -400,8 +406,9 @@ qwen-launcher coding      # launches using the recorded active_preference envelo
 Constraints: `--preference` is rejected without `--protocol v6`; `--activate` does not combine with
 `--target-ctx`; `--activate` and `--no-activate` are mutually exclusive.
 
-Note: the real trial adapter is validated on hardware; the search, selection, confirmation, gate, and
-record logic is covered by offline tests with fakes.
+Note: only the search, selection, confirmation, gate, and record logic is covered, by offline tests
+with fakes. The real trial adapter has **not** been validated on hardware, and `--protocol v6` does
+not work yet — see the warning at the top of this section.
 
 ## v1 laboratory
 
