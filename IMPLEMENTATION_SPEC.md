@@ -7,7 +7,7 @@ in [`docs/`](docs/README.md); la provenienza misurata di lock e report è conser
 
 ## 0. Stato reale e tracker
 
-Aggiornato al 23 luglio 2026.
+Aggiornato al 24 luglio 2026.
 
 ### Baseline completata
 
@@ -33,6 +33,8 @@ Aggiornato al 23 luglio 2026.
   stabilizzazione successiva a `0.1.1`; PyPI resta escluso.
 - [x] Il maintainer ha deciso `RELEASE` il 23 luglio 2026 rinunciando esplicitamente a un nuovo Gate
   manuale multipiattaforma; questa rinuncia non viene descritta come Gate superato.
+- [x] La Fase 0 di `calibration/v6-lite` corregge la precedenza del cleanup, separa le cause VRAM,
+  introduce la tassonomia a quattro esiti e prepara una sola volta il contratto motore.
 
 ### Lavoro aperto
 
@@ -40,6 +42,8 @@ Aggiornato al 23 luglio 2026.
   `29739366272`; non ricostruire gli artefatti `0.1.0`.
 - [ ] Eseguire come verifica post-release `0.1.2` l'upgrade reale da `0.1.1`, la calibrazione v5
   senza attivazione e la disinstallazione completa su Ubuntu e Windows.
+- [ ] Eseguire lo spike cross-context preparato nel repository e committare un verdetto umano
+  `GO` o `NO-GO`; `calibration/v6-lite` resta bloccata fino a un `GO` misurato.
 - [ ] Stabilizzare ulteriormente la serie 0.1 prima di iniziare la 0.2.
 - [~] Ripetere `calibration/v5 --no-activate` su hardware materialmente diverso; la copertura resta
   `GATE-PARTIAL` e nessuna busta viene trasferita fra host.
@@ -147,6 +151,10 @@ Gli identificatori restano stabili perché codice, test ed evidenza li citano.
 | D-055 | `calibration/v5` inserisce `98304` e `49152` nella scala automatica, porta il cap a 14 probe e produce `calibration-record/v4`; l'esecuzione v4 è ritirata ma i record v2/v3 restano leggibili. |
 | D-056 | `uninstall` rimuove con una sola conferma le quattro radici e la propria installazione `uv tool`; un helper sul Python base attende l'uscita del processo per evitare lock Windows. Installazioni non gestite da uv restano esplicitamente invariate e uv stesso non viene rimosso. |
 | D-057 | La `0.1.2` raccoglie `calibration/v5` e la stabilizzazione terminale, build, CI e uninstall successiva a `0.1.1`; il maintainer autorizza commit, push, tag e GitHub Release senza un nuovo Gate manuale, mantiene inattivi i candidati ed esclude PyPI. |
+| D-058 | `run_trial` applica la precedenza del cleanup anche al fallimento del workload: `KeyboardInterrupt`/`SystemExit` restano prioritari, mentre `VramEnvironmentError` e `RamError` invalidano il run. |
+| D-059 | Spike e futuro v6 classificano per classe soltanto `SUCCESS`, `MEMORY_INFEASIBLE(ram|vram)`, `RETRYABLE` e `PROTOCOL_INVALID`; v5 non consuma la nuova tassonomia. |
+| D-060 | Il contratto rende MTP parametrico (`mtp2`/`disabled`), disabilita prudentemente MTP per `vstudio` e prepara sampling esteso/reasoning. La model card appuntata nega supporto mmproj+MTP mentre Spike 0 locale era PASS: prevale la scelta prudenziale fino a nuovo spike. Il nuovo digest invalida una sola volta il riuso dei record locali storici senza renderli illeggibili; i seed pubblici restano suggerimenti d'ordine soltanto. |
+| D-061 | Uno spike umano cross-context è il gate decisionale per v6-lite: solo un verdetto `GO` committato autorizza `mode/v2`, quick-bench, motore v6 e record v5; `NO-GO` chiude il lavoro con documentazione dei preset v5. |
 
 Una nuova decisione durevole aggiorna questa tabella nello stesso step che la autorizza.
 
@@ -249,6 +257,7 @@ Contratti supportati: `mode/v1`, `profile/v1`, `calibration-policy/v1` e `/v2`,
 - Policy v2 descrive il metodo storico v3, non buste; v4/v5 la usano soltanto come seed d'ordine.
 - Report v2 è privacy-safe e produce soltanto seed d'ordine.
 - Record v2/v3/v4 sono privati, per modo e legati a identità completa; v4 registra il metodo v5.
+  I record col digest precedente restano leggibili ma non sono riutilizzabili dopo D-060.
 - Filename, riferimenti e SHA-256 sono controllati semanticamente.
 
 Un nuovo campo incompatibile richiede una nuova versione di schema.
@@ -315,8 +324,10 @@ Il builder espande soltanto `command_contract` di `engine.lock`. Ogni token opzi
 a `verified_flags`; placeholder sconosciuti sono invalidi.
 
 Il comando rappresenta esplicitamente modello fisico, contesto, sampling, host/porta, metriche,
-MTP/cache/mmap, UI, vision e backend. CPU non riceve argomenti CUDA. Nessun flag nasce da hardcode
-semantico non presente nel lock.
+MTP/cache/mmap, UI, vision e backend. `LaunchPlan.speculative` vale `mtp2` o `disabled` e vision
+richiede `disabled`; `coding` e `studio` conservano l'argv precedente, `vstudio` conserva `--mmproj`
+senza flag MTP. Le sezioni sampling esteso e reasoning sono presenti ma `mode/v1` non le emette.
+CPU non riceve argomenti CUDA. Nessun flag nasce da hardcode semantico non presente nel lock.
 
 ### 5.8 Motore e modello
 
@@ -468,7 +479,16 @@ su entrambe le piattaforme. Il workflow release deve comunque essere verde e res
 degli artefatti. Le verifiche manuali omesse diventano post-release, non un Gate superato. PyPI e
 l'attivazione dei tre candidati locali restano esclusi.
 
-### 7.4 Evidenza eterogenea
+### 7.4 Gate decisionale cross-context per v6-lite
+
+Il repository prepara, senza eseguirlo automaticamente, uno spike su 131K/65K/32K. Confronta
+end-to-end corto, prefill 8K, decode e minimi RAM/VRAM; MTP off↔2 e reasoning off sono appendici
+informative. È `GO` se il migliore fra 65K e 32K, rispetto al migliore 131K, ottiene almeno uno fra:
+e2e corto mediano `≤0,92×`, prefill 8K `≥1,25×`, oppure prestazioni entro deadband 3% con almeno
+0,5 GiB di VRAM libera minima in più. Il verdetto è umano e deve essere committato con evidenza
+redatta e checksum. Senza `GO`, v6-lite non viene implementata.
+
+### 7.5 Evidenza eterogenea
 
 Quando disponibile, ripetere v5 con `--no-activate` su hardware materialmente diverso, revisionare
 privacy e aggiornare report/policy in una PR dichiarativa. L'esito non viene ricostruito a mano e non
@@ -607,6 +627,8 @@ Push, tag, GitHub Release, PyPI e impostazioni remote restano operazioni autoriz
 - [x] La pubblicazione `0.1.2` usa soltanto gli artefatti del workflow verde autorizzato.
 - [ ] Completare le verifiche manuali post-release `0.1.2` su Ubuntu e Windows.
 - [~] Evidenza eterogenea aggiunta quando disponibile, senza trasferire buste fra host.
+- [ ] Spike cross-context eseguito dal maintainer e verdetto `GO`/`NO-GO` committato; nessun Gate è
+  implicito nella sola presenza del runner.
 
 ### Milestone 0.2
 

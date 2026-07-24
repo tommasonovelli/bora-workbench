@@ -33,6 +33,11 @@ def _values(plan: LaunchPlan) -> dict[str, str]:
         "top_k": str(plan.mode.sampling.top_k),
         "port": str(plan.port),
     }
+    optional = ("min_p", "presence_penalty", "repeat_penalty")
+    for name in optional:
+        value = getattr(plan.mode.sampling, name)
+        if value is not None:
+            values[name] = str(value)
     if plan.mmproj_path is not None:
         values["mmproj"] = str(plan.mmproj_path)
     if plan.n_cpu_moe is not None:
@@ -40,27 +45,37 @@ def _values(plan: LaunchPlan) -> dict[str, str]:
     return values
 
 
+def _optional_mode_arrays(plan: LaunchPlan, command: JsonObject) -> list[object]:
+    """Emit prepared mode/v2 arrays only when validated mode values are present."""
+    extended = cast(JsonObject, command["extended_sampling_args"])
+    arrays = [
+        extended[name]
+        for name in ("min_p", "presence_penalty", "repeat_penalty")
+        if getattr(plan.mode.sampling, name) is not None
+    ]
+    reasoning = plan.mode.sampling.reasoning
+    if reasoning is not None:
+        arrays.append(cast(JsonObject, command["reasoning_args"])[reasoning])
+    return arrays
+
+
 def _contract_arrays(plan: LaunchPlan, command: JsonObject) -> tuple[object, ...]:
-    """Select explicit UI, vision, and backend arrays for one launch plan."""
+    """Select explicit behavior, speculative, vision, and backend arrays."""
     sampling = cast(JsonObject, command["sampling_args"])
     ui = cast(JsonObject, command["ui_args"])
     vision = cast(JsonObject, command["vision_args"])
     backends = cast(JsonObject, command["backend_args"])
-    ui_key = "enabled" if plan.mode.services.ui else "disabled"
-    vision_key = "enabled" if plan.mode.services.vision else "disabled"
-    return (
-        command["model_args"],
-        command["context_args"],
-        sampling["temp"],
-        sampling["top_p"],
-        sampling["top_k"],
-        command["network_args"],
-        command["metrics_args"],
-        command["fixed_args"],
-        ui[ui_key],
-        vision[vision_key],
-        backends[plan.backend],
+    arrays = [command["model_args"], command["context_args"]]
+    arrays.extend(sampling[name] for name in ("temp", "top_p", "top_k"))
+    arrays.extend(_optional_mode_arrays(plan, command))
+    arrays.extend((command["network_args"], command["metrics_args"], command["fixed_args"]))
+    arrays.append(cast(JsonObject, command["speculative_args"])[plan.speculative])
+    arrays.extend(
+        (command["post_speculative_args"], ui["enabled" if plan.mode.services.ui else "disabled"])
     )
+    arrays.append(vision["enabled" if plan.mode.services.vision else "disabled"])
+    arrays.append(backends[plan.backend])
+    return tuple(arrays)
 
 
 def build_engine_command(executable: Path, plan: LaunchPlan, lock: JsonObject) -> tuple[str, ...]:

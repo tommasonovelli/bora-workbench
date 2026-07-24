@@ -41,6 +41,7 @@ def ui_plan(mode_id: str, port: int) -> LaunchPlan:
         "cpu",
         None,
         (),
+        "disabled" if mode.services.vision else "mtp2",
     )
 
 

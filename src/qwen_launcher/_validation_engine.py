@@ -12,9 +12,12 @@ JsonObject = dict[str, object]
 _ALLOWED_PLACEHOLDERS = {
     "ctx",
     "mmproj",
+    "min_p",
     "model_path",
     "n_cpu_moe",
     "port",
+    "presence_penalty",
+    "repeat_penalty",
     "temp",
     "top_k",
     "top_p",

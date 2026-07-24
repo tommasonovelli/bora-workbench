@@ -32,6 +32,7 @@ def plan(tmp_path: Path, backend: str = "cpu", mode_id: str = "coding") -> Launc
         backend,  # type: ignore[arg-type]
         0 if backend == "cuda" else None,
         (),
+        "disabled" if mode.services.vision else "mtp2",
     )
 
 
@@ -72,6 +73,8 @@ def test_builder_emits_verified_three_mode_matrix(
         assert command[command.index("--cache-type-v") + 1] == "q8_0"
     assert "--no-mmap" not in command
     assert "--mmap" in command
+    assert ("--spec-type" in command) is not has_vision
+    assert ("--spec-draft-n-max" in command) is not has_vision
 
 
 def test_builder_defensively_rejects_unverified_lock_option(tmp_path) -> None:

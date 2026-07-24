@@ -17,6 +17,8 @@ from qwen_launcher._calibration_gpu_evidence import summarize_telemetry
 from qwen_launcher._calibration_vram_types import (
     VramEnvironmentError,
     VramError,
+    VramReleaseError,
+    VramReserveError,
     VramSummary,
     VramThresholds,
 )
@@ -27,6 +29,7 @@ GPU_POLL_INTERVAL_MS = 250
 GPU_RELEASE_STABILIZATION_MS = 10_000
 _POLL_INTERVAL_SECONDS = GPU_POLL_INTERVAL_MS / 1000
 _RELEASE_STABILIZATION_SECONDS = GPU_RELEASE_STABILIZATION_MS / 1000
+_ManagedGpu = GpuProcessIdentity | int | None
 
 
 @dataclass(slots=True)
@@ -82,7 +85,7 @@ class VramMonitor:
                 return
             self._stop_event.wait(max(0.0, deadline - time.monotonic()))
 
-    def finish(self, managed: GpuProcessIdentity | int | None) -> VramSummary:
+    def finish(self, managed: _ManagedGpu) -> VramSummary:
         """Wait for release and validate resources plus the run-scoped context population."""
         self._stop_polling()
         baseline = self._require_baseline()
@@ -106,7 +109,7 @@ class VramMonitor:
             raise VramEnvironmentError(f"GPU monitoring failed: {self._error}") from self._error
 
     def _has_context_change(
-        self, snapshot: GpuSnapshot, baseline: GpuSnapshot, managed: GpuProcessIdentity | int | None
+        self, snapshot: GpuSnapshot, baseline: GpuSnapshot, managed: _ManagedGpu
     ) -> bool:
         """Detect a context violation early while preserving v1's exact-PID behavior."""
         if self.context_baseline is None:
@@ -119,7 +122,7 @@ class VramMonitor:
         return False
 
     def _wait_for_release(
-        self, baseline: GpuSnapshot, managed: GpuProcessIdentity | int | None
+        self, baseline: GpuSnapshot, managed: _ManagedGpu
     ) -> tuple[GpuSnapshot, float]:
         """Sample release until tolerance or deadline and measure stabilization duration."""
         limit = self._used_gib(baseline) + self.thresholds.release_tolerance_gib
@@ -164,9 +167,7 @@ class VramMonitor:
         """Return aggregate used memory from one total/free GPU snapshot."""
         return snapshot.vram_total_gib - snapshot.vram_free_gib
 
-    def _validate_contexts(
-        self, managed: GpuProcessIdentity | int | None, baseline: GpuSnapshot
-    ) -> int:
+    def _validate_contexts(self, managed: _ManagedGpu, baseline: GpuSnapshot) -> int:
         """Validate exact v1 PIDs or immutable v5 executable multiplicity."""
         if self.context_baseline is None:
             foreign = legacy_foreign_pids(self._samples, baseline, managed)
@@ -179,7 +180,7 @@ class VramMonitor:
         return count_context_replacements(self._samples, self.context_baseline, identity)
 
     def _validate_samples(
-        self, managed: GpuProcessIdentity | int | None, baseline: GpuSnapshot, release: GpuSnapshot
+        self, managed: _ManagedGpu, baseline: GpuSnapshot, release: GpuSnapshot
     ) -> int:
         """Reject context, reserve, capacity, driver, and retained-memory violations."""
         replacements = self._validate_contexts(managed, baseline)
@@ -190,8 +191,10 @@ class VramMonitor:
         if any(sample.is_wddm != baseline.is_wddm for sample in self._samples):
             raise VramEnvironmentError("GPU driver model changed during calibration")
         if any(sample.vram_free_gib < self.thresholds.minimum_free_gib for sample in self._samples):
-            raise VramError("minimum free VRAM reserve was violated")
+            raise VramReserveError("minimum free VRAM reserve was violated")
         release_limit = self._used_gib(baseline) + self.thresholds.release_tolerance_gib
         if self._used_gib(release) > release_limit:
-            raise VramError("GPU memory did not stabilize within release tolerance after stop")
+            raise VramReleaseError(
+                "GPU memory did not stabilize within release tolerance after stop"
+            )
         return replacements

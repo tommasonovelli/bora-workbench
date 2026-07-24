@@ -31,4 +31,5 @@ def build_plan(run: ModeRun, ctx: int, n_cpu_moe: int | None) -> LaunchPlan:
         target.hardware.backend,
         target.hardware.gpu_index,
         (),
+        "disabled" if run.mode.services.vision else "mtp2",
     )

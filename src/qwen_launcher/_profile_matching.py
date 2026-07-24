@@ -165,4 +165,5 @@ def build_plan(request: LaunchRequest, catalog: Catalog, hardware: HardwareInfo)
         hardware.backend,
         hardware.gpu_index,
         hardware.warnings + warnings,
+        "disabled" if mode.services.vision else "mtp2",
     )

@@ -23,6 +23,22 @@ Il comando:
 
 Non effettua upload, non modifica `config.toml` e non pubblica risultati.
 
+### Nota di compatibilità del contratto motore
+
+La preparazione del contratto per lo spike cross-context cambia il
+`command_contract_sha256`. I record locali `calibration-record/v2`, `/v3` e `/v4` già presenti
+restano leggibili per la diagnostica, ma non sono più riutilizzabili: rieseguire `calibrate`.
+I seed pubblici v3 restano soltanto suggerimenti per l'ordine dei probe e non diventano mai buste.
+
+`coding` e `studio` mantengono lo stesso comando e MTP a due token. `vstudio` conserva `--mmproj` ma
+non emette più `--spec-type` o `--spec-draft-n-max`: la model card appuntata non dichiara supportata
+la combinazione vision+MTP, nonostante lo Spike 0 locale l'avesse completata. La scelta prudenziale
+resta attiva finché uno spike dedicato non fornisce nuova evidenza.
+
+La calibrazione predefinita è ancora `calibration/v5`. `calibration/v6-lite`, `mode/v2`, quick-bench
+ed envelope multiple non sono disponibili: richiedono prima un verdetto umano GO dello spike
+cross-context conservato in `evidence/`.
+
 ## Termini essenziali
 
 - **Baseline**: configurazione verificata ma non ottimizzata (`ctx=8192`; su CUDA
@@ -233,8 +249,9 @@ la riserva registrata e, su CUDA, fabbisogno VRAM più 0,3 GiB per record v3/v4 
 record storico v2. La migrazione non indebolisce quindi l'headroom di record già misurati.
 
 Un file candidato, previous, invalido o con schema non supportato non pilota mai il lancio. I record
-`calibration-record/v2`, `/v3` e `/v4` restano supportati; `/v1` è diagnosticato come superato. Il rimedio è
-rieseguire `calibrate`, non convertire file a mano.
+`calibration-record/v2`, `/v3` e `/v4` restano supportati e leggibili, ma quelli creati con il
+contratto precedente non coincidono con il digest corrente e quindi non pilotano il lancio; `/v1` è
+diagnosticato come superato. Il rimedio è rieseguire `calibrate`, non convertire file a mano.
 
 ## File privati
 

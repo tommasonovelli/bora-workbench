@@ -5,6 +5,22 @@ changelog: sono in `IMPLEMENTATION_SPEC.md`.
 
 ## [Unreleased]
 
+### Fixed
+
+- Gli errori di monitoraggio RAM/VRAM scoperti durante il cleanup prevalgono ora sui fallimenti del
+  workload e invalidano correttamente l'intero run.
+- Le violazioni della riserva VRAM e il mancato rilascio post-stop hanno classi distinte, così i
+  protocolli sperimentali non confondono un limite monotono con un errore ritentabile.
+
+### Changed
+
+- Il contratto motore rende MTP esplicito nel piano di lancio: `coding` e `studio` mantengono lo
+  stesso argv, mentre `vstudio` usa prudentemente `speculative=disabled` insieme a `--mmproj`.
+- Il contratto prepara, senza attivarli nei modi `mode/v1`, i flag verificati di sampling esteso e
+  reasoning necessari a un eventuale `calibration/v6-lite`.
+- Il nuovo digest del contratto rende incompatibili al riuso i record locali precedenti; i file
+  restano leggibili e il rimedio è rieseguire `calibrate`.
+
 ## [0.1.2] - 2026-07-23
 
 Release di stabilizzazione con `calibration/v5`, UX terminale uniforme, progresso della compilazione

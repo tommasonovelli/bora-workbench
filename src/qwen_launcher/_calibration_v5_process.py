@@ -93,7 +93,11 @@ def _execute(target: CalibrationTarget, spec: TrialSpec, state: _TrialState) -> 
 
 
 def _prefer_cleanup_error(current: BaseException | None, new: BaseException) -> BaseException:
-    """Prefer run-invalidating monitor failures over candidate-level diagnostics."""
+    """Prefer control flow, then run-invalidating failures, over candidate diagnostics."""
+    if current is not None and not isinstance(current, Exception):
+        return current
+    if not isinstance(new, Exception):
+        return new
     if isinstance(current, (VramEnvironmentError, RamError)):
         return current
     if isinstance(new, (VramEnvironmentError, RamError)):
@@ -172,7 +176,8 @@ def run_trial(target: CalibrationTarget, spec: TrialSpec) -> TrialMeasurement:
     vram, ram, cleanup_error = _finish(state, spec.root)
     completed = _CompletedTrial(started_at, _timestamp(), vram, ram)
     evidence = _evidence(spec, state, completed)
-    failure = failure or cleanup_error
+    if cleanup_error is not None:
+        failure = _prefer_cleanup_error(failure, cleanup_error)
     if failure is None:
         assert isinstance(ram, RamSummary)
         return TrialMeasurement(state.benchmark, vram, ram, evidence)

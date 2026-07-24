@@ -39,6 +39,14 @@ class VramError(RuntimeError):
         self.summary = summary
 
 
+class VramReserveError(VramError):
+    """Report a minimum-free reserve violation for one infeasible candidate."""
+
+
+class VramReleaseError(VramError):
+    """Report retained memory after stop without implying a monotone boundary."""
+
+
 class VramEnvironmentError(VramError):
     """Mark monitor or environmental evidence that invalidates the whole run.
 

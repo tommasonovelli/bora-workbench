@@ -14,6 +14,8 @@ from qwen_launcher._calibration_vram import (
     VramEnvironmentError,
     VramError,
     VramMonitor,
+    VramReleaseError,
+    VramReserveError,
     VramThresholds,
 )
 from qwen_launcher._hardware_monitoring import GpuSnapshot
@@ -26,11 +28,7 @@ def snapshot(
     return GpuSnapshot(8, free, driver, pids, is_wddm)
 
 
-def query_sequence(
-    polled: GpuSnapshot,
-    releases: tuple[GpuSnapshot, ...],
-    baseline: GpuSnapshot | None = None,
-):
+def query_sequence(polled, releases, baseline=None):
     """Return a thread-aware query and event for baseline, workload, and release calls."""
     observed = threading.Event()
     main_calls = 0
@@ -105,7 +103,7 @@ def test_release_beyond_window_retains_summary(monkeypatch) -> None:
     monitor.start()
     assert observed.wait(timeout=1)
 
-    with pytest.raises(VramError, match="stabilize") as captured:
+    with pytest.raises(VramReleaseError, match="stabilize") as captured:
         monitor.finish(42)
 
     assert captured.value.summary is not None
@@ -173,7 +171,7 @@ def test_reserve_violation_retains_measured_summary() -> None:
     monitor.start()
     assert observed.wait(timeout=1)
 
-    with pytest.raises(VramError, match="reserve") as captured:
+    with pytest.raises(VramReserveError, match="reserve") as captured:
         monitor.finish(42)
 
     assert captured.value.summary is not None

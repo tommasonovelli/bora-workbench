@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 from datetime import UTC, datetime
 from typing import cast
 
@@ -18,21 +16,14 @@ def _error(document: Document, path: str, message: str) -> ValidationIssue:
     return ValidationIssue("error", document.file, path, message)
 
 
-def _command_digest(engine: JsonObject) -> str:
-    """Digest the canonical lock command contract for policy identity checks."""
-    value = json.dumps(engine.get("command_contract"), sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()
-
-
 def _lock_identity(engine: JsonObject) -> dict[str, object]:
-    """Project the engine lock onto public calibration identity fields."""
+    """Project stable identity while retaining historical report command digests."""
     artifact = cast(JsonObject, engine.get("default_model_artifact", {}))
     return {
         "model": engine.get("default_model"),
         "model_sha256": artifact.get("sha256"),
         "engine_release": engine.get("release"),
         "engine_source_commit": engine.get("source_commit"),
-        "command_contract_sha256": _command_digest(engine),
     }
 
 

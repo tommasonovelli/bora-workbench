@@ -33,11 +33,16 @@
     "--list-devices",
     "--log-timestamps",
     "--metrics",
+    "--min-p",
     "--mmap",
     "--mmproj",
     "--no-mmproj",
     "--no-webui",
     "--port",
+    "--presence-penalty",
+    "--reasoning",
+    "--reasoning-budget",
+    "--repeat-penalty",
     "--spec-draft-n-max",
     "--spec-type",
     "--temp",
@@ -86,6 +91,30 @@
         "{top_k}"
       ]
     },
+    "extended_sampling_args": {
+      "min_p": [
+        "--min-p",
+        "{min_p}"
+      ],
+      "presence_penalty": [
+        "--presence-penalty",
+        "{presence_penalty}"
+      ],
+      "repeat_penalty": [
+        "--repeat-penalty",
+        "{repeat_penalty}"
+      ]
+    },
+    "reasoning_args": {
+      "on": [
+        "--reasoning",
+        "on"
+      ],
+      "off": [
+        "--reasoning",
+        "off"
+      ]
+    },
     "network_args": [
       "--host",
       "127.0.0.1",
@@ -103,11 +132,18 @@
       "--mmap",
       "-np",
       "1",
-      "--jinja",
-      "--spec-type",
-      "draft-mtp",
-      "--spec-draft-n-max",
-      "2",
+      "--jinja"
+    ],
+    "speculative_args": {
+      "disabled": [],
+      "mtp2": [
+        "--spec-type",
+        "draft-mtp",
+        "--spec-draft-n-max",
+        "2"
+      ]
+    },
+    "post_speculative_args": [
       "--cors-origins",
       "localhost",
       "--log-timestamps"

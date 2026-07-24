@@ -59,6 +59,7 @@ def _plan(target: CalibrationTarget, mode: Mode, candidate: Candidate) -> Launch
         target.hardware.backend,
         target.hardware.gpu_index,
         (),
+        "disabled" if mode.services.vision else "mtp2",
     )
 
 

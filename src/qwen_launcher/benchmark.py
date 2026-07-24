@@ -29,6 +29,19 @@ class BenchmarkError(RuntimeError):
     """Report an invalid request resource, API response, or benchmark measurement."""
 
 
+class BenchmarkRetryableError(BenchmarkError):
+    """Report a transient transport or HTTP response failure."""
+
+
+class BenchmarkHttpError(BenchmarkRetryableError):
+    """Retain a non-success HTTP status for class-based trial classification."""
+
+    def __init__(self, status_code: int) -> None:
+        """Attach the returned status without parsing an exception message."""
+        super().__init__(f"benchmark request returned HTTP {status_code}")
+        self.status_code = status_code
+
+
 @dataclass(frozen=True, slots=True)
 class BenchmarkResult:
     """Hold the excluded warm-up and exactly five benchmark/v1 measurements."""
@@ -71,9 +84,9 @@ def _post(client: httpx.Client, url: str, request: JsonObject) -> JsonObject:
     try:
         response = client.post(url, json=request, timeout=_REQUEST_TIMEOUT_SECONDS)
     except httpx.HTTPError as error:
-        raise BenchmarkError(f"benchmark request failed: {error}") from error
+        raise BenchmarkRetryableError(f"benchmark request failed: {error}") from error
     if response.status_code != 200:
-        raise BenchmarkError(f"benchmark request returned HTTP {response.status_code}")
+        raise BenchmarkHttpError(response.status_code)
     try:
         value = response.json()
     except ValueError as error:

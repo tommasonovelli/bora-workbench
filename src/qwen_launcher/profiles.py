@@ -29,11 +29,15 @@ class ModeServices:
 
 @dataclass(frozen=True, slots=True)
 class Sampling:
-    """Hold the mode-owned sampling parameters."""
+    """Hold current sampling plus optional mode/v2 contract values."""
 
     temp: float
     top_p: float
     top_k: int
+    min_p: float | None = None
+    presence_penalty: float | None = None
+    repeat_penalty: float | None = None
+    reasoning: Literal["on", "off"] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -150,6 +154,12 @@ class LaunchPlan:
     backend: Literal["cuda", "cpu"]
     gpu_index: int | None
     warnings: tuple[str, ...]
+    speculative: Literal["mtp2", "disabled"] = "mtp2"
+
+    def __post_init__(self) -> None:
+        """Reject MTP with vision because D-060 keeps that combination disabled."""
+        if self.mode.services.vision and self.speculative != "disabled":
+            raise PlanError("vision launch plans require speculative='disabled'")
 
 
 DEFAULT_MODEL_MIN_TOTAL_GIB = 28.0
