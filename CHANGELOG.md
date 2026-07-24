@@ -5,6 +5,26 @@ live in `IMPLEMENTATION_SPEC.md`.
 
 ## [Unreleased]
 
+### Changed
+
+- The whole repository is now written in English: user and contributor documentation, the normative
+  plan, this changelog, the measured-evidence prose, the pull request template, and the
+  cross-context spike protocol. Decision ids, constants, versions, protocol names, measured values,
+  and gate wording are unchanged. The Python sources, CLI output, and docstrings were already
+  English.
+- The byte-pinned benchmark payloads (`benchmark-v1`, `benchmark-quick`, `calibration-v1`) and the
+  mirroring prompt constant in `scripts/spike_ctx/quick.py` deliberately keep their original text:
+  they are measurement inputs, and changing them would change what is measured.
+- Translating the checksum-bound calibration evidence changed its bytes, so the whole reference
+  chain was regenerated: `gate.md`/`protocol.md` digests, the report's `source_references`, the
+  report digest inside the policy, and `SHA256SUMS`.
+
+### Known limitations
+
+- The artifacts published for `0.1.0`–`0.1.4` embed the previous evidence digests and therefore no
+  longer match this branch. No published artifact was rebuilt or replaced; the alignment travels
+  with the next version.
+
 ## [0.1.4] - 2026-07-24
 
 Implements `calibration/v6-lite` as an **opt-in** experimental protocol. Under a recorded maintainer
