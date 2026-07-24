@@ -5,6 +5,12 @@ live in `IMPLEMENTATION_SPEC.md`.
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-07-25
+
+Translates the whole repository into English and republishes the calibration evidence with a
+regenerated digest chain. No runtime behavior changes: `calibration/v5` remains the default,
+`calibration/v6-lite` remains opt-in, and the engine, model, and command contracts are untouched.
+
 ### Changed
 
 - The whole repository is now written in English: user and contributor documentation, the normative

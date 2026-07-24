@@ -1,7 +1,7 @@
 # qwen-launcher
 
 [![CI](https://github.com/tommasonovelli/qwen-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/tommasonovelli/qwen-launcher/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/tommasonovelli/qwen-launcher.svg)](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.4)
+[![Release](https://img.shields.io/github/v/release/tommasonovelli/qwen-launcher.svg)](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.5)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-31213/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -38,12 +38,13 @@ If this is your first time opening the project, the simplest path is:
 > and performance carry no stability guarantee. Do not use it for critical workloads without
 > independent verification and backups of your local data.
 
-The current release is **`0.1.4`**, published on
-[GitHub Releases](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.4). It keeps
-`calibration/v5` as the default and adds `calibration/v6-lite` as an opt-in experimental protocol
-(`--protocol v6 --preference`, `calibration-record/v5` records) under a recorded maintainer override
-(D-063). Promoting v6 to the default remains conditional on a human GO verdict. PyPI remains
-unavailable.
+The current release is **`0.1.5`**, published on
+[GitHub Releases](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.5). It is the
+first fully English release and republishes the calibration evidence with a regenerated digest
+chain; the runtime is unchanged. `calibration/v5` remains the default and `calibration/v6-lite`
+remains opt-in (`--protocol v6 --preference`, `calibration-record/v5` records) under a recorded
+maintainer override (D-063). Promoting v6 to the default remains conditional on a human GO verdict.
+PyPI remains unavailable.
 
 ## Requirements
 
@@ -65,8 +66,8 @@ test/build run. Use the wheel digest reported in the attached manifest.
 ### Ubuntu
 
 ```bash
-base="https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.4"
-wheel="qwen_launcher-0.1.4-py3-none-any.whl"
+base="https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.5"
+wheel="qwen_launcher-0.1.5-py3-none-any.whl"
 curl --fail --location "$base/install.sh" --output install.sh
 curl --fail --location "$base/$wheel" --output "$wheel"
 curl --fail --location "$base/SHA256SUMS" --output SHA256SUMS
@@ -81,8 +82,8 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 From PowerShell:
 
 ```powershell
-$base = "https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.4"
-$wheel = "qwen_launcher-0.1.4-py3-none-any.whl"
+$base = "https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.5"
+$wheel = "qwen_launcher-0.1.5-py3-none-any.whl"
 Invoke-WebRequest "$base/install.ps1" -OutFile install.ps1
 Invoke-WebRequest "$base/$wheel" -OutFile $wheel
 Invoke-WebRequest "$base/SHA256SUMS" -OutFile SHA256SUMS

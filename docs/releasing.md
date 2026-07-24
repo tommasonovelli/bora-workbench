@@ -5,14 +5,16 @@ explicit human authorization is always required for pushes, tags, GitHub Release
 
 ## Public status
 
-- current public version: `0.1.4`;
-- remote tags: `v0.1.0`, `v0.1.1`, `v0.1.2`, `v0.1.3`, and `v0.1.4`;
-- GitHub Release `v0.1.4`: published with the installers, wheel, sdist, and `SHA256SUMS`;
-- the `0.1.4` digests are the ones in the manifest attached to the release and come from the green
+- current public version: `0.1.5`;
+- remote tags: `v0.1.0`, `v0.1.1`, `v0.1.2`, `v0.1.3`, `v0.1.4`, and `v0.1.5`;
+- GitHub Release `v0.1.5`: published with the installers, wheel, sdist, and `SHA256SUMS`;
+- the `0.1.5` digests are the ones in the manifest attached to the release and come from the green
   build job;
-- PyPI: not published yet, and excluded from the `0.1.4` authorization;
-- public release `v0.1.4`: opt-in `calibration/v6-lite` (`--protocol v6`, v5 records) under the D-063
-  override; `calibration/v5` remains the default and promoting v6 to the default requires a human GO.
+- PyPI: not published yet, and excluded from the `0.1.5` authorization;
+- public release `v0.1.5`: the first fully English release, republishing the calibration evidence
+  with a regenerated digest chain. The runtime is unchanged: `calibration/v6-lite` stays opt-in
+  (`--protocol v6`, v5 records) under the D-063 override, `calibration/v5` remains the default, and
+  promoting v6 to the default requires a human GO.
 
 Published artifacts are immutable. Do not rebuild, replace, or re-upload files under the same
 version to include later fixes: that requires a new version.
@@ -51,6 +53,22 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.1.5
+
+`0.1.5` translates the whole repository into English and republishes the calibration evidence with a
+regenerated digest chain (D-065). It changes no runtime behavior: the engine, model, and command
+contracts, `calibration/v5` as the default, and opt-in `calibration/v6-lite` all carry over
+unchanged, and `command_contract_sha256` does not move.
+
+The release exists because translating the checksum-bound evidence changed its bytes: the
+`gate.md`/`protocol.md` digests, the report's `source_references`, the report digest inside the
+policy, and `SHA256SUMS` were all recomputed, so the artifacts published for `0.1.0`–`0.1.4` no
+longer match the branch. `0.1.5` is what realigns them; no earlier artifact was rebuilt or replaced.
+
+Two measurement inputs deliberately keep their original Italian text, because translating them would
+change what is measured rather than how it is described: the byte-pinned benchmark payloads and the
+mirroring prompt constant in `scripts/spike_ctx/quick.py`.
 
 ### Release 0.1.4
 

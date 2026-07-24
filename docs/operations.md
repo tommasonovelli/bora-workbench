@@ -26,7 +26,7 @@ Expected errors show no traceback. In general:
 
 ### The installer asks for a source
 
-That is intentional: there is no implicit default. For `0.1.4` use the wheel and digest from the
+That is intentional: there is no implicit default. For `0.1.5` use the wheel and digest from the
 GitHub Release as described in [Installation](installation.md). The PyPI source is not available
 yet.
 

@@ -43,6 +43,11 @@ Updated on 24 July 2026.
 - [x] Version `0.1.4` distributes opt-in `calibration/v6-lite` (D-063/D-064): `mode/v2`, quick-bench,
   the v6 engine, v5 records, the `--protocol v6 --preference` CLI, and v5 reuse/`doctor`; `v5`
   remains the default and the offline suite stays green.
+- [x] The repository is fully English (D-065): documentation, normative plan, changelog, and
+  measured-evidence prose. The byte-pinned benchmark payloads and the mirroring spike prompt keep
+  their original text because they are measurement inputs.
+- [x] Version `0.1.5` republishes the calibration evidence with a regenerated digest chain and
+  realigns the published artifacts with the branch; no runtime behavior changes.
 
 ### Open work
 
@@ -170,6 +175,8 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-062 | `0.1.3` distributes the Phase 0 fixes and the Phase 1 package. The maintainer authorizes the commit, push, tag, and GitHub Release ahead of the local runs, which stay post-release; they authorize neither PyPI, candidate activation, nor Phase 2 without a GO. |
 | D-063 | The maintainer explicitly authorizes overriding the D-061 gate: `calibration/v6-lite` is implemented as an **opt-in** protocol (`--protocol v6`) before the GO verdict of the cross-context spike. `calibration/v5` remains the default; promoting v6 to the default remains conditional on a committed `GO`. No benchmark result and no `GO` verdict is invented: the real trial adapter is validated on hardware, while the search, selection, confirmation, gate, and record are tested offline with fakes. |
 | D-064 | `0.1.4` distributes v6-lite: a hard `mode/v2` migration (the three modes emit `min-p`/`presence`/`repeat`/`reasoning` without changing the digest, v2-only loader), a production quick-bench, the `_calibration_v6_*` engine (shared `coding`+`studio` search, bisection of the VRAM side only, Pareto-free selection, ABBA confirmation with a conditional third round, final per-envelope gate), a lean `calibration-record/v5` record, the `--protocol v6 --preference` CLI, and v5 reuse/`doctor`. v6 reserves 0.5/2.0/0.125 GiB. `doctor` shows the `active_preference` envelope. |
+
+| D-065 | The repository is written in English end to end: documentation, this plan, the changelog, the pull request template, and the prose of the measured evidence. Measured values, digests, decision ids, constants, protocol names, and gate wording are preserved verbatim; the byte-pinned benchmark payloads (`benchmark-v1`, `benchmark-quick`, `calibration-v1`) and the mirroring prompt constant in `scripts/spike_ctx/quick.py` keep their original text, because they are measurement inputs and changing them would change what is measured. Translating the checksum-bound evidence changed its bytes, so the whole chain was regenerated: `gate.md`/`protocol.md` → the report's `source_references` → the report digest → the policy evidence digest → `SHA256SUMS`. `0.1.5` distributes the result and realigns the published artifacts with the branch; the artifacts of `0.1.0`–`0.1.4` embed the previous digests and are neither rebuilt nor replaced. No runtime behavior, contract, or `command_contract_sha256` changes. |
 
 A new durable decision updates this table in the same step that authorizes it.
 
@@ -519,7 +526,18 @@ prefill `≥1.25×`, or performance within a 3% deadband with at least 0.5 GiB m
 The verdict is human and must be committed with redacted evidence and checksums. Without a `GO`,
 v6-lite is not implemented.
 
-### 7.6 Heterogeneous evidence
+### 7.6 Release 0.1.5
+
+Version `0.1.5` distributes D-065: the fully English repository and the calibration evidence
+republished with a regenerated digest chain. It is a content and documentation release — the Python
+sources change only in the version fallbacks, and no contract, lock, schema, or measured value moves.
+
+The release exists for a concrete reason, not for cosmetics: the translated evidence changed the
+bytes the report and policy digests are computed over, so the artifacts published for `0.1.0`–`0.1.4`
+no longer match the branch. `0.1.5` is the version that realigns them. Earlier artifacts stay
+untouched, and PyPI stays excluded.
+
+### 7.7 Heterogeneous evidence
 
 When it becomes available, repeat v5 with `--no-activate` on materially different hardware, review
 privacy, and update the report/policy in a declarative PR. The outcome is not reconstructed by hand
@@ -665,6 +683,8 @@ operations.
 - [ ] Complete the `0.1.2` post-release manual verifications on Ubuntu and Windows.
 - [x] The `RELEASE` decision for `0.1.3` records that the real spike is post-release and is not
   presented as a passed Gate; PyPI and Phase 2 stay excluded.
+- [x] The repository is fully English and the regenerated evidence digest chain verifies from the
+  checkout; the published `0.1.5` artifacts embed the new digests.
 - [~] Heterogeneous evidence added when available, without transferring envelopes between hosts.
 - [ ] The cross-context spike run by the maintainer and a `GO`/`NO-GO` verdict committed; no Gate is
   implied by the mere presence of the runner.

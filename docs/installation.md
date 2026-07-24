@@ -19,16 +19,16 @@ data, the launcher uses the CPU backend and shows why.
 
 ## 2. Installing the public release
 
-The public release is `0.1.4`. PyPI is still unavailable; use the artifacts of the
-[GitHub Release v0.1.4](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.4).
+The public release is `0.1.5`. PyPI is still unavailable; use the artifacts of the
+[GitHub Release v0.1.5](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.5).
 The release attaches the wheel, sdist, installers, and `SHA256SUMS` produced by the cross-platform
 test/build run. A published release is never modified in place.
 
 ### Ubuntu
 
 ```bash
-base="https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.4"
-wheel="qwen_launcher-0.1.4-py3-none-any.whl"
+base="https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.5"
+wheel="qwen_launcher-0.1.5-py3-none-any.whl"
 curl --fail --location "$base/install.sh" --output install.sh
 curl --fail --location "$base/$wheel" --output "$wheel"
 curl --fail --location "$base/SHA256SUMS" --output SHA256SUMS
@@ -43,8 +43,8 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 From PowerShell:
 
 ```powershell
-$base = "https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.4"
-$wheel = "qwen_launcher-0.1.4-py3-none-any.whl"
+$base = "https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.5"
+$wheel = "qwen_launcher-0.1.5-py3-none-any.whl"
 Invoke-WebRequest "$base/install.ps1" -OutFile install.ps1
 Invoke-WebRequest "$base/$wheel" -OutFile $wheel
 Invoke-WebRequest "$base/SHA256SUMS" -OutFile SHA256SUMS

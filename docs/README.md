@@ -38,12 +38,13 @@ of the launcher.
 
 ## Current status
 
-The public release is `0.1.4`: it keeps `calibration/v5` and v4 records as the default and adds
-`calibration/v6-lite` as an opt-in experimental protocol (`--protocol v6`, `v5` records) under a
-recorded maintainer override (D-063). Promoting v6 to the default remains conditional on a committed
-GO.
+The public release is `0.1.5`: the first fully English release, which also republishes the
+calibration evidence with a regenerated digest chain. The runtime is unchanged — it keeps
+`calibration/v5` and v4 records as the default, and `calibration/v6-lite` stays an opt-in
+experimental protocol (`--protocol v6`, `v5` records) under a recorded maintainer override (D-063).
+Promoting v6 to the default remains conditional on a committed GO.
 
-PyPI remains unavailable. The verified artifacts are in the `v0.1.4` GitHub Release and must not be
+PyPI remains unavailable. The verified artifacts are in the `v0.1.5` GitHub Release and must not be
 rebuilt or replaced.
 
 ## Current limits
