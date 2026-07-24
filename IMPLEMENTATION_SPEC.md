@@ -39,6 +39,9 @@ Aggiornato al 24 luglio 2026.
   redatto; nessun run reale o verdetto è stato eseguito.
 - [x] Versione `0.1.3`, tag `v0.1.3` e GitHub Release distribuiscono D-058–D-062 dagli artefatti del
   workflow verde; PyPI resta escluso e nessun Gate spike viene dichiarato.
+- [x] Versione `0.1.4` distribuisce `calibration/v6-lite` opt-in (D-063/D-064): `mode/v2`,
+  quick-bench, motore v6, record v5, CLI `--protocol v6 --preference`, riuso/`doctor` per v5; `v5`
+  resta il default e la suite offline resta verde.
 
 ### Lavoro aperto
 
@@ -46,8 +49,11 @@ Aggiornato al 24 luglio 2026.
   `29739366272`; non ricostruire gli artefatti `0.1.0`.
 - [ ] Eseguire come verifica post-release `0.1.2` l'upgrade reale da `0.1.1`, la calibrazione v5
   senza attivazione e la disinstallazione completa su Ubuntu e Windows.
-- [ ] Eseguire lo spike cross-context preparato nel repository e committare un verdetto umano
-  `GO` o `NO-GO`; `calibration/v6-lite` resta bloccata fino a un `GO` misurato.
+- [ ] Eseguire lo spike cross-context e committare un verdetto umano `GO`/`NO-GO`; la **promozione**
+  di `calibration/v6-lite` a protocollo di default resta bloccata fino a un `GO` misurato (il motore
+  opt-in `--protocol v6` è già distribuito in 0.1.4 su override D-063).
+- [ ] Validare su hardware (Ubuntu e Windows) l'adapter di trial reale `calibration/v6-lite` (avvio
+  server, monitor con riserve 0,5/2,0/0,125, quick-bench, gate); la logica è coperta da test offline.
 - [ ] Stabilizzare ulteriormente la serie 0.1 prima di iniziare la 0.2.
 - [~] Ripetere `calibration/v5 --no-activate` su hardware materialmente diverso; la copertura resta
   `GATE-PARTIAL` e nessuna busta viene trasferita fra host.
@@ -160,6 +166,8 @@ Gli identificatori restano stabili perché codice, test ed evidenza li citano.
 | D-060 | Il contratto rende MTP parametrico (`mtp2`/`disabled`), disabilita prudentemente MTP per `vstudio` e prepara sampling esteso/reasoning. La model card appuntata nega supporto mmproj+MTP mentre Spike 0 locale era PASS: prevale la scelta prudenziale fino a nuovo spike. Il nuovo digest invalida una sola volta il riuso dei record locali storici senza renderli illeggibili; i seed pubblici restano suggerimenti d'ordine soltanto. |
 | D-061 | Uno spike umano cross-context è il gate decisionale per v6-lite: solo un verdetto `GO` committato autorizza `mode/v2`, quick-bench, motore v6 e record v5; `NO-GO` chiude il lavoro con documentazione dei preset v5. |
 | D-062 | La `0.1.3` distribuisce le correzioni di Fase 0 e il pacchetto di Fase 1. Il maintainer autorizza commit, push, tag e GitHub Release prima delle run locali, che restano post-release; non autorizza PyPI, attivazione di candidati o Fase 2 senza GO. |
+| D-063 | Il maintainer autorizza esplicitamente l'override del gate D-061: `calibration/v6-lite` è implementata come protocollo **opt-in** (`--protocol v6`) prima del verdetto GO dello spike cross-context. `calibration/v5` resta il default; la promozione di v6 a default resta condizionata a un `GO` committato. Nessun risultato di benchmark né verdetto `GO` è inventato: l'adapter di trial reale è validato su hardware, mentre ricerca, selezione, conferma, gate e record sono testati offline con fake. |
+| D-064 | La `0.1.4` distribuisce v6-lite: migrazione secca `mode/v2` (i tre modi emettono `min-p`/`presence`/`repeat`/`reasoning` senza cambiare il digest, loader solo-v2), quick-bench di produzione, motore `_calibration_v6_*` (ricerca condivisa `coding`+`studio`, bisezione del solo lato VRAM, selezione senza Pareto, conferma ABBA con terzo round condizionale, gate finale per envelope), record `calibration-record/v5` snello, CLI `--protocol v6 --preference`, riuso/`doctor` per v5. Riserve v6 0,5/2,0/0,125 GiB. `doctor` mostra l'envelope `active_preference`. |
 
 Una nuova decisione durevole aggiorna questa tabella nello stesso step che la autorizza.
 

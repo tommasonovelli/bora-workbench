@@ -109,6 +109,45 @@ def _headroom_issues(record: JsonObject, vram_free_gib: float | None, ram_gib: f
     return issues
 
 
+def _active_envelope(record: JsonObject) -> JsonObject:
+    """Return the launch envelope: the v4 envelope, or the v5 active-preference envelope."""
+    if record.get("schema") == "calibration-record/v5":
+        preference = cast(str, record["active_preference"])
+        return cast(JsonObject, cast(JsonObject, record["envelopes"])[preference])
+    return cast(JsonObject, record["envelope"])
+
+
+def _headroom_v5(record: JsonObject, vram_free_gib: float | None, ram_gib: float) -> list[str]:
+    """Require the active v5 envelope's measured needs plus the record's own reserves."""
+    envelope = _active_envelope(record)
+    reserves = cast(JsonObject, record["reserves"])
+    ram_reserve_gib = float(cast(float, reserves["ram_gib"]))
+    vram_reserve_gib = float(cast(float, reserves["vram_gib"]))
+    issues: list[str] = []
+    ram_required = float(cast(float, envelope["ram_needed_gib"])) + ram_reserve_gib
+    if ram_gib < ram_required:
+        issues.append(
+            f"available RAM {ram_gib:.2f} GiB is below measured need plus the "
+            f"{ram_reserve_gib} GiB reserve ({ram_required:.2f} GiB)"
+        )
+    vram_needed = cast(float | None, envelope["vram_needed_gib"])
+    if vram_needed is not None and vram_free_gib is not None:
+        required = float(vram_needed) + vram_reserve_gib
+        if vram_free_gib < required:
+            issues.append(
+                f"free VRAM {vram_free_gib:.2f} GiB is below measured need plus the "
+                f"{vram_reserve_gib} GiB reserve ({required:.2f} GiB)"
+            )
+    return issues
+
+
+def _headroom_for(record: JsonObject, vram_free_gib: float | None, ram_gib: float) -> list[str]:
+    """Dispatch headroom evaluation to the record's version-specific fields."""
+    if record.get("schema") == "calibration-record/v5":
+        return _headroom_v5(record, vram_free_gib, ram_gib)
+    return _headroom_issues(record, vram_free_gib, ram_gib)
+
+
 def _candidate_state(mode_id: str) -> tuple[CandidateStatus, tuple[str, ...]]:
     """Validate a pending candidate separately because it must never steer a launch."""
     path = candidate_record_path(mode_id)
@@ -172,7 +211,7 @@ def evaluate_record(query: ReuseQuery) -> RecordEvaluation:
     mismatches = _identity_mismatches(record, query)
     driver_issues, vram_free_gib = _cuda_state(record, query)
     mismatches.extend(driver_issues)
-    envelope = cast(JsonObject, record["envelope"])
+    envelope = _active_envelope(record)
     ctx = cast(int, envelope["ctx"])
     n_cpu_moe = cast(int | None, envelope["n_cpu_moe"])
     if mismatches:
@@ -180,7 +219,7 @@ def evaluate_record(query: ReuseQuery) -> RecordEvaluation:
         return _with_candidate(
             RecordEvaluation("incompatible", ctx, n_cpu_moe, diagnostics), query.mode_id
         )
-    headroom = _headroom_issues(record, vram_free_gib, query.hardware.ram_available_gib)
+    headroom = _headroom_for(record, vram_free_gib, query.hardware.ram_available_gib)
     if headroom:
         diagnostics = tuple(f"local calibration record not usable now: {item}" for item in headroom)
         return _with_candidate(

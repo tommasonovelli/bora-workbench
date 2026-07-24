@@ -30,16 +30,19 @@ La preparazione del contratto per lo spike cross-context cambia il
 restano leggibili per la diagnostica, ma non sono più riutilizzabili: rieseguire `calibrate`.
 I seed pubblici v3 restano soltanto suggerimenti per l'ordine dei probe e non diventano mai buste.
 
-`coding` e `studio` mantengono lo stesso comando e MTP a due token. `vstudio` conserva `--mmproj` ma
-non emette più `--spec-type` o `--spec-draft-n-max`: la model card appuntata non dichiara supportata
-la combinazione vision+MTP, nonostante lo Spike 0 locale l'avesse completata. La scelta prudenziale
-resta attiva finché uno spike dedicato non fornisce nuova evidenza.
+`vstudio` conserva `--mmproj` ma non emette `--spec-type` o `--spec-draft-n-max`: la model card
+appuntata non dichiara supportata la combinazione vision+MTP, nonostante lo Spike 0 locale l'avesse
+completata. La scelta prudenziale resta attiva finché uno spike dedicato non fornisce nuova evidenza.
 
-La calibrazione predefinita è ancora `calibration/v5`. `calibration/v6-lite`, `mode/v2`, quick-bench
-ed envelope multiple non sono disponibili: richiedono prima un verdetto umano GO dello spike
-cross-context conservato in `evidence/`. Il pacchetto repository-only e il dry-run offline sono
-documentati in [`scripts/spike_ctx/protocol.md`](../scripts/spike_ctx/protocol.md); prepararli non
-costituisce un Gate e non modifica il comando `calibrate`.
+Con la migrazione `mode/v2` (0.1.4) i tre modi emettono anche `--min-p`, `--presence-penalty`,
+`--repeat-penalty` e `--reasoning` (coding `on`; studio e vstudio `off`); temperatura, top-p e top-k
+restano invariati. Questi token derivano dal contenuto del modo e non cambiano il
+`command_contract_sha256`.
+
+La calibrazione predefinita resta `calibration/v5`. `calibration/v6-lite` è disponibile come
+protocollo **sperimentale opt-in** (`--protocol v6`): è stata implementata su decisione del
+maintainer (D-063) prima del verdetto GO dello spike cross-context, che resta la precondizione per
+promuoverla a default. Vedi [calibration/v6-lite (sperimentale)](#calibrationv6-lite-sperimentale).
 
 ## Termini essenziali
 
@@ -319,6 +322,39 @@ Checklist per la pull request:
 - [ ] scope, limite di portabilità, seed, SHA-256 e manifest espliciti;
 - [ ] PR dichiarativa senza modifiche al core Python;
 - [ ] `qwen-launcher validate`, Ruff, pytest, build e verifica wheel verdi.
+
+## calibration/v6-lite (sperimentale)
+
+`calibration/v6-lite` è un protocollo **opt-in** (`--protocol v6`); `calibration/v5` resta il default.
+È stata implementata su decisione registrata del maintainer (D-063) prima del verdetto GO dello spike
+cross-context: la promozione a default resta una decisione umana registrata in
+`IMPLEMENTATION_SPEC.md`, mai dichiarata dall'agente.
+
+Invece di una singola busta, v6-lite misura tre envelope per modo e ne scrive tutte nel record:
+
+- **`fast`** — minima mediana end-to-end del prompt corto con `ctx ≥ 16384`;
+- **`balanced`** — massimo contesto con end-to-end corto entro `1,10×` quello di `fast`;
+- **`max_context`** — contesto massimo fattibile, con l'ordinamento throughput→margine→prudenza di v5.
+
+Pipeline: ricerca hardware **condivisa** per `coding`+`studio` (stesso modello, backend, niente
+mmproj, stesso MTP) sui contesti `131072 → 65536 → 32768` (raffinamento `98304`/`49152` adiacente al
+vincitore); `vstudio` ha ricerca propria (`--mmproj`, speculative disabilitato). Per ogni gradino un
+probe prudente a `n_cpu_moe = 41`, poi la bisezione del solo lato VRAM; i campioni `boundary`,
+`boundary+2` e il punto prudente sono misurati con il **quick-bench** (1 warm-up + 3 richieste corte
+non cached + 1 richiesta da ~8K). La selezione è confermata da un ABBA a 2 round con un terzo round
+solo se ambiguo, poi da un gate finale per envelope (smoke a ~80% del contesto, multi-turn a 4 turni,
+vision per `vstudio`). Attesa: circa **40–60 processi** per `--mode all`.
+
+Riserve dei trial v6, scritte nel record: **0,5 GiB VRAM, 2,0 GiB RAM, 0,125 GiB** di tolleranza al
+rilascio. Al lancio si valuta **solo** l'envelope `active_preference` con i suoi fabbisogni misurati;
+se l'headroom non basta si usa la baseline (`ctx=8192`, `n_cpu_moe=48`). `--preference` fissa la
+busta attiva nel record (default `balanced`) e non modifica mai `config.toml`; `--target-ctx`
+collassa la scala su un solo gradino. Il record è `calibration-record/v5`: identità e digest come v4,
+le tre envelope, le soglie, le riserve e gli input di selezione (mediane per round) sufficienti a
+ricostruire la scelta; probe, scarti e log restano nell'albero `evidence/`.
+
+Nota: l'adapter di trial reale è validato su hardware; la logica di ricerca, selezione, conferma,
+gate e record è coperta da test offline con fake.
 
 ## Laboratorio v1
 

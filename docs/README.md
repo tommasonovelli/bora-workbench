@@ -37,11 +37,11 @@ quotidiano del launcher.
 
 ## Stato corrente
 
-La release pubblica è `0.1.3`: mantiene `calibration/v5` e i record v4, corregge la precedenza del
-cleanup, rende MTP esplicito e prudente per vision e prepara lo spike umano cross-context. v6-lite
-non è implementata senza un GO committato.
+La release pubblica è `0.1.4`: mantiene `calibration/v5` e i record v4 come default e aggiunge
+`calibration/v6-lite` come protocollo sperimentale opt-in (`--protocol v6`, record `v5`) su override
+registrato del maintainer (D-063). La promozione di v6 a default resta condizionata a un GO committato.
 
-PyPI resta indisponibile. Gli artefatti verificati sono nella GitHub Release `v0.1.3` e non vanno
+PyPI resta indisponibile. Gli artefatti verificati sono nella GitHub Release `v0.1.4` e non vanno
 ricostruiti o sostituiti.
 
 ## Limiti attuali

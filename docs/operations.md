@@ -26,7 +26,7 @@ Gli errori attesi non mostrano traceback. In generale:
 
 ### L'installer chiede una sorgente
 
-È intenzionale: non esiste un default implicito. Per `0.1.3` usare wheel e digest della GitHub
+È intenzionale: non esiste un default implicito. Per `0.1.4` usare wheel e digest della GitHub
 Release come descritto in [Installazione](installation.md). La sorgente PyPI non è ancora disponibile.
 
 ### `uv` non è nel `PATH`

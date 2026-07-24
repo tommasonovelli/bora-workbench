@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qwen-launcher.dev/schemas/mode.v2.json",
+  "title": "qwen-launcher mode/v2",
+  "description": "Declarative behavior contract for one launcher mode, with extended sampling and reasoning migrated in calibration/v6-lite Phase 2 (IMPLEMENTATION_SPEC.md section 3.7).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "id",
+    "description",
+    "services",
+    "sampling"
+  ],
+  "properties": {
+    "schema": {
+      "description": "Versioned schema identifier for this mode.",
+      "const": "mode/v2"
+    },
+    "id": {
+      "description": "Stable mode identifier, equal to the file name without its extension.",
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "description": {
+      "description": "Human-readable explanation of the mode behavior.",
+      "type": "string",
+      "minLength": 1
+    },
+    "services": {
+      "description": "Services explicitly enabled or disabled by the mode.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ui",
+        "vision"
+      ],
+      "properties": {
+        "ui": {
+          "description": "Whether the integrated llama.cpp web interface is enabled.",
+          "type": "boolean"
+        },
+        "vision": {
+          "description": "Whether multimodal projection and image input are enabled.",
+          "type": "boolean"
+        }
+      }
+    },
+    "sampling": {
+      "description": "Sampling and reasoning behavior; every field is emitted into the verified command contract.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "temp",
+        "top_p",
+        "top_k",
+        "min_p",
+        "presence_penalty",
+        "repeat_penalty",
+        "reasoning"
+      ],
+      "properties": {
+        "temp": {
+          "description": "Sampling temperature passed to the model server.",
+          "type": "number",
+          "minimum": 0
+        },
+        "top_p": {
+          "description": "Cumulative probability threshold used for nucleus sampling.",
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "top_k": {
+          "description": "Maximum number of highest-probability tokens retained for sampling.",
+          "type": "integer",
+          "minimum": 0
+        },
+        "min_p": {
+          "description": "Minimum probability relative to the most likely token, as verified in the pinned b10011 help.",
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "presence_penalty": {
+          "description": "Presence penalty applied to already used tokens.",
+          "type": "number",
+          "minimum": 0
+        },
+        "repeat_penalty": {
+          "description": "Repetition penalty; 1.0 disables the penalty.",
+          "type": "number",
+          "minimum": 0
+        },
+        "reasoning": {
+          "description": "Whether the pinned server exposes its reasoning trace for the mode.",
+          "enum": [
+            "on",
+            "off"
+          ]
+        }
+      }
+    }
+  }
+}

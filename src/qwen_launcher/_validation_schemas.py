@@ -2,6 +2,7 @@
 
 SCHEMA_FILES = {
     "mode/v1": "mode.v1.json",
+    "mode/v2": "mode.v2.json",
     "profile/v1": "profile.v1.json",
     "calibration-policy/v1": "calibration-policy.v1.json",
     "calibration-policy/v2": "calibration-policy.v2.json",

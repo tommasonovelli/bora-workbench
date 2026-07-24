@@ -1,0 +1,12 @@
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": "Rispondi con una sola frase deterministica e breve sulla calibrazione locale del motore."
+    }
+  ],
+  "max_tokens": 128,
+  "cache_prompt": false,
+  "ignore_eos": true,
+  "seed": 424242
+}

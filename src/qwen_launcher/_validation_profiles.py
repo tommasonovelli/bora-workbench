@@ -169,7 +169,7 @@ def _profile_overlap(left: Document, right: Document) -> bool:
 def validate_profiles(documents: tuple[Document, ...], engine: JsonObject) -> list[ValidationIssue]:
     """Return all local, report-linked, and overlap profile issues."""
     modes = {
-        cast(str, item.data["id"]) for item in documents if item.data.get("schema") == "mode/v1"
+        cast(str, item.data["id"]) for item in documents if item.data.get("schema") == "mode/v2"
     }
     reports = {
         cast(str, item.data["id"]): item

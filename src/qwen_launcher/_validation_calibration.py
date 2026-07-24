@@ -16,7 +16,7 @@ def _mode_issues(documents: tuple[Document, ...]) -> tuple[set[str], list[Valida
     mode_ids: set[str] = set()
     issues: list[ValidationIssue] = []
     for document in documents:
-        if document.data.get("schema") != "mode/v1":
+        if document.data.get("schema") != "mode/v2":
             continue
         mode_id = cast(str, document.data["id"])
         if mode_id != document.stem:

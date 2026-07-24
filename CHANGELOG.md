@@ -5,6 +5,29 @@ changelog: sono in `IMPLEMENTATION_SPEC.md`.
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-07-24
+
+Implementa `calibration/v6-lite` come protocollo sperimentale **opt-in**. Su decisione registrata del
+maintainer (D-063) il motore è stato costruito prima del verdetto GO dello spike cross-context;
+`calibration/v5` resta il default e la promozione di v6 a default resta una decisione umana. La logica
+è testata offline con fake; l'adapter di trial reale è validato su hardware.
+
+### Added
+
+- `--protocol v6` con `--preference fast|balanced|max-context`: misura e registra tre envelope per
+  modo (`fast`, `balanced`, `max_context`) nel nuovo record `calibration-record/v5`.
+- Motore `_calibration_v6_*`: ricerca condivisa `coding`+`studio` con bisezione del solo lato VRAM,
+  quick-bench di produzione (`benchmark_quick.py`), selezione senza Pareto, conferma ABBA con terzo
+  round condizionale e gate finale per envelope (smoke, multi-turn, vision).
+- Riserve dei trial v6 (0,5/2,0/0,125 GiB) scritte nel record; riuso e `doctor` valutano l'envelope
+  `active_preference`, con ripiego alla baseline quando l'headroom non basta.
+
+### Changed
+
+- Migrazione secca a `mode/v2`: i tre modi emettono anche `--min-p`, `--presence-penalty`,
+  `--repeat-penalty` e `--reasoning` (coding `on`; studio e vstudio `off`). Temperatura, top-p e top-k
+  restano invariati e il `command_contract_sha256` non cambia. Il loader accetta solo `mode/v2`.
+
 ## [0.1.3] - 2026-07-24
 
 Release di correttezza e preparazione misurabile per il gate umano di `calibration/v6-lite`; il

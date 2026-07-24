@@ -22,6 +22,7 @@ _RECORD_SCHEMA_FILES = {
     "calibration-record/v2": "calibration-record.v2.json",
     "calibration-record/v3": "calibration-record.v3.json",
     "calibration-record/v4": "calibration-record.v4.json",
+    "calibration-record/v5": "calibration-record.v5.json",
 }
 
 
@@ -101,7 +102,12 @@ def _validate_record(document: JsonObject, path: Path) -> None:
     errors = sorted(validator.iter_errors(document), key=lambda error: list(error.absolute_path))
     if errors:
         raise RecordError(f"local calibration record {path} is invalid: {errors[0].message}")
-    verify_record(document, path)
+    if document.get("schema") == "calibration-record/v5":
+        from qwen_launcher._calibration_record_v5 import verify_record_v5
+
+        verify_record_v5(document, path)
+    else:
+        verify_record(document, path)
 
 
 def write_record(document: JsonObject, path: Path) -> Path:

@@ -5,13 +5,13 @@ serve sempre un'autorizzazione umana esplicita per push, tag, GitHub Release e P
 
 ## Stato pubblico
 
-- versione pubblica corrente: `0.1.3`;
-- tag remoti: `v0.1.0`, `v0.1.1`, `v0.1.2` e `v0.1.3`;
-- GitHub Release `v0.1.3`: pubblicata con installer, wheel, sdist e `SHA256SUMS`;
-- i digest `0.1.3` sono quelli del manifest allegato alla release e derivano dal build job verde;
-- PyPI: non ancora pubblicata ed esclusa dall'autorizzazione di `0.1.3`;
-- release pubblica `v0.1.3`: correttezza del cleanup, contratto MTP e pacchetto spike D-061; v6-lite
-  resta non implementata senza un GO umano committato.
+- versione pubblica corrente: `0.1.4`;
+- tag remoti: `v0.1.0`, `v0.1.1`, `v0.1.2`, `v0.1.3` e `v0.1.4`;
+- GitHub Release `v0.1.4`: pubblicata con installer, wheel, sdist e `SHA256SUMS`;
+- i digest `0.1.4` sono quelli del manifest allegato alla release e derivano dal build job verde;
+- PyPI: non ancora pubblicata ed esclusa dall'autorizzazione di `0.1.4`;
+- release pubblica `v0.1.4`: `calibration/v6-lite` opt-in (`--protocol v6`, record v5) su override
+  D-063; `calibration/v5` resta il default e la promozione di v6 a default richiede un GO umano.
 
 Gli artefatti pubblicati sono immutabili. Non ricostruire, sostituire o ricaricare file con la stessa
 versione per includere correzioni successive: serve una nuova versione.
@@ -50,6 +50,15 @@ Controllare:
 
 Ogni modifica successiva alla build invalida gli artefatti: rimuovere `dist/`, ripetere tutti i
 controlli e ricostruire.
+
+### Release 0.1.4
+
+La `0.1.4` distribuisce `calibration/v6-lite` come protocollo opt-in (D-063/D-064): migrazione secca
+`mode/v2`, quick-bench di produzione, motore `_calibration_v6_*`, record `calibration-record/v5`, CLI
+`--protocol v6 --preference`, riuso/`doctor` per v5. `calibration/v5` resta il default; la promozione
+di v6 a default resta condizionata a un verdetto umano GO dello spike cross-context. La logica è
+testata offline con fake; l'adapter di trial reale è validato dal maintainer su Ubuntu e Windows. Il
+maintainer ha autorizzato commit, push, tag e GitHub Release; PyPI resta escluso.
 
 ### Release 0.1.3
 

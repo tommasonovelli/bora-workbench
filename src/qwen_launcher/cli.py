@@ -46,7 +46,7 @@ def package_version() -> str:
     try:
         return version("qwen-launcher")
     except PackageNotFoundError:
-        return "0.1.3"
+        return "0.1.4"
 
 
 def _version_callback(value: bool) -> None:
@@ -135,11 +135,18 @@ def calibrate(
         str,
         typer.Option(
             "--protocol",
-            help="calibration protocol: paired zero-input 'v5' or gate-only lab 'v1'.",
+            help="calibration protocol: default 'v5', opt-in 'v6', or gate-only lab 'v1'.",
         ),
     ] = "v5",
+    preference: Annotated[
+        str | None,
+        typer.Option(
+            "--preference",
+            help="v6 launch envelope written to the record: fast, balanced, or max-context.",
+        ),
+    ] = None,
 ) -> None:
-    """Run v5 with --activate/--no-activate/--target-ctx, or v1 with candidate/settings."""
+    """Run v5 with --activate/--no-activate/--target-ctx, v6 with --preference, or v1 candidates."""
     try:
         parsed = parse_calibration_options(context.args)
     except CalibrationError as error:
@@ -153,6 +160,7 @@ def calibrate(
         parsed.no_activate,
         parsed.activate,
         parsed.target_ctx,
+        preference,
     )
     run_calibrate(options, CalibrationCliOutput(_stdout, _stderr))
 

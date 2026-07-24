@@ -46,6 +46,7 @@ def copy_resource_root(tmp_path: Path) -> Path:
     paths = [
         "engine.lock",
         "schemas/mode.v1.json",
+        "schemas/mode.v2.json",
         "schemas/profile.v1.json",
         "schemas/calibration-policy.v1.json",
         "schemas/calibration-policy.v2.json",

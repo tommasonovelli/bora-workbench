@@ -48,16 +48,34 @@ def _envelope(value: object) -> Envelope:
     return Envelope(cast(int, raw["ctx"]), cast(int | None, raw.get("n_cpu_moe")), tok_s)
 
 
+def _sampling(sampling: JsonObject) -> Sampling:
+    """Build the full mode/v2 sampling contract, including reasoning (spec 3.7)."""
+    return Sampling(
+        float(sampling["temp"]),
+        float(sampling["top_p"]),
+        cast(int, sampling["top_k"]),
+        float(sampling["min_p"]),
+        float(sampling["presence_penalty"]),
+        float(sampling["repeat_penalty"]),
+        cast(Literal["on", "off"], sampling["reasoning"]),
+    )
+
+
 def _mode(file: Traversable) -> Mode:
-    """Construct a runtime mode from one validated mode resource."""
+    """Construct a runtime mode from one validated mode/v2 resource.
+
+    calibration/v6-lite Phase 2 migrated the three modes to mode/v2, so the loader accepts only
+    that schema and reads the extended sampling and reasoning fields (spec 3.7).
+    """
     raw = _read_object(file)
+    if raw.get("schema") != "mode/v2":
+        raise ContentError(f"{file.name}: mode schema must be 'mode/v2'")
     services = cast(JsonObject, raw["services"])
-    sampling = cast(JsonObject, raw["sampling"])
     return Mode(
         cast(str, raw["id"]),
         cast(str, raw["description"]),
         ModeServices(cast(bool, services["ui"]), cast(bool, services["vision"])),
-        Sampling(float(sampling["temp"]), float(sampling["top_p"]), cast(int, sampling["top_k"])),
+        _sampling(cast(JsonObject, raw["sampling"])),
     )
 
 

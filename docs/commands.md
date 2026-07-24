@@ -205,6 +205,27 @@ assegnata dal sistema quando è occupata. Questo fallback non vale per i tre avv
 
 Dettagli dell'algoritmo e dei record: [Calibrazione](calibration.md).
 
+## `calibrate`: protocollo sperimentale v6
+
+```bash
+qwen-launcher calibrate --mode all --protocol v6 --preference balanced
+```
+
+`calibration/v6-lite` è **opt-in** (`--protocol v6`); `v5` resta il default. Misura tre envelope per
+modo (`fast`, `balanced`, `max_context`) e le scrive tutte nel record `calibration-record/v5`.
+
+| Opzione | Effetto |
+|---|---|
+| `--protocol v6` | esegue la ricerca sperimentale a tre envelope (v5 resta il default) |
+| `--preference fast\|balanced\|max-context` | fissa la busta attiva nel record (default `balanced`); solo con `v6` |
+| `--target-ctx N` | collassa la scala v6 su un solo gradino approvato |
+| `--no-activate` / `--activate` | come in v5: conserva o promuove i candidati |
+
+Target v6 ammessi: `131072`, `98304`, `65536`, `49152`, `32768`. `--preference` è rifiutata senza
+`--protocol v6`. Riserve dei trial v6: 0,5 GiB VRAM, 2,0 GiB RAM, 0,125 GiB di tolleranza al
+rilascio. La promozione di v6 a protocollo di default è una decisione umana (D-063), mai automatica.
+Dettagli: [Calibrazione — calibration/v6-lite](calibration.md#calibrationv6-lite-sperimentale).
+
 ## `calibrate`: laboratorio v1
 
 Il protocollo storico resta eseguibile solo come laboratorio esplicito e produce un bundle bozza,

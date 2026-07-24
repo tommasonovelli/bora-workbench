@@ -41,6 +41,7 @@ class CalibrationCliInput:
     no_activate: bool = False
     activate: bool = False
     target_ctx: int | None = None
+    preference: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -155,12 +156,21 @@ def _show_outcome(outcome: CalibrationOutcome, console: Console) -> None:
 def _dispatch(options: CalibrationCliInput, output: CalibrationCliOutput) -> bool:
     """Route to calibration/v5 unless the operator explicitly selects the v1 laboratory."""
     has_v5_options = options.no_activate or options.activate or options.target_ctx is not None
+    if options.preference is not None and options.protocol != "v6":
+        raise CalibrationError("--preference requires --protocol v6")
     if options.protocol == "v1":
         if has_v5_options:
             raise CalibrationError("activation and target context options require calibration/v5")
         return False
+    if options.protocol == "v6":
+        from qwen_launcher._cli_calibration_v6 import run_calibrate_v6
+
+        run_calibrate_v6(options, output)
+        return True
     if options.protocol != "v5":
-        raise CalibrationError(f"unknown calibration protocol {options.protocol!r}; use v5 or v1")
+        raise CalibrationError(
+            f"unknown calibration protocol {options.protocol!r}; use v5, v6, or v1"
+        )
     if options.no_activate and options.activate:
         raise CalibrationError("--no-activate and --activate are mutually exclusive")
     if options.activate and options.target_ctx is not None:

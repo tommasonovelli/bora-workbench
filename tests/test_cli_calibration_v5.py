@@ -123,7 +123,7 @@ def test_invalid_option_combinations_and_v1_boundary() -> None:
     assert explicit.exit_code == 2
     assert "--protocol v1" in explicit.output
     assert legacy.exit_code == 2
-    assert "use v5 or v1" in legacy.output
+    assert "use v5, v6, or v1" in legacy.output
 
 
 def test_runtime_failure_is_operational_exit_one(monkeypatch) -> None:
