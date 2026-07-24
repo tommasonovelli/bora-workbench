@@ -1,28 +1,28 @@
-# Installazione e primo avvio
+# Installation and first run
 
-## 1. Requisiti
+## 1. Requirements
 
-`qwen-launcher` supporta:
+`qwen-launcher` supports:
 
-- Ubuntu 22.04 o successivo, x86-64;
+- Ubuntu 22.04 or later, x86-64;
 - Windows 11, x86-64;
-- backend CPU oppure una singola GPU NVIDIA rilevata tramite `nvidia-smi`;
-- CPython 3.12; gli installer fissano `3.12.13` e uv `0.11.28`.
+- the CPU backend, or a single NVIDIA GPU detected through `nvidia-smi`;
+- CPython 3.12; the installers pin `3.12.13` and uv `0.11.28`.
 
-Per il modello predefinito il preflight richiede almeno **28 GiB di RAM totale** e **22 GiB
-disponibili**. Sono inoltre necessari circa 22,7 GB per il GGUF, circa 0,9 GB per il proiettore
-vision e spazio aggiuntivo per motore, cache di download e log.
+For the default model the preflight requires at least **28 GiB of total RAM** and **22 GiB
+available**. You also need roughly 22.7 GB for the GGUF, roughly 0.9 GB for the vision projector,
+and extra space for the engine, the download cache, and logs.
 
-CUDA su una macchina con più GPU viene rilevato ma l'avvio è bloccato: l'isolamento fisico è stato
-verificato solo su host a GPU singola. Se `nvidia-smi` manca, fallisce o produce dati illeggibili, il
-launcher usa il backend CPU e mostra il motivo.
+CUDA on a machine with more than one GPU is detected, but startup is blocked: physical isolation has
+only been verified on single-GPU hosts. If `nvidia-smi` is missing, fails, or produces unreadable
+data, the launcher uses the CPU backend and shows why.
 
-## 2. Installare la release pubblica
+## 2. Installing the public release
 
-La release pubblica è `0.1.4`. PyPI è ancora indisponibile; usare gli artefatti della
+The public release is `0.1.4`. PyPI is still unavailable; use the artifacts of the
 [GitHub Release v0.1.4](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.4).
-La release allega wheel, sdist, installer e `SHA256SUMS` ottenuti dal run test/build
-multipiattaforma. Una release pubblicata non viene modificata in place.
+The release attaches the wheel, sdist, installers, and `SHA256SUMS` produced by the cross-platform
+test/build run. A published release is never modified in place.
 
 ### Ubuntu
 
@@ -40,7 +40,7 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 
 ### Windows
 
-Da PowerShell:
+From PowerShell:
 
 ```powershell
 $base = "https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.4"
@@ -59,25 +59,24 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 `
   -Wheel ".\$wheel" -Sha256 $sha256
 ```
 
-`ExecutionPolicy Bypass` vale soltanto per quel processo. Lo script non cambia la policy di sistema
-e non richiede privilegi amministrativi.
+`ExecutionPolicy Bypass` applies to that process only. The script does not change the system policy
+and does not require administrative privileges.
 
-Gli installer accettano sempre una sola sorgente esplicita:
+The installers always accept exactly one explicit source:
 
 ```text
 install.sh  --wheel PATH --sha256 HEX
-install.sh  --git-commit COMMIT_COMPLETO
-install.sh  --pypi-version VERSIONE
+install.sh  --git-commit FULL_COMMIT
+install.sh  --pypi-version VERSION
 
 install.ps1 -Wheel PATH -Sha256 HEX
-install.ps1 -GitCommit COMMIT_COMPLETO
-install.ps1 -PypiVersion VERSIONE
+install.ps1 -GitCommit FULL_COMMIT
+install.ps1 -PypiVersion VERSION
 ```
 
-`--pypi-version` / `-PypiVersion` non è utilizzabile finché una versione non è realmente presente
-su PyPI.
+`--pypi-version` / `-PypiVersion` is unusable until a version is actually present on PyPI.
 
-## 3. Verificare il tool
+## 3. Verifying the tool
 
 ```bash
 qwen-launcher --version
@@ -85,13 +84,13 @@ qwen-launcher validate
 qwen-launcher doctor
 ```
 
-`validate` controlla lock, schemi e contenuti installati. `doctor` legge configurazione, hardware,
-motore e record senza modificarli.
+`validate` checks the installed locks, schemas, and content. `doctor` reads the configuration,
+hardware, engine, and records without modifying them.
 
-## 4. Rendere disponibile il modello
+## 4. Making the model available
 
-Il launcher non distribuisce e non scarica i pesi. Per l'identità predefinita cerca in sola lettura
-lo snapshot Hugging Face della revisione appuntata in `engine.lock`:
+The launcher neither distributes nor downloads the weights. For the default identity it looks up,
+read-only, the Hugging Face snapshot of the revision pinned in `engine.lock`:
 
 ```text
 repository: unsloth/Qwen3.6-35B-A3B-MTP-GGUF
@@ -100,83 +99,81 @@ GGUF:       Qwen3.6-35B-A3B-UD-Q4_K_M.gguf
 mmproj:     mmproj-BF16.gguf
 ```
 
-Acquisire separatamente i due file dalla
-[revisione fissata del repository](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF/tree/5bc3e238d916f48a861bac2f8a1990a0e9b7e98d)
-con uno strumento scelto dall'utente. Dimensione e SHA-256 devono coincidere col lock. Il proiettore
-è richiesto solo da `vstudio`; il launcher non crea ref o snapshot e non altera la cache Hugging
-Face.
+Acquire the two files separately from the
+[pinned repository revision](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF/tree/5bc3e238d916f48a861bac2f8a1990a0e9b7e98d)
+with a tool of your choice. Size and SHA-256 must match the lock. The projector is only required by
+`vstudio`; the launcher creates no refs or snapshots and never alters the Hugging Face cache.
 
-Un modello diverso richiede una coppia coerente `model` + `model_path` nella configurazione. Non
-eredita gate, record o compatibilità del modello predefinito; `vstudio` non può usarlo perché non è
-configurabile un mmproj alternativo.
+A different model requires a consistent `model` + `model_path` pair in the configuration. It
+inherits none of the default model's gates, records, or compatibility; `vstudio` cannot use it,
+because an alternative mmproj is not configurable.
 
-## 5. Installare il motore
+## 5. Installing the engine
 
 ```bash
 qwen-launcher engine install
 qwen-launcher engine status
 ```
 
-Il backend viene scelto dall'hardware rilevato. Ubuntu CPU e Windows CPU usano prebuilt verificati;
-Windows CUDA combina server e runtime CUDA 13.3 verificati; Ubuntu CUDA compila il solo
-`llama-server` dal commit sorgente fissato. Se mancano prerequisiti di compilazione, il comando li
-elenca senza eseguire `sudo` o package manager.
+The backend is chosen from the detected hardware. Ubuntu CPU and Windows CPU use verified prebuilts;
+Windows CUDA combines the verified server and CUDA 13.3 runtime; Ubuntu CUDA builds `llama-server`
+alone from the pinned source commit. If build prerequisites are missing, the command lists them
+without running `sudo` or a package manager.
 
-Download, checksum, estrazione, verifica e attivazione devono completare tutti prima che
-`current.json` punti alla nuova installazione. Su un terminale, la CLI mostra per download ed
-estrazione una barra a byte con asset corrente, velocità ed ETA calcolata; le altre operazioni
-mantengono visibile la fase senza inventare una durata. È normale che la compilazione CUDA Ubuntu
-richieda diversi minuti. I probe finali di versione e help restano limitati a 60 secondi ciascuno.
-Vedere
-[architettura](architecture.md#motore-e-modello) per il contratto.
+Download, checksum, extraction, verification, and activation must all complete before `current.json`
+points to the new installation. On a terminal, the CLI shows a byte progress bar for download and
+extraction with the current asset, speed, and computed ETA; the other operations keep the phase
+visible without inventing a duration. It is normal for the Ubuntu CUDA build to take several
+minutes. The final version and help probes stay bounded to 60 seconds each. See the
+[architecture](architecture.md#engine-and-model) for the contract.
 
-## 6. Primo utilizzo
+## 6. First use
 
-Percorso minimo:
+The minimal path:
 
 ```bash
 qwen-launcher doctor
 qwen-launcher coding
 ```
 
-Senza un record locale valido il launcher usa la baseline verificata `ctx=8192`; su CUDA usa anche
-`n_cpu_moe=48`. La CLI la dichiara non ottimizzata.
+Without a valid local record the launcher uses the verified `ctx=8192` baseline; on CUDA it also
+uses `n_cpu_moe=48`. The CLI declares it as not optimized.
 
-Per misurare la macchina prima del lancio ordinario:
+To measure the machine before ordinary launches:
 
 ```bash
 qwen-launcher calibrate --mode all
 ```
 
-La calibrazione può durare a lungo, crea processi locali e attiva per default i record risultanti.
-Leggere [Calibrazione](calibration.md) prima di avviarla.
+Calibration can run for a long time, creates local processes, and activates the resulting records by
+default. Read [Calibration](calibration.md) before starting it.
 
-I modi disponibili sono:
+The available modes are:
 
 ```bash
-qwen-launcher coding    # API testuale, senza UI e vision
-qwen-launcher studio    # chat testuale nella UI integrata
-qwen-launcher vstudio   # UI integrata e input immagine
+qwen-launcher coding    # text API, no UI and no vision
+qwen-launcher studio    # text chat in the built-in UI
+qwen-launcher vstudio   # built-in UI and image input
 ```
 
-I processi restano in foreground. `Ctrl-C` esegue la pulizia e termina con exit code 130. Da un
-altro terminale si possono usare:
+The processes stay in the foreground. `Ctrl-C` performs the cleanup and exits with code 130. From
+another terminal you can use:
 
 ```bash
 qwen-launcher status
 qwen-launcher stop
 ```
 
-## 7. Rimozione
+## 7. Removal
 
 ```bash
 qwen-launcher stop
 qwen-launcher uninstall
 ```
 
-`uninstall` mostra le quattro radici gestite e l'installazione Python, poi richiede una sola
-conferma. Rifiuta servizi vivi, radici che sono symlink o set di percorsi alterati. Con
-l'installazione supportata degli script rimuove anche il tool Python tramite uv appena il comando
-termina; la cache Hugging Face e uv stesso restano sempre esclusi.
+`uninstall` shows the four managed roots and the Python installation, then asks for a single
+confirmation. It refuses live services, roots that are symlinks, or an altered set of paths. With
+the supported script installation it also removes the Python tool through uv as soon as the command
+finishes; the Hugging Face cache and uv itself always stay excluded.
 
-**Successivo:** [Comandi](commands.md)
+**Next:** [Commands](commands.md)

@@ -1,16 +1,16 @@
-# Contribuire a qwen-launcher
+# Contributing to qwen-launcher
 
-Grazie per l'interesse. Prima di aprire una modifica, leggere:
+Thank you for your interest. Before opening a change, read:
 
-1. [documentazione del progetto](docs/README.md);
-2. [architettura](docs/architecture.md);
-3. [guida di sviluppo](docs/development.md);
-4. `AGENTS.md` e l'intero `IMPLEMENTATION_SPEC.md`.
+1. the [project documentation](docs/README.md);
+2. the [architecture](docs/architecture.md);
+3. the [development guide](docs/development.md);
+4. `AGENTS.md` and the whole of `IMPLEMENTATION_SPEC.md`.
 
-`IMPLEMENTATION_SPEC.md` è l'unico piano normativo: una PR non deve implementare lavoro futuro non
-ancora autorizzato.
+`IMPLEMENTATION_SPEC.md` is the only normative plan: a PR must not implement future work that has
+not been authorized yet.
 
-## Preparare il checkout
+## Preparing the checkout
 
 ```bash
 git status --short
@@ -20,73 +20,76 @@ uv run --frozen ruff format --check .
 uv run --frozen pytest
 ```
 
-Se la baseline non è verde, non nascondere il problema: descriverlo prima di aggiungere altre
-modifiche. Conservare sempre cambi preesistenti dell'utente.
+If the baseline is not green, do not hide the problem: describe it before adding further changes.
+Always preserve pre-existing user changes.
 
-## Scegliere il tipo di contributo
+## Choosing the type of contribution
 
-Una pull request modifica **una sola** delle due aree:
+A pull request changes **only one** of the two areas:
 
-- **core**: Python, installer, workflow e test comportamentali;
-- **contenuto dichiarativo**: modi, policy, report, lock, manifest ed evidenza collegata.
+- **core**: Python, installers, workflows, and behavioral tests;
+- **declarative content**: modes, policies, reports, locks, manifests, and the evidence linked to
+  them.
 
-La documentazione accompagna l'area scelta. Non mescolare core e contenuto nella stessa PR e non
-riformattare, rinominare o spostare file estranei allo scopo.
+Documentation accompanies the chosen area. Do not mix core and content in the same PR, and do not
+reformat, rename, or move files unrelated to the purpose.
 
-Per un bug o una proposta, indicare prima comportamento corrente, comportamento atteso, fonti e
-impatto. Non presentare un'ipotesi come compatibilità verificata.
+For a bug or a proposal, state the current behavior, the expected behavior, the sources, and the
+impact first. Do not present an assumption as verified compatibility.
 
-## Fonti e prove
+## Sources and evidence
 
-Versioni, flag, checksum, endpoint, hardware supportato e misure devono provenire da lock, test o
-output reali. La gerarchia completa è in [Sviluppo e contributi](docs/development.md#fonti-di-verità).
+Versions, flags, checksums, endpoints, supported hardware, and measurements must come from locks,
+tests, or real output. The full hierarchy is in
+[Development and contributions](docs/development.md#sources-of-truth).
 
-In particolare:
+In particular:
 
-- niente `latest` nei file versionati;
-- niente flag `llama.cpp` ricordati o copiati dal ramo upstream corrente;
-- niente benchmark, profili o claim hardware inventati;
-- una contraddizione fra fonti va resa visibile, non risolta silenziosamente.
+- no `latest` in versioned files;
+- no `llama.cpp` flags recalled from memory or copied from the current upstream branch;
+- no invented benchmarks, profiles, or hardware claims;
+- a contradiction between sources must be made visible, not resolved silently.
 
-Le prove grezze stanno in [`evidence/`](evidence/README.md), separate dai manuali correnti.
+Raw evidence lives in [`evidence/`](evidence/README.md), separate from the current manuals.
 
-## Qualità e sicurezza
+## Quality and security
 
-Seguire le responsabilità dei moduli e i limiti descritti in `AGENTS.md`. In ogni caso:
+Follow the module responsibilities and limits described in `AGENTS.md`. In every case:
 
-- funzioni piccole, tipi precisi e docstring;
-- nessun `shell=True`, `eval`, `exec`, `sudo` o elevazione;
-- nessun bind su `0.0.0.0`;
-- TLS e checksum sempre attivi;
-- nessuna modifica automatica a `config.toml` o alla cache Hugging Face;
-- cancellazioni soltanto nelle radici gestite;
-- errori attesi azionabili, senza traceback;
-- test offline, deterministici e indipendenti dall'hardware host.
+- small functions, precise types, and docstrings;
+- no `shell=True`, `eval`, `exec`, `sudo`, or elevation;
+- no bind on `0.0.0.0`;
+- TLS and checksums always enabled;
+- no automatic modification of `config.toml` or the Hugging Face cache;
+- deletions only inside the managed roots;
+- expected errors actionable, without tracebacks;
+- offline, deterministic tests that are independent of the host hardware.
 
-Non aggiungere dipendenze senza un requisito corrente e un'analisi di standard library,
-manutenzione, licenza, sicurezza e costo transitivo. `pyproject.toml` e `uv.lock` cambiano insieme.
+Do not add dependencies without a current requirement and an analysis of the standard library,
+maintenance, licensing, security, and transitive cost. `pyproject.toml` and `uv.lock` change
+together.
 
-## Evidenza di calibrazione
+## Calibration evidence
 
-Una PR di calibrazione usa il protocollo corrente `calibration/v4` e segue la sezione
-[Contribuire nuova evidenza](docs/calibration.md#contribuire-nuova-evidenza). Il contratto pubblico
-v2 descrive ancora v3: evidenza v4 richiede prima un nuovo schema in una PR di contenuto separata.
+A calibration PR uses the current `calibration/v4` protocol and follows the
+[Contributing new evidence](docs/calibration.md#contributing-new-evidence) section. The public v2
+contract still describes v3: v4 evidence first requires a new schema in a separate content PR.
 
-Sono obbligatori:
+The following are mandatory:
 
-- run reale sul modello e motore appuntati, inclusi i fallimenti del Gate;
-- report privacy-safe nella versione di schema autorizzata per il metodo;
-- scope misurato e limite di portabilità espliciti;
-- SHA-256 dei byte finali e manifest verificabile;
-- nessun record locale, config, log grezzo o dato privato;
-- seed di solo ordinamento, mai busta remota o nearest-match;
-- approvazione personale del maintainer.
+- a real run on the pinned model and engine, including Gate failures;
+- a privacy-safe report in the schema version authorized for the method;
+- an explicit measured scope and portability limit;
+- SHA-256 of the final bytes and a verifiable manifest;
+- no local records, config, raw logs, or private data;
+- ordering-only seeds, never a remote envelope or nearest-match;
+- personal approval by the maintainer.
 
-Il launcher non crea login, upload, commit, branch, issue o PR.
+The launcher creates no logins, uploads, commits, branches, issues, or PRs.
 
-## Verifiche finali
+## Final checks
 
-Sempre:
+Always:
 
 ```bash
 uv sync --frozen
@@ -96,7 +99,7 @@ uv run --frozen pytest
 uv run --frozen qwen-launcher validate
 ```
 
-Se cambiano packaging, risorse, installer o documenti inclusi nella sdist:
+If packaging, resources, installers, or documents included in the sdist change:
 
 ```bash
 rm -rf dist
@@ -104,7 +107,7 @@ uv build
 uv run --frozen python scripts/verify_wheel.py
 ```
 
-Eseguire inoltre:
+Also run:
 
 ```bash
 git diff --check
@@ -112,12 +115,12 @@ git status --short
 git diff --staged
 ```
 
-Segnalare i test manuali o cross-platform non eseguiti. I fake offline non sostituiscono prove reali
-quando cambiano motore, asset, GPU, modello o installer.
+Report the manual or cross-platform tests you did not run. Offline fakes are no substitute for real
+evidence when the engine, assets, GPU, model, or installers change.
 
-## Commit e pull request
+## Commits and pull requests
 
-Usare Conventional Commits con un oggetto concreto, per esempio:
+Use Conventional Commits with a concrete subject, for example:
 
 ```text
 docs: reorganize current project documentation
@@ -125,10 +128,10 @@ fix(engine): preserve active manifest after failed extraction
 feat(content): add verified calibration evidence for one host
 ```
 
-Per modifiche non banali aggiungere un corpo che spieghi cosa è cambiato, perché, vincoli e controlli
-eseguiti. Il template PR richiede tipo di modifica e verifiche.
+For non-trivial changes add a body explaining what changed, why, the constraints, and the checks
+performed. The PR template requires the change type and the verifications.
 
-Push, tag, release, upload e impostazioni remote richiedono autorizzazione esplicita. La CI copre
-Ubuntu e Windows; i contributori richiedono revisione code owner.
+Pushes, tags, releases, uploads, and remote settings require explicit authorization. CI covers
+Ubuntu and Windows; contributors require code owner review.
 
-Per i dettagli operativi continuare con [Sviluppo e contributi](docs/development.md).
+For operational details continue with [Development and contributions](docs/development.md).

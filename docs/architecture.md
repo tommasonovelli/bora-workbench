@@ -1,226 +1,227 @@
-# Architettura
+# Architecture
 
-## Scopo del prodotto
+## Product scope
 
-`qwen-launcher` è un launcher specializzato, non un model manager generico. Governa una combinazione
-precisa di:
+`qwen-launcher` is a specialized launcher, not a generic model manager. It governs one precise
+combination of:
 
-- modello Qwen predefinito e proiettore vision;
-- release verificata di `llama.cpp`;
-- tre modi dichiarativi;
-- rilevamento CPU/CUDA;
-- calibrazione locale per modo;
-- installazione e lifecycle sicuri del processo.
+- the default Qwen model and vision projector;
+- a verified `llama.cpp` release;
+- three declarative modes;
+- CPU/CUDA detection;
+- local per-mode calibration;
+- safe process installation and lifecycle.
 
-Il core decide **come** validare, misurare e governare. I JSON versionati dichiarano **quali** modi,
-contratti e prove condivise sono disponibili. Nessun contenuto esegue codice arbitrario.
+The core decides **how** to validate, measure, and govern. The versioned JSON declares **which**
+modes, contracts, and shared evidence are available. No content executes arbitrary code.
 
-## Flusso di un avvio
+## Startup flow
 
 ```text
 CLI
- └─ configurazione severa
-     └─ rilevamento hardware
-         └─ gate RAM e supporto GPU
-             └─ catalogo dichiarativo validato
-                 └─ risoluzione e verifica del modello
-                     └─ record locale compatibile oppure baseline
-                         └─ LaunchPlan immutabile
-                             └─ risoluzione e probe del motore
-                                 └─ comando espanso solo da engine.lock
-                                     └─ stato + processo + health check
-                                         └─ endpoint READY in foreground
+ └─ strict configuration
+     └─ hardware detection
+         └─ RAM gate and GPU support
+             └─ validated declarative catalog
+                 └─ model resolution and verification
+                     └─ compatible local record, or baseline
+                         └─ immutable LaunchPlan
+                             └─ engine resolution and probes
+                                 └─ command expanded from engine.lock only
+                                     └─ state + process + health check
+                                         └─ READY endpoints in the foreground
 ```
 
-Un errore interrompe il flusso nel punto in cui viene rilevato. Non esistono fallback silenziosi verso
-modelli, release, flag, porte o asset diversi.
+An error stops the flow at the point where it is detected. There are no silent fallbacks to
+different models, releases, flags, ports, or assets.
 
-## Componenti del repository
+## Repository components
 
-| Area | Responsabilità corrente |
+| Area | Current responsibility |
 |---|---|
-| `cli.py`, `_cli_*` | input Typer, presentazione Rich, conferme ed exit code |
-| `paths.py` | calcolo delle quattro radici per OS, senza creazione |
-| `config.py`, `_config_paths.py` | TOML, ambiente, precedenza e tipi |
-| `hardware.py`, `_hardware_monitoring.py` | CPU/RAM, NVIDIA, processi GPU e telemetria |
-| `profiles.py`, `_profile_*` | modi runtime, seed condivisi, gate e `LaunchPlan` |
-| `engine.py`, `_engine_*` | lock, modello, asset, download/build, installazione e comando |
-| `process.py`, `_process_*` | porta, lock di avvio, processo, salute, stato, status e stop |
-| `calibration.py`, `_calibration_*` | laboratorio v1, ricerca v4, record, evidenza e riuso |
-| `benchmark.py` | protocollo immutabile `benchmark/v1` usato dalla calibrazione |
-| `validation.py`, `_validation_*` | JSON Schema e invarianti semantiche incrociate |
-| `resources/` | lock, schemi, modi, policy, report, benchmark e notice nella wheel |
-| `install.sh`, `install.ps1` | installazione del tool da una sorgente esplicita |
-| `scripts/verify_wheel.py` | verifica esterna di wheel e sdist |
-| `tests/` | suite offline con fake di server, processi, rete e hardware |
-| `.github/workflows/` | CI multipiattaforma e pubblicazione da artefatti testati |
-| `evidence/` | output misurati e manifest di provenienza, fuori dai manuali |
+| `cli.py`, `_cli_*` | Typer input, Rich presentation, confirmations, and exit codes |
+| `paths.py` | computing the four per-OS roots, without creating them |
+| `config.py`, `_config_paths.py` | TOML, environment, precedence, and types |
+| `hardware.py`, `_hardware_monitoring.py` | CPU/RAM, NVIDIA, GPU processes, and telemetry |
+| `profiles.py`, `_profile_*` | runtime modes, shared seeds, gates, and `LaunchPlan` |
+| `engine.py`, `_engine_*` | lock, model, assets, download/build, installation, and command |
+| `process.py`, `_process_*` | port, startup lock, process, health, state, status, and stop |
+| `calibration.py`, `_calibration_*` | v1 laboratory, v4 search, records, evidence, and reuse |
+| `benchmark.py` | the immutable `benchmark/v1` protocol used by calibration |
+| `validation.py`, `_validation_*` | JSON Schema and cross-cutting semantic invariants |
+| `resources/` | lock, schemas, modes, policies, reports, benchmarks, and notices in the wheel |
+| `install.sh`, `install.ps1` | tool installation from an explicit source |
+| `scripts/verify_wheel.py` | external verification of the wheel and sdist |
+| `tests/` | offline suite with fakes for server, processes, network, and hardware |
+| `.github/workflows/` | cross-platform CI and publication from tested artifacts |
+| `evidence/` | measured output and provenance manifests, outside the manuals |
 
-Solo `paths.py`, `process.py`, `hardware.py` ed `engine.py` possiedono diramazioni di piattaforma. I
-moduli privati separano responsabilità interne senza creare una API plugin.
+Only `paths.py`, `process.py`, `hardware.py`, and `engine.py` carry platform branches. The private
+modules separate internal responsibilities without creating a plugin API.
 
-## Risorse dichiarative
+## Declarative resources
 
-Le risorse sono lette con `importlib.resources` come `Traversable`; il codice non presume che una
-wheel sia estratta su disco. Gli schemi sono JSON Schema 2020-12 e vietano proprietà non dichiarate.
+Resources are read with `importlib.resources` as a `Traversable`; the code never assumes a wheel is
+extracted on disk. The schemas are JSON Schema 2020-12 and forbid undeclared properties.
 
-| Contratto | Ruolo attuale |
+| Contract | Current role |
 |---|---|
-| `mode/v1` | servizi e sampling dei modi |
-| `profile/v1` | compatibilità con evidenza a classi; nessuna busta di produzione distribuita |
-| `calibration-policy/v1` | contratto del laboratorio esplicito |
-| `calibration-report/v1` | bundle del laboratorio v1 |
-| `calibration-policy/v2` | metodo pubblico storico v3, usato da v5 solo per seed |
-| `calibration-report/v2` | evidenza v3 privacy-safe e seed di ordine |
-| `calibration-record/v2` | record privato storico prodotto da v3 |
-| `calibration-record/v3` | record privato storico prodotto da v4 |
-| `calibration-record/v4` | record privato corrente prodotto da v5 |
-| `engine-lock/v1` | identità, comando, API, salute e asset del motore |
+| `mode/v1` | mode services and sampling |
+| `profile/v1` | compatibility with class-based evidence; no production envelope is distributed |
+| `calibration-policy/v1` | the explicit laboratory contract |
+| `calibration-report/v1` | v1 laboratory bundles |
+| `calibration-policy/v2` | the historical public v3 method, used by v5 for seeds only |
+| `calibration-report/v2` | privacy-safe v3 evidence and ordering seeds |
+| `calibration-record/v2` | historical private record produced by v3 |
+| `calibration-record/v3` | historical private record produced by v4 |
+| `calibration-record/v4` | current private record produced by v5 |
+| `engine-lock/v1` | engine identity, command, API, health, and assets |
 
-Il catalogo installato contiene tre modi, una policy v3 storica e un report di riferimento. Non contiene
-profili `profile/v1` di produzione. Il report condiviso espone al runtime soltanto
-`seed_n_cpu_moe`: contesto, hardware, tok/s e busta osservata non possono entrare nel piano di un
-altro host.
+The installed catalog contains three modes, one historical v3 policy, and one reference report. It
+contains no production `profile/v1` profiles. At runtime the shared report exposes only
+`seed_n_cpu_moe`: context, hardware, tok/s, and the observed envelope cannot enter another host's
+plan.
 
-`qwen-launcher validate` meta-valida gli schemi, valida i documenti e ricostruisce i legami che JSON
-Schema non può esprimere, inclusi digest, dominio, riserve, candidati e compatibilità col lock.
+`qwen-launcher validate` meta-validates the schemas, validates the documents, and reconstructs the
+links JSON Schema cannot express, including digests, domain, reserves, candidates, and lock
+compatibility.
 
-## Modi e piano di lancio
+## Modes and launch plan
 
-Un modo contiene comportamento, non prestazioni:
+A mode contains behavior, not performance:
 
-| Modo | UI | Vision | Temperatura | top-p | top-k |
+| Mode | UI | Vision | Temperature | top-p | top-k |
 |---|---:|---:|---:|---:|---:|
-| `coding` | no | no | 0,6 | 0,95 | 20 |
-| `studio` | sì | no | 0,7 | 0,8 | 20 |
-| `vstudio` | sì | sì | 0,7 | 0,8 | 20 |
+| `coding` | no | no | 0.6 | 0.95 | 20 |
+| `studio` | yes | no | 0.7 | 0.8 | 20 |
+| `vstudio` | yes | yes | 0.7 | 0.8 | 20 |
 
-`LaunchPlan` fonde senza ambiguità:
+`LaunchPlan` merges, unambiguously:
 
-- modo e sampling;
-- identità e percorso fisico del modello;
-- porta;
-- backend e indice GPU;
-- `ctx` e `n_cpu_moe` dal record attivo o dalla baseline;
-- riferimenti diagnostici e warning.
+- mode and sampling;
+- model identity and physical path;
+- port;
+- backend and GPU index;
+- `ctx` and `n_cpu_moe` from the active record or the baseline;
+- diagnostic references and warnings.
 
-Il piano usa un record solo se è un `calibration-record/v2` o `/v3` attivo per quel modo,
-semanticamente valido e compatibile con modello, digest, release/commit/contratto motore, OS,
-backend, componenti, driver e memoria corrente. Nel confronto del totale RAM è tollerata una deriva
-massima di 1 MiB; headroom RAM/VRAM usa la riserva registrata dal protocollo del record.
+The plan uses a record only when it is an active `calibration-record/v2` or `/v3` for that mode,
+semantically valid, and compatible with the model, digest, engine release/commit/contract, OS,
+backend, components, driver, and current memory. A maximum drift of 1 MiB is tolerated when
+comparing total RAM; RAM/VRAM headroom uses the reserve recorded by the record's protocol.
 
-Se il record manca o non è riusabile, la baseline è `ctx=8192` e, su CUDA, `n_cpu_moe=48`. È sempre
-presentata come non ottimizzata. Le vecchie classi hardware e i report condivisi non producono
+If the record is missing or not reusable, the baseline is `ctx=8192` and, on CUDA, `n_cpu_moe=48`.
+It is always presented as not optimized. Old hardware classes and shared reports produce no
 nearest-match.
 
 ## Hardware
 
-Il rilevamento legge CPU e memoria tramite `psutil`. Per NVIDIA esegue senza shell, con timeout di 5
-secondi:
+Detection reads CPU and memory through `psutil`. For NVIDIA it runs, without a shell and with a
+5-second timeout:
 
 ```text
 nvidia-smi --query-gpu=index,name,memory.total,memory.free --format=csv,noheader,nounits
 ```
 
-Con più dispositivi sceglie quello con maggiore VRAM totale e, a parità, indice minore; l'avvio CUDA
-viene comunque bloccato perché l'isolamento multi-GPU non è verificato. Su un host CUDA supportato
-`CUDA_VISIBLE_DEVICES=<indice>` viene aggiunta soltanto all'ambiente figlio. L'ambiente del launcher
-non viene modificato.
+With multiple devices it picks the one with the most total VRAM and, on a tie, the lowest index;
+CUDA startup is blocked anyway, because multi-GPU isolation is unverified. On a supported CUDA host,
+`CUDA_VISIBLE_DEVICES=<index>` is added to the child environment only. The launcher's own
+environment is never modified.
 
-RAM e VRAM sono sempre GiB binari. Per il modello predefinito il gate richiede 28 GiB totali e 22
-GiB disponibili. Modelli diversi non ricevono soglie inventate dal modello predefinito.
+RAM and VRAM are always binary GiB. For the default model the gate requires 28 GiB total and 22 GiB
+available. Different models receive no thresholds invented from the default model.
 
-## Motore e modello
+## Engine and model
 
-Il contratto corrente è:
+The current contract is:
 
 ```text
 llama.cpp release: b10011
 source commit:      bf2c86ddc0685f580595954056c2e77ebabfab4f
-modello:            unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M
+model:              unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M
 ```
 
-`engine.lock` è sia lock di asset sia linguaggio macchina del comando. Contiene:
+`engine.lock` is both an asset lock and the machine language of the command. It contains:
 
-- probe `--version` e `--help`;
-- vocabolario completo dei flag ammessi;
-- template per modello, contesto, sampling, rete, UI, vision e backend;
-- endpoint API e risposta health esatta;
-- URL HTTPS, ruoli, formati, eseguibili e SHA-256 degli asset.
+- the `--version` and `--help` probes;
+- the complete vocabulary of allowed flags;
+- templates for model, context, sampling, network, UI, vision, and backend;
+- the API endpoints and the exact health response;
+- HTTPS URLs, roles, formats, executables, and asset SHA-256 digests.
 
-Il builder espande solo placeholder noti. Il comando corrente fissa host `127.0.0.1`, metriche,
-Jinja, flash attention, mmap, un solo slot, MTP e CORS `localhost`; abilita o disabilita UI e vision
-esplicitamente. CUDA usa `-ngl 99`, il `n_cpu_moe` del piano e cache K/V `q8_0`; CPU non riceve
-argomenti CUDA. I pesi restano `UD-Q4_K_M`: Q8 riguarda la cache KV.
+The builder expands known placeholders only. The current command pins host `127.0.0.1`, metrics,
+Jinja, flash attention, mmap, a single slot, MTP, and CORS on `localhost`; it enables or disables UI
+and vision explicitly. CUDA uses `-ngl 99`, the plan's `n_cpu_moe`, and a `q8_0` K/V cache; CPU
+receives no CUDA arguments. The weights remain `UD-Q4_K_M`: Q8 concerns the KV cache.
 
-Il modello predefinito è letto dallo snapshot della revisione appuntata e verificato per nome,
-dimensione e digest. Non viene usato `--hf-repo`, quindi il launcher non risolve branch remoti e non
-scrive nella cache Hugging Face.
+The default model is read from the snapshot of the pinned revision and verified by name, size, and
+digest. `--hf-repo` is not used, so the launcher resolves no remote branches and never writes to the
+Hugging Face cache.
 
-### Installazione gestita
+### Managed installation
 
-Gli asset vengono scaricati in file `.part` univoci sotto la cache gestita. L'estrazione rifiuta
-percorsi assoluti, drive, `..`, file speciali e link in fuga. I soli symlink ammessi sono quelli
-relativi, confinati e presenti nel tar Ubuntu verificato.
+Assets are downloaded into unique `.part` files under the managed cache. Extraction rejects absolute
+paths, drive letters, `..`, special files, and escaping links. The only symlinks allowed are
+relative, confined, and present in the verified Ubuntu tar.
 
-Ogni risultato passa da staging a una directory nuova sotto:
+Every result moves from staging into a new directory under:
 
 ```text
 data_dir()/engine/installations/
 ```
 
-L'attivazione sostituisce atomicamente `data_dir()/engine/current.json`, che contiene un percorso
-relativo verificato come discendente. Un errore di download, hash, estrazione, build, probe o
-attivazione lascia intatta l'installazione precedente.
+Activation atomically replaces `data_dir()/engine/current.json`, which contains a relative path
+verified as a descendant. A download, hash, extraction, build, probe, or activation error leaves the
+previous installation intact.
 
-## Processo e stato
+## Process and state
 
-Prima dell'avvio il launcher:
+Before startup the launcher:
 
-1. acquisisce `start.lock` con creazione esclusiva;
-2. pulisce stato morto o con PID riutilizzato;
-3. rifiuta un altro servizio gestito;
-4. verifica che la porta configurata sia libera su loopback;
-5. crea il log;
-6. avvia `llama-server` senza shell e registra `pid + create_time`;
-7. scrive `services.json` atomicamente;
-8. rilascia il lock e attende READY.
+1. acquires `start.lock` with exclusive creation;
+2. clears dead state or state with a reused PID;
+3. refuses another managed service;
+4. verifies that the configured port is free on loopback;
+5. creates the log;
+6. starts `llama-server` without a shell and records `pid + create_time`;
+7. writes `services.json` atomically;
+8. releases the lock and waits for READY.
 
-Il polling health usa richieste da 2 secondi ogni secondo, fino a 15 minuti. Connessione rifiutata,
-timeout, 503 e 5xx sono transitori. READY richiede HTTP 200 e corpo JSON esatto `{"status":"ok"}`;
-4xx o un corpo 200 incompatibile falliscono immediatamente.
+Health polling uses 2-second requests every second, for up to 15 minutes. Connection refused,
+timeouts, 503, and 5xx are transient. READY requires HTTP 200 and the exact JSON body
+`{"status":"ok"}`; a 4xx, or an incompatible 200 body, fails immediately.
 
-Lo stato ha versione 1 ed è sostituito tramite file temporaneo nella stessa directory, flush e
-`replace`. Un JSON malformato viene rinominato, non sovrascritto. `status` e `stop` verificano sempre
-`pid + create_time`; non terminano mai un processo basandosi sul solo PID.
+The state is version 1 and is replaced through a temporary file in the same directory, followed by
+flush and `replace`. Malformed JSON is renamed, not overwritten. `status` and `stop` always verify
+`pid + create_time`; they never terminate a process based on the PID alone.
 
-## Calibrazione
+## Calibration
 
-La calibrazione usa gli stessi contratti di modello, comando, salute e workload del lancio, ma ogni
-trial vive in uno stato isolato. La ricerca v4 monitora RAM e VRAM, usa processi freschi e produce
-record privati atomici. Il benchmark non è un comando autonomo: è un componente interno eseguito su
-ogni sessione di conferma.
+Calibration uses the same model, command, health, and workload contracts as a launch, but every
+trial lives in isolated state. The v4 search monitors RAM and VRAM, uses fresh processes, and
+produces atomic private records. The benchmark is not a standalone command: it is an internal
+component run on every confirmation session.
 
-Algoritmo, lifecycle dei record e limiti empirici sono descritti in
-[Calibrazione](calibration.md).
+The algorithm, record lifecycle, and empirical limits are described in
+[Calibration](calibration.md).
 
-## Confini di sicurezza e side effect
+## Security boundaries and side effects
 
-Importare `qwen_launcher` non usa rete, non crea directory, non scrive stato e non avvia processi.
-Ogni side effect appartiene all'operazione che lo richiede.
+Importing `qwen_launcher` uses no network, creates no directories, writes no state, and starts no
+processes. Every side effect belongs to the operation that requires it.
 
-Invarianti principali:
+The main invariants:
 
-- nessun `shell=True`, `eval`, `exec`, `sudo` o elevazione automatica;
-- nessun bind su `0.0.0.0`;
-- TLS e checksum non disattivabili;
-- cancellazioni limitate alle radici gestite;
-- cache Hugging Face mai modificata o eliminata;
-- config e record mai caricati in rete;
-- processi estranei protetti dall'identità completa;
-- test senza rete, GPU, modello o server reali.
+- no `shell=True`, `eval`, `exec`, `sudo`, or automatic elevation;
+- no bind on `0.0.0.0`;
+- TLS and checksums cannot be disabled;
+- deletions limited to the managed roots;
+- the Hugging Face cache is never modified or deleted;
+- config and records are never uploaded;
+- unrelated processes are protected by full identity checks;
+- tests use no real network, GPU, model, or server.
 
-Gli artefatti sotto [`evidence/`](../evidence/README.md) documentano ciò che è stato misurato; non
-allargano il perimetro supportato oltre i lock e i claim espliciti.
+The artifacts under [`evidence/`](../evidence/README.md) document what was measured; they do not
+widen the supported perimeter beyond the locks and the explicit claims.
 
-**Successivo:** [Calibrazione locale](calibration.md)
+**Next:** [Local calibration](calibration.md)

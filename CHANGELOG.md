@@ -1,169 +1,173 @@
 # Changelog
 
-Le modifiche rilevanti sono registrate qui per versione. I piani futuri non appartengono al
-changelog: sono in `IMPLEMENTATION_SPEC.md`.
+Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
+live in `IMPLEMENTATION_SPEC.md`.
 
 ## [Unreleased]
 
 ## [0.1.4] - 2026-07-24
 
-Implementa `calibration/v6-lite` come protocollo sperimentale **opt-in**. Su decisione registrata del
-maintainer (D-063) il motore è stato costruito prima del verdetto GO dello spike cross-context;
-`calibration/v5` resta il default e la promozione di v6 a default resta una decisione umana. La logica
-è testata offline con fake; l'adapter di trial reale è validato su hardware.
+Implements `calibration/v6-lite` as an **opt-in** experimental protocol. Under a recorded maintainer
+decision (D-063) the engine was built before the GO verdict of the cross-context spike;
+`calibration/v5` remains the default and promoting v6 to the default remains a human decision. The
+logic is tested offline with fakes; the real trial adapter is validated on hardware.
 
 ### Added
 
-- `--protocol v6` con `--preference fast|balanced|max-context`: misura e registra tre envelope per
-  modo (`fast`, `balanced`, `max_context`) nel nuovo record `calibration-record/v5`.
-- Motore `_calibration_v6_*`: ricerca condivisa `coding`+`studio` con bisezione del solo lato VRAM,
-  quick-bench di produzione (`benchmark_quick.py`), selezione senza Pareto, conferma ABBA con terzo
-  round condizionale e gate finale per envelope (smoke, multi-turn, vision).
-- Riserve dei trial v6 (0,5/2,0/0,125 GiB) scritte nel record; riuso e `doctor` valutano l'envelope
-  `active_preference`, con ripiego alla baseline quando l'headroom non basta.
+- `--protocol v6` with `--preference fast|balanced|max-context`: measures and records three envelopes
+  per mode (`fast`, `balanced`, `max_context`) in the new `calibration-record/v5` record.
+- The `_calibration_v6_*` engine: a shared `coding`+`studio` search bisecting the VRAM side only,
+  a production quick-bench (`benchmark_quick.py`), Pareto-free selection, ABBA confirmation with a
+  conditional third round, and a final per-envelope gate (smoke, multi-turn, vision).
+- v6 trial reserves (0.5/2.0/0.125 GiB) written into the record; reuse and `doctor` evaluate the
+  `active_preference` envelope and fall back to the baseline when headroom is insufficient.
 
 ### Changed
 
-- Migrazione secca a `mode/v2`: i tre modi emettono anche `--min-p`, `--presence-penalty`,
-  `--repeat-penalty` e `--reasoning` (coding `on`; studio e vstudio `off`). Temperatura, top-p e top-k
-  restano invariati e il `command_contract_sha256` non cambia. Il loader accetta solo `mode/v2`.
+- Hard migration to `mode/v2`: the three modes now also emit `--min-p`, `--presence-penalty`,
+  `--repeat-penalty`, and `--reasoning` (coding `on`; studio and vstudio `off`). Temperature, top-p,
+  and top-k are unchanged and `command_contract_sha256` does not change. The loader accepts only
+  `mode/v2`.
 
 ## [0.1.3] - 2026-07-24
 
-Release di correttezza e preparazione misurabile per il gate umano di `calibration/v6-lite`; il
-protocollo v5 resta il default e v6 non è ancora implementata.
+A correctness release that prepares measurable input for the human gate of `calibration/v6-lite`;
+protocol v5 remains the default and v6 is not implemented yet.
 
 ### Added
 
-- Un pacchetto repository-only `scripts/spike_ctx/` prepara lo spike cross-context umano con
-  quick-bench non cached, bisezione a esiti tipizzati, appendici MTP/reasoning, dry-run offline e
-  template di evidenza. Non esegue il run reale né decide GO/NO-GO.
+- A repository-only `scripts/spike_ctx/` package prepares the human cross-context spike with a
+  non-cached quick-bench, bisection with typed outcomes, MTP/reasoning appendices, an offline
+  dry-run, and evidence templates. It neither performs the real run nor decides GO/NO-GO.
 
 ### Fixed
 
-- Gli errori di monitoraggio RAM/VRAM scoperti durante il cleanup prevalgono ora sui fallimenti del
-  workload e invalidano correttamente l'intero run.
-- Le violazioni della riserva VRAM e il mancato rilascio post-stop hanno classi distinte, così i
-  protocolli sperimentali non confondono un limite monotono con un errore ritentabile.
+- RAM/VRAM monitoring errors discovered during cleanup now take precedence over workload failures
+  and correctly invalidate the whole run.
+- VRAM reserve violations and failure to release memory after stop have distinct classes, so
+  experimental protocols no longer confuse a monotonic limit with a retryable error.
 
 ### Changed
 
-- Il contratto motore rende MTP esplicito nel piano di lancio: `coding` e `studio` mantengono lo
-  stesso argv, mentre `vstudio` usa prudentemente `speculative=disabled` insieme a `--mmproj`.
-- Il contratto prepara, senza attivarli nei modi `mode/v1`, i flag verificati di sampling esteso e
-  reasoning necessari a un eventuale `calibration/v6-lite`.
-- Il nuovo digest del contratto rende incompatibili al riuso i record locali precedenti; i file
-  restano leggibili e il rimedio è rieseguire `calibrate`.
+- The engine contract makes MTP explicit in the launch plan: `coding` and `studio` keep the same
+  argv, while `vstudio` conservatively uses `speculative=disabled` together with `--mmproj`.
+- The contract prepares — without enabling them in `mode/v1` modes — the verified extended sampling
+  and reasoning flags needed by a possible `calibration/v6-lite`.
+- The new contract digest makes earlier local records ineligible for reuse; the files remain
+  readable and the remedy is to re-run `calibrate`.
 
 ## [0.1.2] - 2026-07-23
 
-Release di stabilizzazione con `calibration/v5`, UX terminale uniforme, progresso della compilazione
-Ubuntu CUDA e disinstallazione completa delle installazioni gestite da uv.
+A stabilization release with `calibration/v5`, uniform terminal UX, Ubuntu CUDA build progress, and
+complete removal of uv-managed installations.
 
 ### Fixed
 
-- I valori dinamici della CLI vengono resi come testo letterale: parentesi quadre e sequenze simili
-  al markup Rich non vengono più nascoste, reinterpretate o trasformate in errori non gestiti.
+- Dynamic CLI values are rendered as literal text: square brackets and sequences resembling Rich
+  markup are no longer hidden, reinterpreted, or turned into unhandled errors.
 
 ### Changed
 
-- `calibration/v5` aggiunge 96K (`98304`) e 48K (`49152`) alla scala automatica, porta il cap a 14
-  probe e produce `calibration-record/v4`; i record v2/v3 storici restano leggibili.
-- `doctor` mostra i parametri calibrati del record attivo valido (`ctx` e, su CUDA,
-  `--n-cpu-moe`) invece della sola etichetta "valid".
-- La CLI usa una presentazione Rich condivisa per stati, tabelle, errori e progresso, mantenendo
-  etichette testuali leggibili anche senza colore.
-- La compilazione Ubuntu CUDA mostra la percentuale reale letta dall'output CMake anziché un
-  indicatore indeterminato.
-- `uninstall` usa una sola conferma per rimuovere le radici gestite e la propria installazione
-  `uv tool`, senza rimuovere uv o la cache Hugging Face.
-- I workflow CI e release usano release Node 24 delle action, sempre appuntate a SHA completo.
+- `calibration/v5` adds 96K (`98304`) and 48K (`49152`) to the automatic scale, raises the cap to 14
+  probes, and produces `calibration-record/v4`; historical v2/v3 records remain readable.
+- `doctor` shows the calibrated parameters of the valid active record (`ctx` and, on CUDA,
+  `--n-cpu-moe`) instead of just the "valid" label.
+- The CLI uses a shared Rich presentation for states, tables, errors, and progress, keeping textual
+  labels readable even without color.
+- The Ubuntu CUDA build shows the real percentage read from the CMake output instead of an
+  indeterminate indicator.
+- `uninstall` uses a single confirmation to remove the managed roots and its own `uv tool`
+  installation, without removing uv or the Hugging Face cache.
+- The CI and release workflows use Node 24 releases of the actions, always pinned to a full SHA.
 
 ### Known limitations
 
-- La copertura di calibrazione resta `GATE-PARTIAL` finché manca hardware materialmente diverso.
-- Il maintainer ha autorizzato la pubblicazione GitHub senza ripetere un Gate manuale multipiattaforma
-  per `0.1.2`; PyPI resta indisponibile ed escluso.
+- Calibration coverage remains `GATE-PARTIAL` while materially different hardware is missing.
+- The maintainer authorized the GitHub publication of `0.1.2` without repeating a manual
+  cross-platform Gate; PyPI remains unavailable and excluded.
 
 ## [0.1.1] - 2026-07-23
 
-Release di stabilizzazione con `calibration/v4`, isolamento delle porte dei trial e progresso
-visibile durante calibrazione e installazione del motore.
+A stabilization release with `calibration/v4`, trial port isolation, and visible progress during
+calibration and engine installation.
 
 ### Added
 
-- `calibration-record/v3` registra esplicitamente `calibration/v4` e la sua riserva, mantenendo
-  caricamento e ricostruzione semantica dei record v2 storici.
+- `calibration-record/v3` records `calibration/v4` and its reserve explicitly, while still loading
+  and semantically reconstructing historical v2 records.
 
 ### Fixed
 
-- L'installazione del motore mostra la fase corrente e, sui terminali, barre a byte con velocità ed
-  ETA durante download ed estrazione; i probe restano limitati ma portano da 10 a 60 secondi il
-  margine per il primo avvio lento dell'asset CUDA Windows.
-- I server temporanei di calibrazione usano una porta loopback assegnata dal sistema quando
-  `llama_port` è occupata; gli avvii normali continuano a richiedere la porta configurata.
-- Il riuso di un record tollera al massimo 1 MiB di variazione nel totale RAM riportato, mantenendo
-  invariati identità dei componenti e controlli di headroom RAM/VRAM.
+- Engine installation shows the current phase and, on terminals, byte progress bars with speed and
+  ETA during download and extraction; probes stay bounded but raise the allowance for the slow first
+  start of the Windows CUDA asset from 10 to 60 seconds.
+- Temporary calibration servers use a system-assigned loopback port when `llama_port` is busy;
+  normal startups still require the configured port.
+- Record reuse tolerates at most 1 MiB of variation in the reported total RAM, leaving component
+  identity and RAM/VRAM headroom checks unchanged.
 
 ### Changed
 
-- `calibration/v4` sostituisce l'esecuzione v3 mantenendone scala, ricerca e conferma ABBA, ma usa
-  0,3 GiB di riserva VRAM; al riuso ogni record conserva la propria riserva originaria.
-- La calibrazione v4 mostra trial in corso, avanzamento live ed ETA per fase sui terminali, conserva
-  output lineare quando rediretta e riepiloga motivazione della selezione e headroom misurato.
-- La documentazione è stata riscritta come percorso lineare per nuovi utenti e descrive soltanto il
-  comportamento corrente.
-- Le prove misurate sono state separate dai manuali sotto `evidence/`; audit e design superati sono
-  stati rimossi.
-- `IMPLEMENTATION_SPEC.md` conserva lo stato sintetico e il solo lavoro ancora da realizzare, senza
-  i piani dettagliati delle milestone concluse.
+- `calibration/v4` replaces the v3 execution while keeping its scale, search, and ABBA confirmation,
+  but uses a 0.3 GiB VRAM reserve; on reuse each record keeps its own original reserve.
+- v4 calibration shows the running trial, live progress, and per-phase ETA on terminals, keeps
+  linear output when redirected, and summarizes the selection rationale and measured headroom.
+- The documentation was rewritten as a linear path for new users and describes only current
+  behavior.
+- Measured evidence was separated from the manuals under `evidence/`; superseded audits and designs
+  were removed.
+- `IMPLEMENTATION_SPEC.md` keeps the summarized status and only the work still to be done, without
+  the detailed plans of completed milestones.
 
 ### Known limitations
 
-- I Gate reali Ubuntu e Windows sono stati attestati dal maintainer, ma la copertura resta
-  `GATE-PARTIAL` finché manca hardware materialmente diverso; il Gate Ubuntu non rende
-  `n_cpu_moe=36` sicuro.
-- `0.1.1` è pubblicata soltanto su GitHub Releases; PyPI resta fuori da questa pubblicazione.
+- The real Ubuntu and Windows Gates were attested by the maintainer, but coverage remains
+  `GATE-PARTIAL` while materially different hardware is missing; the Ubuntu Gate does not make
+  `n_cpu_moe=36` safe.
+- `0.1.1` is published on GitHub Releases only; PyPI is out of scope for this publication.
 
 ## [0.1.0] - 2026-07-20
 
-Prima release pubblica di `qwen-launcher`.
+First public release of `qwen-launcher`.
 
 ### Added
 
-- Installazione esplicita del tool su Ubuntu e Windows con uv `0.11.28`, CPython `3.12.13` e verifica
-  SHA-256 della wheel.
-- Modello Qwen e proiettore vision appuntati per revisione, filename, dimensione e digest, letti
-  senza modificare la cache Hugging Face.
-- Contratto `llama.cpp b10011` con flag, API, health check e asset CPU/CUDA verificati.
-- Installazione sicura del motore con download HTTPS, estrazione confinata, directory immutabili e
-  attivazione atomica tramite manifest.
-- Modi `coding`, `studio` e `vstudio`, con UI e vision applicate esplicitamente.
-- Lifecycle in foreground, porta loopback, log, health polling, stato atomico, lock di avvio,
-  `status` e `stop` basati su `pid + create_time`.
-- Configurazione TOML severa con precedenza ambiente > file > default e directory Linux/Windows
-  definite.
-- Rilevamento CPU, RAM e NVIDIA; selezione GPU deterministica e ambiente CUDA confinato al figlio.
-- Calibrazione locale v3 con ricerca adattiva, monitoraggio RAM/VRAM, conferma ABBA,
-  `benchmark/v1`, record candidato/attivo/previous e diagnostica di riuso.
-- Policy e report pubblici v2 usati soltanto come evidenza e seed d'ordine, mai come busta remota.
-- Validazione JSON Schema e semantica di lock, modi, policy, report e bundle.
-- `doctor`, `validate`, `engine install`, `engine status`, `uninstall` e installer senza elevazione.
-- CI e workflow release multipiattaforma con action a SHA completo e pubblicazione PyPI OIDC.
+- Explicit tool installation on Ubuntu and Windows with uv `0.11.28`, CPython `3.12.13`, and SHA-256
+  verification of the wheel.
+- The Qwen model and vision projector pinned by revision, filename, size, and digest, read without
+  modifying the Hugging Face cache.
+- A `llama.cpp b10011` contract with verified flags, API, health check, and CPU/CUDA assets.
+- Safe engine installation with HTTPS download, confined extraction, immutable directories, and
+  atomic manifest-based activation.
+- The `coding`, `studio`, and `vstudio` modes, with UI and vision applied explicitly.
+- Foreground lifecycle, loopback port, logs, health polling, atomic state, startup lock, and
+  `status` and `stop` based on `pid + create_time`.
+- Strict TOML configuration with environment > file > default precedence and defined Linux/Windows
+  directories.
+- CPU, RAM, and NVIDIA detection; deterministic GPU selection and a CUDA environment confined to the
+  child process.
+- Local v3 calibration with adaptive search, RAM/VRAM monitoring, ABBA confirmation, `benchmark/v1`,
+  candidate/active/previous records, and reuse diagnostics.
+- Public v2 policy and reports used only as evidence and ordering seeds, never as a remote envelope.
+- JSON Schema and semantic validation of locks, modes, policies, reports, and bundles.
+- `doctor`, `validate`, `engine install`, `engine status`, `uninstall`, and installers without
+  elevation.
+- Cross-platform CI and release workflows with full-SHA-pinned actions and OIDC PyPI publication.
 
 ### Changed
 
-- Gate RAM disponibile del modello predefinito fissato a 22 GiB, mantenendo 28 GiB totali e riserva
-  dinamica di calibrazione da 2 GiB.
-- Target contesto esperto `98304` disponibile tramite `--target-ctx`, separato dalla scala automatica.
-- Cache K/V `q8_0` fissata sul ramo CUDA con mmap; ramo CPU invariato.
+- The available-RAM gate for the default model is set to 22 GiB, keeping 28 GiB total and a dynamic
+  2 GiB calibration reserve.
+- The expert context target `98304` is available through `--target-ctx`, separate from the automatic
+  scale.
+- The `q8_0` K/V cache is pinned on the CUDA branch with mmap; the CPU branch is unchanged.
 
 ### Known limitations
 
-- L'evidenza della calibrazione è `GATE-PARTIAL`: manca una ripetizione su hardware materialmente
-  diverso.
-- CUDA è bloccato su host multi-GPU.
-- I pesi non sono distribuiti né scaricati dal launcher.
-- PyPI attende la configurazione del Trusted Publisher; gli artefatti GitHub sono pubblici.
-- La serie 0.1 non garantisce stabilità di CLI, configurazione, record, procedure, prestazioni o
-  compatibilità futura.
+- The calibration evidence is `GATE-PARTIAL`: a repetition on materially different hardware is
+  missing.
+- CUDA is blocked on multi-GPU hosts.
+- The weights are neither distributed nor downloaded by the launcher.
+- PyPI awaits Trusted Publisher configuration; the GitHub artifacts are public.
+- The 0.1 series guarantees no stability of the CLI, configuration, records, procedures,
+  performance, or future compatibility.

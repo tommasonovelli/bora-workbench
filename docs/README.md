@@ -1,57 +1,59 @@
-# Documentazione
+# Documentation
 
-Questa directory descrive **il comportamento del codice nel branch corrente**. Non contiene tracker,
-proposte o piani di implementazione conclusi.
+This directory describes **the behavior of the code on the current branch**. It contains no trackers,
+proposals, or completed implementation plans.
 
-La lettura consigliata è lineare:
+The recommended reading order is linear:
 
-1. [Installazione e primo avvio](installation.md) — piattaforme, requisiti, modello, motore e avvio
-   iniziale;
-2. [Comandi](commands.md) — intera superficie CLI, opzioni, output ed exit code;
-3. [Configurazione e dati locali](configuration.md) — TOML, variabili ambiente, precedenze e
-   directory gestite;
-4. [Architettura](architecture.md) — componenti, flussi, contratti, lifecycle e confini di
-   sicurezza;
-5. [Calibrazione](calibration.md) — ricerca locale v5, benchmark, record, riuso ed evidenza
-   condivisa;
-6. [Operazioni e diagnostica](operations.md) — controlli ordinari, errori e recupero;
-7. [Sviluppo](development.md) — struttura del repository, contenuti, test, packaging e contributi;
-8. [Release](releasing.md) — costruzione, pubblicazione e stato degli artefatti pubblici.
+1. [Installation and first run](installation.md) — platforms, requirements, model, engine, and
+   initial startup;
+2. [Commands](commands.md) — the whole CLI surface, options, output, and exit codes;
+3. [Configuration and local data](configuration.md) — TOML, environment variables, precedence, and
+   managed directories;
+4. [Architecture](architecture.md) — components, flows, contracts, lifecycle, and security
+   boundaries;
+5. [Calibration](calibration.md) — local v5 search, benchmarks, records, reuse, and shared
+   evidence;
+6. [Operations and diagnostics](operations.md) — routine checks, errors, and recovery;
+7. [Development](development.md) — repository structure, content, tests, packaging, and
+   contributions;
+8. [Releasing](releasing.md) — building, publishing, and the status of the public artifacts.
 
-Per una panoramica breve e un quick start vedere il [README principale](../README.md).
+For a short overview and a quick start, see the [main README](../README.md).
 
-## Quale fonte consultare
+## Which source to consult
 
-| Domanda | Fonte |
+| Question | Source |
 |---|---|
-| Cosa fa oggi il programma? | codice, lock, schemi, test e questa documentazione |
-| Quali versioni e checksum sono accettati? | `src/qwen_launcher/resources/engine.lock` e contenuti versionati |
-| Da quali misure derivano lock e report? | [`evidence/`](../evidence/README.md) |
-| Come si contribuisce? | [CONTRIBUTING.md](../CONTRIBUTING.md) e [sviluppo](development.md) |
-| Cosa è previsto ma non implementato? | [IMPLEMENTATION_SPEC.md](../IMPLEMENTATION_SPEC.md) |
-| Cosa è cambiato fra le versioni? | [CHANGELOG.md](../CHANGELOG.md) |
+| What does the program do today? | the code, locks, schemas, tests, and this documentation |
+| Which versions and checksums are accepted? | `src/qwen_launcher/resources/engine.lock` and the versioned content |
+| Which measurements do the locks and reports come from? | [`evidence/`](../evidence/README.md) |
+| How do I contribute? | [CONTRIBUTING.md](../CONTRIBUTING.md) and [development](development.md) |
+| What is planned but not implemented? | [IMPLEMENTATION_SPEC.md](../IMPLEMENTATION_SPEC.md) |
+| What changed between versions? | [CHANGELOG.md](../CHANGELOG.md) |
 
-`IMPLEMENTATION_SPEC.md` è il piano normativo, non un manuale utente. Le prove grezze sono separate
-in `evidence/` perché servono a verificare la provenienza dei contratti, non a spiegare l'uso
-quotidiano del launcher.
+`IMPLEMENTATION_SPEC.md` is the normative plan, not a user manual. Raw evidence is kept separately in
+`evidence/` because it exists to verify where the contracts came from, not to explain day-to-day use
+of the launcher.
 
-## Stato corrente
+## Current status
 
-La release pubblica è `0.1.4`: mantiene `calibration/v5` e i record v4 come default e aggiunge
-`calibration/v6-lite` come protocollo sperimentale opt-in (`--protocol v6`, record `v5`) su override
-registrato del maintainer (D-063). La promozione di v6 a default resta condizionata a un GO committato.
+The public release is `0.1.4`: it keeps `calibration/v5` and v4 records as the default and adds
+`calibration/v6-lite` as an opt-in experimental protocol (`--protocol v6`, `v5` records) under a
+recorded maintainer override (D-063). Promoting v6 to the default remains conditional on a committed
+GO.
 
-PyPI resta indisponibile. Gli artefatti verificati sono nella GitHub Release `v0.1.4` e non vanno
-ricostruiti o sostituiti.
+PyPI remains unavailable. The verified artifacts are in the `v0.1.4` GitHub Release and must not be
+rebuilt or replaced.
 
-## Limiti attuali
+## Current limits
 
-- supporto garantito: Ubuntu 22.04+ x86-64 e Windows 11 x86-64;
-- backend: CPU oppure una singola GPU NVIDIA CUDA;
-- CUDA su host multi-GPU bloccato;
-- modello predefinito e `llama.cpp` fissati a identità precise;
-- pesi e mmproj non redistribuiti e non scaricati automaticamente;
-- evidenza empirica della calibrazione ancora `GATE-PARTIAL` perché copre un solo hardware reale;
-- nessuna garanzia di stabilità delle interfacce della serie 0.1.
+- guaranteed support: Ubuntu 22.04+ x86-64 and Windows 11 x86-64;
+- backends: CPU, or a single NVIDIA CUDA GPU;
+- CUDA on multi-GPU hosts is blocked;
+- the default model and `llama.cpp` are pinned to exact identities;
+- weights and mmproj are neither redistributed nor downloaded automatically;
+- the empirical calibration evidence is still `GATE-PARTIAL` because it covers a single real machine;
+- no interface stability guarantee for the 0.1 series.
 
-**Successivo:** [Installazione e primo avvio](installation.md)
+**Next:** [Installation and first run](installation.md)

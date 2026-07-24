@@ -1,50 +1,50 @@
-# Sviluppo e contributi
+# Development and contributions
 
-## Orientarsi nel repository
+## Finding your way around the repository
 
-Per chi apre il progetto per la prima volta:
+For anyone opening the project for the first time:
 
 ```text
-src/qwen_launcher/       pacchetto Python
-├── cli.py               gruppo di comandi pubblico
-├── config.py            configurazione
-├── paths.py             directory per OS
-├── hardware.py          CPU, RAM e NVIDIA
-├── profiles.py          modi e piano di lancio
-├── engine.py            modello e llama.cpp
-├── process.py           lifecycle del server
-├── calibration.py       API principale di calibrazione
+src/qwen_launcher/       Python package
+├── cli.py               public command group
+├── config.py            configuration
+├── paths.py             per-OS directories
+├── hardware.py          CPU, RAM, and NVIDIA
+├── profiles.py          modes and launch plan
+├── engine.py            model and llama.cpp
+├── process.py           server lifecycle
+├── calibration.py       main calibration API
 ├── benchmark.py         benchmark/v1
-├── validation.py        validazione dei contenuti
-├── _*.py                responsabilità interne estratte
-└── resources/           dati inclusi nella wheel
+├── validation.py        content validation
+├── _*.py                extracted internal responsibilities
+└── resources/           data included in the wheel
 
-tests/                   test offline e fake
-scripts/                 verifiche di packaging
-docs/                    manuali dello stato corrente
-evidence/                prove misurate e manifest
-IMPLEMENTATION_SPEC.md   solo piano normativo e lavoro futuro
-AGENTS.md                regole permanenti per contributori e agenti
+tests/                   offline tests and fakes
+scripts/                 packaging verifications
+docs/                    manuals for the current state
+evidence/                measured evidence and manifests
+IMPLEMENTATION_SPEC.md   normative plan and future work only
+AGENTS.md                permanent rules for contributors and agents
 ```
 
-Prima di modificare codice leggere [Architettura](architecture.md), `AGENTS.md` e l'intera
+Before changing code, read [Architecture](architecture.md), `AGENTS.md`, and the whole of
 `IMPLEMENTATION_SPEC.md`.
 
-## Ambiente riproducibile
+## Reproducible environment
 
-Versioni di sviluppo:
+Development versions:
 
 - CPython `3.12.13`;
 - uv `0.11.28`;
-- dipendenze congelate in `uv.lock`.
+- dependencies frozen in `uv.lock`.
 
-Preparazione:
+Preparation:
 
 ```bash
 uv sync --frozen
 ```
 
-Baseline e verifica finale:
+Baseline and final verification:
 
 ```bash
 uv run --frozen ruff check .
@@ -53,7 +53,7 @@ uv run --frozen pytest
 uv run --frozen qwen-launcher validate
 ```
 
-Se cambiano packaging, installer, documenti inclusi nella sdist o risorse:
+If packaging, installers, documents included in the sdist, or resources change:
 
 ```bash
 rm -rf dist                       # PowerShell: Remove-Item dist -Recurse -Force
@@ -62,60 +62,61 @@ uv run --frozen python scripts/verify_wheel.py
 uv run --frozen python scripts/verify_uninstall.py
 ```
 
-Le verifiche installano la wheel in ambienti temporanei, leggono le risorse, eseguono
-CLI/validazione, ispezionano la sdist e provano la rimozione completa dell'ambiente `uv tool`. I test
-non devono usare rete, GPU, modello, server reale o privilegi amministrativi.
+The verifications install the wheel into temporary environments, read the resources, run
+CLI/validation, inspect the sdist, and try the complete removal of the `uv tool` environment. Tests
+must use no network, GPU, model, real server, or administrative privileges.
 
-## Fonti di verità
+## Sources of truth
 
-Quando due fonti divergono, usare quest'ordine:
+When two sources diverge, use this order:
 
-1. lock, contenuti versionati e report accettati;
-2. output misurati in `evidence/`;
-3. schemi e test;
+1. locks, versioned content, and accepted reports;
+2. measured output in `evidence/`;
+3. schemas and tests;
 4. `IMPLEMENTATION_SPEC.md`;
-5. documentazione ufficiale della versione appuntata;
-6. documentazione corrente non versionata;
-7. assunzioni.
+5. official documentation for the pinned version;
+6. current unversioned documentation;
+7. assumptions.
 
-Non correggere un contratto di `llama.cpp` guardando il ramo corrente del progetto upstream. Non
-inventare flag, checksum, hardware supportato, endpoint, benchmark o compatibilità.
+Do not fix a `llama.cpp` contract by looking at the current upstream branch. Do not invent flags,
+checksums, supported hardware, endpoints, benchmarks, or compatibility.
 
-## Confini delle modifiche
+## Change boundaries
 
-Una pull request modifica **core oppure contenuto dichiarativo**, non entrambi.
+A pull request changes **either core or declarative content**, not both.
 
-- Core: Python, installer, workflow e test comportamentali.
-- Contenuto: JSON sotto `resources/content`, lock, report, manifest ed evidenza collegata.
-- Documentazione: accompagna il lato che sta cambiando e descrive il comportamento effettivo.
+- Core: Python, installers, workflows, and behavioral tests.
+- Content: JSON under `resources/content`, locks, reports, manifests, and the evidence linked to
+  them.
+- Documentation: accompanies the side that is changing and describes the actual behavior.
 
-Una correzione a uno schema o a un lock può richiedere una PR dichiarativa distinta dalla modifica
-Python che lo consumerà. Evitare rename, refactoring o formattazione estranei allo scopo.
+A fix to a schema or a lock may require a declarative PR separate from the Python change that will
+consume it. Avoid renames, refactors, or formatting unrelated to the purpose.
 
-## Regole del core
+## Core rules
 
-Il codice privilegia leggibilità e responsabilità strette:
+The code favors readability and narrow responsibilities:
 
-- massimo 200 righe per file e 40 per funzione nel codice scritto a mano;
-- massimo tre parametri di produzione, esclusi `self`/`cls`;
-- massimo tre livelli di nesting;
-- funzioni piccole, tipi precisi e dataclass frozen/slotted per modelli runtime;
-- docstring per moduli, classi e funzioni;
-- errori attesi azionabili, su stderr e senza traceback;
-- niente framework, plugin, async o astrazioni senza requisito corrente.
+- at most 200 lines per file and 40 per function in hand-written code;
+- at most three production parameters, excluding `self`/`cls`;
+- at most three nesting levels;
+- small functions, precise types, and frozen/slotted dataclasses for runtime models;
+- docstrings for modules, classes, and functions;
+- expected errors actionable, on stderr, and without tracebacks;
+- no frameworks, plugins, async, or abstractions without a current requirement.
 
-La CLI raccoglie input, presenta risultati e mappa gli errori; non deve assorbire logica di
-configurazione, piattaforma, lifecycle o calibrazione.
+The CLI collects input, presents results, and maps errors; it must not absorb configuration,
+platform, lifecycle, or calibration logic.
 
-## Modificare un modo
+## Changing a mode
 
-I modi sono JSON sotto:
+Modes are JSON under:
 
 ```text
 src/qwen_launcher/resources/content/modes/
 ```
 
-`mode/v1` contiene soltanto:
+`mode/v1` contains only:
 
 ```json
 {
@@ -127,116 +128,117 @@ src/qwen_launcher/resources/content/modes/
 }
 ```
 
-L'id deve coincidere col filename. Prestazioni, memoria, flag motore e hardware non appartengono al
-modo. Un nuovo campo incompatibile richiede un nuovo schema autorizzato dal piano; non va aggiunto a
-`mode/v1` per comodità.
+The id must match the filename. Performance, memory, engine flags, and hardware do not belong to a
+mode. A new incompatible field requires a new schema authorized by the plan; it must not be added to
+`mode/v1` out of convenience.
 
-Dopo la modifica eseguire almeno `validate`, test, build e verifica wheel.
+After the change, run at least `validate`, the tests, the build, and the wheel verification.
 
-## Schemi e contenuti
+## Schemas and content
 
-Gli schemi vivono in `resources/schemas/`, usano Draft 2020-12 e `additionalProperties: false`.
-Cambiare in modo incompatibile un contratto esistente è vietato: serve un nuovo identificatore di
-schema e una strategia di lettura esplicita.
+The schemas live in `resources/schemas/`, use Draft 2020-12, and set `additionalProperties: false`.
+Changing an existing contract incompatibly is forbidden: it requires a new schema identifier and an
+explicit reading strategy.
 
-I loader costruiscono modelli runtime solo dopo validazione. I default appartengono al loader o al
-codice, non a una correzione silenziosa di input sconosciuto.
+Loaders build runtime models only after validation. Defaults belong to the loader or the code, not
+to a silent correction of unknown input.
 
-Non proporre nuovi `profile/v1` come configurazioni trasferibili. La busta runtime viene soltanto da
-un record locale v2 attivo; report e profili condivisi sono evidenza o seed.
+Do not propose new `profile/v1` documents as transferable configurations. The runtime envelope comes
+only from an active local v2 record; shared reports and profiles are evidence or seeds.
 
-## Aggiornare `engine.lock`
+## Updating `engine.lock`
 
-`engine.lock` non segue `latest`. Un aggiornamento volontario richiede una nuova prova reale su tutte
-le coppie supportate prima di cambiare il lock.
+`engine.lock` does not follow `latest`. A deliberate update requires new real evidence on every
+supported pair before the lock changes.
 
-Procedura:
+Procedure:
 
-1. scegliere e approvare una release precisa;
-2. registrare tag, commit completo, `--version`, `--help`, licenze e asset ufficiali;
-3. acquisire gli archivi via HTTPS e verificarne SHA-256;
-4. provare Ubuntu e Windows, CPU e CUDA, nei tre modi;
-5. verificare salute, API, metriche, UI, vision, MTP, sampling, GPU, log e stop;
-6. eseguire `benchmark/v1` senza interpretarlo come promessa prestazionale;
-7. salvare output e manifest sotto `evidence/engine/`;
-8. aggiornare insieme lock, notice, test del vocabolario flag e documentazione corrente;
-9. ripetere installazioni reali e smoke `coding` su ogni target.
+1. choose and approve a precise release;
+2. record the tag, full commit, `--version`, `--help`, licenses, and official assets;
+3. acquire the archives over HTTPS and verify their SHA-256;
+4. test Ubuntu and Windows, CPU and CUDA, in all three modes;
+5. verify health, API, metrics, UI, vision, MTP, sampling, GPU, logs, and stop;
+6. run `benchmark/v1` without reading it as a performance promise;
+7. save the output and manifests under `evidence/engine/`;
+8. update the lock, notices, flag-vocabulary tests, and current documentation together;
+9. repeat the real installations and the `coding` smoke test on every target.
 
-Per Ubuntu CUDA verificare prima se la nuova release offre un prebuilt: la build dal sorgente è una
-conseguenza dell'asset mancante in `b10011`, non una preferenza permanente. Per Windows CUDA, server
-e runtime devono appartenere alla stessa coppia verificata.
+For Ubuntu CUDA, first check whether the new release offers a prebuilt: building from source is a
+consequence of the asset missing in `b10011`, not a permanent preference. For Windows CUDA, the
+server and runtime must belong to the same verified pair.
 
-Una divergenza fra output, archivio, digest e lock interrompe l'aggiornamento.
+Any divergence between the output, archive, digest, and lock stops the update.
 
-## Contribuire evidenza di calibrazione
+## Contributing calibration evidence
 
-Seguire la sezione [Contribuire nuova evidenza](calibration.md#contribuire-nuova-evidenza). In
-sintesi, una PR di evidenza:
+Follow the [Contributing new evidence](calibration.md#contributing-new-evidence) section. In short,
+an evidence PR:
 
-- usa `calibration/v5`, `benchmark/v1`, modello e motore appuntati;
-- contiene un report `calibration-report/v2` privacy-safe;
-- dichiara lo scope realmente misurato e il limite di portabilità;
-- aggiorna policy e SHA-256 dei byte esatti;
-- conserva fonti revisionate in `evidence/calibration/<id>/`;
-- non include record, config o log privati;
-- non contiene modifiche core.
+- uses `calibration/v5`, `benchmark/v1`, and the pinned model and engine;
+- contains a privacy-safe `calibration-report/v2` report;
+- declares the actually measured scope and the portability limit;
+- updates the policy and the SHA-256 of the exact bytes;
+- keeps the reviewed sources in `evidence/calibration/<id>/`;
+- includes no private records, config, or logs;
+- contains no core changes.
 
-Un report condiviso può modificare soltanto l'ordine della ricerca completa. Non diventa un piano,
-non promette tok/s e non autorizza nearest-match.
+A shared report can change only the order of the full search. It does not become a plan, promises no
+tok/s, and authorizes no nearest-match.
 
-## Evidenza misurata
+## Measured evidence
 
-`evidence/` non è documentazione utente né un archivio di piani. Contiene byte che sostengono:
+`evidence/` is neither user documentation nor an archive of plans. It contains bytes that back:
 
-- contratto `llama.cpp b10011` e matrice funzionale;
-- scelta della cache KV Q8 su CUDA;
-- report di calibrazione pubblico e relativi digest.
+- the `llama.cpp b10011` contract and the functional matrix;
+- the choice of the Q8 KV cache on CUDA;
+- the public calibration report and its digests.
 
-I file coperti da manifest o referenziati da un report vanno trattati come immutabili. Se un percorso
-deve cambiare, aggiornare riferimenti e manifest senza alterare i byte sorgente; se cambiano i byte,
-ripetere la verifica e dichiarare una nuova evidenza invece di riscrivere quella accettata.
+Files covered by a manifest, or referenced by a report, must be treated as immutable. If a path has
+to change, update the references and manifests without altering the source bytes; if the bytes
+change, repeat the verification and declare new evidence instead of rewriting the accepted one.
 
-## Dipendenze
+## Dependencies
 
-Le dipendenze runtime correnti sono `typer`, `rich`, `psutil`, `httpx` e `jsonschema`; quelle di
-sviluppo sono `pytest` e `ruff`.
+The current runtime dependencies are `typer`, `rich`, `psutil`, `httpx`, and `jsonschema`; the
+development ones are `pytest` and `ruff`.
 
-Prima di aggiungerne una:
+Before adding one:
 
-1. dimostrare perché la standard library non basta;
-2. verificare manutenzione, licenza, sicurezza e costo transitivo;
-3. ottenere autorizzazione dalla specifica normativa attiva;
-4. aggiornare `pyproject.toml` e `uv.lock` insieme;
-5. provare l'ambiente congelato su Ubuntu e Windows.
+1. show why the standard library is not enough;
+2. verify maintenance, licensing, security, and transitive cost;
+3. obtain authorization from the active normative specification;
+4. update `pyproject.toml` and `uv.lock` together;
+5. test the frozen environment on Ubuntu and Windows.
 
-## Packaging e risorse
+## Packaging and resources
 
-Il backend è `uv_build` con layout `src/`. La wheel deve contenere tutto sotto
-`qwen_launcher/resources/`; la sdist include inoltre installer, documentazione, piano ed evidenza.
+The backend is `uv_build` with an `src/` layout. The wheel must contain everything under
+`qwen_launcher/resources/`; the sdist additionally includes the installers, documentation, plan, and
+evidence.
 
-Usare `importlib.resources.files()` e mantenere le risorse come `Traversable`. `as_file()` è ammesso
-solo dentro il suo context manager. Importare il package deve restare privo di side effect.
+Use `importlib.resources.files()` and keep the resources as a `Traversable`. `as_file()` is allowed
+only inside its context manager. Importing the package must stay free of side effects.
 
-Quando si aggiunge un manuale corrente, aggiornare l'elenco richiesto da `scripts/verify_wheel.py` e
-la navigazione sequenziale in `docs/`.
+When adding a current manual, update the list required by `scripts/verify_wheel.py` and the
+sequential navigation in `docs/`.
 
-## CI e controlli manuali
+## CI and manual checks
 
-La CI esegue sync frozen, Ruff, pytest, validazione, build e verifica wheel su Ubuntu 22.04 e Windows
-Server 2022. I fake provano le failure path senza sostituire i gate reali quando cambiano motore,
-asset, installer, GPU o comportamento del modello.
+CI runs a frozen sync, Ruff, pytest, validation, the build, and the wheel verification on Ubuntu
+22.04 and Windows Server 2022. The fakes exercise the failure paths without replacing the real gates
+when the engine, assets, installers, GPU, or model behavior change.
 
-Nel resoconto indicare sempre:
+Always state in the report:
 
-- file e comportamento cambiati;
-- controlli eseguiti;
-- test manuali o cross-platform mancanti;
-- assunzioni, evidenza non disponibile e limiti.
+- the files and behavior that changed;
+- the checks that ran;
+- the missing manual or cross-platform tests;
+- the assumptions, unavailable evidence, and limits.
 
-## Git e pull request
+## Git and pull requests
 
-Usare Conventional Commits con un oggetto concreto. Per modifiche non banali aggiungere un corpo che
-spieghi cosa, perché, vincoli e verifiche. Prima del commit:
+Use Conventional Commits with a concrete subject. For non-trivial changes add a body explaining
+what, why, the constraints, and the verifications. Before committing:
 
 ```bash
 git diff --check
@@ -244,7 +246,7 @@ git status --short
 git diff --staged
 ```
 
-Push, tag, release, upload e impostazioni remote richiedono autorizzazione esplicita. Il branch
-`main` applica CI e revisione code owner ai contributori.
+Pushes, tags, releases, uploads, and remote settings require explicit authorization. The `main`
+branch enforces CI and code owner review for contributors.
 
-**Successivo:** [Release](releasing.md)
+**Next:** [Releasing](releasing.md)

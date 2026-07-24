@@ -1,49 +1,49 @@
-# Comandi
+# Commands
 
-La forma generale è:
+The general form is:
 
 ```text
-qwen-launcher [--version] <comando> [opzioni]
+qwen-launcher [--version] <command> [options]
 ```
 
-`--help` è disponibile sul gruppo principale e su ogni comando. Typer espone inoltre
-`--install-completion` e `--show-completion` per la shell corrente.
+`--help` is available on the main group and on every command. Typer also exposes
+`--install-completion` and `--show-completion` for the current shell.
 
-## Riepilogo
+## Summary
 
-| Comando | Scopo | Modifica dati locali? |
+| Command | Purpose | Changes local data? |
 |---|---|---:|
-| `--version` | mostra la versione installata | no |
-| `validate` | valida risorse o un bundle locale | no |
-| `doctor` | descrive configurazione, hardware, motore e record | no |
-| `engine status` | ispeziona il motore gestito | no |
-| `engine install` | installa e attiva il motore del lock | sì |
-| `coding` | avvia l'API testuale | stato e log |
-| `studio` | avvia la UI testuale integrata | stato e log |
-| `vstudio` | avvia UI e vision | stato e log |
-| `status` | mostra servizi vivi e ripulisce stato obsoleto | se necessario |
-| `stop` | ferma servizi gestiti verificati | sì |
-| `calibrate` | misura la macchina e gestisce record locali | sì |
-| `uninstall` | elimina le radici gestite dopo conferma | sì |
+| `--version` | shows the installed version | no |
+| `validate` | validates resources or a local bundle | no |
+| `doctor` | describes configuration, hardware, engine, and records | no |
+| `engine status` | inspects the managed engine | no |
+| `engine install` | installs and activates the engine from the lock | yes |
+| `coding` | starts the text API | state and logs |
+| `studio` | starts the built-in text UI | state and logs |
+| `vstudio` | starts the UI with vision | state and logs |
+| `status` | shows live services and clears stale state | if needed |
+| `stop` | stops verified managed services | yes |
+| `calibrate` | measures the machine and manages local records | yes |
+| `uninstall` | deletes the managed roots after confirmation | yes |
 
 ## `validate`
 
 ```bash
 qwen-launcher validate
-qwen-launcher validate --path <directory-bundle>
+qwen-launcher validate --path <bundle-directory>
 ```
 
-Senza `--path` valida le risorse installate:
+Without `--path` it validates the installed resources:
 
 - JSON Schema Draft 2020-12;
-- modi, policy e report;
-- riferimenti e SHA-256 fra policy ed evidenza;
-- semantica del lock motore e copertura dei flag;
-- vincoli incrociati che uno schema non può esprimere.
+- modes, policies, and reports;
+- references and SHA-256 between policy and evidence;
+- engine lock semantics and flag coverage;
+- cross-cutting constraints a schema cannot express.
 
-Con `--path` valida un bundle condivisibile prodotto dal laboratorio `calibration/v1`, inclusi
-manifest, riferimenti relativi e scansione privacy. Errori indicano file, percorso del campo e
-motivo. Soli warning terminano con 0; almeno un errore termina con 1.
+With `--path` it validates a shareable bundle produced by the `calibration/v1` laboratory, including
+the manifest, relative references, and the privacy scan. Errors report the file, the field path, and
+the reason. Warnings alone exit with 0; at least one error exits with 1.
 
 ## `doctor`
 
@@ -51,19 +51,20 @@ motivo. Soli warning terminano con 0; almeno un errore termina con 1.
 qwen-launcher doctor
 ```
 
-Mostra versione, configurazione risolta, OS, CPU, RAM, backend, GPU/VRAM, numero di seed condivisi,
-motore gestito, quattro directory pubbliche e validazione dei contenuti. Per ogni modo valuta anche
-lo stato del record locale:
+Shows the version, resolved configuration, OS, CPU, RAM, backend, GPU/VRAM, the number of shared
+seeds, the managed engine, the four public directories, and content validation. For each mode it
+also evaluates the state of the local record:
 
-- attivo e valido, con i parametri calibrati applicati ai lanci (`ctx` e, su CUDA, `--n-cpu-moe`);
-- candidato in attesa di attivazione;
-- assente;
-- incompatibile o obsoleto;
-- schema superato;
-- headroom corrente insufficiente.
+- active and valid, with the calibrated parameters applied to launches (`ctx` and, on CUDA,
+  `--n-cpu-moe`);
+- a candidate awaiting activation;
+- absent;
+- incompatible or stale;
+- superseded schema;
+- insufficient current headroom.
 
-Il comando non crea directory e non corregge automaticamente alcun problema. Una configurazione
-invalida termina con 2; un errore hardware o di contenuto con 1; warning diagnostici con 0.
+The command creates no directories and fixes no problem automatically. An invalid configuration
+exits with 2; a hardware or content error with 1; diagnostic warnings with 0.
 
 ## `engine status`
 
@@ -71,9 +72,9 @@ invalida termina con 2; un errore hardware o di contenuto con 1; warning diagnos
 qwen-launcher engine status
 ```
 
-Mostra manifest attivo, release, backend, eseguibile e compatibilità con `engine.lock`. Un motore
-assente è uno stato informativo e termina con 0; un'installazione presente ma incompatibile termina
-con 1.
+Shows the active manifest, release, backend, executable, and compatibility with `engine.lock`. A
+missing engine is an informational state and exits with 0; an installation that is present but
+incompatible exits with 1.
 
 ## `engine install`
 
@@ -82,20 +83,20 @@ qwen-launcher engine install
 qwen-launcher engine install --force
 ```
 
-Rileva CPU/CUDA, seleziona l'insieme esatto di asset nel lock, scarica via HTTPS, verifica SHA-256,
-estrae in staging, verifica l'eseguibile e attiva una nuova directory immutabile. Un target già
-attivo e compatibile è un no-op. `--force` reinstalla comunque lo stesso target; non disabilita TLS,
-checksum, confinamento o probe di compatibilità.
+Detects CPU/CUDA, selects the exact asset set from the lock, downloads over HTTPS, verifies SHA-256,
+extracts to staging, verifies the executable, and activates a new immutable directory. A target that
+is already active and compatible is a no-op. `--force` reinstalls the same target anyway; it does
+not disable TLS, checksums, confinement, or the compatibility probes.
 
-Il comando mostra la fase corrente durante controllo cache, download, estrazione, compilazione,
-verifica e attivazione. Su un terminale, download ed estrazione hanno una barra a byte con posizione
-dell'asset, velocità media ed ETA calcolata; senza una misura attendibile le altre fasi non mostrano
-una stima inventata. L'output rediretto resta line-oriented. Può usare la rete e, su Ubuntu CUDA,
-eseguire CMake e una compilazione di diversi minuti: la fase resta visibile anche quando CMake non ha
-ancora terminato. I probe `--version` e `--help` sono limitati a 60 secondi ciascuno. Il comando non
-installa prerequisiti di sistema e non eleva i privilegi.
+The command shows the current phase during cache check, download, extraction, build, verification,
+and activation. On a terminal, download and extraction have a byte progress bar with the asset
+position, average speed, and computed ETA; without a reliable measurement the other phases show no
+invented estimate. Redirected output stays line-oriented. It may use the network and, on Ubuntu
+CUDA, run CMake and a build lasting several minutes: the phase stays visible even while CMake has
+not finished yet. The `--version` and `--help` probes are bounded to 60 seconds each. The command
+installs no system prerequisites and never elevates privileges.
 
-## Modi di esecuzione
+## Run modes
 
 ```bash
 qwen-launcher coding [--force]
@@ -103,44 +104,43 @@ qwen-launcher studio [--force]
 qwen-launcher vstudio [--force]
 ```
 
-Tutti e tre seguono lo stesso flusso: configurazione → hardware → gate RAM → contenuti → modello →
-piano → motore → porta → processo → health check → foreground.
+All three follow the same flow: configuration → hardware → RAM gate → content → model → plan →
+engine → port → process → health check → foreground.
 
-| Modo | UI | Vision | Sampling `(temp, top_p, top_k)` |
+| Mode | UI | Vision | Sampling `(temp, top_p, top_k)` |
 |---|---:|---:|---|
 | `coding` | no | no | `(0.6, 0.95, 20)` |
-| `studio` | sì | no | `(0.7, 0.8, 20)` |
-| `vstudio` | sì | sì | `(0.7, 0.8, 20)` |
+| `studio` | yes | no | `(0.7, 0.8, 20)` |
+| `vstudio` | yes | yes | `(0.7, 0.8, 20)` |
 
-`--force` salta esclusivamente le soglie di 28 GiB totali e 22 GiB disponibili del modello
-predefinito. Non salta configurazione, piattaforma, multi-GPU, motore, modello, checksum, porta o
-health check.
+`--force` skips only the 28 GiB total and 22 GiB available thresholds of the default model. It does
+not skip configuration, platform, multi-GPU, engine, model, checksum, port, or health checks.
 
-Quando READY, la CLI mostra:
+Once READY, the CLI shows:
 
-- backend e modo;
-- record locale oppure baseline non ottimizzata;
-- API `http://127.0.0.1:<porta>/v1`;
-- per `studio`/`vstudio`, UI `http://127.0.0.1:<porta>/`;
-- percorso del log.
+- backend and mode;
+- the local record, or the non-optimized baseline;
+- the API at `http://127.0.0.1:<port>/v1`;
+- for `studio`/`vstudio`, the UI at `http://127.0.0.1:<port>/`;
+- the log path.
 
-Il contratto espone anche `/health`, `/v1/models`, `/v1/chat/completions` e `/metrics`. Il servizio
-ascolta solo su `127.0.0.1`. `studio` e `vstudio` aprono il browser soltanto dopo READY e se
-`open_browser=true`.
+The contract also exposes `/health`, `/v1/models`, `/v1/chat/completions`, and `/metrics`. The
+service listens on `127.0.0.1` only. `studio` and `vstudio` open the browser only after READY and
+only when `open_browser=true`.
 
-Con `coding` in esecuzione, una richiesta minima da un altro terminale POSIX è:
+With `coding` running, a minimal request from another POSIX terminal is:
 
 ```bash
 curl http://127.0.0.1:8080/v1/chat/completions \
   --header 'Content-Type: application/json' \
-  --data '{"messages":[{"role":"user","content":"Scrivi una funzione Python somma."}],"max_tokens":128,"stream":false}'
+  --data '{"messages":[{"role":"user","content":"Write a Python sum function."}],"max_tokens":128,"stream":false}'
 ```
 
-Sostituire `8080` se `llama_port` è diverso. È possibile usare qualunque client compatibile con
-l'endpoint OpenAI chat completions locale; non è richiesta una chiave dal server gestito corrente.
+Replace `8080` if `llama_port` differs. Any client compatible with the local OpenAI chat completions
+endpoint works; the current managed server requires no key.
 
-Il comando rimane collegato al processo. `Ctrl-C` termina il server, rimuove lo stato e restituisce
-130. Un'uscita naturale non zero restituisce 1 e indica il log.
+The command stays attached to the process. `Ctrl-C` terminates the server, removes the state, and
+returns 130. A natural non-zero exit returns 1 and points to the log.
 
 ## `status`
 
@@ -148,10 +148,10 @@ Il comando rimane collegato al processo. `Ctrl-C` termina il server, rimuove lo 
 qwen-launcher status
 ```
 
-Mostra servizio, PID, modo, backend, porta e log. Prima verifica ogni voce tramite `pid +
-create_time`; voci morte o PID riutilizzati vengono rimosse con warning. Uno stato JSON malformato è
-messo in quarantena come `services.corrupt-<timestamp>.json`. Nessun servizio è un successo con exit
-code 0.
+Shows the service, PID, mode, backend, port, and log. It first verifies each entry through
+`pid + create_time`; dead entries or reused PIDs are removed with a warning. Malformed JSON state is
+quarantined as `services.corrupt-<timestamp>.json`. No services at all is a success with exit code
+0.
 
 ## `stop`
 
@@ -159,20 +159,21 @@ code 0.
 qwen-launcher stop
 ```
 
-Ferma soltanto processi la cui identità coincide con lo stato. Attende fino a 10 secondi dopo
-`terminate`, poi usa `kill` e attende fino a 5 secondi. È idempotente: nessun servizio restituisce 0.
-Non cancellare manualmente `services.json` mentre il processo è vivo.
+Stops only processes whose identity matches the state. It waits up to 10 seconds after `terminate`,
+then uses `kill` and waits up to 5 seconds. It is idempotent: no services returns 0. Do not delete
+`services.json` by hand while the process is alive.
 
-## `calibrate`: protocollo corrente v5
+## `calibrate`: current v5 protocol
 
 ```bash
 qwen-launcher calibrate --mode <coding|studio|vstudio|all>
 ```
 
-`--protocol v5` è il default. Il comando mostra un preflight e chiede conferma prima dei processi.
-Per default scrive un candidato per ogni modo completato e lo attiva atomicamente.
+`--protocol v5` is the default. The command shows a preflight and asks for confirmation before
+starting processes. By default it writes one candidate per completed mode and activates it
+atomically.
 
-Opzioni v5:
+v5 options:
 
 ```bash
 qwen-launcher calibrate --mode all --no-activate
@@ -180,56 +181,58 @@ qwen-launcher calibrate --mode coding --activate
 qwen-launcher calibrate --mode coding --target-ctx 98304
 ```
 
-| Opzione | Effetto |
+| Option | Effect |
 |---|---|
-| `--no-activate` | conserva i nuovi record come candidati senza cambiare quelli attivi |
-| `--activate` | promuove candidati già validi, senza nuovi trial |
-| `--target-ctx N` | usa un solo contesto esperto approvato |
+| `--no-activate` | keeps the new records as candidates without changing the active ones |
+| `--activate` | promotes already valid candidates, without new trials |
+| `--target-ctx N` | uses a single approved expert context |
 
-I target ammessi sono `131072`, `98304`, `65536`, `49152`, `32768`, `16384` e `8192`; sono gli
-stessi gradini usati dalla scala automatica. `--activate` non può essere combinato con
-`--target-ctx`; `--activate` e `--no-activate` sono mutuamente esclusivi.
+The allowed targets are `131072`, `98304`, `65536`, `49152`, `32768`, `16384`, and `8192`; they are
+the same steps used by the automatic scale. `--activate` cannot be combined with `--target-ctx`;
+`--activate` and `--no-activate` are mutually exclusive.
 
-Le tre opzioni sono gestite dal parser specializzato del comando. `calibrate --help` le elenca
-nell'epilogo insieme agli extra v1, mentre la tabella generata da Typer contiene soltanto le opzioni
-comuni; la sintassi sopra è quella effettivamente supportata.
+The three options are handled by the command's specialized parser. `calibrate --help` lists them in
+the epilog together with the v1 extras, while the table generated by Typer contains only the common
+options; the syntax above is the one actually supported.
 
-Su un terminale interattivo il run v5 mostra una barra viva con fase, trial, tempo trascorso e stima
-adattiva; l'output rediretto resta line-oriented. Lo screening mostra `≤14` e una proiezione della
-durata fino a quel cap, non un limite o una promessa. Il riepilogo finale include la motivazione
-della selezione e i minimi RAM/VRAM osservati.
+On an interactive terminal the v5 run shows a live bar with the phase, trial, elapsed time, and an
+adaptive estimate; redirected output stays line-oriented. Screening shows `≤14` and a duration
+projection up to that cap, not a limit or a promise. The final summary includes the selection
+rationale and the lowest observed RAM/VRAM values.
 
-La calibrazione non effettua upload, non modifica `config.toml` e non installa modello o motore. I
-trial usano la porta configurata se libera; nel branch corrente ripiegano su una porta loopback
-assegnata dal sistema quando è occupata. Questo fallback non vale per i tre avvii normali.
+Calibration performs no uploads, does not modify `config.toml`, and installs neither the model nor
+the engine. Trials use the configured port when it is free; on the current branch they fall back to
+a system-assigned loopback port when it is busy. This fallback does not apply to the three normal
+launches.
 
-Dettagli dell'algoritmo e dei record: [Calibrazione](calibration.md).
+Algorithm and record details: [Calibration](calibration.md).
 
-## `calibrate`: protocollo sperimentale v6
+## `calibrate`: experimental v6 protocol
 
 ```bash
 qwen-launcher calibrate --mode all --protocol v6 --preference balanced
 ```
 
-`calibration/v6-lite` è **opt-in** (`--protocol v6`); `v5` resta il default. Misura tre envelope per
-modo (`fast`, `balanced`, `max_context`) e le scrive tutte nel record `calibration-record/v5`.
+`calibration/v6-lite` is **opt-in** (`--protocol v6`); `v5` remains the default. It measures three
+envelopes per mode (`fast`, `balanced`, `max_context`) and writes all of them into the
+`calibration-record/v5` record.
 
-| Opzione | Effetto |
+| Option | Effect |
 |---|---|
-| `--protocol v6` | esegue la ricerca sperimentale a tre envelope (v5 resta il default) |
-| `--preference fast\|balanced\|max-context` | fissa la busta attiva nel record (default `balanced`); solo con `v6` |
-| `--target-ctx N` | collassa la scala v6 su un solo gradino approvato |
-| `--no-activate` / `--activate` | come in v5: conserva o promuove i candidati |
+| `--protocol v6` | runs the experimental three-envelope search (v5 remains the default) |
+| `--preference fast\|balanced\|max-context` | pins the active envelope in the record (default `balanced`); only with `v6` |
+| `--target-ctx N` | collapses the v6 scale onto a single approved step |
+| `--no-activate` / `--activate` | as in v5: keeps or promotes the candidates |
 
-Target v6 ammessi: `131072`, `98304`, `65536`, `49152`, `32768`. `--preference` è rifiutata senza
-`--protocol v6`. Riserve dei trial v6: 0,5 GiB VRAM, 2,0 GiB RAM, 0,125 GiB di tolleranza al
-rilascio. La promozione di v6 a protocollo di default è una decisione umana (D-063), mai automatica.
-Dettagli: [Calibrazione — calibration/v6-lite](calibration.md#calibrationv6-lite-sperimentale).
+Allowed v6 targets: `131072`, `98304`, `65536`, `49152`, `32768`. `--preference` is rejected without
+`--protocol v6`. v6 trial reserves: 0.5 GiB VRAM, 2.0 GiB RAM, 0.125 GiB release tolerance.
+Promoting v6 to the default protocol is a human decision (D-063), never automatic.
+Details: [Calibration — calibration/v6-lite](calibration.md#calibrationv6-lite-experimental).
 
-## `calibrate`: laboratorio v1
+## `calibrate`: v1 laboratory
 
-Il protocollo storico resta eseguibile solo come laboratorio esplicito e produce un bundle bozza,
-non un record attivo:
+The historical protocol remains executable only as an explicit laboratory and produces a draft
+bundle, not an active record:
 
 ```bash
 qwen-launcher calibrate \
@@ -240,13 +243,13 @@ qwen-launcher calibrate \
   --settings 2:0.5:0.125
 ```
 
-Su CUDA ogni candidato usa `ID:CTX:N_CPU_MOE` e le impostazioni usano
-`RUNS:MIN_FREE_VRAM_GIB:RELEASE_TOLERANCE_GIB`. Su CPU il candidato usa `ID:CTX` e `--settings`
-contiene solo `RUNS`. `--candidate` è ripetibile. Se candidati o impostazioni mancano, la CLI li
-chiede interattivamente; non assegna default impliciti.
+On CUDA each candidate uses `ID:CTX:N_CPU_MOE` and the settings use
+`RUNS:MIN_FREE_VRAM_GIB:RELEASE_TOLERANCE_GIB`. On CPU the candidate uses `ID:CTX` and `--settings`
+contains only `RUNS`. `--candidate` is repeatable. If candidates or settings are missing, the CLI
+asks for them interactively; it assigns no implicit defaults.
 
-Le opzioni v5 non sono valide con `--protocol v1`. Candidati o `--settings` non sono validi con v5.
-`--protocol v3` e `--protocol v4` non avviano nuovi run; i record storici restano supportati.
+The v5 options are not valid with `--protocol v1`. Candidates and `--settings` are not valid with
+v5. `--protocol v3` and `--protocol v4` start no new runs; historical records remain supported.
 
 ## `uninstall`
 
@@ -254,23 +257,24 @@ Le opzioni v5 non sono valide con `--protocol v1`. Candidati o `--settings` non 
 qwen-launcher uninstall
 ```
 
-Rifiuta di procedere se esiste un servizio gestito vivo. Mostra configurazione, dati, cache, stato e
-l'installazione Python corrente, quindi richiede una sola conferma. Se il comando proviene
-dall'installazione supportata `uv tool`, rimuove anche il tool Python tramite uv appena il processo
-termina; uv stesso e la cache Hugging Face restano invariati. Un'installazione Python non gestita da
-uv viene indicata esplicitamente e non viene rimossa per congettura. Un annullamento normale non
-elimina nulla e termina con 0; `Ctrl-C` termina con 130.
+Refuses to proceed while a live managed service exists. It shows the configuration, data, cache,
+state, and the current Python installation, then asks for a single confirmation. If the command
+comes from the supported `uv tool` installation, it also removes the Python tool through uv as soon
+as the process exits; uv itself and the Hugging Face cache stay unchanged. A Python installation not
+managed by uv is reported explicitly and is not removed on a guess. A normal cancellation deletes
+nothing and exits with 0; `Ctrl-C` exits with 130.
 
-## Exit code
+## Exit codes
 
-| Codice | Significato |
+| Code | Meaning |
 |---:|---|
-| `0` | successo, stato vuoto o soli warning |
-| `1` | errore operativo atteso o validazione fallita |
-| `2` | input CLI o configurazione invalida |
-| `130` | interruzione da tastiera |
+| `0` | success, empty state, or warnings only |
+| `1` | expected operational error or failed validation |
+| `2` | invalid CLI input or configuration |
+| `130` | keyboard interrupt |
 
-Gli errori operativi attesi sono scritti su stderr senza traceback. Un traceback indica invece un
-bug inatteso e va segnalato con il comando eseguito, l'output e un log revisionato per dati privati.
+Expected operational errors are written to stderr without a traceback. A traceback instead indicates
+an unexpected bug and should be reported with the command that was run, the output, and a log
+reviewed for private data.
 
-**Successivo:** [Configurazione e dati locali](configuration.md)
+**Next:** [Configuration and local data](configuration.md)

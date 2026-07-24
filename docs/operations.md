@@ -1,8 +1,8 @@
-# Operazioni e diagnostica
+# Operations and diagnostics
 
-## Punto di partenza
+## Starting point
 
-Quando qualcosa non funziona, eseguire nell'ordine:
+When something does not work, run in this order:
 
 ```bash
 qwen-launcher --version
@@ -12,257 +12,257 @@ qwen-launcher status
 qwen-launcher engine status
 ```
 
-Questi comandi separano rapidamente quattro categorie: installazione del tool, contenuti, macchina e
-motore/processo. Conservare l'output completo e il percorso del log indicato dalla CLI. Prima di
-condividere un log, rimuovere percorsi, nomi utente e altri dati privati.
+These commands quickly separate four categories: tool installation, content, machine, and
+engine/process. Keep the full output and the log path reported by the CLI. Before sharing a log,
+remove paths, usernames, and other private data.
 
-Gli errori attesi non mostrano traceback. In generale:
+Expected errors show no traceback. In general:
 
-- exit 1: problema operativo o validazione fallita;
-- exit 2: comando o configurazione non validi;
-- exit 130: interruzione da tastiera.
+- exit 1: an operational problem or a failed validation;
+- exit 2: an invalid command or configuration;
+- exit 130: keyboard interrupt.
 
-## Installazione del tool
+## Tool installation
 
-### L'installer chiede una sorgente
+### The installer asks for a source
 
-È intenzionale: non esiste un default implicito. Per `0.1.4` usare wheel e digest della GitHub
-Release come descritto in [Installazione](installation.md). La sorgente PyPI non è ancora disponibile.
+That is intentional: there is no implicit default. For `0.1.4` use the wheel and digest from the
+GitHub Release as described in [Installation](installation.md). The PyPI source is not available
+yet.
 
-### `uv` non è nel `PATH`
+### `uv` is not on the `PATH`
 
-Gli script cercano prima `uv` nel `PATH`, poi:
+The scripts look for `uv` on the `PATH` first, then in:
 
 - Ubuntu: `${UV_INSTALL_DIR:-$HOME/.local/bin}`;
-- Windows: `%UV_INSTALL_DIR%` oppure `%USERPROFILE%\.local\bin`.
+- Windows: `%UV_INSTALL_DIR%` or `%USERPROFILE%\.local\bin`.
 
-Aprire un nuovo terminale o aggiungere quella directory al `PATH`. Per il flusso riproducibile:
+Open a new terminal or add that directory to the `PATH`. For the reproducible flow:
 
 ```bash
 uv --version
 ```
 
-deve riportare `0.11.28`.
+must report `0.11.28`.
 
-### PowerShell blocca lo script
+### PowerShell blocks the script
 
-Eseguire il file locale scaricato dalla release in un processo separato:
+Run the local file downloaded from the release in a separate process:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 <opzioni>
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 <options>
 ```
 
-Non cambiare la policy di sistema e non eseguire testo remoto con `Invoke-Expression`.
+Do not change the system policy and do not execute remote text with `Invoke-Expression`.
 
-## Configurazione
+## Configuration
 
-### TOML invalido o chiave sconosciuta
+### Invalid TOML or unknown key
 
-Il file intero viene validato prima degli override ambiente. Correggere il file stampato da
-`doctor`; le sole chiavi sono:
+The whole file is validated before the environment overrides. Fix the file printed by `doctor`; the
+only keys are:
 
 ```text
 model, model_path, llama_port, engine_path, open_browser
 ```
 
-Stringhe come `open_browser = "false"` non sono booleani TOML. Usare `open_browser = false`.
+Strings such as `open_browser = "false"` are not TOML booleans. Use `open_browser = false`.
 
-### Una variabile ambiente sembra ignorare il file ma il comando fallisce comunque
+### An environment variable seems to override the file, but the command still fails
 
-È il comportamento previsto: un TOML invalido non viene nascosto da un override. Correggere prima il
-file, poi verificare il valore risolto con `doctor`.
+That is the intended behavior: an invalid TOML is not hidden by an override. Fix the file first,
+then check the resolved value with `doctor`.
 
-## Modello
+## Model
 
-### Modello predefinito non trovato
+### The default model is not found
 
-Il launcher non lo scarica. Verificare che lo snapshot della revisione appuntata esista nella cache
-Hugging Face selezionata e che il filename sia esatto. `vstudio` richiede anche `mmproj-BF16.gguf`.
+The launcher does not download it. Check that the snapshot of the pinned revision exists in the
+selected Hugging Face cache and that the filename is exact. `vstudio` also requires
+`mmproj-BF16.gguf`.
 
-### Dimensione o digest errato
+### Wrong size or digest
 
-Il file è incompleto o diverso da quello fissato. Non rinominarlo per aggirare il controllo e non
-modificare `engine.lock`. Ripristinare i byte corretti dalla fonte scelta dall'utente.
+The file is incomplete or different from the pinned one. Do not rename it to bypass the check and do
+not modify `engine.lock`. Restore the correct bytes from the source you chose.
 
-### Modello personalizzato rifiutato
+### A custom model is rejected
 
-Impostare sia un'identità `model` diversa sia `model_path`. Il modello predefinito non accetta un
-percorso sostitutivo. I dati calibrati e il gate del modello predefinito non vengono attribuiti a un
-GGUF diverso.
+Set both a different `model` identity and `model_path`. The default model does not accept a
+substitute path. The calibrated data and the gate of the default model are not attributed to a
+different GGUF.
 
-## Memoria
+## Memory
 
-### RAM insufficiente al preflight
+### Insufficient RAM at preflight
 
-Il modello predefinito richiede 28 GiB totali e 22 GiB disponibili. Chiudere workload o usare una
-macchina idonea. `--force` sui modi accetta soltanto il rischio di questo gate; non bypassa altri
-controlli.
+The default model requires 28 GiB total and 22 GiB available. Close workloads or use a suitable
+machine. `--force` on the modes accepts only the risk of this gate; it bypasses no other check.
 
-La calibrazione applica inoltre una riserva dinamica di 2 GiB durante ogni trial e non offre
-`--force`.
+Calibration additionally applies a dynamic 2 GiB reserve during every trial and offers no `--force`.
 
-### Il record aveva abbastanza RAM ma ora viene ignorato
+### The record had enough RAM but is now ignored
 
-Il riuso richiede il fabbisogno massimo misurato più 2 GiB disponibili. Liberare memoria e riprovare.
-Nel branch corrente una variazione del totale RAM fino a 1 MiB è tollerata; differenze maggiori
-indicano una macchina o una capacità diversa e invalidano il record.
+Reuse requires the highest measured requirement plus 2 GiB available. Free memory and try again. On
+the current branch a total-RAM variation of up to 1 MiB is tolerated; larger differences indicate a
+different machine or capacity and invalidate the record.
 
 ## CUDA
 
-### Il backend è CPU nonostante la GPU NVIDIA
+### The backend is CPU despite an NVIDIA GPU
 
-`doctor` mostra il motivo. Controllare:
+`doctor` shows why. Check:
 
 ```bash
 nvidia-smi
 ```
 
-Il launcher ripiega su CPU quando il comando manca, supera 5 secondi, termina con errore o restituisce
-CSV non interpretabile. Correggere driver e `PATH`; non impostare globalmente
-`CUDA_VISIBLE_DEVICES` come workaround.
+The launcher falls back to CPU when the command is missing, exceeds 5 seconds, exits with an error,
+or returns unparseable CSV. Fix the driver and the `PATH`; do not set `CUDA_VISIBLE_DEVICES`
+globally as a workaround.
 
-### Sono presenti più GPU
+### Multiple GPUs are present
 
-Il launcher identifica deterministicamente una GPU ma blocca l'avvio CUDA. Il caso multi-GPU non è
-supportato dalla serie corrente; usare un host a GPU singola o rendere invisibili gli altri dispositivi
-prima di avviare il launcher, assumendosi la gestione esterna dell'ambiente.
+The launcher identifies one GPU deterministically but blocks CUDA startup. The multi-GPU case is not
+supported by the current series; use a single-GPU host, or make the other devices invisible before
+starting the launcher, taking on the external management of the environment yourself.
 
-### La calibrazione viene invalidata da un processo GPU
+### Calibration is invalidated by a GPU process
 
-Chiudere workload compute e applicazioni grafiche intensive. Su WDDM i contesti desktop iniziali sono
-ammessi entro la popolazione catturata; un nuovo eseguibile, un'identità illeggibile o più istanze del
-previsto invalidano comunque il run.
+Close compute workloads and graphics-intensive applications. On WDDM the initial desktop contexts
+are allowed within the captured population; a new executable, an unreadable identity, or more
+instances than expected still invalidate the run.
 
-## Motore
+## Engine
 
-### Motore assente
+### The engine is missing
 
 ```bash
 qwen-launcher engine install
 qwen-launcher engine status
 ```
 
-L'installazione gestita seleziona il backend rilevato. Se si vuole usare un eseguibile esterno,
-`engine_path` deve puntare a `llama-server` della release esatta e con tutti i flag verificati.
+The managed installation selects the detected backend. If you want to use an external executable,
+`engine_path` must point at the `llama-server` of the exact release, with all verified flags.
 
-### Motore incompatibile
+### The engine is incompatible
 
-Un eseguibile esplicito o trovato nel `PATH` ha precedenza su quello gestito. Se è incompatibile, il
-launcher si ferma invece di ignorarlo. Correggere/rimuovere `engine_path` o il candidato nel `PATH`,
-quindi rieseguire `engine status`.
+An explicit executable, or one found on the `PATH`, takes precedence over the managed one. If it is
+incompatible, the launcher stops instead of ignoring it. Fix or remove `engine_path` or the
+candidate on the `PATH`, then re-run `engine status`.
 
-### Ubuntu CUDA segnala prerequisiti mancanti
+### Ubuntu CUDA reports missing prerequisites
 
-La release fissata non ha un prebuilt CUDA Linux verificato, quindi il launcher compila dal sorgente.
-Installa manualmente gli strumenti elencati dal messaggio e ripeti il comando. Il launcher non usa
-`sudo` né package manager.
+The pinned release has no verified Linux CUDA prebuilt, so the launcher builds from source. Install
+the tools listed in the message manually and repeat the command. The launcher uses neither `sudo`
+nor a package manager.
 
-### Download o checksum fallito
+### Download or checksum failed
 
-Controllare rete HTTPS, spazio e proxy. Non disabilitare TLS o checksum. File `.part` e staging non
-vengono attivati; `current.json` precedente resta valido.
+Check HTTPS connectivity, disk space, and proxies. Do not disable TLS or checksums. `.part` files
+and staging are not activated; the previous `current.json` stays valid.
 
-## Avvio e processo
+## Startup and process
 
-### Porta occupata
+### The port is busy
 
-Per `coding`, `studio` e `vstudio`, cambiare `llama_port` oppure fermare il proprietario. Se è un
-servizio gestito:
+For `coding`, `studio`, and `vstudio`, change `llama_port` or stop the owner. If it is a managed
+service:
 
 ```bash
 qwen-launcher status
 qwen-launcher stop
 ```
 
-Non eliminare `services.json` per liberare la porta. Dalla `v0.1.1` i soli trial di calibrazione
-possono scegliere automaticamente una porta temporanea; gli avvii ordinari restano severi sulla
-porta configurata.
+Do not delete `services.json` to free the port. Since `v0.1.1` only calibration trials can pick a
+temporary port automatically; ordinary launches stay strict about the configured port.
 
-### Un secondo avvio è rifiutato
+### A second startup is refused
 
-È ammesso un solo servizio gestito. Un `start.lock` con proprietario vivo blocca il secondo comando;
-un lock sicuramente obsoleto viene rimosso e acquisito una sola volta. Usare `status` e `stop`.
+Only one managed service is allowed. A `start.lock` with a live owner blocks the second command; a
+lock that is definitely stale is removed and acquired exactly once. Use `status` and `stop`.
 
-### Il caricamento termina in timeout
+### Loading times out
 
-Il timeout totale è 15 minuti. Controllare il log per OOM, modello errato, librerie mancanti o lentezza
-estrema. Non allargare il timeout o cambiare endpoint senza cambiare e verificare il contratto.
+The total timeout is 15 minutes. Check the log for OOM, the wrong model, missing libraries, or
+extreme slowness. Do not widen the timeout or change the endpoint without changing and verifying the
+contract.
 
-### Health check incompatibile
+### Incompatible health check
 
-READY richiede esattamente HTTP 200 con `{"status":"ok"}`. Un corpo diverso indica un motore o un
-servizio incompatibile sulla porta. Controllare `engine_path`, `PATH`, `engine status` e il processo
-che ascolta.
+READY requires exactly HTTP 200 with `{"status":"ok"}`. A different body indicates an incompatible
+engine or service on the port. Check `engine_path`, the `PATH`, `engine status`, and the process
+that is listening.
 
-### Il browser non si apre
+### The browser does not open
 
-La UI può essere già pronta. Copiare l'URL stampato dalla CLI. Verificare `open_browser=true`; un
-fallimento del browser non termina il server.
+The UI may already be ready. Copy the URL printed by the CLI. Check `open_browser=true`; a browser
+failure does not terminate the server.
 
-### Stato corrotto
+### Corrupt state
 
-`status` sposta automaticamente il file in `services.corrupt-<timestamp>.json` e ricostruisce uno
-stato vuoto. Prima di avviare un nuovo server, verificare manualmente che non esista ancora un vecchio
-`llama-server` non più gestibile dal file corrotto.
+`status` automatically moves the file to `services.corrupt-<timestamp>.json` and rebuilds an empty
+state. Before starting a new server, verify by hand that no old `llama-server` — no longer
+manageable through the corrupt file — is still running.
 
-## Record e calibrazione
+## Records and calibration
 
-### Il record è assente o ignorato
+### The record is missing or ignored
 
-`doctor` distingue candidato, assente, invalido, obsoleto, schema superato e headroom insufficiente.
-Solo `<modo>.json` attivo è riusabile. Il rimedio normale è liberare memoria o rieseguire:
-
-```bash
-qwen-launcher calibrate --mode <modo>
-```
-
-Non correggere il JSON a mano e non copiare un record da un altro PC.
-
-### Esiste un candidato valido
-
-Promuoverlo senza nuove prove:
+`doctor` distinguishes candidate, absent, invalid, stale, superseded schema, and insufficient
+headroom. Only an active `<mode>.json` is reusable. The normal remedy is to free memory or re-run:
 
 ```bash
-qwen-launcher calibrate --mode <modo> --activate
+qwen-launcher calibrate --mode <mode>
 ```
 
-Controllare prima `doctor`. L'attivazione sostituisce atomicamente l'attivo e conserva un solo
+Do not fix the JSON by hand and do not copy a record from another machine.
+
+### A valid candidate exists
+
+Promote it without new trials:
+
+```bash
+qwen-launcher calibrate --mode <mode> --activate
+```
+
+Check `doctor` first. Activation atomically replaces the active record and keeps a single
 `previous`.
 
-### Tutti i probe falliscono
+### Every probe fails
 
-Leggere il riepilogo e l'evidenza privata dell'ultimo run. Le cause comuni sono RAM/VRAM insufficienti,
-OOM, workload concorrenti, driver cambiato, risposta API incompatibile o rilascio memoria fuori
-soglia. Un run senza busta valida non va completato o promosso manualmente.
+Read the summary and the private evidence of the last run. Common causes are insufficient RAM/VRAM,
+OOM, concurrent workloads, a changed driver, an incompatible API response, or memory release outside
+the threshold. A run without a valid envelope must not be completed or promoted by hand.
 
-### La calibrazione è stata interrotta
+### Calibration was interrupted
 
-I processi vengono fermati; i log disponibili vengono preservati come ultima evidenza privata. Un
-record candidato viene scritto solo dopo che l'intero risultato del modo è stato costruito e validato.
+The processes are stopped; the available logs are preserved as the last private evidence. A
+candidate record is written only after the mode's whole result has been built and validated.
 
-## Disinstallazione
+## Uninstalling
 
-Fermare prima i servizi. Se una radice gestita è un symlink, un file invece di una directory o non
-coincide con l'anteprima corrente, il comando si ferma senza rimuovere nulla. Correggere manualmente
-la struttura soltanto dopo aver verificato il percorso.
+Stop the services first. If a managed root is a symlink, a file instead of a directory, or does not
+match the current preview, the command stops without removing anything. Fix the structure by hand
+only after verifying the path.
 
-La cache Hugging Face e uv non vengono mai inclusi. Con l'installazione supportata `uv tool`, la
-stessa conferma rimuove anche il comando appena il processo corrente termina. Se il resoconto indica
-che l'installazione Python non è gestita da uv, occorre usare il gestore con cui è stata installata:
-il launcher non indovina né modifica ambienti esterni.
+The Hugging Face cache and uv are never included. With the supported `uv tool` installation, the
+same confirmation also removes the command as soon as the current process exits. If the summary
+reports that the Python installation is not managed by uv, use the manager it was installed with:
+the launcher neither guesses nor modifies external environments.
 
-## Segnalare un problema
+## Reporting a problem
 
-Includere:
+Include:
 
-- versione e commit, se si usa un checkout;
-- OS e backend mostrati da `doctor`;
-- comando esatto ed exit code;
-- output di `validate`, `doctor` ed `engine status` pertinente;
-- estratto minimo del log, revisionato per dati privati;
-- comportamento atteso e osservato.
+- the version and commit, if you use a checkout;
+- the OS and backend shown by `doctor`;
+- the exact command and exit code;
+- the relevant output of `validate`, `doctor`, and `engine status`;
+- a minimal log excerpt, reviewed for private data;
+- the expected and observed behavior.
 
-Non allegare config, record locali, log completi, token, hostname, username o percorsi privati senza
-redazione.
+Do not attach the config, local records, full logs, tokens, hostnames, usernames, or private paths
+without redaction.
 
-**Successivo:** [Sviluppo e contributi](development.md)
+**Next:** [Development and contributions](development.md)

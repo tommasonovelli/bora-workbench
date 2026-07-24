@@ -1,77 +1,79 @@
-# Calibrazione locale
+# Local calibration
 
-## In breve
+## In brief
 
-La calibrazione serve a trovare una configurazione adatta **a questo PC**. Non cambia il modello e
-non migliora la qualità delle risposte: massimizza prima il contesto fattibile e poi confronta
-throughput e margine di memoria nel dominio del protocollo v5.
+Calibration exists to find a configuration suited to **this machine**. It does not change the model
+and does not improve answer quality: it first maximizes the feasible context, then compares
+throughput and memory margin inside the domain of protocol v5.
 
-Per iniziare non occorre conoscere i parametri di `llama.cpp`:
+You do not need to know the `llama.cpp` parameters to get started:
 
 ```bash
 qwen-launcher calibrate --mode all
 ```
 
-Il comando:
+The command:
 
-1. controlla modello, motore, memoria e processi concorrenti;
-2. mostra cosa eseguirà e chiede conferma;
-3. avvia più server temporanei, quindi può durare da molti minuti a ore;
-4. misura separatamente `coding`, `studio` e `vstudio`;
-5. salva un record privato per ogni modo completato;
-6. attiva per default i record, che saranno valutati al lancio successivo.
+1. checks the model, engine, memory, and concurrent processes;
+2. shows what it will run and asks for confirmation;
+3. starts several temporary servers, so it can take from many minutes to hours;
+4. measures `coding`, `studio`, and `vstudio` separately;
+5. saves a private record for every completed mode;
+6. activates the records by default, so they are evaluated on the next launch.
 
-Non effettua upload, non modifica `config.toml` e non pubblica risultati.
+It performs no uploads, does not modify `config.toml`, and publishes no results.
 
-### Nota di compatibilità del contratto motore
+### Engine contract compatibility note
 
-La preparazione del contratto per lo spike cross-context cambia il
-`command_contract_sha256`. I record locali `calibration-record/v2`, `/v3` e `/v4` già presenti
-restano leggibili per la diagnostica, ma non sono più riutilizzabili: rieseguire `calibrate`.
-I seed pubblici v3 restano soltanto suggerimenti per l'ordine dei probe e non diventano mai buste.
+Preparing the contract for the cross-context spike changes the `command_contract_sha256`. Existing
+local `calibration-record/v2`, `/v3`, and `/v4` records stay readable for diagnostics, but they are
+no longer reusable: re-run `calibrate`. Public v3 seeds remain nothing more than hints for probe
+ordering and never become envelopes.
 
-`vstudio` conserva `--mmproj` ma non emette `--spec-type` o `--spec-draft-n-max`: la model card
-appuntata non dichiara supportata la combinazione vision+MTP, nonostante lo Spike 0 locale l'avesse
-completata. La scelta prudenziale resta attiva finché uno spike dedicato non fornisce nuova evidenza.
+`vstudio` keeps `--mmproj` but emits neither `--spec-type` nor `--spec-draft-n-max`: the pinned model
+card does not declare the vision+MTP combination supported, even though the local Spike 0 completed
+it. This conservative choice stays in place until a dedicated spike provides new evidence.
 
-Con la migrazione `mode/v2` (0.1.4) i tre modi emettono anche `--min-p`, `--presence-penalty`,
-`--repeat-penalty` e `--reasoning` (coding `on`; studio e vstudio `off`); temperatura, top-p e top-k
-restano invariati. Questi token derivano dal contenuto del modo e non cambiano il
+With the `mode/v2` migration (0.1.4) the three modes also emit `--min-p`, `--presence-penalty`,
+`--repeat-penalty`, and `--reasoning` (coding `on`; studio and vstudio `off`); temperature, top-p,
+and top-k are unchanged. These tokens come from the mode content and do not change the
 `command_contract_sha256`.
 
-La calibrazione predefinita resta `calibration/v5`. `calibration/v6-lite` è disponibile come
-protocollo **sperimentale opt-in** (`--protocol v6`): è stata implementata su decisione del
-maintainer (D-063) prima del verdetto GO dello spike cross-context, che resta la precondizione per
-promuoverla a default. Vedi [calibration/v6-lite (sperimentale)](#calibrationv6-lite-sperimentale).
+The default calibration remains `calibration/v5`. `calibration/v6-lite` is available as an **opt-in
+experimental** protocol (`--protocol v6`): it was implemented on the maintainer's decision (D-063)
+before the GO verdict of the cross-context spike, which remains the precondition for promoting it to
+the default. See [calibration/v6-lite (experimental)](#calibrationv6-lite-experimental).
 
-## Termini essenziali
+## Essential terms
 
-- **Baseline**: configurazione verificata ma non ottimizzata (`ctx=8192`; su CUDA
-  `n_cpu_moe=48`). Permette di usare il launcher senza calibrazione.
-- **Busta**: coppia di parametri prestazionali scelta per un modo, principalmente `ctx` e, su CUDA,
+- **Baseline**: a verified but non-optimized configuration (`ctx=8192`; on CUDA `n_cpu_moe=48`). It
+  makes the launcher usable without calibration.
+- **Envelope**: the pair of performance parameters chosen for a mode, mainly `ctx` and, on CUDA,
   `n_cpu_moe`.
-- **`ctx`**: limite della finestra di contesto del server, espresso in token.
-- **`n_cpu_moe`**: numero di blocchi MoE lasciati sulla CPU; valori minori usano più VRAM, valori
-  maggiori spostano pesi e lavoro verso RAM e CPU. Il throughput non è assunto monotono.
-- **Record locale**: JSON privato che conserva misure, identità della macchina e busta selezionata.
-- **Candidato**: record valido ma non ancora usato dai lanci.
-- **Record attivo**: unico record che può entrare nel piano di lancio.
-- **Seed condiviso**: suggerimento sull'ordine dei probe proveniente da evidenza pubblica; non è una
-  configurazione da copiare.
-- **Headroom**: memoria libera oltre il fabbisogno misurato.
-- **Benchmark**: misura ripetibile di una busta già scelta; da solo non è una calibrazione.
+- **`ctx`**: the server's context window limit, in tokens.
+- **`n_cpu_moe`**: the number of MoE blocks left on the CPU; lower values use more VRAM, higher
+  values move weights and work toward RAM and CPU. Throughput is not assumed to be monotonic.
+- **Local record**: a private JSON that keeps the measurements, machine identity, and selected
+  envelope.
+- **Candidate**: a valid record that launches do not use yet.
+- **Active record**: the only record that can enter the launch plan.
+- **Shared seed**: a probe-ordering hint that comes from public evidence; it is not a configuration
+  to copy.
+- **Headroom**: memory free beyond the measured requirement.
+- **Benchmark**: a repeatable measurement of an already chosen envelope; on its own it is not a
+  calibration.
 
-## Prima di iniziare
+## Before you start
 
-Servono:
+You need:
 
-- modello predefinito e, per `vstudio`, mmproj già presenti e verificabili;
-- `llama.cpp b10011` compatibile già disponibile;
-- almeno 28 GiB RAM totali e 22 GiB disponibili al preflight;
-- nessun servizio gestito attivo;
-- su CUDA, una sola GPU NVIDIA e nessun workload GPU intensivo concorrente.
+- the default model and, for `vstudio`, the mmproj already present and verifiable;
+- a compatible `llama.cpp b10011` already available;
+- at least 28 GiB of total RAM and 22 GiB available at preflight;
+- no active managed service;
+- on CUDA, a single NVIDIA GPU and no concurrent GPU-intensive workload.
 
-Controllare prima:
+Check first:
 
 ```bash
 qwen-launcher validate
@@ -80,326 +82,332 @@ qwen-launcher engine status
 qwen-launcher status
 ```
 
-La calibrazione usa `llama_port` quando è libera. Nel branch corrente, se la porta è occupata,
-ciascun trial sceglie una porta temporanea su `127.0.0.1`; gli avvii ordinari restano severi sulla
-porta configurata. Questa correzione non è presente negli artefatti pubblici `0.1.0`.
+Calibration uses `llama_port` when it is free. On the current branch, if the port is busy each trial
+picks a temporary port on `127.0.0.1`; ordinary launches stay strict about the configured port. This
+fix is not present in the public `0.1.0` artifacts.
 
-### Contesti GPU concorrenti
+### Concurrent GPU contexts
 
-Fuori da WDDM un processo compute già presente rende la misura inaffidabile e blocca il run. Su
-Windows/WDDM alcuni processi desktop sono inevitabili: il launcher cattura una popolazione iniziale
-per l'intero run usando PID, tempo di creazione e identità opaca dell'eseguibile. Un respawn dello
-stesso eseguibile è ammesso entro la molteplicità iniziale; file nuovi, identità illeggibili o istanze
-aggiuntive invalidano il run. Le differenze Ubuntu/Windows e il carico desktop non producono
-profili OS hardcoded: entrano nella decisione tramite RAM/VRAM e baseline osservate sul posto.
+Outside WDDM, a compute process that is already present makes the measurement unreliable and blocks
+the run. On Windows/WDDM some desktop processes are unavoidable: the launcher captures an initial
+population for the whole run using the PID, creation time, and opaque executable identity. A respawn
+of the same executable is allowed within the initial multiplicity; new files, unreadable identities,
+or additional instances invalidate the run. The Ubuntu/Windows differences and the desktop load
+produce no hardcoded OS profiles: they enter the decision through the RAM/VRAM and baselines
+observed on the spot.
 
-## Uso normale
+## Normal use
 
-Calibrare tutti i modi e attivare i risultati:
+Calibrate every mode and activate the results:
 
 ```bash
 qwen-launcher calibrate --mode all
 ```
 
-Calibrare un solo modo:
+Calibrate a single mode:
 
 ```bash
 qwen-launcher calibrate --mode coding
 ```
 
-Su un terminale interattivo la CLI mostra spinner, barra, tempo trascorso, trial in corso e tempo
-rimanente appreso soltanto dalla fase corrente. Lo screening attende due processi e usa la mediana;
-la conferma, che ha trial omogenei e totale esatto, mostra una prima ETA dopo il primo e la stabilizza
-con la mediana. Nello screening `14` è un cap: il conteggio usa `≤14` e il tempo è una proiezione
-fino al cap, non un limite garantito. Se l'output è rediretto, viene mantenuta una riga stabile per
-ogni trial completato. Al termine, il riepilogo spiega la regola di selezione e i minimi RAM/VRAM
-misurati.
+On an interactive terminal the CLI shows a spinner, a bar, the elapsed time, the running trial, and
+a remaining time learned from the current phase alone. Screening waits for two processes and uses
+the median; confirmation, which has homogeneous trials and an exact total, shows a first ETA after
+the first trial and stabilizes it with the median. In screening, `14` is a cap: the count uses `≤14`
+and the time is a projection up to the cap, not a guaranteed limit. If the output is redirected, one
+stable line per completed trial is kept. At the end, the summary explains the selection rule and the
+lowest measured RAM/VRAM values.
 
-Un crash di un trial è isolato dal servizio di produzione; il motivo e i log vengono conservati.
+A trial crash is isolated from the production service; the reason and the logs are kept.
 
-Al termine verificare:
+When it finishes, check:
 
 ```bash
 qwen-launcher doctor
 qwen-launcher coding
 ```
 
-Se il record è valido e ha headroom sufficiente, l'avvio mostra `local-calibration-record`; altrimenti
-spiega il motivo e usa la baseline.
+If the record is valid and has enough headroom, startup shows `local-calibration-record`; otherwise
+it explains why and uses the baseline.
 
-## Misurare senza attivare
+## Measuring without activating
 
-Per un esperimento o per preparare evidenza:
+For an experiment, or to prepare evidence:
 
 ```bash
 qwen-launcher calibrate --mode all --no-activate
 ```
 
-I risultati vengono scritti come:
+The results are written as:
 
 ```text
-data_dir()/calibration/records/<modo>.candidate.json
+data_dir()/calibration/records/<mode>.candidate.json
 ```
 
-I lanci continuano a usare il record attivo precedente o la baseline. Dopo aver controllato
-`doctor`, promuovere i candidati senza ripetere i trial:
+Launches keep using the previous active record or the baseline. After checking `doctor`, promote the
+candidates without repeating the trials:
 
 ```bash
 qwen-launcher calibrate --mode all --activate
 ```
 
-La promozione è atomica. Se esiste già un attivo, ne viene conservata una copia in:
+Promotion is atomic. If an active record already exists, a copy of it is kept in:
 
 ```text
-<modo>.previous.json
+<mode>.previous.json
 ```
 
-Esiste un solo slot precedente; non c'è un comando CLI di rollback automatico. Non rinominare o
-modificare manualmente i record.
+There is a single previous slot; there is no automatic CLI rollback command. Do not rename or edit
+records by hand.
 
-## Contesto esplicito per utenti esperti
+## Explicit context for expert users
 
-La ricerca normale prova in ordine:
+The normal search tries, in order:
 
 ```text
 131072 → 98304 → 65536 → 49152 → 32768 → 16384 → 8192
 ```
 
-È possibile fissare uno dei target approvati:
+You can pin one of the approved targets:
 
 ```bash
 qwen-launcher calibrate --mode coding --target-ctx 98304
 ```
 
-Valori ammessi: `131072`, `98304`, `65536`, `49152`, `32768`, `16384`, `8192`. Tutti appartengono
-anche alla scala automatica; `--target-ctx` serve a fissarne uno per una misura separata. I candidati
-vengono sempre confrontati allo stesso contesto.
+Allowed values: `131072`, `98304`, `65536`, `49152`, `32768`, `16384`, `8192`. All of them also
+belong to the automatic scale; `--target-ctx` exists to pin one of them for a separate measurement.
+Candidates are always compared at the same context.
 
-`131072` è il tetto automatico del protocollo corrente, non una prova che il modello non supporti
-contesti maggiori. Perciò “best fit” significa il migliore nel dominio v5 sopra elencato.
+`131072` is the automatic ceiling of the current protocol, not proof that the model does not support
+larger contexts. "Best fit" therefore means the best inside the v5 domain listed above.
 
-## Come funziona la ricerca v5
+## How the v5 search works
 
-Questa sezione spiega l'algoritmo; non è necessaria per usare il comando.
+This section explains the algorithm; it is not required in order to use the command.
 
-L'obiettivo è lessicografico:
+The objective is lexicographic:
 
-1. massimo contesto fattibile;
-2. throughput confermato a quel contesto;
-3. maggiore margine di memoria;
-4. configurazione più prudente.
+1. the largest feasible context;
+2. the throughput confirmed at that context;
+3. the larger memory margin;
+4. the more conservative configuration.
 
-Su CUDA il dominio di `n_cpu_moe` viene letto dai metadati del GGUF ed è `[0, block_count]`; per il
-modello appuntato il massimo atteso e verificato è 41. Un report condiviso può suggerire il primo
-punto, ma non restringe il dominio.
+On CUDA the `n_cpu_moe` domain is read from the GGUF metadata and is `[0, block_count]`; for the
+pinned model the expected and verified maximum is 41. A shared report can suggest the first point,
+but it does not narrow the domain.
 
-Per ogni modo il calibratore:
+For each mode the calibrator:
 
-1. scende nella scala dei contesti solo se la configurazione più prudente non è fattibile;
-2. cerca il confine CUDA con al massimo 14 probe e processi freschi;
-3. monitora RAM e VRAM ogni 250 ms;
-4. richiede almeno 2,0 GiB RAM disponibili durante ogni trial;
-5. su CUDA richiede almeno 0,3 GiB VRAM libera (circa 307 MiB) e rilascio entro 0,125 GiB dalla
-   baseline;
-6. considera la monotonia solo fra probe completati; un OOM parziale non inventa un picco;
-7. sceglie il primo valore fattibile al confine e, se disponibile, il solo adiacente più prudente;
-8. li conferma in due round accoppiati: `A→B` e `B→A`;
-9. esegue un `benchmark/v1` completo in ciascuno dei quattro avvii;
-10. usa il throughput solo se lo stesso finalista vince entrambi i round; altrimenti preferisce
-    margine e prudenza.
+1. descends the context scale only when the most conservative configuration is not feasible;
+2. looks for the CUDA boundary with at most 14 probes and fresh processes;
+3. monitors RAM and VRAM every 250 ms;
+4. requires at least 2.0 GiB of available RAM during every trial;
+5. on CUDA requires at least 0.3 GiB of free VRAM (about 307 MiB) and release within 0.125 GiB of
+   the baseline;
+6. considers monotonicity only between completed probes; a partial OOM invents no peak;
+7. picks the first feasible value at the boundary and, when available, the single more conservative
+   neighbor;
+8. confirms them in two paired rounds: `A→B` and `B→A`;
+9. runs a full `benchmark/v1` in each of the four startups;
+10. uses throughput only when the same finalist wins both rounds; otherwise it prefers margin and
+    caution.
 
-Una deriva della baseline VRAM oltre 0,125 GiB disabilita la vittoria per throughput, ma non elimina
-un finalista che ha rispettato le riserve assolute. Telemetria come utilizzo, clock, temperatura,
-potenza e throttle è raccolta quando disponibile solo per spiegare l'evidenza; non introduce soglie.
+A VRAM baseline drift beyond 0.125 GiB disables winning by throughput, but it does not eliminate a
+finalist that respected the absolute reserves. Telemetry such as utilization, clocks, temperature,
+power, and throttling is collected when available only to explain the evidence; it introduces no
+thresholds.
 
-Su CPU non esiste un asse di tuning verificato: per default v5 conferma la baseline del motore a
-`ctx=8192` invece di simulare una ricerca. Un `--target-ctx` esperto può fissare uno degli altri
-valori approvati, ma non introduce un asse automatico.
+On CPU there is no verified tuning axis: by default v5 confirms the engine baseline at `ctx=8192`
+instead of simulating a search. An expert `--target-ctx` can pin one of the other approved values,
+but it introduces no automatic axis.
 
-La ricerca CUDA trova quindi un confine di memoria e confronta due valori adiacenti: non esegue uno
-sweep globale di `n_cpu_moe` e non dimostra che nessun valore lontano abbia throughput maggiore.
-v5 conserva ricerca, benchmark e finalisti di v4, aggiunge i gradini 96K e 48K e porta il cap da 12
-a 14 per mantenere sufficiente il budget nel caso peggiore. Produce `calibration-record/v4`; i
-record storici v2/v3 restano leggibili.
+The CUDA search therefore finds a memory boundary and compares two adjacent values: it performs no
+global `n_cpu_moe` sweep and does not prove that no distant value has higher throughput. v5 keeps
+the search, benchmark, and finalists of v4, adds the 96K and 48K steps, and raises the cap from 12
+to 14 to keep the worst-case budget sufficient. It produces `calibration-record/v4`; historical
+v2/v3 records stay readable.
 
 ## `benchmark/v1`
 
-Ogni sessione valida esegue:
+Every valid session runs:
 
-1. un warm-up completo escluso dai risultati;
-2. cinque richieste misurate;
-3. esattamente 256 completion token per richiesta;
-4. `max_tokens=256`, `ignore_eos=true` e seed `424242`;
-5. controllo di `finish_reason=length`, conteggio token e timing;
-6. riepilogo minimo, mediana e massimo.
+1. a full warm-up excluded from the results;
+2. five measured requests;
+3. exactly 256 completion tokens per request;
+4. `max_tokens=256`, `ignore_eos=true`, and seed `424242`;
+5. a check of `finish_reason=length`, the token count, and the timing;
+6. a minimum, median, and maximum summary.
 
-Le risorse del prompt e della richiesta sono immutabili nella wheel. Tok/s misura la velocità della
-busta nelle condizioni osservate, non la qualità semantica e non una promessa per un'altra macchina.
-La CLI corrente non espone un comando autonomo `benchmark`.
+The prompt and request resources are immutable in the wheel. Tok/s measures the envelope's speed
+under the observed conditions, not semantic quality and not a promise for another machine. The
+current CLI exposes no standalone `benchmark` command.
 
-## Record e riuso
+## Records and reuse
 
-Un record attivo viene rivalidato a ogni lancio. Devono coincidere:
+An active record is revalidated on every launch. These must match:
 
-- schema e ricostruzione di probe, sessioni, mediane e selezione;
-- modello, filename e digest;
-- release, commit e digest del contratto motore;
-- modo e backend;
-- OS, CPU/GPU, driver e identità hardware stabile;
-- memoria disponibile corrente.
+- the schema and the reconstruction of probes, sessions, medians, and selection;
+- the model, filename, and digest;
+- the release, commit, and engine contract digest;
+- the mode and backend;
+- the OS, CPU/GPU, driver, and stable hardware identity;
+- the current available memory.
 
-Il totale RAM registrato resta esatto; nel branch corrente il confronto ammette al massimo 1 MiB di
-differenza per assorbire il rumore di reporting osservato. Per il riuso servono fabbisogno RAM più
-la riserva registrata e, su CUDA, fabbisogno VRAM più 0,3 GiB per record v3/v4 oppure 0,5 GiB per un
-record storico v2. La migrazione non indebolisce quindi l'headroom di record già misurati.
+The recorded total RAM stays exact; on the current branch the comparison allows at most 1 MiB of
+difference to absorb the observed reporting noise. Reuse requires the RAM requirement plus the
+recorded reserve and, on CUDA, the VRAM requirement plus 0.3 GiB for v3/v4 records, or 0.5 GiB for a
+historical v2 record. The migration therefore does not weaken the headroom of already measured
+records.
 
-Un file candidato, previous, invalido o con schema non supportato non pilota mai il lancio. I record
-`calibration-record/v2`, `/v3` e `/v4` restano supportati e leggibili, ma quelli creati con il
-contratto precedente non coincidono con il digest corrente e quindi non pilotano il lancio; `/v1` è
-diagnosticato come superato. Il rimedio è rieseguire `calibrate`, non convertire file a mano.
+A candidate, previous, invalid, or unsupported-schema file never drives a launch. The
+`calibration-record/v2`, `/v3`, and `/v4` records stay supported and readable, but the ones created
+with the previous contract do not match the current digest and therefore do not drive a launch;
+`/v1` is diagnosed as superseded. The remedy is to re-run `calibrate`, not to convert files by hand.
 
-## File privati
+## Private files
 
-I record vivono in:
+The records live in:
 
 ```text
 data_dir()/calibration/records/
 ```
 
-I log e l'evidenza dettagliata dell'ultimo run vivono in:
+The logs and detailed evidence of the last run live in:
 
 ```text
 data_dir()/calibration/evidence/<run-id>/
 ```
 
-Dopo che un nuovo run è stato preservato, il launcher elimina soltanto le precedenti directory di
-evidenza con nome UUID gestito. Questi file possono contenere dettagli operativi e non vanno
-pubblicati senza revisione.
+Once a new run has been preserved, the launcher deletes only the previous evidence directories with
+a managed UUID name. These files can contain operational details and must not be published without
+review.
 
-## Evidenza condivisa e limite empirico
+## Shared evidence and the empirical limit
 
-La wheel distribuisce una policy `calibration-policy/v2` e un report
-`calibration-report/v2` del metodo storico v3. v5 usa quel report soltanto come seed d'ordine; non lo
-presenta come prova della nuova riserva. Il report copre realmente un solo scope:
+The wheel distributes a `calibration-policy/v2` policy and a `calibration-report/v2` report of the
+historical v3 method. v5 uses that report only as an ordering seed; it does not present it as proof
+of the new reserve. The report really covers a single scope:
 
 - Windows 11 build 10.0.26200;
-- CUDA, driver NVIDIA 610.47;
+- CUDA, NVIDIA driver 610.47;
 - RTX 2060 SUPER 8 GiB;
-- 31,92 GiB RAM;
-- tutti e tre i modi.
+- 31.92 GiB RAM;
+- all three modes.
 
-Lo stato complessivo resta `GATE-PARTIAL`: il maintainer ha attestato Gate v4 reali su Ubuntu e
-Windows prima della 0.1.1, ma manca ancora hardware materialmente diverso e il Gate Windows v4 non è
-stato trasformato in evidenza pubblica. I valori osservati non vengono trasferiti. Il loader estrae
-soltanto `n_cpu_moe` come seed d'ordine per modello, motore, backend e modo esatti; la macchina
-dell'utente esegue comunque la ricerca completa.
+The overall status remains `GATE-PARTIAL`: the maintainer attested real v4 Gates on Ubuntu and
+Windows before 0.1.1, but materially different hardware is still missing and the Windows v4 Gate was
+never turned into public evidence. The observed values are not transferred. The loader extracts only
+`n_cpu_moe` as an ordering seed for the exact model, engine, backend, and mode; the user's machine
+still runs the full search.
 
-Le fonti con checksum sono in
+The checksummed sources are in
 [`evidence/calibration/windows-11-rtx-2060-super-v3/`](../evidence/calibration/windows-11-rtx-2060-super-v3/).
 
-## Contribuire nuova evidenza
+## Contributing new evidence
 
-La pubblicazione è manuale: il launcher non esegue login, upload, commit, branch remoto, issue o
-pull request. Il contratto pubblico corrente descrive soltanto v3; non convertire un record privato
-v5 in un report v2. Un contributo v5 richiede uno step dichiarativo separato con nuovo schema,
-revisione privacy, manifest e checksum.
+Publication is manual: the launcher performs no logins, uploads, commits, remote branches, issues,
+or pull requests. The current public contract describes only v3; do not convert a private v5 record
+into a v2 report. A v5 contribution requires a separate declarative step with a new schema, privacy
+review, manifest, and checksums.
 
-Per preparare il Gate senza attivare risultati:
+To prepare the Gate without activating the results:
 
 ```bash
 qwen-launcher calibrate --mode all --no-activate
 ```
 
-Conservare privatamente esito riuscito e fallimenti, senza hostname, username, seriali, UUID,
-percorsi assoluti, credenziali, prompt o log grezzi. Il Gate Windows v4 attestato per la 0.1.1 non
-sostituisce un futuro contributo pubblico redatto e manifestato.
+Keep both the successful outcome and the failures privately, without hostnames, usernames, serial
+numbers, UUIDs, absolute paths, credentials, prompts, or raw logs. The Windows v4 Gate attested for
+0.1.1 is no substitute for a future redacted and manifested public contribution.
 
-Checklist per la pull request:
+Pull request checklist:
 
-- [ ] schema pubblico versionato e metodo v5 coerenti;
-- [ ] run riusciti e falliti riportati senza ricostruire campi mancanti;
-- [ ] `privacy_reviewed=true` soltanto dopo revisione dei byte finali;
-- [ ] scope, limite di portabilità, seed, SHA-256 e manifest espliciti;
-- [ ] PR dichiarativa senza modifiche al core Python;
-- [ ] `qwen-launcher validate`, Ruff, pytest, build e verifica wheel verdi.
+- [ ] the versioned public schema and the v5 method are consistent;
+- [ ] successful and failed runs reported without reconstructing missing fields;
+- [ ] `privacy_reviewed=true` only after reviewing the final bytes;
+- [ ] explicit scope, portability limit, seed, SHA-256, and manifest;
+- [ ] a declarative PR with no changes to the Python core;
+- [ ] `qwen-launcher validate`, Ruff, pytest, build, and wheel verification green.
 
-## calibration/v6-lite (sperimentale)
+## calibration/v6-lite (experimental)
 
-`calibration/v6-lite` è un protocollo **opt-in** (`--protocol v6`); `calibration/v5` resta il default.
-È stata implementata su decisione registrata del maintainer (D-063) prima del verdetto GO dello spike
-cross-context: la promozione a default resta una decisione umana registrata in
-`IMPLEMENTATION_SPEC.md`, mai dichiarata dall'agente.
+`calibration/v6-lite` is an **opt-in** protocol (`--protocol v6`); `calibration/v5` remains the
+default. It was implemented on a recorded maintainer decision (D-063) before the GO verdict of the
+cross-context spike: promoting it to the default remains a human decision recorded in
+`IMPLEMENTATION_SPEC.md`, never declared by the agent.
 
-Invece di una singola busta, v6-lite misura tre envelope per modo e ne scrive tutte nel record:
+Instead of a single envelope, v6-lite measures three envelopes per mode and writes all of them into
+the record:
 
-- **`fast`** — minima mediana end-to-end del prompt corto con `ctx ≥ 16384`;
-- **`balanced`** — massimo contesto con end-to-end corto entro `1,10×` quello di `fast`;
-- **`max_context`** — contesto massimo fattibile, con l'ordinamento throughput→margine→prudenza di v5.
+- **`fast`** — the lowest end-to-end median for the short prompt with `ctx ≥ 16384`;
+- **`balanced`** — the largest context whose short end-to-end stays within `1.10×` that of `fast`;
+- **`max_context`** — the largest feasible context, with the v5 throughput→margin→caution ordering.
 
-Pipeline: ricerca hardware **condivisa** per `coding`+`studio` (stesso modello, backend, niente
-mmproj, stesso MTP) sui contesti `131072 → 65536 → 32768` (raffinamento `98304`/`49152` adiacente al
-vincitore); `vstudio` ha ricerca propria (`--mmproj`, speculative disabilitato). Per ogni gradino un
-probe prudente a `n_cpu_moe = 41`, poi la bisezione del solo lato VRAM; i campioni `boundary`,
-`boundary+2` e il punto prudente sono misurati con il **quick-bench** (1 warm-up + 3 richieste corte
-non cached + 1 richiesta da ~8K). La selezione è confermata da un ABBA a 2 round con un terzo round
-solo se ambiguo, poi da un gate finale per envelope (smoke a ~80% del contesto, multi-turn a 4 turni,
-vision per `vstudio`). Attesa: circa **40–60 processi** per `--mode all`.
+Pipeline: a **shared** hardware search for `coding`+`studio` (same model, backend, no mmproj, same
+MTP) over the contexts `131072 → 65536 → 32768` (refining `98304`/`49152` adjacent to the winner);
+`vstudio` has its own search (`--mmproj`, speculative disabled). For every step, a conservative probe
+at `n_cpu_moe = 41`, then bisection of the VRAM side only; the `boundary`, `boundary+2`, and
+conservative-point samples are measured with the **quick-bench** (1 warm-up + 3 short non-cached
+requests + 1 request of about 8K). The selection is confirmed by a 2-round ABBA with a third round
+only when ambiguous, then by a final per-envelope gate (smoke at about 80% of the context, a 4-turn
+multi-turn, vision for `vstudio`). Expect roughly **40–60 processes** for `--mode all`.
 
-Riserve dei trial v6, scritte nel record: **0,5 GiB VRAM, 2,0 GiB RAM, 0,125 GiB** di tolleranza al
-rilascio. Al lancio si valuta **solo** l'envelope `active_preference` con i suoi fabbisogni misurati;
-se l'headroom non basta si usa la baseline (`ctx=8192`, `n_cpu_moe=48`). `--preference` fissa la
-busta attiva nel record (default `balanced`) e non modifica mai `config.toml`; `--target-ctx`
-collassa la scala su un solo gradino. Il record è `calibration-record/v5`: identità e digest come v4,
-le tre envelope, le soglie, le riserve e gli input di selezione (mediane per round) sufficienti a
-ricostruire la scelta; probe, scarti e log restano nell'albero `evidence/`.
+The v6 trial reserves, written into the record: **0.5 GiB VRAM, 2.0 GiB RAM, 0.125 GiB** release
+tolerance. At launch **only** the `active_preference` envelope is evaluated, with its measured
+requirements; if the headroom is insufficient the baseline is used (`ctx=8192`, `n_cpu_moe=48`).
+`--preference` pins the active envelope in the record (default `balanced`) and never modifies
+`config.toml`; `--target-ctx` collapses the scale onto a single step. The record is
+`calibration-record/v5`: the same identity and digests as v4, the three envelopes, the thresholds,
+the reserves, and the selection inputs (per-round medians) sufficient to reconstruct the choice;
+probes, discards, and logs stay in the `evidence/` tree.
 
-### Esempi
+### Examples
 
 ```bash
-# Misura le tre envelope per ogni modo e attiva la busta `balanced` (default)
+# Measure the three envelopes for every mode and activate the `balanced` envelope (default)
 qwen-launcher calibrate --mode all --protocol v6
 
-# Solo coding, con la busta `fast` come preferenza attiva nel record
+# Coding only, with the `fast` envelope as the active preference in the record
 qwen-launcher calibrate --mode coding --protocol v6 --preference fast
 
-# Misura senza attivare: scrive i candidati e non tocca i record attivi
+# Measure without activating: writes the candidates and leaves the active records untouched
 qwen-launcher calibrate --mode all --protocol v6 --preference max-context --no-activate
 
-# Collassa la ricerca su un solo contesto approvato (131072, 98304, 65536, 49152, 32768)
+# Collapse the search onto a single approved context (131072, 98304, 65536, 49152, 32768)
 qwen-launcher calibrate --mode coding --protocol v6 --target-ctx 65536
 
-# Massime prestazioni a un contesto fisso: `--target-ctx` e `--preference` si combinano.
-# fast = minima latenza a quel contesto; max-context = massimo throughput a quel contesto.
+# Maximum performance at a fixed context: `--target-ctx` and `--preference` combine.
+# fast = lowest latency at that context; max-context = highest throughput at that context.
 qwen-launcher calibrate --mode coding --protocol v6 --target-ctx 65536 --preference fast
 qwen-launcher calibrate --mode coding --protocol v6 --target-ctx 65536 --preference max-context
 
-# Promuove candidati v6 già misurati, senza rieseguire i trial
+# Promote already measured v6 candidates, without re-running the trials
 qwen-launcher calibrate --mode coding --protocol v6 --activate
 ```
 
-Con `--target-ctx` le tre envelope sono comunque misurate allo stesso contesto e differiscono solo
-per `n_cpu_moe`: a contesto fisso `fast` e `max-context` spesso coincidono, ma ottimizzano metriche
-diverse (latenza end-to-end contro throughput di decode).
+With `--target-ctx` the three envelopes are still measured at the same context and differ only in
+`n_cpu_moe`: at a fixed context `fast` and `max-context` often coincide, but they optimize different
+metrics (end-to-end latency versus decode throughput).
 
-Dopo la calibrazione, `doctor` mostra la busta attiva e i normali comandi di lancio usano l'envelope
-`active_preference` (o la baseline se l'headroom non basta):
+After calibration, `doctor` shows the active envelope and the normal launch commands use the
+`active_preference` envelope (or the baseline when the headroom is insufficient):
 
 ```bash
-qwen-launcher doctor      # parametri della busta attiva e stato dei record
-qwen-launcher coding      # lancia usando l'envelope active_preference registrata
+qwen-launcher doctor      # active envelope parameters and record status
+qwen-launcher coding      # launches using the recorded active_preference envelope
 ```
 
-Vincoli: `--preference` è rifiutata senza `--protocol v6`; `--activate` non si combina con
-`--target-ctx`; `--activate` e `--no-activate` sono mutuamente esclusive.
+Constraints: `--preference` is rejected without `--protocol v6`; `--activate` does not combine with
+`--target-ctx`; `--activate` and `--no-activate` are mutually exclusive.
 
-Nota: l'adapter di trial reale è validato su hardware; la logica di ricerca, selezione, conferma,
-gate e record è coperta da test offline con fake.
+Note: the real trial adapter is validated on hardware; the search, selection, confirmation, gate, and
+record logic is covered by offline tests with fakes.
 
-## Laboratorio v1
+## v1 laboratory
 
-`--protocol v1` resta disponibile per prove esplicite e compatibilità del bundle. Richiede candidati
-e impostazioni tecniche, misura solo la lista fornita e produce una bozza sotto
-`data_dir()/calibrations/`. Non monitora la RAM, non crea un `calibration-record/v4` e non attiva
-risultati. Per un nuovo utente il percorso corretto è sempre il protocollo v5 predefinito.
+`--protocol v1` remains available for explicit experiments and bundle compatibility. It requires
+candidates and technical settings, measures only the supplied list, and produces a draft under
+`data_dir()/calibrations/`. It does not monitor RAM, does not create a `calibration-record/v4`, and
+does not activate results. For a new user the correct path is always the default v5 protocol.
 
-**Successivo:** [Operazioni e diagnostica](operations.md)
+**Next:** [Operations and diagnostics](operations.md)

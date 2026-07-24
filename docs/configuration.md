@@ -1,8 +1,8 @@
-# Configurazione e dati locali
+# Configuration and local data
 
-## File e precedenza
+## File and precedence
 
-La configurazione vive in `config_dir()/config.toml`. Le chiavi sono alla radice del documento:
+The configuration lives in `config_dir()/config.toml`. The keys sit at the root of the document:
 
 ```toml
 model = "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M"
@@ -12,53 +12,53 @@ open_browser = true
 # engine_path = "~/bin/llama-server"
 ```
 
-La precedenza è:
+Precedence is:
 
-1. variabile ambiente;
+1. environment variable;
 2. `config.toml`;
-3. default nel codice.
+3. code defaults.
 
-Il file TOML viene validato **interamente prima** di applicare gli override ambiente. Una chiave
-sconosciuta o un valore malformato resta quindi un errore anche se sarebbe sostituito da una
-variabile. Il launcher non crea e non riscrive mai automaticamente `config.toml`.
+The TOML file is validated **in full before** the environment overrides are applied. An unknown key
+or a malformed value therefore stays an error even when a variable would replace it. The launcher
+never creates or rewrites `config.toml` automatically.
 
-## Chiavi pubbliche
+## Public keys
 
-| Chiave | Variabile ambiente | Default | Vincolo |
+| Key | Environment variable | Default | Constraint |
 |---|---|---|---|
-| `model` | `QWEN_LAUNCHER_MODEL` | modello appuntato | stringa non vuota |
-| `model_path` | `QWEN_LAUNCHER_MODEL_PATH` | assente | stringa percorso |
-| `llama_port` | `QWEN_LAUNCHER_LLAMA_PORT` | `8080` | intero 1–65535 |
-| `engine_path` | `QWEN_LAUNCHER_ENGINE_PATH` | assente | stringa percorso |
-| `open_browser` | `QWEN_LAUNCHER_OPEN_BROWSER` | `true` | booleano |
+| `model` | `QWEN_LAUNCHER_MODEL` | the pinned model | non-empty string |
+| `model_path` | `QWEN_LAUNCHER_MODEL_PATH` | absent | path string |
+| `llama_port` | `QWEN_LAUNCHER_LLAMA_PORT` | `8080` | integer 1–65535 |
+| `engine_path` | `QWEN_LAUNCHER_ENGINE_PATH` | absent | path string |
+| `open_browser` | `QWEN_LAUNCHER_OPEN_BROWSER` | `true` | boolean |
 
-Nel TOML i booleani devono essere `true` o `false`. Nell'ambiente sono accettati, senza distinzione
-fra maiuscole e minuscole:
+In TOML, booleans must be `true` or `false`. In the environment the following are accepted,
+case-insensitively:
 
 ```text
 true/false  1/0  yes/no  on/off
 ```
 
-Una variabile `QWEN_LAUNCHER_MODEL_PATH` o `QWEN_LAUNCHER_ENGINE_PATH` presente ma vuota annulla il
-percorso. Le altre variabili vuote sono errori. I percorsi espandono `~`, ma non sono verificati sul
-filesystem durante il solo caricamento della configurazione.
+A `QWEN_LAUNCHER_MODEL_PATH` or `QWEN_LAUNCHER_ENGINE_PATH` variable that is present but empty
+clears the path. Other empty variables are errors. Paths expand `~`, but they are not checked
+against the filesystem while the configuration alone is being loaded.
 
-Non sono accettate chiavi diverse da queste cinque; endpoint, bind address, mmproj e flag arbitrari
-di `llama.cpp` non sono configurabili.
+No keys other than these five are accepted; endpoints, bind addresses, mmproj, and arbitrary
+`llama.cpp` flags are not configurable.
 
-## Identità e percorso del modello
+## Model identity and path
 
-`model` è un'identità dichiarativa usata da lock, record e stato. `model_path` è il file fisico
-passato al motore. Le combinazioni valide sono:
+`model` is a declarative identity used by locks, records, and state. `model_path` is the physical
+file passed to the engine. The valid combinations are:
 
-- modello predefinito + `model_path` assente: risoluzione dello snapshot Hugging Face appuntato;
-- modello diverso + `model_path` esplicito: GGUF locale, senza calibrazione o garanzie ereditate.
+- default model + no `model_path`: resolution of the pinned Hugging Face snapshot;
+- different model + explicit `model_path`: a local GGUF, with no inherited calibration or
+  guarantees.
 
-Il modello predefinito con `model_path` esplicito viene rifiutato, così non è possibile sostituire
-silenziosamente i byte mantenendo l'identità verificata. Un modello diverso senza percorso viene
-rifiutato.
+The default model with an explicit `model_path` is rejected, so the bytes cannot be silently
+replaced while the verified identity is kept. A different model without a path is rejected.
 
-Per il modello predefinito la ricerca della cache segue l'ordine osservato nella release motore:
+For the default model the cache lookup follows the order observed in the engine release:
 
 1. `LLAMA_CACHE`;
 2. `HF_HUB_CACHE`;
@@ -67,80 +67,80 @@ Per il modello predefinito la ricerca della cache segue l'ordine osservato nella
 5. `XDG_CACHE_HOME/huggingface/hub`;
 6. `~/.cache/huggingface/hub`.
 
-Il launcher legge esclusivamente
-`models--<repository>/snapshots/<revisione-appuntata>/<filename>` e verifica dimensione e SHA-256.
-Non segue branch mobili e non modifica la cache.
+The launcher reads only
+`models--<repository>/snapshots/<pinned-revision>/<filename>` and verifies the size and SHA-256. It
+does not follow moving branches and does not modify the cache.
 
-## Risoluzione del motore
+## Engine resolution
 
-L'eseguibile viene cercato in quest'ordine:
+The executable is looked up in this order:
 
-1. `engine_path` esplicito;
-2. `llama-server` / `llama-server.exe` nel `PATH`;
-3. installazione gestita indicata da `data_dir()/engine/current.json`.
+1. an explicit `engine_path`;
+2. `llama-server` / `llama-server.exe` on the `PATH`;
+3. the managed installation pointed at by `data_dir()/engine/current.json`.
 
-Ogni candidato deve superare i probe di versione e help di `engine.lock`. Un eseguibile trovato ma
-incompatibile produce un errore: non viene saltato in favore del candidato successivo.
+Every candidate must pass the version and help probes from `engine.lock`. An executable that is
+found but incompatible produces an error: it is not skipped in favor of the next candidate.
 
-## Directory pubbliche
+## Public directories
 
-Le funzioni calcolano i percorsi senza creare directory.
+The helpers compute the paths without creating any directory.
 
-| Radice | Ubuntu/Linux | Windows |
+| Root | Ubuntu/Linux | Windows |
 |---|---|---|
-| configurazione | `${XDG_CONFIG_HOME:-~/.config}/qwen-launcher` | `%APPDATA%\qwen-launcher` |
-| dati | `${XDG_DATA_HOME:-~/.local/share}/qwen-launcher` | `%LOCALAPPDATA%\qwen-launcher\data` |
+| configuration | `${XDG_CONFIG_HOME:-~/.config}/qwen-launcher` | `%APPDATA%\qwen-launcher` |
+| data | `${XDG_DATA_HOME:-~/.local/share}/qwen-launcher` | `%LOCALAPPDATA%\qwen-launcher\data` |
 | cache | `${XDG_CACHE_HOME:-~/.cache}/qwen-launcher` | `%LOCALAPPDATA%\qwen-launcher\cache` |
-| stato | `${XDG_STATE_HOME:-~/.local/state}/qwen-launcher` | `%LOCALAPPDATA%\qwen-launcher\state` |
+| state | `${XDG_STATE_HOME:-~/.local/state}/qwen-launcher` | `%LOCALAPPDATA%\qwen-launcher\state` |
 
-Una variabile XDG, `APPDATA` o `LOCALAPPDATA` assente, vuota o relativa usa il fallback; un valore
-assoluto viene rispettato. Su Windows i fallback sono `~/AppData/Roaming` e `~/AppData/Local`.
-`qwen-launcher doctor` stampa i quattro percorsi risolti per la macchina corrente.
+An XDG, `APPDATA`, or `LOCALAPPDATA` variable that is missing, empty, or relative uses the fallback;
+an absolute value is honored. On Windows the fallbacks are `~/AppData/Roaming` and
+`~/AppData/Local`. `qwen-launcher doctor` prints the four paths resolved for the current machine.
 
-## Layout dei dati
+## Data layout
 
-Le operazioni creano soltanto ciò che possiedono:
+Operations create only what they own:
 
 ```text
 config_dir()/
-└── config.toml                         # scritto solo dall'utente
+└── config.toml                         # written by the user only
 
 data_dir()/
 ├── engine/
-│   ├── current.json                    # puntatore atomico al motore attivo
-│   └── installations/<id>/             # installazioni immutabili
+│   ├── current.json                    # atomic pointer to the active engine
+│   └── installations/<id>/             # immutable installations
 ├── calibration/
 │   ├── records/
-│   │   ├── <modo>.json                 # record attivo
-│   │   ├── <modo>.candidate.json       # candidato non attivo
-│   │   └── <modo>.previous.json        # singolo slot precedente
-│   └── evidence/<run-id>/              # log privati dell'ultimo run v4
-└── calibrations/<bundle-id>/            # bundle redatti del laboratorio v1
+│   │   ├── <mode>.json                 # active record
+│   │   ├── <mode>.candidate.json       # inactive candidate
+│   │   └── <mode>.previous.json        # single previous slot
+│   └── evidence/<run-id>/              # private logs of the last v4 run
+└── calibrations/<bundle-id>/            # redacted bundles from the v1 laboratory
 
 cache_dir()/
-└── llama.cpp/                           # download e staging gestiti del motore
+└── llama.cpp/                           # managed engine downloads and staging
 
 state_dir()/
-├── services.json                        # stato processi versione 1
-├── start.lock                           # serializzazione degli avvii
+├── services.json                        # process state, version 1
+├── start.lock                           # startup serialization
 └── logs/llama-server-<timestamp>.log
 ```
 
-La directory `calibration/evidence` conserva un solo run UUID: dopo la promozione del nuovo run,
-quelli precedenti gestiti vengono rimossi. I record sono privati e non sono contenuto della wheel.
+The `calibration/evidence` directory keeps a single run UUID: once the new run is promoted, the
+previous managed ones are removed. Records are private and are not wheel content.
 
-## Cosa elimina `uninstall`
+## What `uninstall` deletes
 
-Dopo conferma vengono eliminate esattamente le quattro radici sopra. Sono esclusi:
+After confirmation, exactly the four roots above are deleted. Excluded are:
 
-- cache Hugging Face;
-- GGUF e mmproj esterni;
-- eseguibili indicati da `engine_path` o trovati nel `PATH`;
-- uv, le sue cache e gli altri tool;
-- qualunque percorso fuori dalle radici gestite.
+- the Hugging Face cache;
+- external GGUF and mmproj files;
+- executables pointed at by `engine_path` or found on the `PATH`;
+- uv, its caches, and other tools;
+- any path outside the managed roots.
 
-Se il comando corrente appartiene esattamente all'ambiente `qwen-launcher` configurato da uv, la
-stessa conferma pianifica anche la rimozione di quell'ambiente e del comando. Installazioni Python
-esterne a `uv tool` restano invariate e vengono indicate nel resoconto.
+If the current command belongs to exactly the `qwen-launcher` environment configured by uv, the same
+confirmation also schedules the removal of that environment and of the command. Python installations
+outside `uv tool` stay unchanged and are reported in the summary.
 
-**Successivo:** [Architettura](architecture.md)
+**Next:** [Architecture](architecture.md)

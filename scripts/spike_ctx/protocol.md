@@ -1,72 +1,74 @@
-# Protocollo spike cross-context (`D-061`)
+# Cross-context spike protocol (`D-061`)
 
-Questo pacchetto prepara una misura reale; **non** autorizza né implementa `calibration/v6-lite`.
-L'esecuzione e il verdetto sono del maintainer. Prima del run chiudere workload GPU, verificare
-`qwen-launcher validate`, modello/mmproj e `llama.cpp b10011`, quindi usare un output privato nuovo:
+This package prepares a real measurement; it does **not** authorize or implement
+`calibration/v6-lite`. Running it and issuing the verdict are the maintainer's job. Before the run,
+close GPU workloads, check `qwen-launcher validate`, the model/mmproj, and `llama.cpp b10011`, then
+use a fresh private output directory:
 
 ```bash
 uv run --frozen python -m scripts.spike_ctx --output /tmp/qwen-spike-ctx-evidence
 ```
 
-Per collaudare parser, richieste, bisezione e struttura senza modello o GPU:
+To exercise the parser, requests, bisection, and structure without a model or GPU:
 
 ```bash
 uv run --frozen python -m scripts.spike_ctx \
   --dry-run --output /tmp/qwen-spike-ctx-dry
 ```
 
-## Misure
+## Measurements
 
-Il runner usa il builder e il lifecycle reali, una porta loopback temporanea e una directory runtime
-gestita da `tempfile` (sotto `/tmp` su Ubuntu). Ogni processo applica 0,5 GiB di riserva VRAM,
-2,0 GiB RAM e 0,125 GiB di tolleranza al rilascio. I contesti sono 131072, 65536 e 32768. A 131K
-misura il boundary storico 37 e il prudente 41; a 65K/32K prova prima il prudente 41 e usa poi al
-massimo sei decisioni binarie nel dominio `[0,41]`, con un solo retry per esito ritentabile e
-classificazione per classe.
+The runner uses the real builder and lifecycle, a temporary loopback port, and a runtime directory
+managed by `tempfile` (under `/tmp` on Ubuntu). Every process applies a 0.5 GiB VRAM reserve,
+2.0 GiB RAM, and a 0.125 GiB release tolerance. The contexts are 131072, 65536, and 32768. At 131K
+it measures the historical boundary 37 and the conservative 41; at 65K/32K it first tries the
+conservative 41 and then uses at most six binary decisions over the `[0,41]` domain, with a single
+retry per retryable outcome and classification by class.
 
-Ogni configurazione esegue:
+Every configuration runs:
 
-1. un warm-up corto escluso;
-2. tre richieste corte da 128 token;
-3. una richiesta deterministica da circa 8K token con output 64;
+1. a short warm-up, excluded;
+2. three short 128-token requests;
+3. one deterministic request of about 8K tokens with output 64;
 4. `cache_prompt:false`, `ignore_eos:true`, seed `424242`;
-5. wall-clock end-to-end e i campi `timings` della risposta;
-6. minimi RAM/VRAM, stop e verifica del rilascio.
+5. end-to-end wall-clock and the response's `timings` fields;
+6. minimum RAM/VRAM, stop, and release verification.
 
-Appendice A ripete i boundary 131K e 65K con MTP disabilitato. Acceptance MTP si ricava soltanto da
-`draft_n_accepted / draft_n`; non si analizzano i log. Appendice B avvia 32K con `--reasoning off`,
-fa tre richieste e cerca `<think>` nelle risposte; aggiunge `--reasoning-budget 0` soltanto se il
-primo meccanismo non basta.
+Appendix A repeats the 131K and 65K boundaries with MTP disabled. MTP acceptance is derived only
+from `draft_n_accepted / draft_n`; the logs are not analyzed. Appendix B starts 32K with
+`--reasoning off`, issues three requests, and looks for `<think>` in the responses; it adds
+`--reasoning-budget 0` only when the first mechanism is not enough.
 
-Se il confronto cade fra gradini, eseguire un'estensione revisionata a 98304 o 49152 in un nuovo
-output prima del verdetto; non ricostruire manualmente misure mancanti:
+If the comparison falls between steps, run a reviewed extension at 98304 or 49152 into a new output
+directory before the verdict; do not reconstruct missing measurements by hand:
 
 ```bash
 uv run --frozen python -m scripts.spike_ctx \
   --refine-ctx 98304 --output /tmp/qwen-spike-ctx-refine-98k
 ```
 
-Usare `49152` soltanto per il raffinamento 65K↔32K. Il runner base non dichiara automaticamente che
-il raffinamento sia necessario.
+Use `49152` only for the 65K↔32K refinement. The base runner does not automatically declare that the
+refinement is necessary.
 
-## Verdetto umano
+## Human verdict
 
-Confrontare il migliore fra 65K e 32K con il migliore 131K. È **GO** se almeno una condizione vale:
+Compare the best of 65K and 32K with the best 131K. It is **GO** when at least one condition holds:
 
-- mediana end-to-end corta `≤ 0,92 ×` quella 131K;
-- prefill della richiesta 8K `≥ 1,25 ×` quello 131K;
-- prestazioni entro deadband 3% e almeno 0,5 GiB di VRAM libera minima in più.
+- the short end-to-end median is `≤ 0.92 ×` the 131K one;
+- the prefill of the 8K request is `≥ 1.25 ×` the 131K one;
+- performance is within a 3% deadband and there is at least 0.5 GiB more minimum free VRAM.
 
-Altrimenti è **NO-GO**. Il 3% è un miglioramento minimo materiale, non significatività statistica.
-MTP e reasoning sono dati informativi e non cambiano automaticamente il verdetto.
+Otherwise it is **NO-GO**. The 3% is a materially minimum improvement, not statistical
+significance. MTP and reasoning are informational data and do not change the verdict automatically.
 
-## Redazione e commit dell'evidenza
+## Redacting and committing the evidence
 
-L'output iniziale è privato: risposte e log possono contenere testo o percorsi locali. Copiare il
-template da `evidence/engine/cross-context-spike-template/`, sostituire i placeholder soltanto con
-misure presenti, rimuovere hostname, username e percorsi assoluti, poi rigenerare `SHA256SUMS` sui
-byte finali. Verificare manualmente ogni file prima del commit. Il documento finale deve dire
-esplicitamente `GO` o `NO-GO`, hardware/OS redatti, criteri applicati, limiti e meccanismo reasoning.
+The initial output is private: responses and logs can contain local text or paths. Copy the template
+from `evidence/engine/cross-context-spike-template/`, replace the placeholders only with
+measurements that exist, remove hostnames, usernames, and absolute paths, then regenerate
+`SHA256SUMS` over the final bytes. Check every file by hand before committing. The final document
+must state `GO` or `NO-GO` explicitly, along with the redacted hardware/OS, the criteria applied, the
+limits, and the reasoning mechanism.
 
-Solo un **GO committato** insieme a una nuova decisione normativa autorizza la Fase 2. Un dry-run,
-un run incompleto o la sola presenza di `results.json` non è un Gate.
+Only a **committed GO**, together with a new normative decision, authorizes Phase 2. A dry-run, an
+incomplete run, or the mere presence of `results.json` is not a Gate.

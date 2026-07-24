@@ -1,254 +1,260 @@
-# Audit della calibrazione hardware
+# Hardware calibration audit
 
-Data dell'audit: 2026-07-22. Addendum release: 2026-07-23. Addendum scala v5: 2026-07-23.
+Audit date: 2026-07-22. Release addendum: 2026-07-23. v5 scale addendum: 2026-07-23.
 
-Questo documento è il resoconto tecnico non normativo richiesto per la revisione della calibrazione.
-Descrive fonti, misure, limiti e decisioni; non sostituisce `IMPLEMENTATION_SPEC.md`, i lock o la
-[guida utente corrente](docs/calibration.md). Non contiene ragionamenti privati o transcript di
-modelli: conserva soltanto conclusioni verificabili.
+This document is the non-normative technical report required for the calibration review. It
+describes sources, measurements, limits, and decisions; it does not replace
+`IMPLEMENTATION_SPEC.md`, the locks, or the [current user guide](docs/calibration.md). It contains no
+private reasoning or model transcripts: it keeps verifiable conclusions only.
 
-## Esito sintetico
+## Summary outcome
 
-Il metodo corrente `calibration/v5` deriva da v4 ed è conservativo nel proprio dominio, ma il suo
-nome “best fit” va interpretato con precisione:
+The current `calibration/v5` method derives from v4 and is conservative within its own domain, but
+its "best fit" name must be read precisely:
 
-- massimizza il contesto fra `131072`, `98304`, `65536`, `49152`, `32768`, `16384`, `8192`;
-- su CUDA trova il confine di memoria di `n_cpu_moe` e confronta soltanto quel valore e l'adiacente
-  più prudente;
-- misura localmente RAM, VRAM e carico ambientale, quindi non deve introdurre compromessi hardcoded
-  per Windows o Ubuntu;
-- non dimostra l'ottimo globale di throughput fra tutti i valori `n_cpu_moe`;
-- non calibra thread, batch, parametri MTP, cache draft, sampling o quantizzazione;
-- su CPU conferma per default `ctx=8192`, pur accettando un target esperto esplicito.
+- it maximizes the context among `131072`, `98304`, `65536`, `49152`, `32768`, `16384`, `8192`;
+- on CUDA it finds the memory boundary of `n_cpu_moe` and compares only that value and the more
+  conservative neighbor;
+- it measures RAM, VRAM, and ambient load locally, so it need not introduce hardcoded compromises
+  for Windows or Ubuntu;
+- it does not prove the global throughput optimum across all `n_cpu_moe` values;
+- it does not calibrate threads, batch, MTP parameters, draft cache, sampling, or quantization;
+- on CPU it confirms `ctx=8192` by default, while still accepting an explicit expert target.
 
-La prima modifica dell'audit ha migliorato osservabilità e interpretazione. D-053 ha introdotto v4
-con 0,3 GiB di riserva VRAM e `calibration-record/v3`. D-055 introduce ora v5: aggiunge 96K e 48K
-alla scala, porta il cap a 14 e produce `calibration-record/v4`, senza cambiare ricerca del confine,
-ABBA o riserve. I record v2/v3 storici restano leggibili e mantengono le proprie riserve. Gli altri
-ampliamenti elencati qui restano proposte, non funzionalità implementate.
+The first change of the audit improved observability and interpretation. D-053 introduced v4 with a
+0.3 GiB VRAM reserve and `calibration-record/v3`. D-055 now introduces v5: it adds 96K and 48K to
+the scale, raises the cap to 14, and produces `calibration-record/v4`, without changing the boundary
+search, ABBA, or the reserves. Historical v2/v3 records stay readable and keep their own reserves.
+The other extensions listed here remain proposals, not implemented features.
 
-## Gerarchia delle fonti
+## Source hierarchy
 
-Le decisioni rispettano l'ordine del repository:
+The decisions respect the repository order:
 
-1. `engine.lock`, contenuti appuntati e relativi digest;
-2. evidenza misurata sotto `evidence/`;
-3. schema e test;
+1. `engine.lock`, pinned content, and their digests;
+2. measured evidence under `evidence/`;
+3. schemas and tests;
 4. `IMPLEMENTATION_SPEC.md`;
-5. documentazione primaria della versione esatta;
-6. documentazione upstream corrente, utile solo per formulare nuovi spike.
+5. primary documentation for the exact version;
+6. current upstream documentation, useful only for formulating new spikes.
 
-Per questo audit restano invariati:
+For this audit the following stay unchanged:
 
-- modello `unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M`, revisione
-  `5bc3e238d916f48a861bac2f8a1990a0e9b7e98d` e SHA-256 appuntato;
+- the `unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M` model, revision
+  `5bc3e238d916f48a861bac2f8a1990a0e9b7e98d`, and the pinned SHA-256;
 - `llama.cpp b10011`, commit `bf2c86ddc0685f580595954056c2e77ebabfab4f`;
-- MTP draft massimo 2, parallelismo 1, flash attention, mmap e cache K/V Q8 su CUDA;
-- dominio `n_cpu_moe=[0,41]`, riserva RAM 2 GiB e tolleranza di rilascio 0,125 GiB;
-- riserva VRAM v4 0,3 GiB; i record prodotti da `calibration/v3` conservano 0,5 GiB;
-- stato della Calibration Gate `GATE-PARTIAL`.
+- MTP draft maximum 2, parallelism 1, flash attention, mmap, and the Q8 K/V cache on CUDA;
+- the `n_cpu_moe=[0,41]` domain, the 2 GiB RAM reserve, and the 0.125 GiB release tolerance;
+- the v4 VRAM reserve of 0.3 GiB; records produced by `calibration/v3` keep 0.5 GiB;
+- the Calibration Gate status `GATE-PARTIAL`.
 
-## Analisi del contesto
+## Context analysis
 
-La model card Qwen dichiara 262.144 token nativi e consiglia almeno 128K quando possibile. Il tetto
-v4 di 131.072 soddisfa quella raccomandazione quando è fattibile, ma usa soltanto metà del contesto
-nativo dichiarato. Non è corretto estendere automaticamente il dominio usando una pagina corrente:
-la compatibilità locale dipende anche da release motore, cache, MTP, quantizzazione e memoria.
+The Qwen model card declares 262,144 native tokens and recommends at least 128K where possible. The
+v4 ceiling of 131,072 satisfies that recommendation when feasible, but it uses only half of the
+declared native context. Extending the domain automatically from a current page would be incorrect:
+local compatibility also depends on the engine release, cache, MTP, quantization, and memory.
 
-La scala v4 `128K → 64K` poteva saltare un best fit a 96K. D-055 risolve il gap con un nuovo metodo
-versionato: v5 prova automaticamente 98.304 e 49.152 token e usa un cap di 14 probe, sufficiente per
-i due gradini aggiuntivi e la ricerca completa sul dominio `[0,41]`. Provare 262K automaticamente
-resta fuori dal protocollo corrente.
+The v4 scale `128K → 64K` could skip a best fit at 96K. D-055 closes the gap with a new versioned
+method: v5 automatically tries 98,304 and 49,152 tokens and uses a cap of 14 probes, sufficient for
+the two additional steps and the full search over the `[0,41]` domain. Trying 262K automatically
+stays outside the current protocol.
 
-Su CPU, 8.192 è la baseline automatica e non un massimo tecnico: i target esperti approvati restano
-validi. Una vera ricerca automatica del massimo contesto CPU è lavoro per un protocollo successivo.
+On CPU, 8,192 is the automatic baseline and not a technical maximum: the approved expert targets
+remain valid. A real automatic search for the maximum CPU context is work for a later protocol.
 
-## RAM, VRAM e ambiente operativo
+## RAM, VRAM, and the operating environment
 
-Il fit non può derivare dalla sola somma nominale RAM+VRAM. Mmap, pagine residenti, KV cache, pesi
-MoE, MTP e processi desktop producono pressioni diverse e in parte sovrapposte. v4 prende la decisione
-sulle misure locali durante ogni processo fresco e rivalida l'headroom al riuso del record.
+The fit cannot come from the nominal RAM+VRAM sum alone. Mmap, resident pages, the KV cache, MoE
+weights, MTP, and desktop processes produce different and partly overlapping pressures. v4 makes the
+decision from local measurements during every fresh process and revalidates the headroom when the
+record is reused.
 
-Le differenze ambientali sono già trattate nel punto corretto:
+The environmental differences are already handled at the right point:
 
-- fuori da WDDM, un contesto compute estraneo invalida il run;
-- su WDDM, la popolazione desktop iniziale è identificata e sorvegliata per l'intero run;
-- RAM e VRAM sono campionate ogni 250 ms su entrambe le piattaforme;
-- il carico corrente può rendere una busta infeasible senza diventare una costante per quell'OS.
+- outside WDDM, an unrelated compute context invalidates the run;
+- on WDDM, the initial desktop population is identified and watched for the whole run;
+- RAM and VRAM are sampled every 250 ms on both platforms;
+- the current load can make an envelope infeasible without becoming a constant for that OS.
 
-Non va quindi aggiunto un “margine Windows” o “margine Ubuntu” fisso. Servono invece ripetizioni
-controllate sugli stessi hardware/driver e su hardware materialmente diverso, perché l'evidenza
-pubblica attuale copre un solo host Windows.
+A fixed "Windows margin" or "Ubuntu margin" must therefore not be added. What is needed instead is
+controlled repetitions on the same hardware/driver and on materially different hardware, because the
+current public evidence covers a single Windows host.
 
-## Analisi di `n_cpu_moe`
+## `n_cpu_moe` analysis
 
-Valori più bassi lasciano più pesi MoE sulla GPU; valori più alti risparmiano VRAM ma aumentano il
-lavoro e il traffico lato CPU/RAM. Il throughput non è assunto monotono. v4 usa una ricerca adattiva
-per trovare il primo valore fattibile, poi conferma soltanto `boundary` e `boundary+1` in ordine ABBA.
+Lower values leave more MoE weights on the GPU; higher values save VRAM but increase the work and
+traffic on the CPU/RAM side. Throughput is not assumed to be monotonic. v4 uses an adaptive search
+to find the first feasible value, then confirms only `boundary` and `boundary+1` in ABBA order.
 
-Questo è efficiente per trovare il confine di memoria, non per dimostrare il massimo throughput sul
-dominio `[0,41]`. Un valore lontano dal confine potrebbe essere più veloce per effetti di CPU,
-banda, MTP o scheduling. Un protocollo successivo dovrebbe separare:
+That is efficient for finding the memory boundary, not for proving maximum throughput over the
+`[0,41]` domain. A value far from the boundary could be faster because of CPU, bandwidth, MTP, or
+scheduling effects. A later protocol should separate:
 
-1. ricerca di fattibilità e contesto;
-2. campionamento prestazionale controllato del dominio fattibile;
-3. conferma accoppiata dei finalisti prodotti dal secondo stadio.
+1. the feasibility and context search;
+2. controlled performance sampling of the feasible domain;
+3. paired confirmation of the finalists produced by the second stage.
 
-Il disegno deve fissare prima budget, stop rule, gestione del rumore e ricostruzione del record; non
-va aggiunto uno sweep opportunistico a v4.
+The design must first fix the budget, stop rule, noise handling, and record reconstruction; an
+opportunistic sweep must not be bolted onto v4.
 
-## Assi disponibili ma non calibrati
+## Axes available but not calibrated
 
-L'help del binario esatto b10011 espone assi reali che il contratto corrente lascia ai default o non
-usa:
+The help of the exact b10011 binary exposes real axes that the current contract leaves at their
+defaults or does not use:
 
-- thread di generazione e batch (`--threads`, `--threads-batch`);
-- batch logico e fisico (default osservati 2048 e 512);
-- thread, cache K/V e `n_cpu_moe` del modello draft;
-- numero massimo di token draft MTP;
-- altri tipi di speculative decoding.
+- generation and batch threads (`--threads`, `--threads-batch`);
+- logical and physical batch (observed defaults 2048 and 512);
+- threads, K/V cache, and `n_cpu_moe` of the draft model;
+- the maximum number of MTP draft tokens;
+- other kinds of speculative decoding.
 
-Unsloth indica 2 draft token come buon punto iniziale, ma dichiara esplicitamente che l'ottimo è
-hardware-dependent; i suoi risultati correnti sui MoE mostrano inoltre guadagni inferiori ai modelli
-densi e sconsigliano in generale più di 2 per il calo di acceptance. Il valore 2 già appuntato resta
-quindi ragionevole, ma non è dimostrato ottimo sull'intera matrice supportata. Un futuro spike deve
-misurare almeno MTP off/1/2/3, acceptance, prefill, decode, RAM/VRAM e interazione con `n_cpu_moe`,
-senza estrapolare percentuali upstream al launcher.
+Unsloth suggests 2 draft tokens as a good starting point, but explicitly states that the optimum is
+hardware-dependent; its current MoE results also show smaller gains than dense models and generally
+advise against more than 2 because of the drop in acceptance. The already pinned value of 2
+therefore stays reasonable, but it is not proven optimal across the whole supported matrix. A future
+spike must measure at least MTP off/1/2/3, acceptance, prefill, decode, RAM/VRAM, and the
+interaction with `n_cpu_moe`, without extrapolating upstream percentages to the launcher.
 
-La guida modello corrente propone quantizzazioni diverse, fra cui `UD-Q4_K_XL` e NVFP4 su hardware
-Blackwell. Non prevalgono su `UD-Q4_K_M` e sui digest pubblicati: cambiare quantizzazione significa
-cambiare identità, requisiti, qualità e gate, non ottimizzare silenziosamente la calibrazione 0.1.
+The current model guide proposes different quantizations, among them `UD-Q4_K_XL` and NVFP4 on
+Blackwell hardware. They do not override `UD-Q4_K_M` and the published digests: changing the
+quantization means changing identity, requirements, quality, and gates, not silently optimizing the
+0.1 calibration.
 
-## Divergenza sampling separata dalla calibrazione
+## Sampling divergence, kept separate from calibration
 
-La model card esatta raccomanda `min_p=0.0` per i profili documentati. Il command contract del
-launcher espande solo temperatura, `top_p` e `top_k`; l'help b10011 riporta quindi il proprio default
-`min_p=0.05`. È una divergenza nota, ma non prova che il launcher debba cambiare valore.
+The exact model card recommends `min_p=0.0` for the documented profiles. The launcher's command
+contract expands only temperature, `top_p`, and `top_k`; the b10011 help therefore reports its own
+default `min_p=0.05`. This is a known divergence, but it does not prove the launcher should change
+the value.
 
-Adottare `min_p=0.0` richiederebbe modifica coordinata di contenuto modo e command contract. Il digest
-del contratto partecipa alla validazione, quindi tutti i record locali diventerebbero incompatibili e
-andrebbero ricalibrati. Inoltre `benchmark/v1`, con 256 token e `ignore_eos`, misura throughput e non
-qualità o regressioni di sampling. La decisione appartiene a uno spike separato con valutazione di
-qualità, thinking/non-thinking, loop, tool calling e matrice dei tre modi; non a questo commit.
+Adopting `min_p=0.0` would require a coordinated change of the mode content and the command
+contract. The contract digest takes part in validation, so every local record would become
+incompatible and would need recalibration. Furthermore `benchmark/v1`, with 256 tokens and
+`ignore_eos`, measures throughput rather than quality or sampling regressions. The decision belongs
+to a separate spike with an assessment of quality, thinking/non-thinking, loops, tool calling, and
+the three-mode matrix; not to this commit.
 
-## Miglioramento UX implementato
+## Implemented UX improvement
 
-Senza alterare prove, schema o selezione, il comando ora:
+Without altering evidence, schema, or selection, the command now:
 
-- emette un evento prima e dopo ogni trial, così le attese non sembrano blocchi;
-- usa una barra Rich con spinner, fase, conteggio, elapsed e tempo residuo su TTY;
-- conserva una riga per trial completato quando l'output è rediretto;
-- separa le durate per fase: screening dopo due campioni, conferma dopo uno e poi mediana;
-- mostra `≤14` nello screening e proietta la durata fino al cap senza chiamarla limite garantito;
-- chiude il live display su errori e `Ctrl-C`, mantenendo un riepilogo di fase;
-- spiega la regola di selezione e mostra i minimi RAM/VRAM del finalista;
-- rende visibili in `calibrate --help` gli extra gestiti dal parser specializzato.
+- emits an event before and after every trial, so waits do not look like hangs;
+- uses a Rich bar with a spinner, phase, count, elapsed, and remaining time on a TTY;
+- keeps one line per completed trial when the output is redirected;
+- separates durations by phase: screening after two samples, confirmation after one and then the
+  median;
+- shows `≤14` in screening and projects the duration up to the cap without calling it a guaranteed
+  limit;
+- closes the live display on errors and `Ctrl-C`, keeping a phase summary;
+- explains the selection rule and shows the finalist's minimum RAM/VRAM;
+- makes the extras handled by the specialized parser visible in `calibrate --help`.
 
-Gli eventi di progresso sono interni e non persistiti; non richiedono un nuovo schema. D-053 è un
-cambio separato: timestamp, ordine ABBA e benchmark restano invariati, mentre protocollo e record
-passano rispettivamente a v4 e v3.
+The progress events are internal and not persisted; they require no new schema. D-053 is a separate
+change: timestamps, ABBA order, and the benchmark stay unchanged, while the protocol and record move
+to v4 and v3 respectively.
 
-## Calibrazione empirica locale
+## Local empirical calibration
 
-D-055 è verificata soltanto da fake offline in questo commit; un Gate reale v5 resta manuale. Tutti
-i run reali descritti sotto appartengono a v3/v4 e non vengono reinterpretati come prova di v5.
+D-055 is verified only by offline fakes in this commit; a real v5 Gate remains manual. All the real
+runs described below belong to v3/v4 and are not reinterpreted as evidence for v5.
 
-Tutti i run reali sono stati eseguiti su `coding`, CUDA, automatici e `--no-activate` in radici
-isolate. Nessun record o candidato utente è stato modificato; dopo l'estrazione degli aggregati le
-radici temporanee sono eliminate. Queste sono verifiche locali, non evidenza pubblica portabile.
+Every real run was executed on `coding`, CUDA, automatic, and `--no-activate` in isolated roots. No
+user record or candidate was modified; after extracting the aggregates the temporary roots are
+deleted. These are local verifications, not portable public evidence.
 
-Host osservato:
+Observed host:
 
-- Ubuntu 24.04, Intel Core i5-10400F (6 core/12 thread);
-- 31,26 GiB RAM;
+- Ubuntu 24.04, Intel Core i5-10400F (6 cores/12 threads);
+- 31.26 GiB RAM;
 - NVIDIA RTX 2060 SUPER 8 GiB, driver 595.71.05;
-- modello e motore appuntati sopra.
+- the model and engine pinned above.
 
-### Baseline v3 a 0,5 GiB
+### v3 baseline at 0.5 GiB
 
-Il run originario (4 min 47 s, exit 0) ha selezionato `ctx=131072, n_cpu_moe=38`: 37 e 38 hanno vinto
-un round ciascuno e il tie-break ha preferito 1,248 GiB di VRAM libera minima contro 0,783 GiB. Il
-valore 36 non rispettava la riserva. Le mediane 37/38 erano 34,745/34,671 tok/s.
+The original run (4 min 47 s, exit 0) selected `ctx=131072, n_cpu_moe=38`: 37 and 38 won one round
+each and the tie-break preferred 1.248 GiB of minimum free VRAM against 0.783 GiB. The value 36 did
+not respect the reserve. The 37/38 medians were 34.745/34.671 tok/s.
 
-### Gate v4 a 0,3 GiB
+### v4 Gate at 0.3 GiB
 
-Sono stati conservati anche gli esiti negativi:
+The negative outcomes were preserved as well:
 
-| Run | Esito | Osservazione |
+| Run | Outcome | Observation |
 |---|---:|---|
-| 1, 5 min 20 s | exit 1 | confine 36; 36 viola 0,3 GiB in conferma e 37 non rilascia entro tolleranza; nessun finalista valido |
-| 2, 4 min 50 s | exit 0 | confine 37; 36 scende a 0,051 GiB ed è scartato; 37 e 38 sono validi |
+| 1, 5 min 20 s | exit 1 | boundary 36; 36 violates 0.3 GiB during confirmation and 37 does not release within tolerance; no valid finalist |
+| 2, 4 min 50 s | exit 0 | boundary 37; 36 drops to 0.051 GiB and is discarded; 37 and 38 are valid |
 
-Aggregati del retry valido:
+Aggregates of the valid retry:
 
-| Campo | Osservazione |
+| Field | Observation |
 |---|---:|
-| probe screening | 7 |
-| massimo contesto v4 | 131.072, fattibile |
-| finalisti | 37 e 38 |
-| vincitore round 1 / round 2 | 37 / 37 |
-| selezione | `n_cpu_moe=37`, dominanza unanime |
-| mediane round, 37 | 34,907 / 34,258 tok/s |
-| mediane round, 38 | 34,647 / 34,067 tok/s |
-| mediana aggregata selezionata | 34,763 tok/s |
-| VRAM libera minima, 37 / 38 | 0,509 / 0,962 GiB |
-| RAM disponibile minima selezionata | 25,577 GiB |
-| deriva baseline VRAM | 0,0117 GiB |
+| screening probes | 7 |
+| maximum v4 context | 131,072, feasible |
+| finalists | 37 and 38 |
+| round 1 / round 2 winner | 37 / 37 |
+| selection | `n_cpu_moe=37`, unanimous dominance |
+| round medians, 37 | 34.907 / 34.258 tok/s |
+| round medians, 38 | 34.647 / 34.067 tok/s |
+| selected aggregate median | 34.763 tok/s |
+| minimum free VRAM, 37 / 38 | 0.509 / 0.962 GiB |
+| selected minimum available RAM | 25.577 GiB |
+| VRAM baseline drift | 0.0117 GiB |
 
-Il risultato non autorizza `n_cpu_moe=36`: il benchmark completo lo porta quasi a esaurimento VRAM.
-Inoltre non dimostra il beneficio della soglia 0,3, perché il finalista selezionato resta sopra 0,5
-GiB e un run su due è fallito. Il 23 luglio 2026 il maintainer ha attestato il Gate reale Windows v4,
-incluso il riuso del record, e ha deciso `RELEASE` dopo i test Ubuntu e Windows. Nessun valore o log
-privato del Gate è stato ricostruito o aggiunto all'evidenza pubblica; la copertura resta quindi
-`GATE-PARTIAL` finché manca hardware materialmente diverso.
+The result does not authorize `n_cpu_moe=36`: the full benchmark brings it close to VRAM exhaustion.
+It also does not demonstrate the benefit of the 0.3 threshold, because the selected finalist stays
+above 0.5 GiB and one run in two failed. On 23 July 2026 the maintainer attested the real Windows v4
+Gate, including record reuse, and decided `RELEASE` after the Ubuntu and Windows tests. No private
+value or log from the Gate was reconstructed or added to the public evidence; coverage therefore
+remains `GATE-PARTIAL` while materially different hardware is missing.
 
-## Priorità consigliate per un protocollo successivo
+## Recommended priorities for a later protocol
 
-1. D-053 ha versionato come v4 il solo cambio di riserva; scala e finalisti restano invariati.
-2. Valutare 262K come asse sperimentale, con budget e requisiti memoria espliciti.
-3. Separare ricerca del confine e ricerca throughput nel dominio `n_cpu_moe` fattibile.
-4. Aggiungere una vera ricerca del contesto CPU, mantenendo un percorso breve per la baseline.
-5. Eseguire spike monovariati su thread, batch e MTP; solo dopo provare le interazioni principali.
-6. Trattare sampling/thinking e quantizzazione come audit di contratto e qualità separati.
-7. Dopo il Gate Windows v4 attestato dal maintainer, ripetere su hardware materialmente diverso e
-   pubblicare soltanto report redatti e manifestati.
+1. D-053 versioned only the reserve change as v4; the scale and finalists stay unchanged.
+2. Evaluate 262K as an experimental axis, with an explicit budget and memory requirements.
+3. Separate the boundary search from the throughput search inside the feasible `n_cpu_moe` domain.
+4. Add a real CPU context search, keeping a short path to the baseline.
+5. Run single-variable spikes on threads, batch, and MTP; only then test the main interactions.
+6. Treat sampling/thinking and quantization as separate contract and quality audits.
+7. After the Windows v4 Gate attested by the maintainer, repeat on materially different hardware and
+   publish only redacted and manifested reports.
 
-Qualunque metodo successivo deve restare deterministico, limitato nel budget, interrompibile,
-ricostruibile dal record e validato offline con fake prima dei gate reali.
+Any later method must stay deterministic, budget-bounded, interruptible, reconstructible from the
+record, and validated offline with fakes before the real gates.
 
-## Consultazione Claude Fable
+## Claude Fable consultation
 
-Claude Fable è stato consultato tre volte con `--model fable --effort max` e accesso in sola lettura.
-Le prime due revisioni hanno coperto confine di memoria, UX, baseline CPU e cascata di `min_p`. La
-terza ha revisionato D-053 e i due run v4: ha identificato che il primo codice applicava 0,3 GiB anche
-al riuso dei record v2 storici. La migrazione è stata corretta affinché ogni record mantenga la
-propria riserva, con test dedicati. Ha inoltre confermato che, al momento dell'audit, assenza del Gate
-Windows e incoerenza fra codice/spec/docs bloccavano una release stabile; il successivo Gate umano è
-registrato sopra senza attribuirgli misure non conservate. Nessun output del consulente è evidenza
-empirica e nessun file è stato modificato dal consulente.
+Claude Fable was consulted three times with `--model fable --effort max` and read-only access. The
+first two reviews covered the memory boundary, UX, CPU baseline, and the `min_p` cascade. The third
+reviewed D-053 and the two v4 runs: it identified that the first version of the code applied 0.3 GiB
+to the reuse of historical v2 records as well. The migration was corrected so that every record
+keeps its own reserve, with dedicated tests. It also confirmed that, at the time of the audit, the
+missing Windows Gate and the inconsistency between code/spec/docs blocked a stable release; the
+subsequent human Gate is recorded above without attributing measurements to it that were not kept.
+No consultant output is empirical evidence, and no file was modified by the consultant.
 
-## Fonti primarie consultate
+## Primary sources consulted
 
-Fonti versionate del repository:
+Versioned repository sources:
 
 - [`engine.lock`](src/qwen_launcher/resources/engine.lock);
-- [`evidence/engine/spike-0.md`](evidence/engine/spike-0.md) e help b10011
+- [`evidence/engine/spike-0.md`](evidence/engine/spike-0.md) and the b10011 help for
   [Ubuntu CUDA](evidence/engine/spike-0/ubuntu-b10011/cuda-help.txt) /
   [Windows CUDA](evidence/engine/spike-0/windows-b10011/cuda-help.txt);
-- [spike KV Q8 Ubuntu](evidence/engine/kv-q8-ubuntu.md) e
+- the [Ubuntu KV Q8 spike](evidence/engine/kv-q8-ubuntu.md) and
   [Windows](evidence/engine/kv-q8-windows.md);
-- [protocollo pubblico v3](evidence/calibration/windows-11-rtx-2060-super-v3/protocol.md) e
+- the [public v3 protocol](evidence/calibration/windows-11-rtx-2060-super-v3/protocol.md) and the
   [Calibration Gate](evidence/calibration/windows-11-rtx-2060-super-v3/gate.md).
 
-Fonti upstream primarie, subordinate ai lock:
+Primary upstream sources, subordinate to the locks:
 
 - [Qwen/Qwen3.6-35B-A3B model card](https://huggingface.co/Qwen/Qwen3.6-35B-A3B);
-- [Unsloth GGUF alla revisione appuntata](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF/blob/5bc3e238d916f48a861bac2f8a1990a0e9b7e98d/README.md);
-- [guida Unsloth Qwen3.6](https://unsloth.ai/docs/models/qwen3.6) e
-  [guida MTP](https://unsloth.ai/docs/models/mtp);
-- [release llama.cpp b10011](https://github.com/ggml-org/llama.cpp/releases/tag/b10011);
-- [PR llama.cpp MTP #22673](https://github.com/ggml-org/llama.cpp/pull/22673);
-- [PR llama.cpp `n_cpu_moe` #15077](https://github.com/ggml-org/llama.cpp/pull/15077).
+- [Unsloth GGUF at the pinned revision](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF/blob/5bc3e238d916f48a861bac2f8a1990a0e9b7e98d/README.md);
+- the [Unsloth Qwen3.6 guide](https://unsloth.ai/docs/models/qwen3.6) and the
+  [MTP guide](https://unsloth.ai/docs/models/mtp);
+- the [llama.cpp b10011 release](https://github.com/ggml-org/llama.cpp/releases/tag/b10011);
+- [llama.cpp MTP PR #22673](https://github.com/ggml-org/llama.cpp/pull/22673);
+- [llama.cpp `n_cpu_moe` PR #15077](https://github.com/ggml-org/llama.cpp/pull/15077).
 
-Le pagine upstream correnti sono state consultate il 2026-07-22 e possono cambiare; flag e default
-del binario b10011 sono stati ricontrollati anche sull'eseguibile locale verificato.
+The current upstream pages were consulted on 2026-07-22 and may change; the flags and defaults of
+the b10011 binary were also re-checked against the verified local executable.

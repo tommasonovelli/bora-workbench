@@ -123,14 +123,14 @@ def test_contribution_guide_keeps_publication_manual_and_checklisted() -> None:
     template = Path(".github/pull_request_template.md").read_text(encoding="utf-8")
 
     for required in (
-        "## Contribuire nuova evidenza",
-        "Checklist per la pull request:",
+        "## Contributing new evidence",
+        "Pull request checklist:",
         "qwen-launcher validate",
         "privacy_reviewed",
-        "non esegue login, upload, commit, branch remoto, issue o pull request",
+        "performs no logins, uploads, commits, remote branches, issues, or pull requests",
     ):
         assert required in normalized
-    assert "Seed di solo ordinamento" in template
+    assert "Ordering-only seed" in template
 
 
 def test_shareable_public_files_pass_privacy_scan(tmp_path) -> None:
