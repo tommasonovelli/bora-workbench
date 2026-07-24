@@ -1,13 +1,13 @@
-# Spike cross-context — TEMPLATE NON MISURATO
+# Cross-context spike — UNMEASURED TEMPLATE
 
-**Stato:** `PENDING-HUMAN-RUN`
+**Status:** `PENDING-HUMAN-RUN`
 
-**Verdetto:** `PENDING` (`GO` oppure `NO-GO` dopo revisione umana)
+**Verdict:** `PENDING` (`GO` or `NO-GO` after human review)
 
-Questo albero è un template redatto, non evidenza e non un risultato. Seguire
+This tree is a redacted template, not evidence and not a result. Follow
 [`scripts/spike_ctx/protocol.md`](../../../scripts/spike_ctx/protocol.md).
 
-## Scope da compilare
+## Scope to fill in
 
 - OS/build: `<redacted measured value>`
 - CPU/RAM: `<measured value>`
@@ -15,25 +15,25 @@ Questo albero è un template redatto, non evidenza e non un risultato. Seguire
 - engine: `llama.cpp b10011`, commit `bf2c86ddc0685f580595954056c2e77ebabfab4f`
 - model digest: `0b21525e972670ed59e1812e170b27c26355381f0656ecc4e25617ece7dac58b`
 
-## Risultati da compilare
+## Results to fill in
 
-| Configurazione | ctx | n_cpu_moe | e2e corto mediano ms | prefill 8K tok/s | decode tok/s | min VRAM GiB | min RAM GiB |
+| Configuration | ctx | n_cpu_moe | short e2e median ms | 8K prefill tok/s | decode tok/s | min VRAM GiB | min RAM GiB |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | best 131K | 131072 | `<n>` | `<value>` | `<value>` | `<value>` | `<value>` | `<value>` |
 | best 65K | 65536 | `<n>` | `<value>` | `<value>` | `<value>` | `<value>` | `<value>` |
 | best 32K | 32768 | `<n>` | `<value>` | `<value>` | `<value>` | `<value>` | `<value>` |
 
-## Appendici da compilare
+## Appendices to fill in
 
 - MTP 131K off↔2: `<delta e2e>`, `<delta decode>`, acceptance `<accepted/draft>`.
 - MTP 65K off↔2: `<delta e2e>`, `<delta decode>`, acceptance `<accepted/draft>`.
-- Reasoning off: `<reasoning-off | reasoning-off-plus-budget-0>`, nessun `<think>`: `<true|false>`.
+- Reasoning off: `<reasoning-off | reasoning-off-plus-budget-0>`, no `<think>`: `<true|false>`.
 
-## Decisione da compilare
+## Decision to fill in
 
-- criterio e calcolo applicato: `<one of the three D-061 criteria, or none>`;
-- verdetto umano: `<GO|NO-GO>`;
-- limiti e anomalie: `<measured facts only>`.
+- criterion and calculation applied: `<one of the three D-061 criteria, or none>`;
+- human verdict: `<GO|NO-GO>`;
+- limits and anomalies: `<measured facts only>`.
 
-Prima del commit sostituire o rimuovere ogni placeholder, revisionare privacy, aggiornare il JSON e
-rigenerare `SHA256SUMS`. Non dichiarare Gate per un template o un dry-run.
+Before committing, replace or remove every placeholder, review privacy, update the JSON, and
+regenerate `SHA256SUMS`. Do not declare a Gate for a template or a dry-run.

@@ -1,109 +1,114 @@
-# Smoke Windows 11 — cache KV Q8 su llama.cpp b10011 CUDA 13.3
+# Windows 11 smoke test — Q8 KV cache on llama.cpp b10011 CUDA 13.3
 
-## Decisione
+## Decision
 
-**Windows 11 CUDA 13.3: `GO` per cache K/V `q8_0` mantenendo `--mmap`.**
+**Windows 11 CUDA 13.3: `GO` for the `q8_0` K/V cache while keeping `--mmap`.**
 
-Con il GO Ubuntu del mini-spike precedente, questa evidenza completa il requisito di D-033: la
-coppia server/runtime CUDA 13.3 accetta `--cache-type-k q8_0 --cache-type-v q8_0`, serve i tre modi
-a `ctx=131072` con MTP, UI e vision corretti e rilascia la VRAM entro finestra e tolleranza. La
-modifica dichiarativa separata adotta i due argomenti nel solo ramo CUDA di `engine.lock`;
-`--no-mmap` resta fuori dal contratto (NO-GO Ubuntu, non riproposto qui).
+Together with the Ubuntu GO from the previous mini-spike, this evidence completes the requirement of
+D-033: the CUDA 13.3 server/runtime pair accepts `--cache-type-k q8_0 --cache-type-v q8_0`, serves
+the three modes at `ctx=131072` with correct MTP, UI, and vision, and releases the VRAM within the
+window and tolerance. The separate declarative change adopts the two arguments in the CUDA branch of
+`engine.lock` only; `--no-mmap` stays out of the contract (Ubuntu NO-GO, not retried here).
 
-Il GO riguarda compatibilità funzionale e comportamento di memoria del contratto, non promesse di
-prestazioni: le misure Windows registrano il carico ambientale di un desktop reale e la loro
-dispersione, dati usati dalla progettazione di `calibration/v2`.
+The GO concerns the contract's functional compatibility and memory behavior, not performance
+promises: the Windows measurements record the ambient load of a real desktop and its dispersion,
+data used by the design of `calibration/v2`.
 
-## Macchina e protocollo
+## Machine and protocol
 
-- Windows 11 Pro build 26200, x86-64 — **stesso hardware fisico della macchina Ubuntu del
-  mini-spike** (dual boot): Intel Core i5-10400F, 31,9 GiB RAM, NVIDIA GeForce RTX 2060 SUPER
-  8 GiB; driver Windows 610.47 (Ubuntu: 595.71.05);
-- motore gestito b10011 (`bf2c86ddc`), coppia server/runtime CUDA 13.3 e prebuilt CPU, digest del
-  lock; modello e mmproj verificati contro i digest del lock (`system-info.txt`);
-- `ctx=131072`, Q8+mmap, `n_cpu_moe ∈ {48, 38}` per coding e vstudio, `38` per studio, più un
-  riferimento col contratto attuale a `48`; compatibilità CPU a `ctx=8192`;
-- `benchmark/v1` (digest appuntati): un warm-up escluso e cinque misure valide da 256 token;
-- polling VRAM/RAM a 250 ms, salute, MTP, stop e rilascio fino a 10 s con tolleranza 0,125 GiB;
-- a differenza del run Ubuntu (X quieto, ~0,6 GiB ambientali), il desktop Windows aveva un carico
-  grafico ambientale reale di ~1,4–1,5 GiB VRAM e ~20 GiB RAM già impegnati; i valori assoluti
-  vanno letti in quel contesto e ogni run registra la propria baseline;
-- stop tramite CTRL_BREAK: su Windows il processo termina con `0xC000013A`
-  (`STATUS_CONTROL_C_EXIT`), l'equivalente console della terminazione per segnale registrata come
-  exit 0 su Ubuntu.
+- Windows 11 Pro build 26200, x86-64 — **the same physical hardware as the Ubuntu machine of the
+  mini-spike** (dual boot): Intel Core i5-10400F, 31.9 GiB RAM, NVIDIA GeForce RTX 2060 SUPER
+  8 GiB; Windows driver 610.47 (Ubuntu: 595.71.05);
+- the managed b10011 engine (`bf2c86ddc`), the CUDA 13.3 server/runtime pair and the CPU prebuilt,
+  with the lock's digests; the model and mmproj verified against the lock's digests
+  (`system-info.txt`);
+- `ctx=131072`, Q8+mmap, `n_cpu_moe ∈ {48, 38}` for coding and vstudio, `38` for studio, plus a
+  reference with the current contract at `48`; CPU compatibility at `ctx=8192`;
+- `benchmark/v1` (pinned digests): one excluded warm-up and five valid 256-token measurements;
+- VRAM/RAM polling at 250 ms, health, MTP, stop, and release for up to 10 s with a 0.125 GiB
+  tolerance;
+- unlike the Ubuntu run (quiet X, about 0.6 GiB ambient), the Windows desktop had a real ambient
+  graphics load of about 1.4–1.5 GiB VRAM and about 20 GiB RAM already committed; the absolute
+  values must be read in that context and every run records its own baseline;
+- stop through CTRL_BREAK: on Windows the process exits with `0xC000013A`
+  (`STATUS_CONTROL_C_EXIT`), the console equivalent of the signal termination recorded as exit 0 on
+  Ubuntu.
 
-I comandi completi, con i soli percorsi privati redatti, sono in `results.json`; prompt e richiesta
-mantengono i digest appuntati di `benchmark/v1`.
+The complete commands, with only the private paths redacted, are in `results.json`; the prompt and
+request keep the pinned `benchmark/v1` digests.
 
-## Dominio di `n_cpu_moe` sul modello appuntato
+## The `n_cpu_moe` domain on the pinned model
 
-I metadati GGUF del modello (`general.architecture=qwen35moe`) dichiarano `block_count=41`,
-`expert_count=256`, `expert_used_count=8`, `context_length=262144`. I probe a `ctx=8192` misurano:
+The model's GGUF metadata (`general.architecture=qwen35moe`) declares `block_count=41`,
+`expert_count=256`, `expert_used_count=8`, `context_length=262144`. The probes at `ctx=8192`
+measure:
 
-| Probe | n_cpu_moe | Picco VRAM usata GiB | Min libera VRAM GiB |
+| Probe | n_cpu_moe | Peak VRAM used GiB | Min free VRAM GiB |
 |---|---:|---:|---:|
-| `ncmoe-domain-48` | 48 | 4,479 | 3,341 |
-| `ncmoe-domain-49` | 49 | 4,485 | 3,334 |
-| `ncmoe-domain-41` | 41 | 4,477 | 3,343 |
-| `ncmoe-domain-40` | 40 | 4,731 | 3,088 |
+| `ncmoe-domain-48` | 48 | 4.479 | 3.341 |
+| `ncmoe-domain-49` | 49 | 4.485 | 3.334 |
+| `ncmoe-domain-41` | 41 | 4.477 | 3.343 |
+| `ncmoe-domain-40` | 40 | 4.731 | 3.088 |
 
-48, 49 e 41 sono la stessa configurazione entro il rumore di misura; solo sotto 41 la VRAM cresce.
-**Il dominio legale dell'asse è `[0, 41]`**: ogni valore superiore è un alias di «tutti i layer MoE
-su CPU». La baseline storica `n_cpu_moe=48` resta valida come alias prudente del massimo; della
-scala storica `48, 44, 42, 40, 39, 38, 37` i primi tre valori erano alias della stessa busta.
+48, 49, and 41 are the same configuration within measurement noise; VRAM only grows below 41. **The
+axis's legal domain is `[0, 41]`**: every higher value is an alias of "all MoE layers on the CPU".
+The historical `n_cpu_moe=48` baseline stays valid as a conservative alias of the maximum; in the
+historical `48, 44, 42, 40, 39, 38, 37` scale the first three values were aliases of the same
+envelope.
 
-## Confronto coding CUDA (ctx 131072)
+## CUDA coding comparison (ctx 131072)
 
-| Configurazione | n_cpu_moe | Load s | Mediana tok/s | Min libera VRAM GiB | Min RAM disp. GiB | Esito |
+| Configuration | n_cpu_moe | Load s | Median tok/s | Min free VRAM GiB | Min avail. RAM GiB | Outcome |
 |---|---:|---:|---:|---:|---:|---|
-| attuale, mmap/cache default | 48 | 5,28 | 20,011 | 0,505 | 4,97 | PASS |
-| **Q8 K/V + mmap** | 48 | 5,54 | 20,155 | 1,687 | 5,11 | PASS |
-| **Q8 K/V + mmap** | 38 | 6,06 | 21,796 | 0,248 | 4,90 | PASS funzionale, sotto riserva |
+| current, default mmap/cache | 48 | 5.28 | 20.011 | 0.505 | 4.97 | PASS |
+| **Q8 K/V + mmap** | 48 | 5.54 | 20.155 | 1.687 | 5.11 | PASS |
+| **Q8 K/V + mmap** | 38 | 6.06 | 21.796 | 0.248 | 4.90 | functional PASS, below the reserve |
 
-A parità di `n_cpu_moe=48`, Q8+mmap ha liberato 1,18 GiB di VRAM minima anche su Windows (Ubuntu:
-1,16 GiB), con mediana equivalente entro il rumore. MTP attivo in tutte le misure (Q8: 197/156,
-identico a Ubuntu a parità di seed). Il PASS di `38` con margine 0,248 GiB conferma che il confine
-è sensibile al carico ambientale, come già osservato su Ubuntu (0,235 col contratto attuale).
+At equal `n_cpu_moe=48`, Q8+mmap freed 1.18 GiB of minimum VRAM on Windows as well (Ubuntu:
+1.16 GiB), with an equivalent median within the noise. MTP was enabled in every measurement (Q8:
+197/156, identical to Ubuntu at equal seed). The PASS of `38` with a 0.248 GiB margin confirms that
+the boundary is sensitive to ambient load, as already observed on Ubuntu (0.235 with the current
+contract).
 
-## Smoke modi con Q8+mmap (ctx 131072) e CPU
+## Mode smoke tests with Q8+mmap (ctx 131072) and CPU
 
-| Backend/modo | Busta | Mediana tok/s | Min libera VRAM GiB | Verifiche | Esito |
+| Backend/mode | Envelope | Median tok/s | Min free VRAM GiB | Checks | Outcome |
 |---|---|---:|---:|---|---|
-| CUDA studio | 131072 / 38 | 22,153 | 0,307 | salute, UI 200, MTP, benchmark, stop | PASS funzionale, sotto riserva |
-| CUDA vstudio | 131072 / 48 | 22,110 | 0,378 | salute, UI 200, vision `Rosso`, MTP, benchmark, stop | PASS funzionale, sotto riserva |
-| CUDA vstudio | 131072 / 38 | 22,668 | 0,072 | salute, UI 200, vision `Rosso`, MTP, benchmark, stop | PASS funzionale, margine quasi nullo |
-| CPU coding | 8192 | 8,885 | n/a | asset CPU, salute, MTP, benchmark, stop | PASS compatibilità |
+| CUDA studio | 131072 / 38 | 22.153 | 0.307 | health, UI 200, MTP, benchmark, stop | functional PASS, below the reserve |
+| CUDA vstudio | 131072 / 48 | 22.110 | 0.378 | health, UI 200, vision `Rosso`, MTP, benchmark, stop | functional PASS, below the reserve |
+| CUDA vstudio | 131072 / 38 | 22.668 | 0.072 | health, UI 200, vision `Rosso`, MTP, benchmark, stop | functional PASS, almost no margin |
+| CPU coding | 8192 | 8.885 | n/a | CPU asset, health, MTP, benchmark, stop | compatibility PASS |
 
-Sotto il carico ambientale del desktop, **tutti** i candidati aggressivi restano sotto la riserva
-prudenziale: su questa macchina in queste condizioni una calibrazione con riserva 0,5 GiB
-selezionerebbe buste più prudenti dei PASS funzionali qui elencati. È il comportamento voluto: lo
-smoke prova il contratto, la ricerca locale sceglie la busta.
+Under the desktop's ambient load, **every** aggressive candidate stays below the conservative
+reserve: on this machine under these conditions, a calibration with a 0.5 GiB reserve would select
+more conservative envelopes than the functional PASS results listed here. That is the intended
+behavior: the smoke test proves the contract, the local search chooses the envelope.
 
-Durante il run CPU la RAM disponibile è scesa fino a 0,01 GiB (Ubuntu quieto: 16,85): il PASS di
-compatibilità è reale ma il sistema era al limite della paginazione. È l'evidenza più diretta a
-favore del monitoraggio RAM obbligatorio per tutti i backend nel protocollo successivo.
+During the CPU run the available RAM dropped to 0.01 GiB (quiet Ubuntu: 16.85): the compatibility
+PASS is real, but the system was on the edge of paging. This is the most direct evidence in favor of
+mandatory RAM monitoring for every backend in the following protocol.
 
-## Dispersione delle misure e rumore ambientale
+## Measurement dispersion and ambient noise
 
-Dispersione relativa `(max − min) / mediana` delle cinque misure:
+Relative dispersion `(max − min) / median` of the five measurements:
 
-| Run | Dispersione |
+| Run | Dispersion |
 |---|---:|
-| coding attuale 48 / Q8 48 | 11,7% / 11,5% |
-| coding Q8 38 | 9,6% |
-| studio Q8 38 | 18,0% |
-| vstudio Q8 48 / 38 | 10,5% / 18,8% |
-| CPU coding Q8 | 6,3% |
+| coding current 48 / Q8 48 | 11.7% / 11.5% |
+| coding Q8 38 | 9.6% |
+| studio Q8 38 | 18.0% |
+| vstudio Q8 48 / 38 | 10.5% / 18.8% |
+| CPU coding Q8 | 6.3% |
 
-Sullo stesso hardware fisico, l'host Ubuntu quieto misurava 0,14–2,4%. La dispersione non è quindi
-una proprietà della configurazione ma dell'ambiente: una fascia fissa di equivalenza giudicherebbe
-male almeno uno dei due casi. Il protocollo corrente affronta questo limite con round temporali
-accoppiati e dominanza per unanimità, descritti in `docs/calibration.md`.
+On the same physical hardware, the quiet Ubuntu host measured 0.14–2.4%. Dispersion is therefore a
+property of the environment, not of the configuration: a fixed equivalence band would misjudge at
+least one of the two cases. The current protocol addresses this limit with paired time rounds and
+dominance by unanimity, described in `docs/calibration.md`.
 
-`benchmark/v1` non misura la qualità semantica; il GO attesta compatibilità funzionale, vision,
-MTP e comportamento di memoria, non una regressione qualitativa nulla.
+`benchmark/v1` does not measure semantic quality; the GO attests functional compatibility, vision,
+MTP, and memory behavior, not zero quality regression.
 
-## Evidenza
+## Evidence
 
 - `evidence/engine/kv-q8-windows/results.json`;
 - `evidence/engine/kv-q8-windows/logs/`;

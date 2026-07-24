@@ -158,11 +158,11 @@
   "source_references": [
     {
       "path": "evidence/calibration/windows-11-rtx-2060-super-v3/gate.md",
-      "sha256": "d1fed2710fcab2e1ec85385eef2f23101eee2146310dbfaab4e2c921458f259f"
+      "sha256": "cd11c57dd5872786ff8c556b5eec63a0aff670364bae454f64a80138276c8be6"
     },
     {
       "path": "evidence/calibration/windows-11-rtx-2060-super-v3/protocol.md",
-      "sha256": "5229eb200db8102f060fec8eaf02a652a028161bb9cd248d90a50aaa65d29517"
+      "sha256": "eec2627bcde70e0a51f5885b5c717408ab6c192ad9f0f5f6c02c154944b8eab5"
     }
   ]
 }

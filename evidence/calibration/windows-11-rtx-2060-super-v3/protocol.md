@@ -1,492 +1,494 @@
-# `calibrate_v3.md` — Ridisegno implementato della conferma `calibration/v3`
+# `calibrate_v3.md` — Implemented redesign of the `calibration/v3` confirmation
 
-> **Stato:** design approvato, implementato e sostenuto dal Gate v3 Windows CUDA dello Step 5A.
-> Risponde al run reale `coding` del 18 luglio 2026 (`CALIBRATION-REJECTED` per v2); il run pulito
-> `--mode all --no-activate` del 19 luglio è `CALIBRATION-ACCEPTED` localmente per coding, studio e
-> vstudio. La copertura empirica resta `GATE-PARTIAL`; D-047 autorizza Step 5B e rinvia hardware
-> materialmente diverso a un follow-up futuro non bloccante.
-> **Data:** 19 luglio 2026. **Evidenza citata:** `docs/calibration-gate-v3-windows.md`, record
-> `calibration-record/v1` del run v2, `docs/calibration-v2-design.md` e mini-spike.
+> **Status:** design approved, implemented, and backed by the Step 5A Windows CUDA v3 Gate.
+> It answers the real `coding` run of 18 July 2026 (`CALIBRATION-REJECTED` for v2); the clean
+> `--mode all --no-activate` run of 19 July is locally `CALIBRATION-ACCEPTED` for coding, studio, and
+> vstudio. The empirical coverage remains `GATE-PARTIAL`; D-047 authorizes Step 5B and defers
+> materially different hardware to a future, non-blocking follow-up.
+> **Date:** 19 July 2026. **Evidence cited:** `docs/calibration-gate-v3-windows.md`, the
+> `calibration-record/v1` record of the v2 run, `docs/calibration-v2-design.md`, and the mini-spikes.
 
-## 1. Sintesi
+## 1. Summary
 
-Il run del 18 luglio è formalmente corretto ma non convincente, e il difetto non è un bug: è un
-limite strutturale del disegno della conferma. Gli otto problemi osservati hanno tre cause radice:
+The 18 July run is formally correct but unconvincing, and the flaw is not a bug: it is a structural
+limit of the confirmation design. The eight observed problems have three root causes:
 
-1. **i finalisti sono misurati in finestre temporali disgiunte**, su un ambiente che deriva nel
-   tempo, con una statistica d'ordine estrema (il massimo) che un singolo burst rende decisiva —
-   da qui i problemi 1, 2, 3 e la scelta di 38 nonostante l'11% di svantaggio mediano;
-2. **obiettivo e ciclo di vita sono impliciti** — il protocollo non dichiara che cosa ottimizza
-   (problema 4) e attiva il record prima che il Gate lo accetti (problema 8);
-3. **evidenza e riserve sono incomplete** — telemetria GPU assente (5), RAM passiva (6), record
-   che non conserva i singoli avvii e log cancellati (7).
+1. **the finalists are measured in disjoint time windows**, on an environment that drifts over
+   time, with an extreme order statistic (the maximum) that a single burst makes decisive — hence
+   problems 1, 2, 3 and the choice of 38 despite an 11% median disadvantage;
+2. **the objective and the lifecycle are implicit** — the protocol does not declare what it
+   optimizes (problem 4) and activates the record before the Gate accepts it (problem 8);
+3. **evidence and reserves are incomplete** — no GPU telemetry (5), passive RAM (6), a record that
+   does not keep the individual startups, and deleted logs (7).
 
-La soluzione implementata, `calibration/v3`, non aggiunge statistica: **cambia la geometria della
-misura in modo che la deriva ambientale si cancelli da sola**, e rende espliciti obiettivo e
-ciclo di vita. In cinque punti:
+The implemented solution, `calibration/v3`, adds no statistics: **it changes the geometry of the
+measurement so that environmental drift cancels itself out**, and it makes the objective and
+lifecycle explicit. In five points:
 
-1. **Conferma accoppiata (ABBA).** Stessi 4 avvii freschi di oggi, ma intercalati per round:
-   round 1 `A→B`, round 2 `B→A`, con `benchmark/v1` completo su ogni avvio. Ogni finalista è
-   quindi misurato due volte, su due processi freschi, in posizioni temporali medie identiche.
-2. **Dominanza per unanimità dei round.** A domina B soltanto se la mediana di sessione di A
-   supera quella di B **in ogni round**. Nessuna nuova soglia: la regola resta derivata soltanto
-   dalle misure locali. Senza unanimità i finalisti sono equivalenti e decide, come oggi, il
-   margine VRAM e poi la prudenza.
-3. **Riserva RAM universale** (2,0 GiB) con la stessa semantica della riserva VRAM: violarla
-   durante un trial rende il probe non fattibile o scarta il finalista. Il Gate locale non l'ha
-   avvicinata; la prova su capacità diverse resta un follow-up D-047 non bloccante.
-4. **Record `calibration-record/v2`** con evidenza per singolo avvio (baseline, picco, rilascio e
-   sua durata, RAM, sessione benchmark, telemetria GPU, ordine temporale) e conservazione dei log
-   dell'ultimo run; `validate` ricostruisce round, unanimità e scelta.
-5. **Ciclo candidato → attivo.** Il record nasce `candidate` e viene promosso atomicamente ad
-   attivo nello stesso comando (l'utente ignaro continua a fare tutto con un solo `calibrate`);
-   `--no-activate` ferma la promozione per i run sperimentali del Gate. Il passaggio di schema
-   v1→v2 rende inoltre il record respinto di oggi automaticamente inerte, senza migrazioni.
+1. **Paired confirmation (ABBA).** The same 4 fresh startups as today, but interleaved by round:
+   round 1 `A→B`, round 2 `B→A`, with a full `benchmark/v1` on every startup. Every finalist is
+   therefore measured twice, on two fresh processes, at identical average temporal positions.
+2. **Dominance by unanimity of the rounds.** A dominates B only when A's session median exceeds B's
+   **in every round**. No new threshold: the rule stays derived from local measurements only.
+   Without unanimity the finalists are equivalent and, as today, the VRAM margin and then caution
+   decide.
+3. **A universal RAM reserve** (2.0 GiB) with the same semantics as the VRAM reserve: violating it
+   during a trial makes the probe infeasible or discards the finalist. The local Gate did not
+   approach it; testing it on different capacities remains a non-blocking D-047 follow-up.
+4. **A `calibration-record/v2` record** with per-startup evidence (baseline, peak, release and its
+   duration, RAM, benchmark session, GPU telemetry, temporal order) and retention of the last run's
+   logs; `validate` reconstructs the rounds, unanimity, and the choice.
+5. **A candidate → active cycle.** The record is born as a `candidate` and is atomically promoted to
+   active in the same command (the unaware user still does everything with a single `calibrate`);
+   `--no-activate` stops the promotion for the Gate's experimental runs. The v1→v2 schema change
+   also makes today's rejected record automatically inert, without migrations.
 
-Costo rispetto a oggi: **zero avvii in più** (4 come ora), due sessioni benchmark aggiuntive
-(~24 richieste totali contro 14, pochi minuti). Lo screening non cambia: resta la bisezione
-misurata entro 12 probe, con due sole correzioni di robustezza (sezione 4).
+Cost relative to today: **zero additional startups** (4, as now), two extra benchmark sessions
+(about 24 total requests against 14, a few minutes). Screening does not change: it remains the
+measured bisection within 12 probes, with only two robustness fixes (section 4).
 
-### L'esperienza utente resta il requisito
+### The user experience remains the requirement
 
-Il principio guida non cambia ed è il metro di ogni scelta qui sotto: l'utente che non sa nulla
-di `llama-server` esegue `qwen-launcher calibrate`, aspetta, e ottiene la migliore configurazione
-per la sua macchina — zero input obbligatori, nessun secondo comando, nessuna decisione tecnica.
-Tutta la sofisticazione di questa proposta è interna al protocollo; l'interfaccia resta un solo
-comando che finisce con un verdetto in linguaggio piano. Le uniche opzioni nuove (`--no-activate`,
-`--target-ctx`) sono facoltative e pensate per il maintainer o l'utente esperto; il percorso
-predefinito non le richiede mai.
+The guiding principle does not change and is the yardstick for every choice below: a user who knows
+nothing about `llama-server` runs `qwen-launcher calibrate`, waits, and gets the best configuration
+for their machine — zero mandatory input, no second command, no technical decision. All the
+sophistication of this proposal is internal to the protocol; the interface stays a single command
+that ends with a plain-language verdict. The only new options (`--no-activate`, `--target-ctx`) are
+optional and meant for the maintainer or the expert user; the default path never requires them.
 
-## 2. Diagnosi: perché il protocollo ha scelto 38
+## 2. Diagnosis: why the protocol chose 38
 
-I numeri del record reale:
+The numbers from the real record:
 
-| Finalista | Misure (tok/s) | Mediana | Massimo | VRAM minima libera |
+| Finalist | Measurements (tok/s) | Median | Maximum | Minimum free VRAM |
 |---|---|---:|---:|---:|
-| 37 | 22,19 · 22,28 · 24,20 · 23,18 · 22,85 | 22,85 | 24,20 | 0,649 GiB |
-| 38 | 23,79 · 23,77 · 18,69 · 19,71 · 20,52 | 20,52 | 23,79 | 0,930 GiB |
+| 37 | 22.19 · 22.28 · 24.20 · 23.18 · 22.85 | 22.85 | 24.20 | 0.649 GiB |
+| 38 | 23.79 · 23.77 · 18.69 · 19.71 · 20.52 | 20.52 | 23.79 | 0.930 GiB |
 
-La regola attuale chiede alla mediana di 37 (22,85) di superare il massimo di 38 (23,79). Le
-prime due misure di 38 appartengono però a un regime veloce che scompare a metà sessione
-(23,79 → 18,69): la serie non è stazionaria, e il massimo — la statistica più fragile che esista —
-fotografa proprio il regime scomparso. Un solo burst ambientale di 38 annulla così un vantaggio
-mediano dell'11,35% di 37, e la regola ripiega sul margine VRAM.
+The current rule asks 37's median (22.85) to exceed 38's maximum (23.79). But 38's first two
+measurements belong to a fast regime that disappears halfway through the session
+(23.79 → 18.69): the series is not stationary, and the maximum — the most fragile statistic there
+is — captures exactly the regime that vanished. A single ambient burst on 38 thus cancels an 11.35%
+median advantage for 37, and the rule falls back to the VRAM margin.
 
-Il punto essenziale: **su un desktop reale il rumore non è i.i.d., è deriva più burst.** Qualsiasi
-regola che confronti due serie raccolte in momenti diversi — con qualunque statistica — resta
-esposta alla domanda «è più veloce il candidato o era più scarico il PC?». Il protocollo attuale
-non può rispondere, perché misura 37 per intero e poi 38 per intero (problema 3), benchmarka ogni
-finalista una sola volta (problema 2) e non conserva l'evidenza per distinguere i casi
-(problema 7).
+The essential point: **on a real desktop the noise is not i.i.d., it is drift plus bursts.** Any
+rule comparing two series collected at different times — with any statistic — stays exposed to the
+question "is the candidate faster, or was the machine less loaded?". The current protocol cannot
+answer, because it measures 37 in full and then 38 in full (problem 3), benchmarks each finalist
+only once (problem 2), and keeps no evidence to distinguish the cases (problem 7).
 
-Le alternative scartate, e perché:
+The alternatives discarded, and why:
 
-- **test statistici di stazionarietà o di significatività** (confronto fra metà serie, trend,
-  rango): richiedono soglie di significanza, cioè costanti inventate, vietate dai principi del
-  progetto (`CALIBRATE.md` sezione 2.2: il criterio deriva dal rumore misurato localmente);
-  inoltre aggiungono cicli di ri-misura dalla durata non prevedibile;
-- **più misure per sessione** (10, 20…): pagano tempo lineare per un problema che non è la
-  varianza veloce (già domata dalla mediana di 5) ma la deriva lenta, che più misure nella stessa
-  finestra temporale non correggono affatto;
-- **fasce di equivalenza fisse** («2%»): già escluse dall'evidenza dei due host (dispersione
-  0,14–18,8% sullo stesso hardware).
+- **statistical stationarity or significance tests** (half-series comparison, trend, rank): they
+  require significance thresholds, that is, invented constants, forbidden by the project's
+  principles (`CALIBRATE.md` section 2.2: the criterion derives from locally measured noise); they
+  also add re-measurement cycles of unpredictable duration;
+- **more measurements per session** (10, 20…): they pay linear time for a problem that is not fast
+  variance (already tamed by the median of 5) but slow drift, which more measurements in the same
+  time window do not correct at all;
+- **fixed equivalence bands** ("2%"): already excluded by the evidence from the two hosts
+  (dispersion 0.14–18.8% on the same hardware).
 
-La risposta giusta è progettuale, non statistica: **rendere il confronto equo per costruzione**,
-in modo che la deriva colpisca entrambi i finalisti allo stesso modo. È il classico disegno
-accoppiato ABBA, ed è più semplice — non più complesso — del protocollo attuale da spiegare.
+The right answer is a design one, not a statistical one: **make the comparison fair by
+construction**, so that drift hits both finalists equally. It is the classic paired ABBA design, and
+it is simpler — not more complex — than the current protocol to explain.
 
-## 3. Il cuore della proposta: conferma accoppiata e unanimità dei round
+## 3. The heart of the proposal: paired confirmation and round unanimity
 
-### 3.1 Struttura della conferma
+### 3.1 Confirmation structure
 
-Per i due finalisti A (confine, più aggressivo) e B (vicino prudente), la conferma esegue
-`CONFIRM_ROUNDS = 2` round deterministici:
+For the two finalists A (boundary, more aggressive) and B (the conservative neighbor), the
+confirmation runs `CONFIRM_ROUNDS = 2` deterministic rounds:
 
 ```text
-round 1:  avvio fresco A (benchmark/v1 completo)  →  avvio fresco B (benchmark/v1 completo)
-round 2:  avvio fresco B (benchmark/v1 completo)  →  avvio fresco A (benchmark/v1 completo)
+round 1:  fresh startup A (full benchmark/v1)  →  fresh startup B (full benchmark/v1)
+round 2:  fresh startup B (full benchmark/v1)  →  fresh startup A (full benchmark/v1)
 ```
 
-- ogni avvio resta un processo fresco, isolato, con carico reale del modo, monitor VRAM e RAM a
-  250 ms e verifica del rilascio: nulla di ciò che oggi rende un avvio «stabile» viene rimosso;
-- **ogni avvio esegue `benchmark/v1` completo** (un warm-up escluso più cinque misure): «2 avvii
-  stabili» torna a significare «prestazioni confermate su 2 avvii» (problema 2);
-- l'ordine interno si inverte al secondo round: sotto una deriva lineare le posizioni temporali
-  medie di A (1ª e 4ª) e B (2ª e 3ª) sono identiche, quindi la deriva non favorisce nessuno
-  (problema 3);
-- l'ordine è fisso e deterministico, mai casuale: `validate` deve poterlo ricostruire;
-- il numero di avvii per finalista resta 2: la costante D-039 «2 avvii stabili» diventa
-  «2 round», senza costi aggiuntivi di caricamento.
+- every startup stays a fresh, isolated process, with the mode's real workload, VRAM and RAM
+  monitoring at 250 ms, and release verification: nothing that makes a startup "stable" today is
+  removed;
+- **every startup runs a full `benchmark/v1`** (one excluded warm-up plus five measurements): "2
+  stable startups" goes back to meaning "performance confirmed over 2 startups" (problem 2);
+- the internal order is reversed in the second round: under linear drift the average temporal
+  positions of A (1st and 4th) and B (2nd and 3rd) are identical, so drift favors neither
+  (problem 3);
+- the order is fixed and deterministic, never random: `validate` must be able to reconstruct it;
+- the number of startups per finalist stays 2: the D-039 constant "2 stable startups" becomes "2
+  rounds", with no additional loading cost.
 
-`benchmark/v1` non cambia di una virgola (risorse byte-identiche, un warm-up, cinque misure):
-cambia soltanto quante sessioni la calibrazione esegue e come le confronta. Il protocollo di
-benchmark e quello di calibrazione restano versionati separatamente.
+`benchmark/v1` does not change one bit (byte-identical resources, one warm-up, five measurements):
+only the number of sessions calibration runs and how it compares them changes. The benchmark
+protocol and the calibration protocol stay versioned separately.
 
-### 3.2 Regola di selezione
+### 3.2 Selection rule
 
-Per il finalista F e il round r, la **mediana di sessione** `m(F, r)` è la mediana delle cinque
-misure di quella sessione — robusta ai singoli burst per costruzione.
+For finalist F and round r, the **session median** `m(F, r)` is the median of that session's five
+measurements — robust to individual bursts by construction.
 
-> **A domina B se e solo se `m(A, r) > m(B, r)` in ogni round.** Altrimenti i finalisti sono
-> equivalenti e si applica l'ordine attuale: maggiore VRAM libera minima osservata, poi il più
-> prudente. Una parità esatta in un round non è una vittoria.
+> **A dominates B if and only if `m(A, r) > m(B, r)` in every round.** Otherwise the finalists are
+> equivalent and the current order applies: the largest minimum free VRAM observed, then the more
+> conservative one. An exact tie in a round is not a win.
 
-Proprietà, tutte verificabili dal record:
+Properties, all verifiable from the record:
 
-- **zero costanti nuove**: niente fasce, niente percentuali, niente p-value; solo confronti
-  d'ordine fra misure locali — esattamente il vincolo di design che ha già escluso le soglie
-  fisse;
-- **simmetrica** (l'attuale «mediana di A contro massimo di B» non lo era) e al riparo dal veto
-  del singolo outlier: il massimo grezzo non è più decisionale, sopravvive solo come evidenza;
-- **l'unanimità è il test di equivalenza implicito**: un vantaggio reale e riproducibile vince
-  entrambi i round accoppiati; un vantaggio che appare una volta sola — burst, deriva, bimodalità
-  — produce round discordi e ricade in sicurezza sul margine di memoria. Su host quieto
-  (dispersione < 1%) l'unanimità emerge quasi sempre; su host rumoroso la regola degrada nello
-  stesso ripiego prudente di oggi, ma soltanto quando il disaccordo è reale;
-- **deterministica e ricostruibile**: `validate` ricalcola mediane di sessione, vincitori di
-  round, unanimità e tie-break dai dati per-avvio del record.
+- **zero new constants**: no bands, no percentages, no p-values; only order comparisons between
+  local measurements — exactly the design constraint that already excluded fixed thresholds;
+- **symmetric** (the current "A's median against B's maximum" was not) and safe from a single
+  outlier's veto: the raw maximum is no longer decisional and survives only as evidence;
+- **unanimity is the implicit equivalence test**: a real, reproducible advantage wins both paired
+  rounds; an advantage that appears only once — a burst, drift, bimodality — produces disagreeing
+  rounds and falls back safely on the memory margin. On a quiet host (dispersion < 1%) unanimity
+  almost always emerges; on a noisy host the rule degrades into the same conservative fallback as
+  today, but only when the disagreement is real;
+- **deterministic and reconstructible**: `validate` recomputes the session medians, round winners,
+  unanimity, and the tie-break from the record's per-startup data.
 
-Etichette di selezione risultanti (registrate nel record): `dominance-unanimous-rounds`,
+The resulting selection labels (recorded in the record): `dominance-unanimous-rounds`,
 `equivalent-prefer-minimum-free-vram`, `equivalent-prefer-prudent`,
-`equivalent-after-baseline-drift` (sezione 3.3), `single-finalist`, `cpu-baseline-confirmation`.
+`equivalent-after-baseline-drift` (section 3.3), `single-finalist`, `cpu-baseline-confirmation`.
 
-### 3.3 Deriva di baseline: da scarto a degradazione onesta
+### 3.3 Baseline drift: from discard to honest degradation
 
-Oggi una deriva di baseline oltre 0,125 GiB fra i due avvii di un finalista lo **scarta**. Con
-l'intercalazione i due avvii dello stesso finalista distano di più nel tempo, e su WDDM la
-baseline del desktop oscilla già di ~0,1 GiB: mantenere lo scarto significherebbe bocciare
-entrambi i finalisti su molti host normali e far fallire l'intero run — l'opposto della
-generalità richiesta.
+Today a baseline drift beyond 0.125 GiB between a finalist's two startups **discards** it. With
+interleaving, the two startups of the same finalist are further apart in time, and on WDDM the
+desktop baseline already oscillates by about 0.1 GiB: keeping the discard would mean failing both
+finalists on many normal hosts and making the whole run fail — the opposite of the generality
+required.
 
-La correzione usa un fatto già vero nel codice: la sicurezza di memoria **non dipende** dalla
-stabilità della baseline, perché la riserva è verificata su ogni campione come VRAM libera
-assoluta (`_calibration_vram.py`: `vram_free_gib < minimum_free_gib` su ogni campione). Se
-l'ambiente si prende memoria e la riserva regge, la busta è ancora più dimostrata; se la riserva
-cade, il probe/finalista è già scartato dalla regola esistente.
+The fix uses a fact already true in the code: memory safety **does not depend** on baseline
+stability, because the reserve is verified on every sample as absolute free VRAM
+(`_calibration_vram.py`: `vram_free_gib < minimum_free_gib` on every sample). If the environment
+takes memory and the reserve holds, the envelope is demonstrated even more strongly; if the reserve
+falls, the probe/finalist is already discarded by the existing rule.
 
-Quindi in v3 la deriva di baseline oltre tolleranza durante la conferma:
+So in v3, baseline drift beyond tolerance during confirmation:
 
-- **non scarta nessun finalista** (nessuno dei due ne ha colpa);
-- **spegne le pretese di dominanza**: la selezione dichiara equivalenza con etichetta
-  `equivalent-after-baseline-drift` e decide per margine VRAM e prudenza — se l'ambiente si è
-  mosso, il confronto di velocità non è affidabile e il protocollo lo dice, invece di fingere;
-- resta registrata per avvio nel record (baseline di ognuno dei 4 avvii, escursione complessiva).
+- **discards no finalist** (neither of them is at fault);
+- **switches off dominance claims**: the selection declares equivalence with the
+  `equivalent-after-baseline-drift` label and decides by VRAM margin and caution — if the
+  environment moved, the speed comparison is not reliable and the protocol says so instead of
+  pretending;
+- stays recorded per startup in the record (the baseline of each of the 4 startups, and the overall
+  excursion).
 
-Le invalidazioni di run restano severe: un file eseguibile compute estraneo alla baseline WDDM
-(D-046), cambio driver, cambio capacità o monitor guasto. Un respawn dello stesso file entro la
-molteplicità iniziale è soltanto evidenza; non modifica riserve o selezione.
+Run invalidations stay strict: a compute executable file outside the WDDM baseline (D-046), a driver
+change, a capacity change, or a broken monitor. A respawn of the same file within the initial
+multiplicity is evidence only; it changes neither reserves nor selection.
 
-### 3.4 Il run del 18 luglio sotto la nuova regola
+### 3.4 The 18 July run under the new rule
 
-Onestà prima di tutto: un protocollo diverso avrebbe prodotto misure diverse; il run non è
-rieseguibile a tavolino. Ma i due esiti possibili sono entrambi difendibili, ed è questo il
-punto:
+Honesty first: a different protocol would have produced different measurements; the run cannot be
+re-run on paper. But the two possible outcomes are both defensible, and that is the point:
 
-- **se il regime veloce di 38 era ambiente** (PC più scarico a inizio conferma), i round
-  intercalati lo fanno assaggiare a entrambi i finalisti; le mediane di sessione di 37
-  (22,8–23,2 osservate) battono quelle del regime lento di 38 (19,7–20,5) in entrambi i round →
-  **dominanza, vince 37**, cioè il candidato 11% più veloce che il protocollo attuale ha perso;
-- **se 38 è genuinamente bimodale fra avvii freschi** (a volte parte «veloce»), i round si
-  dividono → equivalenza → margine → vince 38, ma stavolta la scelta poggia su evidenza
-  accoppiata e il record mostra il perché, invece di un massimo solitario.
+- **if 38's fast regime was the environment** (a less loaded machine at the start of confirmation),
+  the interleaved rounds let both finalists taste it; 37's session medians (22.8–23.2 observed)
+  beat those of 38's slow regime (19.7–20.5) in both rounds → **dominance, 37 wins**, that is, the
+  11%-faster candidate the current protocol lost;
+- **if 38 is genuinely bimodal across fresh startups** (sometimes it starts "fast"), the rounds
+  split → equivalence → margin → 38 wins, but this time the choice rests on paired evidence and the
+  record shows why, instead of a lone maximum.
 
-In entrambi i casi la risposta alla domanda «più veloce lui o più scarico il PC?» è nel record.
+In both cases the answer to "is it faster, or was the machine less loaded?" is in the record.
 
-## 4. Screening: due correzioni di robustezza, nessun cambio di strategia
+## 4. Screening: two robustness fixes, no strategy change
 
-La bisezione misurata resta com'è (è già la parte che funziona: confine 37 trovato in 7 probe su
-12). Due correzioni:
+The measured bisection stays as it is (it is already the part that works: boundary 37 found in 7
+probes out of 12). Two fixes:
 
-1. **La verifica di monotonia usa solo i probe fattibili.** Oggi `has_monotonic_violation`
-   confronta anche i picchi dei probe falliti. Ma il picco di un probe OOM è un'osservazione
-   troncata (il processo muore a caricamento parziale): su un'altra macchina può risultare
-   *inferiore* al picco di un probe prudente riuscito e innescare una degradazione lineare
-   spuria che brucia il budget. I probe non fattibili devono contribuire solo il segno di
-   fattibilità alla bisezione; il modello monotono si verifica sui soli caricamenti completi.
-   È una correzione di portabilità pura (nel run reale i picchi saturi 7,79–7,83 GiB non hanno
-   fatto danni per pochi centesimi di GiB).
-2. **Split guidato dall'interpolazione, con fallback a bisezione.** I picchi
-   fattibili misurati sono già quasi perfettamente lineari nell'asse: 41→5,61, 39→6,40,
-   38→6,89, 37→7,34 GiB, ossia ~0,4 GiB per blocco. Dopo due probe fattibili si può stimare il
-   confine per interpolazione (qui: limite 8,0−0,5=7,5 GiB → previsione ≈ 37) e puntare il
-   probe lì, invece che sul punto medio cieco (20). Regola di sicurezza: il punto interpolato
-   vale solo se cade dentro la staffa corrente e la restringe, altrimenti punto medio — la
-   correttezza resta quella della bisezione, la predizione **ordina e non esclude mai**
-   (stesso principio dei seed, D-035/D-038). Tipico: 4–5 probe invece di 6–7; caso peggiore
-   invariato. L'implementazione v3 lo usa esclusivamente come ordinamento interno alla staffa.
+1. **The monotonicity check uses only feasible probes.** Today `has_monotonic_violation` also
+   compares the peaks of failed probes. But an OOM probe's peak is a truncated observation (the
+   process dies during a partial load): on another machine it can come out *lower* than the peak of
+   a successful conservative probe and trigger a spurious linear degradation that burns the budget.
+   Infeasible probes must contribute only the feasibility sign to the bisection; the monotonic model
+   is checked on complete loads only. It is a pure portability fix (in the real run the saturated
+   peaks 7.79–7.83 GiB caused no harm, by a few hundredths of a GiB).
+2. **Interpolation-guided split, with a bisection fallback.** The measured feasible peaks are
+   already almost perfectly linear along the axis: 41→5.61, 39→6.40, 38→6.89, 37→7.34 GiB, that is,
+   about 0.4 GiB per block. After two feasible probes the boundary can be estimated by interpolation
+   (here: limit 8.0−0.5=7.5 GiB → prediction ≈ 37) and the probe aimed there, instead of at the
+   blind midpoint (20). Safety rule: the interpolated point counts only when it falls inside the
+   current bracket and narrows it, otherwise the midpoint — correctness stays that of the bisection,
+   the prediction **orders and never excludes** (the same principle as the seeds, D-035/D-038).
+   Typical: 4–5 probes instead of 6–7; the worst case is unchanged. The v3 implementation uses it
+   exclusively as ordering inside the bracket.
 
-## 5. Riserva RAM universale (problema 6)
+## 5. Universal RAM reserve (problem 6)
 
-Costante implementata, simmetrica alla riserva VRAM:
+An implemented constant, symmetric to the VRAM reserve:
 
-> `RAM_RESERVE_GIB = 2,0`: se durante un trial la RAM disponibile minima scende sotto
-> la riserva, il probe è non fattibile / il finalista è scartato, con motivo esplicito
-> («minimum available RAM reserve was violated»).
+> `RAM_RESERVE_GIB = 2.0`: if during a trial the minimum available RAM drops below the reserve, the
+> probe is infeasible / the finalist is discarded, with an explicit reason
+> ("minimum available RAM reserve was violated").
 
-Motivazione del valore: è un margine assoluto contro la paginazione, indipendente dalla taglia
-della macchina (Windows degrada in modo simile vicino all'esaurimento a 16 come a 64 GiB); i
-prerequisiti attuali (28 GiB totali) e la misura reale (minimo 9,6 GiB disponibili) lo rendono
-inerte sugli host sani e attivo solo dove oggi accetteremmo una busta al limite del thrashing.
-Provenienza dichiarata: questa proposta. Il Gate Windows ha osservato almeno 8,602 GiB disponibili
-nei trial accettati, quindi ha verificato il monitor e la regola ma non ha stressato la soglia; la
-validazione su hardware con meno RAM resta aperta.
+Rationale for the value: it is an absolute margin against paging, independent of the machine's size
+(Windows degrades similarly near exhaustion at 16 as at 64 GiB); the current prerequisites (28 GiB
+total) and the real measurement (minimum 9.6 GiB available) make it inert on healthy hosts and
+active only where today we would accept an envelope on the edge of thrashing. Declared provenance:
+this proposal. The Windows Gate observed at least 8.602 GiB available in the accepted trials, so it
+verified the monitor and the rule but did not stress the threshold; validation on hardware with less
+RAM remains open.
 
-Coerenza con il riuso: il controllo di headroom al lancio richiede già
-`RAM disponibile ≥ fabbisogno misurato`; diventa `≥ fabbisogno + riserva RAM`, speculare al ramo
-VRAM.
+Consistency with reuse: the headroom check at launch already requires
+`available RAM ≥ measured requirement`; it becomes `≥ requirement + RAM reserve`, mirroring the VRAM
+branch.
 
-Caveat misurato da registrare nel design: con mmap gran parte del modello è page cache
-reclamabile; la «RAM disponibile» di Windows include la standby list, quindi la riserva colpisce
-soprattutto le allocazioni private reali — è il comportamento voluto, ma il Gate deve osservarlo
-almeno una volta su un host con meno RAM prima di dichiarare il valore definitivo.
+A measured caveat to record in the design: with mmap, much of the model is reclaimable page cache;
+Windows's "available RAM" includes the standby list, so the reserve mostly hits real private
+allocations — that is the intended behavior, but the Gate must observe it at least once on a host
+with less RAM before the value can be declared final.
 
-## 6. Telemetria GPU: evidenza, non decisione (problema 5)
+## 6. GPU telemetry: evidence, not decision (problem 5)
 
-Il monitor VRAM interroga già `nvidia-smi` ogni 250 ms: la stessa query può chiedere anche
-`utilization.gpu`, `temperature.gpu`, `clocks.current.sm`, `power.draw` e i flag di throttling dichiarati
-dal driver (`clocks_event_reasons.active` / alias storico `clocks_throttle_reasons.active`).
-Costo zero, nessun campionatore nuovo.
+The VRAM monitor already queries `nvidia-smi` every 250 ms: the same query can also ask for
+`utilization.gpu`, `temperature.gpu`, `clocks.current.sm`, `power.draw`, and the throttling flags
+declared by the driver (`clocks_event_reasons.active` / the historical alias
+`clocks_throttle_reasons.active`). Zero cost, no new sampler.
 
-Regole:
+Rules:
 
-- **evidence-only in v3**: la telemetria finisce nel record per avvio (aggregati: utilizzo
-  massimo, clock SM minimo, temperatura massima, flag di throttling osservati) e spiega i casi
-  «regime veloce/lento» come quello di 38; **nessuna decisione** dipende da essa, perché ogni uso
-  decisionale richiederebbe soglie («quanto caldo è troppo?») che i principi vietano — e su GPU
-  piccole il thermal throttling sotto carico prolungato è normale, non un ambiente invalido;
-- **portabilità garantita**: campi non supportati dal driver → `null` nel record, mai un errore
-  (una query di telemetria fallita non deve rompere una calibrazione);
-- il Gate, con evidenza raccolta, potrà decidere se un flag del driver (che non è una soglia
-  inventata: lo dichiara l'hardware) meriti di diventare decisionale in un protocollo futuro.
+- **evidence-only in v3**: the telemetry lands in the record per startup (aggregates: maximum
+  utilization, minimum SM clock, maximum temperature, throttling flags observed) and explains the
+  "fast/slow regime" cases such as 38's; **no decision** depends on it, because any decisional use
+  would require thresholds ("how hot is too hot?") that the principles forbid — and on small GPUs
+  thermal throttling under prolonged load is normal, not an invalid environment;
+- **guaranteed portability**: fields the driver does not support → `null` in the record, never an
+  error (a failed telemetry query must not break a calibration);
+- the Gate, once evidence is collected, will be able to decide whether a driver flag (which is not
+  an invented threshold: the hardware declares it) deserves to become decisional in a future
+  protocol.
 
-Questo risponde anche al limite WDDM residuo: un contesto desktop già presente che inizia a
-lavorare non cambia necessariamente istanza, ma lascia traccia in utilizzo/clock e nel confronto fra
-round.
+This also answers the remaining WDDM limit: a desktop context already present that starts working
+does not necessarily change instance, but it leaves a trace in utilization/clocks and in the
+comparison between rounds.
 
-### 6.1 Identità WDDM a scope di run (D-046)
+### 6.1 Run-scoped WDDM identity (D-046)
 
-Due tentativi reali del Gate hanno mostrato lo stesso contesto desktop ricreato con PID diversi. Il
-PID era quindi un proxy asimmetrico: ammetteva qualunque cambio di attività finché l'istanza restava
-viva, ma invalidava il lifecycle ordinario dello stesso eseguibile. V3 usa ora una baseline
-immutabile per l'intero run:
+Two real Gate attempts showed the same desktop context recreated with different PIDs. The PID was
+therefore an asymmetric proxy: it admitted any change of activity as long as the instance stayed
+alive, but it invalidated the ordinary lifecycle of the same executable. V3 now uses an immutable
+baseline for the whole run:
 
-- ogni istanza è `pid + create_time`; il processo gestito è escluso soltanto con questa coppia;
-- l'eseguibile usa un digest locale di volume/file-id (`st_dev + st_ino`), senza conservare percorsi;
-- il multiset corrente deve essere un sotto-multiset della popolazione iniziale. Un respawn dello
-  stesso file è ammesso entro la molteplicità iniziale; file nuovi, identità illeggibili o istanze
-  aggiuntive invalidano ancora il run;
-- i respawn sono contati come evidenza per trial e non alimentano soglie o selezione;
-- i gap fra trial non sono campionati. Un evento interamente confinato nel gap non sovrappone una
-  misura; se persiste nel trial successivo viene confrontato con la baseline di run e non può essere
-  assorbito silenziosamente.
+- every instance is `pid + create_time`; the managed process is excluded by that pair alone;
+- the executable uses a local volume/file-id digest (`st_dev + st_ino`), keeping no paths;
+- the current multiset must be a sub-multiset of the initial population. A respawn of the same file
+  is allowed within the initial multiplicity; new files, unreadable identities, or additional
+  instances still invalidate the run;
+- respawns are counted as per-trial evidence and feed no thresholds or selection;
+- the gaps between trials are not sampled. An event entirely confined to a gap overlaps no
+  measurement; if it persists into the next trial it is compared against the run baseline and cannot
+  be silently absorbed.
 
-La regola governa l'igiene della misura, non la sicurezza contro processi ostili. Riserve assolute,
-ABBA, telemetria e divieto di workload concorrenti restano invariati.
+The rule governs measurement hygiene, not security against hostile processes. Absolute reserves,
+ABBA, telemetry, and the ban on concurrent workloads stay unchanged.
 
-## 7. Record `calibration-record/v2` ed evidenza (problema 7)
+## 7. The `calibration-record/v2` record and evidence (problem 7)
 
-Lo schema v2 conserva tutto ciò che serve a rifare i conti del run senza i log:
+The v2 schema keeps everything needed to redo the run's arithmetic without the logs:
 
-- **per ogni avvio di conferma** (e in forma ridotta per ogni probe): round, posizione globale
-  nell'ordine temporale, timestamp di inizio/fine, baseline/picco/minimo libero VRAM, valore e
-  **durata del rilascio**, baseline/minimo RAM, sessione benchmark completa (warm-up + 5 misure),
-  telemetria (o `null`), numero di contesti WDDM iniziali e respawn ammessi evidence-only;
-- **per la selezione**: mediane di sessione, vincitore di ogni round, esito
-  unanimità/equivalenza, escursione delle baseline della conferma, flag
-  `equivalent-after-baseline-drift`;
-- invariati: identità hardware/contratti, busta, minimi osservati, costanti dell'algoritmo,
-  probe di screening con esiti e motivi.
+- **for every confirmation startup** (and in reduced form for every probe): the round, the global
+  position in the temporal order, start/end timestamps, VRAM baseline/peak/minimum free, the release
+  value and **duration**, RAM baseline/minimum, the complete benchmark session (warm-up + 5
+  measurements), telemetry (or `null`), the number of initial WDDM contexts, and the respawns
+  allowed as evidence only;
+- **for the selection**: session medians, the winner of each round, the unanimity/equivalence
+  outcome, the excursion of the confirmation baselines, and the
+  `equivalent-after-baseline-drift` flag;
+- unchanged: hardware/contract identity, the envelope, the observed minimums, the algorithm's
+  constants, and the screening probes with their outcomes and reasons.
 
-I **log runtime dell'ultimo run** vengono conservati (oggi `.runtime-*` viene cancellato):
-directory `calibration/evidence/<run-id>/` con rotazione a uno slot — il run nuovo elimina il
-precedente solo dopo aver scritto il proprio. Disco limitato, diagnosi possibile, niente crescita
-infinita. I record restano privati e locali; il percorso di condivisione con redazione e privacy
-scanner non cambia (timestamp e telemetria locali non sono identificativi, e comunque non
-lasciano la macchina se non via bundle redatto).
+The **runtime logs of the last run** are preserved (today `.runtime-*` is deleted): a
+`calibration/evidence/<run-id>/` directory with single-slot rotation — the new run deletes the
+previous one only after writing its own. Bounded disk, diagnosis possible, no unbounded growth. The
+records stay private and local; the sharing path with redaction and the privacy scanner does not
+change (local timestamps and telemetry are not identifying, and in any case they do not leave the
+machine except through a redacted bundle).
 
-`verify_record` v2 estende la ricostruzione attuale: mediane per sessione dalle misure
-memorizzate, vincitori di round, unanimità, tie-break, coerenza fra evidenza per-avvio e
-aggregati — la scelta resta dimostrabile a freddo, requisito già esistente (D-038) applicato alla
-nuova regola.
+`verify_record` v2 extends the current reconstruction: per-session medians from the stored
+measurements, round winners, unanimity, the tie-break, and consistency between the per-startup
+evidence and the aggregates — the choice stays provable after the fact, an existing requirement
+(D-038) applied to the new rule.
 
-## 8. Ciclo di vita: candidato → attivo (problema 8)
+## 8. Lifecycle: candidate → active (problem 8)
 
-- `calibrate` scrive prima `records/<modo>.candidate.json`, poi — comportamento predefinito — lo
-  **promuove atomicamente** a `records/<modo>.json` (rename nella stessa directory); l'eventuale
-  attivo precedente sopravvive come `<modo>.previous.json` (uno slot, rollback a costo zero).
-  L'utente ignaro continua a vivere con un solo comando e il record attivo subito: D-038 resta
-  vero alla lettera.
-- `--no-activate` ferma il flusso al candidato: è la modalità per i run sperimentali del Gate — un
-  risultato non accettato non diventa operativo. `doctor` mostra per
-  modo lo stato: attivo, candidato in attesa, assente, invalido, schema superato, senza headroom.
-  Un successivo `calibrate --activate` promuove il candidato senza rieseguire la ricerca.
-- **Il record respinto di oggi si neutralizza da solo**: quando v3 arriva, `coding.json` (schema
-  v1, protocollo v2) non supera più la validazione di caricamento e ogni lancio ripiega sulla
-  baseline con diagnostica azionabile («record di protocollo superato: riesegui calibrate»).
-  Niente codice di migrazione. La quarantena manuale del file attuale come evidenza (spostarlo
-  sotto `data/calibrations/`) resta un'azione esplicita da fare **solo su autorizzazione** — non
-  è stata eseguita in questa sessione.
+- `calibrate` first writes `records/<mode>.candidate.json`, then — the default behavior —
+  **atomically promotes** it to `records/<mode>.json` (a rename in the same directory); any previous
+  active record survives as `<mode>.previous.json` (one slot, zero-cost rollback). The unaware user
+  keeps living with a single command and an immediately active record: D-038 stays true to the
+  letter.
+- `--no-activate` stops the flow at the candidate: it is the mode for the Gate's experimental runs —
+  a result that has not been accepted does not become operational. `doctor` shows the per-mode
+  state: active, candidate pending, absent, invalid, superseded schema, no headroom. A subsequent
+  `calibrate --activate` promotes the candidate without re-running the search.
+- **Today's rejected record neutralizes itself**: when v3 arrives, `coding.json` (schema v1,
+  protocol v2) no longer passes load validation and every launch falls back to the baseline with
+  actionable diagnostics ("superseded protocol record: re-run calibrate"). No migration code.
+  Manually quarantining the current file as evidence (moving it under `data/calibrations/`) remains
+  an explicit action to be taken **only with authorization** — it was not performed in this session.
 
-## 9. L'obiettivo dichiarato (problema 4)
+## 9. The declared objective (problem 4)
 
-`calibration/v3` dichiara l'obiettivo — nel design, nel record (`objective`) e nell'output:
+`calibration/v3` declares the objective — in the design, in the record (`objective`), and in the
+output:
 
-> **Obiettivo lessicografico:** (1) il contesto massimo fattibile sulla scala approvata del modo;
-> (2) a quel contesto, il throughput confermato dalla dominanza accoppiata; (3) a parità, il
-> margine di memoria; (4) a parità, la prudenza.
+> **Lexicographic objective:** (1) the largest feasible context on the mode's approved scale;
+> (2) at that context, the throughput confirmed by paired dominance; (3) on a tie, the memory
+> margin; (4) on a tie, caution.
 
-Perché contesto-prima resta il default giusto per l'utente ignaro:
+Why context-first stays the right default for the unaware user:
 
-- il contesto è capacità funzionale (un agente di coding con 131k *può fare cose* che con 32k
-  non può); i tok/s sono comfort — e il protocollo li massimizza comunque entro il contesto;
-- l'alternativa («esplora anche 65536, 32768, …» e scegli il compromesso) moltiplica la durata
-  per ~5 e richiede una funzione di utilità contesto/velocità che nessuna misura locale può
-  decidere al posto dell'utente: sarebbe una costante inventata travestita da ottimizzazione;
-- la scelta resta onesta perché **dichiarata**: il record non pretende più di essere «la busta
-  migliore in assoluto», ma «la busta più veloce confermata al contesto massimo fattibile» — che
-  è ciò che il codice fa davvero.
+- context is functional capability (a coding agent with 131k *can do things* it cannot at 32k);
+  tok/s is comfort — and the protocol maximizes it anyway within the context;
+- the alternative ("also explore 65536, 32768, …" and choose the trade-off) multiplies the duration
+  by about 5 and requires a context/speed utility function that no local measurement can decide on
+  the user's behalf: it would be an invented constant disguised as optimization;
+- the choice stays honest because it is **declared**: the record no longer claims to be "the best
+  envelope in absolute terms", but "the fastest envelope confirmed at the largest feasible
+  context" — which is what the code actually does.
 
-Due estensioni facoltative post-Gate, nessuna delle quali tocca il percorso predefinito:
+Two optional post-Gate extensions, neither of which touches the default path:
 
-- `--target-ctx <valore della scala>`: l'utente esperto che preferisce velocità blocca la scala a
-  un gradino (la macchina esistente fa il resto; ~10 righe);
-- **suggerimento informativo** nel sommario finale, derivato dalla pendenza VRAM misurata: «a
-  ctx 32768 entrerebbero sulla GPU ~N blocchi in più; se preferisci velocità al contesto,
-  `calibrate --target-ctx 32768`». È una predizione di capienza (misurata), mai una promessa di
-  tok/s; etichettata come tale.
+- `--target-ctx <value from the scale>`: an expert user who prefers speed pins the scale to a single
+  step (the existing machinery does the rest; about 10 lines);
+- an **informational suggestion** in the final summary, derived from the measured VRAM slope: "at
+  ctx 32768 about N more blocks would fit on the GPU; if you prefer speed over context,
+  `calibrate --target-ctx 32768`". It is a (measured) capacity prediction, never a tok/s promise;
+  and it is labeled as such.
 
-## 10. Complessità e durata (la domanda «meno che lineare»)
+## 10. Complexity and duration (the "less than linear" question)
 
-Dove va il tempo, e che cosa si può comprimere:
+Where the time goes, and what can be compressed:
 
-- **Screening: è già sublineare.** La bisezione è `O(log₂ 41) ≈ 6` probe (7 osservati, tetto 12);
-  una scansione lineare ne avrebbe usati fino a 41. Sotto il logaritmo si può scendere solo in
-  media, con lo split interpolato della sezione 4 (tipicamente 4–5 probe): il floor teorico è 2
-  probe *misurati* — confine fattibile e vicino non fattibile — perché il confine va dimostrato,
-  non predetto. Qualunque schema con meno misure smetterebbe di essere una calibrazione.
-- **Il costo dominante è l'avvio di processo** (caricamento modello, minuti), non la matematica.
-  Per questo la conferma v3 tiene **4 avvii esatti come oggi** e spende il guadagno dove rende:
-  4 sessioni benchmark invece di 2 (~+10 richieste ≈ pochi minuti) comprano il raddoppio
-  dell'evidenza prestazionale e l'equità temporale — il miglior rapporto informazione/minuto
-  dell'intero protocollo.
-- **Niente parallelismo**: una sola GPU e la contesa di memoria renderebbero le misure
-  reciprocamente contaminate; la serialità è un requisito di correttezza, non un'ingenuità.
-- La stima di design era 30–45 minuti a modo e 1,5–2 ore per `all`. Il Gate Windows reale ha
-  completato `all` in **27 minuti e 3 secondi**: coding 8,61 min, studio 7,99 min, vstudio 9,52 min.
-  Lo split interpolato e i tempi di caricamento locali spiegano il divario; il dato non diventa una
-  promessa su altro hardware. La CLI mostra progresso per fase con stima appresa online.
-- Futuro possibile, da mini-spike: `coding` e `studio` differiscono solo per sampling e UI; se
-  uno spike verifica che la busta di memoria del server è identica, `all` può condividere lo
-  screening fra i due (−~6 probe) confermando comunque per modo. Non necessario ora.
+- **Screening: it is already sublinear.** The bisection is `O(log₂ 41) ≈ 6` probes (7 observed, cap
+  12); a linear scan would have used up to 41. Below the logarithm one can only descend on average,
+  with the interpolated split of section 4 (typically 4–5 probes): the theoretical floor is 2
+  *measured* probes — a feasible boundary and an infeasible neighbor — because the boundary must be
+  demonstrated, not predicted. Any scheme with fewer measurements would stop being a calibration.
+- **The dominant cost is process startup** (model loading, minutes), not the arithmetic. That is why
+  the v3 confirmation keeps **exactly 4 startups, as today** and spends the gain where it pays off:
+  4 benchmark sessions instead of 2 (about +10 requests ≈ a few minutes) buy a doubling of the
+  performance evidence and temporal fairness — the best information-per-minute ratio of the whole
+  protocol.
+- **No parallelism**: a single GPU and memory contention would make the measurements mutually
+  contaminated; seriality is a correctness requirement, not naivety.
+- The design estimate was 30–45 minutes per mode and 1.5–2 hours for `all`. The real Windows Gate
+  completed `all` in **27 minutes and 3 seconds**: coding 8.61 min, studio 7.99 min, vstudio
+  9.52 min. The interpolated split and the local loading times explain the gap; the figure does not
+  become a promise on other hardware. The CLI shows per-phase progress with an online learned
+  estimate.
+- A possible future item, subject to a mini-spike: `coding` and `studio` differ only in sampling and
+  UI; if a spike verifies that the server's memory envelope is identical, `all` can share the
+  screening between the two (about −6 probes) while still confirming per mode. Not needed now.
 
-## 11. Costanti e provenienza (aggiornamento D-039)
+## 11. Constants and provenance (D-039 update)
 
-| Costante | Valore | Evidenza del Gate Windows v3 |
+| Constant | Value | Windows v3 Gate evidence |
 |---|---:|---|
-| Riserva VRAM minima | 0,5 GiB | ha governato il confine; ha scartato vstudio 38 a 0,488 GiB; minimi accettati studio/vstudio 0,503/0,505 GiB |
-| Tolleranza rilascio/deriva | 0,125 GiB | massimo rilascio 0,0176 GiB e massima deriva 0,0176 GiB |
-| Round di conferma | 2 | ordine ABBA completo nei tre modi; benchmark su ogni avvio |
-| Riserva RAM minima | 2,0 GiB | minimo accettato 8,602 GiB; soglia non stressata |
-| Tetto probe screening per modo | 12 | usati 7/6/7 probe per coding/studio/vstudio |
-| Scala contesti | 131072 → 8192 | `ctx=131072` fattibile e selezionato nei tre modi |
-| Regola di selezione | unanimità dei round su mediane di sessione | osservate dominanza unanime, equivalenza per round discordi e finalista unico dopo scarto di riserva |
+| Minimum VRAM reserve | 0.5 GiB | governed the boundary; discarded vstudio 38 at 0.488 GiB; accepted studio/vstudio minimums 0.503/0.505 GiB |
+| Release/drift tolerance | 0.125 GiB | maximum release 0.0176 GiB and maximum drift 0.0176 GiB |
+| Confirmation rounds | 2 | complete ABBA order in the three modes; a benchmark on every startup |
+| Minimum RAM reserve | 2.0 GiB | accepted minimum 8.602 GiB; threshold not stressed |
+| Screening probe cap per mode | 12 | 7/6/7 probes used for coding/studio/vstudio |
+| Context scale | 131072 → 8192 | `ctx=131072` feasible and selected in the three modes |
+| Selection rule | round unanimity on session medians | unanimous dominance, equivalence on disagreeing rounds, and a single finalist after a reserve discard were all observed |
 
-Nessuna costante per-macchina; ogni effetto passa da misure locali. La provenienza è registrata in
-D-039/D-041–D-046. Il Gate locale sostiene i valori sulla macchina 32/8; D-047 rinvia la prova su
-hardware eterogeneo a un follow-up non bloccante e vieta di descriverla come già eseguita.
+No per-machine constant; every effect comes through local measurements. The provenance is recorded
+in D-039/D-041–D-046. The local Gate backs the values on the 32/8 machine; D-047 defers testing on
+heterogeneous hardware to a non-blocking follow-up and forbids describing it as already done.
 
-## 12. Versionamento, decisioni, migrazione
+## 12. Versioning, decisions, migration
 
-- **Protocollo `calibration/v3`**, non una revisione silenziosa di v2: la riproducibilità del
-  progetto è «versione dell'algoritmo + misure registrate», quindi ad algoritmo diverso id
-  diverso. v2 non ha prodotto risultati accettati e non è pubblicato: il suo codice viene
-  **sostituito** da v3 (nessun terzo protocollo vivo), `--protocol v1` resta il laboratorio
-  storico, `docs/calibration-v2-design.md` riceve lo stato «superseded» con puntatore al design
-  v3. Il run del 18 luglio resta evidenza conservata del perché v2 è stato respinto.
-- **Schema `calibration-record/v2`** nella wheel; i record v1 diventano «invalidi, schema
-  superato» con diagnostica azionabile (è la quarantena automatica del record attuale).
-- **Decisioni registrate nella spec:** D-041 conferma accoppiata e dominanza per unanimità;
-  D-042 riserva RAM universale; D-043 ciclo candidato→attivo con promozione atomica e
-  `--no-activate`; D-044 telemetria GPU evidence-only; D-045 monotonia sui soli probe fattibili e
-  split interpolato come solo ordinamento; D-046 identità eseguibile WDDM a scope di run.
-- **Cosa non cambia**, ed è la maggior parte: zero input obbligatori, un contesto per confronto,
-  bisezione misurata con tetto e degradazione onesta, riserva VRAM su ogni campione, rilascio con
-  tolleranza, D-040/D-046 su WDDM, invalidazioni di run, `benchmark/v1` byte-identico, identità e
-  headroom del riuso senza nearest-match, seed solo come ordinamento, conferma onesta della
-  baseline su CPU (ora con benchmark su entrambi gli avvii), privacy e bundle, confini dei moduli
-  e limiti di dimensione del codice.
+- **Protocol `calibration/v3`**, not a silent revision of v2: the project's reproducibility is
+  "algorithm version + recorded measurements", so a different algorithm gets a different id. v2
+  produced no accepted results and is not published: its code is **replaced** by v3 (no third live
+  protocol), `--protocol v1` stays the historical laboratory, and `docs/calibration-v2-design.md`
+  receives the "superseded" status with a pointer to the v3 design. The 18 July run stays preserved
+  evidence of why v2 was rejected.
+- **Schema `calibration-record/v2`** in the wheel; v1 records become "invalid, superseded schema"
+  with actionable diagnostics (that is the automatic quarantine of the current record).
+- **Decisions recorded in the spec:** D-041 paired confirmation and dominance by unanimity; D-042
+  the universal RAM reserve; D-043 the candidate→active cycle with atomic promotion and
+  `--no-activate`; D-044 evidence-only GPU telemetry; D-045 monotonicity on feasible probes only and
+  the interpolated split as ordering only; D-046 run-scoped WDDM executable identity.
+- **What does not change**, and it is most of it: zero mandatory input, one context per comparison,
+  measured bisection with a cap and honest degradation, the VRAM reserve on every sample, release
+  with tolerance, D-040/D-046 on WDDM, run invalidations, a byte-identical `benchmark/v1`, reuse
+  identity and headroom without nearest-match, seeds as ordering only, honest confirmation of the
+  baseline on CPU (now with a benchmark on both startups), privacy and bundles, module boundaries,
+  and the code size limits.
 
-## 13. Limiti onesti della proposta
+## 13. Honest limits of the proposal
 
-1. Non riabilita il run v2 del 18 luglio: il nuovo run v3 è evidenza distinta e non reinterpreta
-   retroattivamente misure raccolte con un altro protocollo.
-2. Con 2 round, un burst che cade esattamente dentro una sessione può ancora produrre round
-   discordi → equivalenza → margine: è il fallback voluto, prudente e dichiarato, non una scelta
-   sbagliata; il Gate può alzare i round a 3 (unanimità su 3, sempre senza soglie) se l'evidenza
-   lo chiederà — al costo di 2 avvii in più.
-3. Un carico ambientale **costante** per tutto il run abbassa i tok/s assoluti di entrambi i
-   finalisti: il confronto resta equo, i valori assoluti restano relativi all'ambiente (il record
-   lo dichiara; la telemetria lo documenta).
-4. Il Gate Windows ha osservato la riserva RAM con mmap, ma con almeno 8,602 GiB disponibili: la
-   semantica vicino a 2 GiB e su un host con meno RAM resta non provata.
-5. La telemetria è best-effort per costruzione: su driver che non la espongono il record ha
-   `null` e la spiegazione ambientale resta parziale (mai bloccante).
-6. I gap fra trial non sono campionati; D-046 impedisce l'assorbimento di contesti persistenti ma
-   non registra eventi nati e terminati interamente fuori da una finestra di misura.
+1. It does not rehabilitate the v2 run of 18 July: the new v3 run is distinct evidence and does not
+   retroactively reinterpret measurements collected with another protocol.
+2. With 2 rounds, a burst falling exactly inside one session can still produce disagreeing rounds →
+   equivalence → margin: that is the intended fallback, conservative and declared, not a wrong
+   choice; the Gate can raise the rounds to 3 (unanimity over 3, still without thresholds) if the
+   evidence calls for it — at the cost of 2 additional startups.
+3. A **constant** ambient load for the whole run lowers the absolute tok/s of both finalists: the
+   comparison stays fair, the absolute values stay relative to the environment (the record declares
+   it; the telemetry documents it).
+4. The Windows Gate observed the RAM reserve with mmap, but with at least 8.602 GiB available: the
+   semantics near 2 GiB, and on a host with less RAM, remain unproven.
+5. The telemetry is best-effort by construction: on drivers that do not expose it the record holds
+   `null` and the environmental explanation stays partial (never blocking).
+6. The gaps between trials are not sampled; D-046 prevents the absorption of persistent contexts but
+   does not record events born and ended entirely outside a measurement window.
 
-## 14. Implementazione e test completati nello Step 5A
+## 14. Implementation and tests completed in Step 5A
 
-Il codice è stato separato per responsabilità entro i limiti di 200 righe/file e 40/funzione:
+The code was separated by responsibility within the limits of 200 lines/file and 40/function:
 
-| Area | Modifica |
+| Area | Change |
 |---|---|
-| `_calibration_v2_search.py` → `_calibration_v3_search.py` | monotonia sui soli fattibili, selezione per unanimità e split interpolato sicuro |
-| `_calibration_v2_confirm.py` → `_calibration_v3_confirm.py` | round ABBA con benchmark per avvio; deriva → flag di degradazione (~80 r. riorganizzate) |
-| `_calibration_v2_runner.py` → `_calibration_v3_runner.py` | orchestrazione round, etichette selezione, evidence dir con rotazione (~30 r.) |
-| `_calibration_ram.py` | riserva RAM nel validate del monitor (~10 r.) |
-| `_hardware_monitoring.py` / `_calibration_vram.py` | telemetria opzionale e baseline eseguibili WDDM a scope di run |
-| record: schema v2 + `_record_build` / `_record_checks` / `_record` | evidenza per avvio, ricostruzione round/unanimità, percorsi candidate/active/previous (~120 r.) |
-| `_calibration_reuse.py`, `_cli_doctor.py` | headroom RAM + riserva; stati candidato/schema superato (~30 r.) |
-| `_cli_calibration_v2.py` → `_cli_calibration_v3.py` | `--no-activate`/`--activate`, progresso per fase, sommario in linguaggio piano (~40 r.) |
+| `_calibration_v2_search.py` → `_calibration_v3_search.py` | monotonicity on feasible probes only, selection by unanimity, and a safe interpolated split |
+| `_calibration_v2_confirm.py` → `_calibration_v3_confirm.py` | ABBA rounds with a benchmark per startup; drift → degradation flag (about 80 lines reorganized) |
+| `_calibration_v2_runner.py` → `_calibration_v3_runner.py` | round orchestration, selection labels, evidence dir with rotation (about 30 lines) |
+| `_calibration_ram.py` | the RAM reserve in the monitor's validate (about 10 lines) |
+| `_hardware_monitoring.py` / `_calibration_vram.py` | optional telemetry and a run-scoped WDDM executable baseline |
+| record: schema v2 + `_record_build` / `_record_checks` / `_record` | per-startup evidence, round/unanimity reconstruction, candidate/active/previous paths (about 120 lines) |
+| `_calibration_reuse.py`, `_cli_doctor.py` | RAM headroom + reserve; candidate/superseded-schema states (about 30 lines) |
+| `_cli_calibration_v2.py` → `_cli_calibration_v3.py` | `--no-activate`/`--activate`, per-phase progress, plain-language summary (about 40 lines) |
 
-La suite offline deterministica copre (fake trial runner, nessun hardware):
+The deterministic offline suite covers (a fake trial runner, no hardware):
 
-- ordine ABBA emesso esattamente (posizioni globali 1–4 registrate);
-- dominanza: vittoria in entrambi i round → `dominance-unanimous-rounds`; round discordi o
-  parità → equivalenza → margine → prudenza (fixture con i numeri del run del 18 luglio:
-  la regola nuova sui dati registrati seleziona 37);
-- deriva di baseline in conferma → nessuno scarto, etichetta `equivalent-after-baseline-drift`;
-- riserva RAM violata in screening → probe non fattibile con motivo; in conferma → finalista
-  scartato;
-- regressione monotonia: picco OOM troncato inferiore a un picco fattibile prudente → nessuna
-  degradazione spuria;
-- split interpolato dentro staffa, fallback a punto medio e tetto rispettato;
-- record v2: costruzione/carico/verifica, ricostruzione della selezione, rifiuto azionabile dei
-  record v1, promozione atomica candidate→active→previous, `--no-activate` che non attiva;
-- telemetria assente → `null` senza errori;
-- respawn stesso file ammesso e contato, file nuovo/molteplicità extra/identità illeggibile e PID
-  gestito riciclato rifiutati senza percorsi serializzati.
+- the ABBA order emitted exactly (global positions 1–4 recorded);
+- dominance: a win in both rounds → `dominance-unanimous-rounds`; disagreeing rounds or a tie →
+  equivalence → margin → caution (a fixture with the numbers of the 18 July run: on the recorded
+  data the new rule selects 37);
+- baseline drift during confirmation → no discard, label `equivalent-after-baseline-drift`;
+- a violated RAM reserve during screening → an infeasible probe with a reason; during confirmation →
+  a discarded finalist;
+- a monotonicity regression: a truncated OOM peak lower than a conservative feasible peak → no
+  spurious degradation;
+- the interpolated split inside the bracket, the midpoint fallback, and the cap respected;
+- v2 records: construction/loading/verification, reconstruction of the selection, actionable
+  rejection of v1 records, atomic candidate→active→previous promotion, and `--no-activate` not
+  activating;
+- absent telemetry → `null` without errors;
+- a respawn of the same file allowed and counted, while a new file, extra multiplicity, an
+  unreadable identity, and a recycled managed PID are rejected without serializing paths.
 
-Verifica locale Windows: uv 0.11.28, CPython 3.12.13, Ruff, 314 test offline, `validate`, build e
-wheel isolata verdi. La baseline D-046 ha risolto 20/20 identità WDDM reali senza serializzare
-percorsi. Le matrici CI Ubuntu/Windows sono verdi sui commit D-046 `6f69d77` (run `29684539755`) e
-lifecycle doctor `2d4cc22` (run `29684866498`). Il Gate reale è descritto in
-`docs/calibration-gate-v3-windows.md`.
+Local Windows verification: uv 0.11.28, CPython 3.12.13, Ruff, 314 offline tests, `validate`, the
+build, and the isolated wheel all green. The D-046 baseline resolved 20/20 real WDDM identities
+without serializing paths. The Ubuntu/Windows CI matrices are green on the D-046 commit `6f69d77`
+(run `29684539755`) and the doctor lifecycle commit `2d4cc22` (run `29684866498`). The real Gate is
+described in `docs/calibration-gate-v3-windows.md`.
 
-## 15. Percorso operativo
+## 15. Operational path
 
-1. ~~approvare riserva RAM, ABBA, lifecycle, telemetria e split interpolato~~ — completato con
-   D-041–D-046;
-2. ~~implementare v3 e i test offline~~ — completato; i run sperimentali usano `--no-activate`;
-3. ~~rieseguire il Calibration Gate sulla macchina di Tommaso~~ — completato il 19 luglio 2026 con
-   esito locale accettato per i tre modi e candidati lasciati inattivi;
-4. ~~implementare Step 5B con copertura empirica esplicitamente limitata alla macchina misurata e
-   senza distribuire la sua busta come optimum remoto~~ — completato con policy/report v2, checksum
-   e seed di solo ordine;
-5. ripetere in futuro il Gate su almeno un caso materialmente diverso e aggiornare l'evidenza, senza
-   rendere il follow-up bloccante per Step 5B.
+1. ~~approve the RAM reserve, ABBA, the lifecycle, telemetry, and the interpolated split~~ —
+   completed with D-041–D-046;
+2. ~~implement v3 and the offline tests~~ — completed; the experimental runs use `--no-activate`;
+3. ~~re-run the Calibration Gate on Tommaso's machine~~ — completed on 19 July 2026 with a locally
+   accepted outcome for the three modes and the candidates left inactive;
+4. ~~implement Step 5B with the empirical coverage explicitly limited to the measured machine and
+   without distributing its envelope as a remote optimum~~ — completed with the v2 policy/report,
+   checksums, and ordering-only seeds;
+5. in the future, repeat the Gate on at least one materially different case and update the evidence,
+   without making the follow-up blocking for Step 5B.
 
-La conclusione aggiornata resta onesta: `CALIBRATION-REJECTED` vale per il protocollo v2, mentre il
-v3 spiega quale busta vince e perché sulla macchina misurata. Il risultato Windows è
-`CALIBRATION-ACCEPTED` per i tre modi; D-047 permette di procedere con Step 5B senza chiamare
-completa la copertura empirica.
+The updated conclusion stays honest: `CALIBRATION-REJECTED` applies to protocol v2, while v3
+explains which envelope wins and why on the measured machine. The Windows result is
+`CALIBRATION-ACCEPTED` for the three modes; D-047 allows proceeding with Step 5B without calling the
+empirical coverage complete.

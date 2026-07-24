@@ -1,17 +1,17 @@
-# Evidenza verificata
+# Verified evidence
 
-Questa directory contiene output misurati, fonti acquisite e manifest SHA-256 che sostengono i
-contratti distribuiti. Non è documentazione utente e non è una raccolta di piani.
+This directory holds measured output, acquired sources, and SHA-256 manifests that back the
+distributed contracts. It is not user documentation and it is not a collection of plans.
 
-- `engine/spike-0.*` e `engine/spike-0/`: selezione e matrice reale di `llama.cpp b10011`;
-- `engine/kv-q8-*`: prove che sostengono cache K/V Q8 con mmap sul ramo CUDA;
-- `engine/cross-context-spike-template/`: solo template non misurato per il futuro run D-061;
-- `calibration/windows-11-rtx-2060-super-v3/`: fonti checksum-bound del report pubblico v3.
+- `engine/spike-0.*` and `engine/spike-0/`: the selection and real matrix of `llama.cpp b10011`;
+- `engine/kv-q8-*`: the evidence backing the Q8 K/V cache with mmap on the CUDA branch;
+- `engine/cross-context-spike-template/`: an unmeasured template only, for the future D-061 run;
+- `calibration/windows-11-rtx-2060-super-v3/`: the checksum-bound sources of the public v3 report.
 
-I file grezzi coperti da manifest vanno conservati byte per byte. Alcuni documenti accettati
-contengono riferimenti ai percorsi storici sotto `docs/`: quei riferimenti fanno parte dei byte
-hashati e non vengono riscritti. I percorsi correnti autorevoli sono quelli nei manifest e nei
-`source_references` del report distribuito.
+Raw files covered by a manifest must be preserved byte for byte. Some accepted documents contain
+references to historical paths under `docs/`: those references are part of the hashed bytes and are
+not rewritten. The authoritative current paths are the ones in the manifests and in the
+`source_references` of the distributed report.
 
-Per capire il comportamento attuale usare [`docs/`](../docs/README.md). Per cambiare un lock o
-aggiungere nuova evidenza seguire [Sviluppo e contributi](../docs/development.md).
+To understand current behavior use [`docs/`](../docs/README.md). To change a lock or add new
+evidence follow [Development and contributions](../docs/development.md).
