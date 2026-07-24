@@ -5,6 +5,7 @@ contratti distribuiti. Non è documentazione utente e non è una raccolta di pia
 
 - `engine/spike-0.*` e `engine/spike-0/`: selezione e matrice reale di `llama.cpp b10011`;
 - `engine/kv-q8-*`: prove che sostengono cache K/V Q8 con mmap sul ramo CUDA;
+- `engine/cross-context-spike-template/`: solo template non misurato per il futuro run D-061;
 - `calibration/windows-11-rtx-2060-super-v3/`: fonti checksum-bound del report pubblico v3.
 
 I file grezzi coperti da manifest vanno conservati byte per byte. Alcuni documenti accettati

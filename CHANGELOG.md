@@ -5,6 +5,12 @@ changelog: sono in `IMPLEMENTATION_SPEC.md`.
 
 ## [Unreleased]
 
+### Added
+
+- Un pacchetto repository-only `scripts/spike_ctx/` prepara lo spike cross-context umano con
+  quick-bench non cached, bisezione a esiti tipizzati, appendici MTP/reasoning, dry-run offline e
+  template di evidenza. Non esegue il run reale né decide GO/NO-GO.
+
 ### Fixed
 
 - Gli errori di monitoraggio RAM/VRAM scoperti durante il cleanup prevalgono ora sui fallimenti del

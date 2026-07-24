@@ -35,6 +35,8 @@ Aggiornato al 24 luglio 2026.
   manuale multipiattaforma; questa rinuncia non viene descritta come Gate superato.
 - [x] La Fase 0 di `calibration/v6-lite` corregge la precedenza del cleanup, separa le cause VRAM,
   introduce la tassonomia a quattro esiti e prepara una sola volta il contratto motore.
+- [x] La Fase 1 lato agente prepara `scripts/spike_ctx/`, dry-run fake, protocollo e template
+  redatto; nessun run reale o verdetto è stato eseguito.
 
 ### Lavoro aperto
 
@@ -481,7 +483,8 @@ l'attivazione dei tre candidati locali restano esclusi.
 
 ### 7.4 Gate decisionale cross-context per v6-lite
 
-Il repository prepara, senza eseguirlo automaticamente, uno spike su 131K/65K/32K. Confronta
+Il pacchetto repository-only [`scripts/spike_ctx/`](scripts/spike_ctx/) prepara, senza eseguirlo
+automaticamente, uno spike su 131K/65K/32K. Confronta
 end-to-end corto, prefill 8K, decode e minimi RAM/VRAM; MTP off↔2 e reasoning off sono appendici
 informative. È `GO` se il migliore fra 65K e 32K, rispetto al migliore 131K, ottiene almeno uno fra:
 e2e corto mediano `≤0,92×`, prefill 8K `≥1,25×`, oppure prestazioni entro deadband 3% con almeno

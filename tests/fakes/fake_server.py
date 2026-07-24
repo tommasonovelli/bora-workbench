@@ -13,6 +13,7 @@ class FakeServer(ThreadingHTTPServer):
     health_mode: str
     delayed_requests: int
     health_requests: int
+    chat_requests: int
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -51,6 +52,37 @@ class Handler(BaseHTTPRequestHandler):
         else:
             self._send_json(200, {"status": "ok"})
 
+    def do_POST(self) -> None:
+        """Return deterministic complete timings for offline quick-bench requests."""
+        if self.path != "/v1/chat/completions":
+            self._send_json(404, {"error": "not found"})
+            return
+        length = int(self.headers.get("Content-Length", "0"))
+        request = json.loads(self.rfile.read(length))
+        messages = request.get("messages", [])
+        prompt = str(messages[-1].get("content", "")) if messages else ""
+        predicted_n = int(request.get("max_tokens", 1))
+        prompt_n = max(1, len(prompt.split()))
+        self.server.chat_requests += 1
+        predicted_ms = predicted_n * 20.0
+        timings = {
+            "prompt_n": prompt_n,
+            "cache_n": 0 if request.get("cache_prompt") is False else prompt_n,
+            "prompt_ms": prompt_n * 2.0,
+            "prompt_per_second": 500.0,
+            "predicted_n": predicted_n,
+            "predicted_ms": predicted_ms,
+            "predicted_per_second": 50.0,
+            "draft_n": predicted_n,
+            "draft_n_accepted": predicted_n // 2,
+        }
+        response = {
+            "choices": [{"finish_reason": "length", "message": {"content": "Risposta"}}],
+            "usage": {"completion_tokens": predicted_n},
+            "timings": timings,
+        }
+        self._send_json(200, response)
+
     def log_message(self, format: str, *args: object) -> None:
         """Keep fake process logs stable and free of request timestamps."""
         del format, args
@@ -78,6 +110,7 @@ def main() -> None:
     server.health_mode = arguments.health_mode
     server.delayed_requests = arguments.delayed_requests
     server.health_requests = 0
+    server.chat_requests = 0
     server.serve_forever()
 
 

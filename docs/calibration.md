@@ -37,7 +37,9 @@ resta attiva finché uno spike dedicato non fornisce nuova evidenza.
 
 La calibrazione predefinita è ancora `calibration/v5`. `calibration/v6-lite`, `mode/v2`, quick-bench
 ed envelope multiple non sono disponibili: richiedono prima un verdetto umano GO dello spike
-cross-context conservato in `evidence/`.
+cross-context conservato in `evidence/`. Il pacchetto repository-only e il dry-run offline sono
+documentati in [`scripts/spike_ctx/protocol.md`](../scripts/spike_ctx/protocol.md); prepararli non
+costituisce un Gate e non modifica il comando `calibrate`.
 
 ## Termini essenziali
 
