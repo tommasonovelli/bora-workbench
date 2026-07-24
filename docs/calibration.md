@@ -368,9 +368,18 @@ qwen-launcher calibrate --mode all --protocol v6 --preference max-context --no-a
 # Collassa la ricerca su un solo contesto approvato (131072, 98304, 65536, 49152, 32768)
 qwen-launcher calibrate --mode coding --protocol v6 --target-ctx 65536
 
+# Massime prestazioni a un contesto fisso: `--target-ctx` e `--preference` si combinano.
+# fast = minima latenza a quel contesto; max-context = massimo throughput a quel contesto.
+qwen-launcher calibrate --mode coding --protocol v6 --target-ctx 65536 --preference fast
+qwen-launcher calibrate --mode coding --protocol v6 --target-ctx 65536 --preference max-context
+
 # Promuove candidati v6 già misurati, senza rieseguire i trial
 qwen-launcher calibrate --mode coding --protocol v6 --activate
 ```
+
+Con `--target-ctx` le tre envelope sono comunque misurate allo stesso contesto e differiscono solo
+per `n_cpu_moe`: a contesto fisso `fast` e `max-context` spesso coincidono, ma ottimizzano metriche
+diverse (latenza end-to-end contro throughput di decode).
 
 Dopo la calibrazione, `doctor` mostra la busta attiva e i normali comandi di lancio usano l'envelope
 `active_preference` (o la baseline se l'headroom non basta):
