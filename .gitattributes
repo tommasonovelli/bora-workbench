@@ -4,6 +4,7 @@
 /evidence/engine/kv-q8-windows/** -text -diff
 # Preserve benchmark/calibration protocol resources byte-for-byte on Windows checkouts.
 /src/qwen_launcher/resources/benchmark-v1/** -text
+/src/qwen_launcher/resources/benchmark-quick/** -text
 /src/qwen_launcher/resources/calibration-v1/** -text
 # Preserve accepted calibration sources, manifests, and packaged links for reproducible digests.
 /evidence/calibration/windows-11-rtx-2060-super-v3/** -text
