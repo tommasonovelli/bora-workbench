@@ -353,6 +353,36 @@ collassa la scala su un solo gradino. Il record è `calibration-record/v5`: iden
 le tre envelope, le soglie, le riserve e gli input di selezione (mediane per round) sufficienti a
 ricostruire la scelta; probe, scarti e log restano nell'albero `evidence/`.
 
+### Esempi
+
+```bash
+# Misura le tre envelope per ogni modo e attiva la busta `balanced` (default)
+qwen-launcher calibrate --mode all --protocol v6
+
+# Solo coding, con la busta `fast` come preferenza attiva nel record
+qwen-launcher calibrate --mode coding --protocol v6 --preference fast
+
+# Misura senza attivare: scrive i candidati e non tocca i record attivi
+qwen-launcher calibrate --mode all --protocol v6 --preference max-context --no-activate
+
+# Collassa la ricerca su un solo contesto approvato (131072, 98304, 65536, 49152, 32768)
+qwen-launcher calibrate --mode coding --protocol v6 --target-ctx 65536
+
+# Promuove candidati v6 già misurati, senza rieseguire i trial
+qwen-launcher calibrate --mode coding --protocol v6 --activate
+```
+
+Dopo la calibrazione, `doctor` mostra la busta attiva e i normali comandi di lancio usano l'envelope
+`active_preference` (o la baseline se l'headroom non basta):
+
+```bash
+qwen-launcher doctor      # parametri della busta attiva e stato dei record
+qwen-launcher coding      # lancia usando l'envelope active_preference registrata
+```
+
+Vincoli: `--preference` è rifiutata senza `--protocol v6`; `--activate` non si combina con
+`--target-ctx`; `--activate` e `--no-activate` sono mutuamente esclusive.
+
 Nota: l'adapter di trial reale è validato su hardware; la logica di ricerca, selezione, conferma,
 gate e record è coperta da test offline con fake.
 
