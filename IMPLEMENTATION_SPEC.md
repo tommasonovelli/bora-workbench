@@ -37,6 +37,8 @@ Aggiornato al 24 luglio 2026.
   introduce la tassonomia a quattro esiti e prepara una sola volta il contratto motore.
 - [x] La Fase 1 lato agente prepara `scripts/spike_ctx/`, dry-run fake, protocollo e template
   redatto; nessun run reale o verdetto è stato eseguito.
+- [x] Versione `0.1.3`, tag `v0.1.3` e GitHub Release distribuiscono D-058–D-062 dagli artefatti del
+  workflow verde; PyPI resta escluso e nessun Gate spike viene dichiarato.
 
 ### Lavoro aperto
 
@@ -157,6 +159,7 @@ Gli identificatori restano stabili perché codice, test ed evidenza li citano.
 | D-059 | Spike e futuro v6 classificano per classe soltanto `SUCCESS`, `MEMORY_INFEASIBLE(ram|vram)`, `RETRYABLE` e `PROTOCOL_INVALID`; v5 non consuma la nuova tassonomia. |
 | D-060 | Il contratto rende MTP parametrico (`mtp2`/`disabled`), disabilita prudentemente MTP per `vstudio` e prepara sampling esteso/reasoning. La model card appuntata nega supporto mmproj+MTP mentre Spike 0 locale era PASS: prevale la scelta prudenziale fino a nuovo spike. Il nuovo digest invalida una sola volta il riuso dei record locali storici senza renderli illeggibili; i seed pubblici restano suggerimenti d'ordine soltanto. |
 | D-061 | Uno spike umano cross-context è il gate decisionale per v6-lite: solo un verdetto `GO` committato autorizza `mode/v2`, quick-bench, motore v6 e record v5; `NO-GO` chiude il lavoro con documentazione dei preset v5. |
+| D-062 | La `0.1.3` distribuisce le correzioni di Fase 0 e il pacchetto di Fase 1. Il maintainer autorizza commit, push, tag e GitHub Release prima delle run locali, che restano post-release; non autorizza PyPI, attivazione di candidati o Fase 2 senza GO. |
 
 Una nuova decisione durevole aggiorna questa tabella nello stesso step che la autorizza.
 
@@ -481,7 +484,14 @@ su entrambe le piattaforme. Il workflow release deve comunque essere verde e res
 degli artefatti. Le verifiche manuali omesse diventano post-release, non un Gate superato. PyPI e
 l'attivazione dei tre candidati locali restano esclusi.
 
-### 7.4 Gate decisionale cross-context per v6-lite
+### 7.4 Release 0.1.3
+
+La versione `0.1.3` distribuisce D-058–D-061 mantenendo `calibration/v5` come default. Il maintainer
+ha autorizzato il 24 luglio 2026 commit, push, tag e GitHub Release prima delle run locali dello
+spike. Queste verifiche restano post-release e non sono un Gate superato. PyPI, attivazione dei
+candidati e Fase 2 restano esclusi; gli artefatti pubblici provengono soltanto dal workflow verde.
+
+### 7.5 Gate decisionale cross-context per v6-lite
 
 Il pacchetto repository-only [`scripts/spike_ctx/`](scripts/spike_ctx/) prepara, senza eseguirlo
 automaticamente, uno spike su 131K/65K/32K. Confronta
@@ -491,7 +501,7 @@ e2e corto mediano `≤0,92×`, prefill 8K `≥1,25×`, oppure prestazioni entro 
 0,5 GiB di VRAM libera minima in più. Il verdetto è umano e deve essere committato con evidenza
 redatta e checksum. Senza `GO`, v6-lite non viene implementata.
 
-### 7.5 Evidenza eterogenea
+### 7.6 Evidenza eterogenea
 
 Quando disponibile, ripetere v5 con `--no-activate` su hardware materialmente diverso, revisionare
 privacy e aggiornare report/policy in una PR dichiarativa. L'esito non viene ricostruito a mano e non
@@ -629,6 +639,8 @@ Push, tag, GitHub Release, PyPI e impostazioni remote restano operazioni autoriz
   ripetuto.
 - [x] La pubblicazione `0.1.2` usa soltanto gli artefatti del workflow verde autorizzato.
 - [ ] Completare le verifiche manuali post-release `0.1.2` su Ubuntu e Windows.
+- [x] La decisione `RELEASE` per `0.1.3` registra che lo spike reale è post-release e non viene
+  presentato come Gate superato; PyPI e Fase 2 restano esclusi.
 - [~] Evidenza eterogenea aggiunta quando disponibile, senza trasferire buste fra host.
 - [ ] Spike cross-context eseguito dal maintainer e verdetto `GO`/`NO-GO` committato; nessun Gate è
   implicito nella sola presenza del runner.

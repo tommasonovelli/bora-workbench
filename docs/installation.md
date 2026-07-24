@@ -19,16 +19,16 @@ launcher usa il backend CPU e mostra il motivo.
 
 ## 2. Installare la release pubblica
 
-La release pubblica è `0.1.2`. PyPI è ancora indisponibile; usare gli artefatti della
-[GitHub Release v0.1.2](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.2).
+La release pubblica è `0.1.3`. PyPI è ancora indisponibile; usare gli artefatti della
+[GitHub Release v0.1.3](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.3).
 La release allega wheel, sdist, installer e `SHA256SUMS` ottenuti dal run test/build
 multipiattaforma. Una release pubblicata non viene modificata in place.
 
 ### Ubuntu
 
 ```bash
-base="https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.2"
-wheel="qwen_launcher-0.1.2-py3-none-any.whl"
+base="https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.3"
+wheel="qwen_launcher-0.1.3-py3-none-any.whl"
 curl --fail --location "$base/install.sh" --output install.sh
 curl --fail --location "$base/$wheel" --output "$wheel"
 curl --fail --location "$base/SHA256SUMS" --output SHA256SUMS
@@ -43,8 +43,8 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 Da PowerShell:
 
 ```powershell
-$base = "https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.2"
-$wheel = "qwen_launcher-0.1.2-py3-none-any.whl"
+$base = "https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.3"
+$wheel = "qwen_launcher-0.1.3-py3-none-any.whl"
 Invoke-WebRequest "$base/install.ps1" -OutFile install.ps1
 Invoke-WebRequest "$base/$wheel" -OutFile $wheel
 Invoke-WebRequest "$base/SHA256SUMS" -OutFile SHA256SUMS

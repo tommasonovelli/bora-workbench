@@ -5,6 +5,11 @@ changelog: sono in `IMPLEMENTATION_SPEC.md`.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-07-24
+
+Release di correttezza e preparazione misurabile per il gate umano di `calibration/v6-lite`; il
+protocollo v5 resta il default e v6 non è ancora implementata.
+
 ### Added
 
 - Un pacchetto repository-only `scripts/spike_ctx/` prepara lo spike cross-context umano con

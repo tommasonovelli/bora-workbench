@@ -37,11 +37,11 @@ quotidiano del launcher.
 
 ## Stato corrente
 
-La release pubblica è `0.1.2`: usa `calibration/v5`, record v4 e una scala che include 96K e 48K;
-aggiunge inoltre UX terminale uniforme, progresso della compilazione Ubuntu CUDA e disinstallazione
-completa del tool uv.
+La release pubblica è `0.1.3`: mantiene `calibration/v5` e i record v4, corregge la precedenza del
+cleanup, rende MTP esplicito e prudente per vision e prepara lo spike umano cross-context. v6-lite
+non è implementata senza un GO committato.
 
-PyPI resta indisponibile. Gli artefatti verificati sono nella GitHub Release `v0.1.2` e non vanno
+PyPI resta indisponibile. Gli artefatti verificati sono nella GitHub Release `v0.1.3` e non vanno
 ricostruiti o sostituiti.
 
 ## Limiti attuali

@@ -5,12 +5,13 @@ serve sempre un'autorizzazione umana esplicita per push, tag, GitHub Release e P
 
 ## Stato pubblico
 
-- versione pubblica corrente: `0.1.2`;
-- tag remoti: `v0.1.0`, `v0.1.1` e `v0.1.2`;
-- GitHub Release `v0.1.2`: pubblicata con installer, wheel, sdist e `SHA256SUMS`;
-- i digest `0.1.2` sono quelli del manifest allegato alla release e derivano dal build job verde;
-- PyPI: non ancora pubblicata ed esclusa dall'autorizzazione di `0.1.2`;
-- release pubblica `v0.1.2`: `calibration/v5` e stabilizzazione successiva a `0.1.1`.
+- versione pubblica corrente: `0.1.3`;
+- tag remoti: `v0.1.0`, `v0.1.1`, `v0.1.2` e `v0.1.3`;
+- GitHub Release `v0.1.3`: pubblicata con installer, wheel, sdist e `SHA256SUMS`;
+- i digest `0.1.3` sono quelli del manifest allegato alla release e derivano dal build job verde;
+- PyPI: non ancora pubblicata ed esclusa dall'autorizzazione di `0.1.3`;
+- release pubblica `v0.1.3`: correttezza del cleanup, contratto MTP e pacchetto spike D-061; v6-lite
+  resta non implementata senza un GO umano committato.
 
 Gli artefatti pubblicati sono immutabili. Non ricostruire, sostituire o ricaricare file con la stessa
 versione per includere correzioni successive: serve una nuova versione.
@@ -50,6 +51,17 @@ Controllare:
 Ogni modifica successiva alla build invalida gli artefatti: rimuovere `dist/`, ripetere tutti i
 controlli e ricostruire.
 
+### Release 0.1.3
+
+La `0.1.3` distribuisce D-058–D-061: precedenza corretta degli errori di cleanup, cause VRAM
+separate, tassonomia additiva per spike/v6, MTP disabilitato prudentemente per `vstudio` e pacchetto
+repository-only dello spike cross-context nello sdist. `calibration/v5` resta il default; non sono
+presenti `mode/v2`, quick-bench di produzione, motore v6 o record v5.
+
+Il 24 luglio 2026 il maintainer ha autorizzato commit, push, tag e GitHub Release prima delle run
+locali dello spike, che restano post-release e non sono dichiarate Gate superato. La Fase 2 resta
+bloccata fino a un verdetto umano `GO` committato. PyPI e l'attivazione dei candidati restano esclusi.
+
 ### Release 0.1.2
 
 La `0.1.2` include `calibration/v5`, i parametri calibrati in `doctor`, la presentazione Rich
@@ -80,8 +92,9 @@ attestato anche il Gate reale Windows v4, incluso il riuso del record, e ha deci
 test sui due sistemi. I dettagli privati del Gate Windows non vengono ricostruiti come misure o
 aggiunti all'evidenza pubblica.
 
-Limiti e controlli non eseguiti devono essere espliciti. La `0.1.2` è stata autorizzata per commit,
-push, tag e GitHub Release senza un nuovo Gate manuale; PyPI resta escluso.
+Limiti e controlli non eseguiti devono essere espliciti. La `0.1.3` è stata autorizzata per commit,
+push, tag e GitHub Release prima dello spike reale; questo non equivale a un Gate e PyPI resta
+escluso.
 
 ## Versione, tag e commit
 
@@ -111,7 +124,7 @@ Un push di un tag `v*` attiva `.github/workflows/release.yml`:
 
 Le action sono appuntate a SHA completo. I permessi globali sono `contents: read`; solo il job
 `publish`, protetto dall'environment `pypi`, riceve `id-token: write`. Non esiste un token PyPI nel
-repository. Per `v0.1.2` la variabile resta assente e il job viene saltato.
+repository. Per `v0.1.3` la variabile resta assente e il job viene saltato.
 
 ## Trusted Publishing PyPI
 
@@ -144,7 +157,7 @@ La release allega gli stessi file prodotti dal job build:
 - `SHA256SUMS`.
 
 Titolo, note e prerelease flag devono essere coerenti con changelog e metadata. Non caricare una
-build locale diversa da quella passata attraverso la matrice release. La `v0.1.2` è una release
+build locale diversa da quella passata attraverso la matrice release. La `v0.1.3` è una release
 GitHub stabile e non una prerelease.
 
 ## Verifica dopo la pubblicazione
