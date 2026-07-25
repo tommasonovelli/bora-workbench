@@ -10,20 +10,18 @@ import typer
 from rich.console import Console
 
 from bora_workbench._cli_theme import print_error, print_heading, print_warning
-from bora_workbench._tool_uninstall import (
-    ToolInstallation,
-    ToolUninstallError,
-    inspect_tool_installation,
-    schedule_tool_removal,
-)
-from bora_workbench._uninstall import (
+from bora_workbench.process import ProcessError, status_services
+from bora_workbench.uninstall import (
     ManagedRoot,
     RemovalReport,
+    ToolInstallation,
+    ToolUninstallError,
     UninstallError,
+    inspect_tool_installation,
     managed_roots,
     remove_managed_roots,
+    schedule_tool_removal,
 )
-from bora_workbench.process import ProcessError, status_services
 
 
 def _show_preview(

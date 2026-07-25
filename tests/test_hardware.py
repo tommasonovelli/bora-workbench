@@ -1,12 +1,19 @@
-"""Deterministic tests for hardware discovery without real GPU or host dependencies."""
+"""Deterministic hardware tests: discovery, GPU monitoring, and opaque process identity.
+
+Every NVIDIA fact is served by a fake `subprocess.run`, so the suite never touches a real GPU.
+"""
+
+from __future__ import annotations
 
 import os
+import subprocess
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 
 import bora_workbench.hardware as hardware
+from bora_workbench.hardware import identify_gpu_process
 
 _GIB = 1024**3
 
@@ -19,6 +26,22 @@ def patch_host(monkeypatch, *, total: int = 32 * _GIB, available: int = 24 * _GI
     monkeypatch.setattr(hardware.platform, "processor", lambda: "Test CPU")
     monkeypatch.setattr(hardware.platform, "system", lambda: "Linux")
     monkeypatch.setattr(hardware.platform, "version", lambda: "test-version")
+
+
+class _Process:
+    """Expose deterministic psutil process lifecycle and executable facts."""
+
+    def __init__(self, pid: int) -> None:
+        """Retain the PID so separate instances receive separate create times."""
+        self.pid = pid
+
+    def create_time(self) -> float:
+        """Return one positive instance timestamp."""
+        return float(self.pid)
+
+    def exe(self) -> str:
+        """Return an unpersisted fake path whose stat identity drives matching."""
+        return "C:/Program Files/Test/app.exe"
 
 
 def test_binary_memory_conversions() -> None:
@@ -46,8 +69,8 @@ def test_missing_nvidia_smi_uses_cpu_with_warning(monkeypatch) -> None:
 @pytest.mark.parametrize(
     "failure",
     [
-        hardware.subprocess.TimeoutExpired("nvidia-smi", 5),
-        hardware.subprocess.CalledProcessError(9, "nvidia-smi"),
+        subprocess.TimeoutExpired("nvidia-smi", 5),
+        subprocess.CalledProcessError(9, "nvidia-smi"),
     ],
 )
 def test_failed_nvidia_query_uses_cpu(monkeypatch, failure) -> None:
@@ -137,3 +160,76 @@ def test_missing_cpu_count_is_blocking(monkeypatch) -> None:
 
     with pytest.raises(hardware.HardwareError, match="logical CPU cores"):
         hardware.detect_hardware()
+
+
+def test_optional_telemetry_is_parsed_without_becoming_a_threshold(monkeypatch) -> None:
+    """Capture extrema inputs and a driver throttle flag from the aggregate memory query."""
+    run = Mock(
+        side_effect=[
+            SimpleNamespace(stdout="8192,7000,610.47,WDDM,75,67,1500,125,Power Brake\n"),
+            SimpleNamespace(stdout="42\n"),
+        ]
+    )
+    monkeypatch.setattr(hardware.subprocess, "run", run)
+
+    snapshot = hardware.query_gpu_snapshot(0)
+
+    assert snapshot.telemetry is not None
+    assert snapshot.telemetry.utilization_percent == 75
+    assert snapshot.telemetry.sm_clock_mhz == 1500
+    assert snapshot.telemetry.throttle_reasons == ("Power Brake",)
+
+
+def test_unsupported_telemetry_falls_back_to_mandatory_memory(monkeypatch) -> None:
+    """Keep calibration usable when a driver rejects the evidence-only query fields."""
+    failure = subprocess.CalledProcessError(1, ["nvidia-smi"])
+    run = Mock(
+        side_effect=[
+            failure,
+            SimpleNamespace(stdout="8192,7000,595.71.05,N/A\n"),
+            SimpleNamespace(stdout="\n"),
+        ]
+    )
+    monkeypatch.setattr(hardware.subprocess, "run", run)
+
+    snapshot = hardware.query_gpu_snapshot(0)
+
+    assert snapshot.telemetry is None
+    assert snapshot.vram_free_gib == 7000 / 1024
+
+
+def test_same_executable_file_keeps_identity_across_process_instances(monkeypatch) -> None:
+    """Match respawns by file identity while retaining distinct pid/create-time instances."""
+    monkeypatch.setattr(hardware.psutil, "Process", _Process)
+    monkeypatch.setattr(hardware.os, "stat", lambda path: SimpleNamespace(st_dev=7, st_ino=11))
+
+    first = identify_gpu_process(100)
+    replacement = identify_gpu_process(200)
+
+    assert first.executable_id == replacement.executable_id
+    assert first.instance != replacement.instance
+    assert first.is_complete and replacement.is_complete
+
+
+@pytest.mark.parametrize("failure", ["process", "stat", "create-time"])
+def test_identity_resolution_fails_closed(monkeypatch, failure: str) -> None:
+    """Return an incomplete identity for inaccessible, vanished, or malformed process facts."""
+    if failure == "process":
+        monkeypatch.setattr(
+            hardware.psutil,
+            "Process",
+            lambda pid: (_ for _ in ()).throw(hardware.psutil.AccessDenied(pid)),
+        )
+    else:
+        process = _Process(100)
+        if failure == "create-time":
+            monkeypatch.setattr(process, "create_time", lambda: 0.0)
+        monkeypatch.setattr(hardware.psutil, "Process", lambda pid: process)
+        if failure == "stat":
+            monkeypatch.setattr(
+                hardware.os,
+                "stat",
+                lambda path: (_ for _ in ()).throw(OSError("blocked")),
+            )
+
+    assert not identify_gpu_process(100).is_complete

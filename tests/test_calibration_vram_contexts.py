@@ -12,8 +12,7 @@ from bora_workbench._calibration_vram import (
     VramMonitor,
     VramThresholds,
 )
-from bora_workbench._gpu_process_identity import GpuProcessIdentity
-from bora_workbench._hardware_monitoring import GpuSnapshot
+from bora_workbench.hardware import GpuProcessIdentity, GpuSnapshot
 
 
 def context(pid: int, created: float, executable: str) -> GpuProcessIdentity:

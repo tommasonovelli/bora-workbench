@@ -9,9 +9,9 @@ import bora_workbench._calibration_record as record_module
 import bora_workbench._calibration_reuse as reuse_module
 from bora_workbench._calibration_record import candidate_record_path, write_record
 from bora_workbench._calibration_reuse import ReuseQuery, evaluate_record
-from bora_workbench._hardware_monitoring import GpuSnapshot
 from bora_workbench.config import Config
 from bora_workbench.engine import load_engine_lock
+from bora_workbench.hardware import GpuSnapshot
 from tests.record_fixtures import calibration_document, cpu_hardware, cuda_hardware
 
 

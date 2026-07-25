@@ -21,8 +21,8 @@ from bora_workbench._calibration_types import (
     VRAM_RESERVE_GIB,
 )
 from bora_workbench._calibration_vram import VramMonitor, VramSummary, VramThresholds
-from bora_workbench._gpu_process_identity import GpuProcessIdentity
 from bora_workbench.calibration import CalibrationRunError
+from bora_workbench.hardware import GpuProcessIdentity
 from bora_workbench.process import RunningService, stop_services
 
 

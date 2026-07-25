@@ -18,8 +18,7 @@ from bora_workbench._calibration_reuse_types import (
     RecordEvaluation,
     ReuseQuery,
 )
-from bora_workbench._hardware_monitoring import query_gpu_snapshot
-from bora_workbench.hardware import HardwareError
+from bora_workbench.hardware import HardwareError, query_gpu_snapshot
 
 _RAM_IDENTITY_TOLERANCE_GIB = 1 / 1024
 

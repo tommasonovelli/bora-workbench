@@ -6,8 +6,7 @@ from collections import Counter
 from dataclasses import dataclass
 
 from bora_workbench._calibration_vram_types import VramEnvironmentError
-from bora_workbench._gpu_process_identity import GpuProcessIdentity
-from bora_workbench._hardware_monitoring import GpuSnapshot, query_gpu_snapshot
+from bora_workbench.hardware import GpuProcessIdentity, GpuSnapshot, query_gpu_snapshot
 
 
 @dataclass(frozen=True, slots=True)

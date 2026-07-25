@@ -1,4 +1,10 @@
-"""End-to-end lifecycle tests using the offline fake llama-server health surface."""
+"""End-to-end lifecycle tests using the offline fake llama-server health surface.
+
+The fake server replaces llama.cpp entirely, so nothing here loads a model, opens a network
+connection beyond loopback, or touches a GPU. The failure tests all assert the same contract from
+different angles: a start that does not reach readiness leaves neither a live child nor a
+registered service.
+"""
 
 from __future__ import annotations
 
@@ -7,10 +13,10 @@ import sys
 from pathlib import Path
 from unittest.mock import Mock
 
+import httpx
 import psutil
 import pytest
 
-import bora_workbench._process_health as health
 import bora_workbench.process as lifecycle
 from bora_workbench._process_state import ServiceState, write_state
 from bora_workbench.engine import load_engine_lock
@@ -45,6 +51,27 @@ def plan(port: int, backend: str = "cpu") -> LaunchPlan:
     )
 
 
+def ui_plan(mode_id: str, port: int) -> LaunchPlan:
+    """Build one deterministic CPU plan for a packaged integrated-UI mode."""
+    mode = load_catalog().mode(mode_id)
+    assert mode is not None
+    projector = Path("/resolved/mmproj.gguf") if mode.services.vision else None
+    return LaunchPlan(
+        mode,
+        "owner/model:file",
+        Path("/resolved/model.gguf"),
+        projector,
+        port,
+        None,
+        8192,
+        None,
+        "cpu",
+        None,
+        (),
+        "disabled" if mode.services.vision else "mtp2",
+    )
+
+
 def request(port: int, mode: str = "ready") -> lifecycle.StartRequest:
     """Build a fake subprocess request while retaining the real locked health contract."""
     command = (sys.executable, str(_FAKE_SERVER), "--port", str(port), "--health-mode", mode)
@@ -53,8 +80,8 @@ def request(port: int, mode: str = "ready") -> lifecycle.StartRequest:
 
 def fast_health(monkeypatch, *, timeout: float = 1.0) -> None:
     """Keep fake polling deterministic without weakening production timeout constants."""
-    monkeypatch.setattr(health, "_POLL_INTERVAL_SECONDS", 0.01)
-    monkeypatch.setattr(health, "_LOAD_TIMEOUT_SECONDS", timeout)
+    monkeypatch.setattr(lifecycle, "_POLL_INTERVAL_SECONDS", 0.01)
+    monkeypatch.setattr(lifecycle, "_LOAD_TIMEOUT_SECONDS", timeout)
 
 
 def test_delayed_503_becomes_ready_and_stop_is_clean(tmp_path, monkeypatch) -> None:
@@ -83,6 +110,29 @@ def test_delayed_503_becomes_ready_and_stop_is_clean(tmp_path, monkeypatch) -> N
         assert Path(running.state.log_path).is_file()
     finally:
         report = lifecycle.stop_services(tmp_path)
+    assert report.stopped == ("llama-server",)
+
+
+@pytest.mark.parametrize("mode_id", ["studio", "vstudio"])
+def test_ui_mode_reaches_ready_interface_and_cleans_state(tmp_path, monkeypatch, mode_id) -> None:
+    """Start each UI mode against the fake, reach its root, and stop without stale state."""
+    fast_health(monkeypatch)
+    port = free_port()
+    plan_for_mode = ui_plan(mode_id, port)
+    command = (sys.executable, str(_FAKE_SERVER), "--port", str(port))
+
+    running = lifecycle.start_service(
+        lifecycle.StartRequest(command, plan_for_mode, load_engine_lock()), tmp_path
+    )
+    try:
+        response = httpx.get(f"http://127.0.0.1:{port}/", timeout=2)
+        assert response.status_code == 200
+        assert running.state.mode == mode_id
+        assert plan_for_mode.mode.services.ui is True
+        assert (plan_for_mode.mmproj_path is not None) is (mode_id == "vstudio")
+    finally:
+        report = lifecycle.stop_services(tmp_path)
+
     assert report.stopped == ("llama-server",)
 
 
@@ -187,3 +237,55 @@ def test_ctrl_c_uses_stop_cleanup_and_preserves_exit_signal(tmp_path) -> None:
 
     assert lifecycle.status_services(tmp_path).services == ()
     process.terminate.assert_called_once()
+
+
+def test_a_transport_reset_is_read_as_not_ready_not_leaked(tmp_path, monkeypatch) -> None:
+    """Treat the connection reset a dying server produces as "not ready", never as an escape.
+
+    A leaked transport error would bypass the caller's cleanup and leave a phantom service.
+    """
+    fast_health(monkeypatch, timeout=0.05)
+
+    def reset(*args: object, **kwargs: object) -> None:
+        """Fail every poll the way a dying server's socket does."""
+        raise httpx.ReadError("[Errno 104] Connection reset by peer")
+
+    monkeypatch.setattr(lifecycle.httpx, "get", reset)
+
+    with pytest.raises(lifecycle.ProcessError, match="15 minutes"):
+        lifecycle.start_service(request(free_port(), "loading"), tmp_path)
+
+    assert lifecycle.status_services(tmp_path).services == ()
+
+
+def test_an_unexpected_startup_failure_still_stops_the_child_and_clears_state(
+    tmp_path, monkeypatch
+) -> None:
+    """Clean up whatever the readiness wait raises, so no phantom service blocks the next start."""
+    fast_health(monkeypatch)
+    spawned: list[int] = []
+    ready = request(free_port())
+    observed = lifecycle.StartRequest(ready.command, ready.plan, ready.lock, spawned.append)
+
+    def unexpected(*args: object, **kwargs: object) -> None:
+        """Raise a failure class the start path does not classify as expected."""
+        raise RuntimeError("unclassified readiness failure")
+
+    monkeypatch.setattr(lifecycle, "wait_for_health", unexpected)
+
+    with pytest.raises(RuntimeError, match="unclassified readiness failure"):
+        lifecycle.start_service(observed, tmp_path)
+
+    assert lifecycle.status_services(tmp_path).services == ()
+    assert not psutil.pid_exists(spawned[0]) or not psutil.Process(spawned[0]).is_running()
+
+
+def test_a_startup_failure_reports_the_log_for_later_classification(tmp_path, monkeypatch) -> None:
+    """Carry the process log on the error, because it is the only evidence of why it died."""
+    fast_health(monkeypatch)
+
+    with pytest.raises(lifecycle.ServerStartupError) as captured:
+        lifecycle.start_service(request(free_port(), "crash"), tmp_path)
+
+    assert captured.value.log_path is not None
+    assert captured.value.log_path.is_file()

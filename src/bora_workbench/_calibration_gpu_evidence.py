@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from bora_workbench._hardware_monitoring import GpuSnapshot
+from bora_workbench.hardware import GpuSnapshot
 
 
 @dataclass(frozen=True, slots=True)

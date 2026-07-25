@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import socket
 
-from bora_workbench._process_health import port_is_available
+from bora_workbench.process import port_is_available
 
 
 def select_trial_port(preferred_port: int) -> int:

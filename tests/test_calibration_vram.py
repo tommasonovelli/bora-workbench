@@ -9,7 +9,7 @@ from unittest.mock import Mock
 import pytest
 
 import bora_workbench._calibration_vram as vram_module
-import bora_workbench._hardware_monitoring as monitoring
+import bora_workbench.hardware as hardware
 from bora_workbench._calibration_vram import (
     VramEnvironmentError,
     VramError,
@@ -18,7 +18,7 @@ from bora_workbench._calibration_vram import (
     VramReserveError,
     VramThresholds,
 )
-from bora_workbench._hardware_monitoring import GpuSnapshot
+from bora_workbench.hardware import GpuSnapshot
 
 
 def snapshot(
@@ -185,9 +185,9 @@ def test_hardware_snapshot_query_reads_memory_driver_and_compute_pids(monkeypatc
             SimpleNamespace(stdout="42\n7\n"),
         ]
     )
-    monkeypatch.setattr(monitoring.subprocess, "run", run)
+    monkeypatch.setattr(hardware.subprocess, "run", run)
 
-    result = monitoring.query_gpu_snapshot(0)
+    result = hardware.query_gpu_snapshot(0)
 
     assert result.vram_total_gib == 8
     assert result.vram_free_gib == 7000 / 1024

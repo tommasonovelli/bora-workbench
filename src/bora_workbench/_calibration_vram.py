@@ -22,8 +22,7 @@ from bora_workbench._calibration_vram_types import (
     VramSummary,
     VramThresholds,
 )
-from bora_workbench._gpu_process_identity import GpuProcessIdentity
-from bora_workbench._hardware_monitoring import GpuSnapshot, query_gpu_snapshot
+from bora_workbench.hardware import GpuProcessIdentity, GpuSnapshot, query_gpu_snapshot
 
 GPU_POLL_INTERVAL_MS = 250
 GPU_RELEASE_STABILIZATION_MS = 10_000

@@ -1,40 +1,69 @@
-"""Manage lifecycle with platform process groups and pid/create_time identity (section 5.9)."""
+"""Run the managed llama-server lifecycle: preflight, spawn, readiness, status, and stop.
+
+This is one of the four modules allowed to branch on the operating system (specification section
+4.1) and the branch is confined to `_creation_flags`, which needs a new Windows process group so a
+console signal cannot reach the child. Every decision about a live process uses the mandatory
+pid/create_time identity of specification section 5.9, read through `_process_state`, so a signal is
+never sent to a stranger that merely reuses a recorded PID.
+"""
 
 from __future__ import annotations
 
 import os
+import socket
 import subprocess
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
+import httpx
 import psutil
 
-from bora_workbench._process_control import ControlError, ServiceReport, status_at, stop_at
-from bora_workbench._process_failures import (
-    EXPECTED_START_FAILURES,
-    ProcessError,
-    ServerStartupError,
-    abandon_start,
-    terminate_popen,
-)
-from bora_workbench._process_health import (
-    HealthTarget,
-    port_is_available,
-    wait_for_health,
-)
-from bora_workbench._process_lock import acquire_start_lock
 from bora_workbench._process_state import (
     ServiceState,
+    StartLockError,
+    StateError,
+    acquire_start_lock,
     clean_state,
+    find_verified_process,
     remove_service,
     write_state,
 )
 from bora_workbench.engine import JsonObject
 from bora_workbench.paths import state_dir
 from bora_workbench.profiles import LaunchPlan
+
+_REQUEST_TIMEOUT_SECONDS = 2.0
+_POLL_INTERVAL_SECONDS = 1.0
+_LOAD_TIMEOUT_SECONDS = 15 * 60.0
+
+
+class ProcessError(RuntimeError):
+    """Report an expected lifecycle failure with an actionable remedy."""
+
+
+class ServerStartupError(ProcessError):
+    """Report a server that was spawned but never became healthy, retaining its log.
+
+    Calibration needs this distinction because an exhausted GPU allocation only ever appears as a
+    child that dies during model load: the log is the sole evidence separating that infeasible
+    candidate from a preflight failure such as an occupied port (spec 5.6, D-059).
+    """
+
+    def __init__(self, message: str, log_path: Path | None) -> None:
+        """Retain the process log so a later classifier can read the engine's own diagnosis."""
+        super().__init__(message)
+        self.log_path = log_path
+
+
+class HealthError(RuntimeError):
+    """Report process death, readiness timeout, or an incompatible health response."""
+
+
+EXPECTED_START_FAILURES = (HealthError, OSError, ProcessError, StartLockError, StateError)
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,6 +83,99 @@ class RunningService:
     process: subprocess.Popen[str]
     state: ServiceState
     warnings: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ServiceReport:
+    """Return status or stop results without coupling lifecycle code to CLI presentation."""
+
+    services: tuple[ServiceState, ...]
+    warnings: tuple[str, ...] = ()
+    stopped: tuple[str, ...] = ()
+
+
+def port_is_available(port: int) -> bool:
+    """Check localhost binding so occupied ports fail before model loading."""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            probe.bind(("127.0.0.1", port))
+    except OSError:
+        return False
+    return True
+
+
+def _ready(response: httpx.Response, contract: JsonObject) -> bool:
+    """Accept only the exact status and JSON body observed in Spike 0."""
+    if response.status_code != contract["ready_status"]:
+        return False
+    try:
+        body = response.json()
+    except ValueError as error:
+        raise HealthError("health returned ready status with invalid JSON") from error
+    if body != contract["ready_json"]:
+        raise HealthError(f"health returned incompatible ready body: {body!r}")
+    return True
+
+
+def _is_transient(response: httpx.Response, contract: JsonObject) -> bool:
+    """Retry locked loading statuses and server-side failures, but never 4xx responses."""
+    statuses = cast(list[int], contract["transient_statuses"])
+    return response.status_code in statuses or response.status_code >= 500
+
+
+def wait_for_health(process: subprocess.Popen[str], request: StartRequest, log_path: Path) -> None:
+    """Wait up to 15 minutes, failing immediately on death or incompatible responses.
+
+    The health URL is built exclusively from the locked path and the configured port, so no
+    response from an unrelated listener can be mistaken for the managed server.
+    """
+    contract = cast(JsonObject, request.lock["health_contract"])
+    url = f"http://127.0.0.1:{request.plan.port}{contract['path']}"
+    deadline = time.monotonic() + _LOAD_TIMEOUT_SECONDS
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            raise HealthError(f"llama-server exited during startup; inspect {log_path}")
+        try:
+            response = httpx.get(url, timeout=_REQUEST_TIMEOUT_SECONDS)
+        except httpx.TransportError:
+            # Every transport failure means "not ready yet", including the connection reset a
+            # server produces while it is dying: the loop decides on process death or the
+            # deadline, so no transport class may escape and bypass the caller's cleanup.
+            response = None
+        if response is not None:
+            if _ready(response, contract):
+                return
+            if not _is_transient(response, contract):
+                raise HealthError(
+                    f"health returned incompatible HTTP {response.status_code}; inspect {log_path}"
+                )
+        time.sleep(_POLL_INTERVAL_SECONDS)
+    raise HealthError(f"llama-server did not become ready within 15 minutes; inspect {log_path}")
+
+
+def terminate_popen(process: subprocess.Popen[str]) -> None:
+    """Terminate for ten seconds, then kill and wait up to five seconds."""
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        try:
+            process.wait(timeout=5)
+        except subprocess.TimeoutExpired as error:
+            raise ProcessError("llama-server did not stop after terminate and kill") from error
+
+
+def abandon_start(
+    root: Path, process: subprocess.Popen[str] | None, service: ServiceState | None
+) -> None:
+    """Stop a spawned child and drop its record so a failed start leaves nothing behind."""
+    if process is not None:
+        terminate_popen(process)
+    if service is not None:
+        remove_service(root, service)
 
 
 def _child_environment(plan: LaunchPlan) -> dict[str, str]:
@@ -108,12 +230,6 @@ def _service_state(
     )
 
 
-def _health_target(request: StartRequest, log_path: Path) -> HealthTarget:
-    """Build the loopback health URL exclusively from the locked path and configured port."""
-    health = cast(JsonObject, request.lock["health_contract"])
-    return HealthTarget(f"http://127.0.0.1:{request.plan.port}{health['path']}", health, log_path)
-
-
 def start_service(request: StartRequest, root: Path | None = None) -> RunningService:
     """Serialize preflight, spawn shell-free, persist identity, and wait for exact readiness."""
     selected_root = state_dir() if root is None else root
@@ -143,7 +259,7 @@ def start_service(request: StartRequest, root: Path | None = None) -> RunningSer
             service = _service_state(process, request, log_path)
             write_state(selected_root, (service,))
         running = RunningService(process, service, snapshot.warnings)
-        wait_for_health(process, _health_target(request, log_path))
+        wait_for_health(process, request, log_path)
         return running
     except BaseException as error:
         # Cleanup must not depend on the failure class. An unexpected exception that skipped it
@@ -158,19 +274,55 @@ def start_service(request: StartRequest, root: Path | None = None) -> RunningSer
 
 
 def status_services(root: Path | None = None) -> ServiceReport:
-    """Return verified services and map state failures to the public lifecycle error."""
+    """Return verified live services, cleaning dead and PID-reused records idempotently."""
     try:
-        return status_at(state_dir() if root is None else root)
-    except ControlError as error:
+        snapshot = clean_state(state_dir() if root is None else root)
+    except StateError as error:
         raise ProcessError(str(error)) from error
+    return ServiceReport(snapshot.services, snapshot.warnings)
+
+
+def _terminate_service(service: ServiceState) -> bool:
+    """Stop one service only after rechecking its mandatory process identity."""
+    try:
+        process = find_verified_process(service.pid, service.create_time)
+        if process is None:
+            return False
+        process.terminate()
+    except psutil.NoSuchProcess:
+        # The verified process exited between the identity recheck and terminate; treat it
+        # like any other already-dead entry so stop stays idempotent.
+        return False
+    try:
+        process.wait(timeout=10)
+    except psutil.TimeoutExpired:
+        process.kill()
+        try:
+            process.wait(timeout=5)
+        except psutil.TimeoutExpired as error:
+            raise ProcessError(
+                f"PID {service.pid} did not stop after terminate and kill"
+            ) from error
+    return True
 
 
 def stop_services(root: Path | None = None) -> ServiceReport:
-    """Stop verified services idempotently and map expected control failures."""
+    """Stop every verified managed service and atomically clear their state."""
+    selected_root = state_dir() if root is None else root
+    report = status_services(selected_root)
+    stopped: list[str] = []
+    warnings = list(report.warnings)
     try:
-        return stop_at(state_dir() if root is None else root)
-    except ControlError as error:
-        raise ProcessError(str(error)) from error
+        for service in report.services:
+            if _terminate_service(service):
+                stopped.append(service.label)
+            else:
+                warnings.append(f"Skipped stale process identity for PID {service.pid}.")
+        if report.services:
+            write_state(selected_root, ())
+    except (psutil.Error, OSError, StateError) as error:
+        raise ProcessError(f"cannot stop managed service: {error}") from error
+    return ServiceReport((), tuple(warnings), tuple(stopped))
 
 
 def wait_foreground(running: RunningService, root: Path | None = None) -> None:

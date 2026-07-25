@@ -12,9 +12,13 @@ from unittest.mock import Mock
 import psutil
 import pytest
 
-import bora_workbench._process_control as control
-from bora_workbench._process_lock import StartLockError, acquire_start_lock
-from bora_workbench._process_state import ServiceState, write_state
+import bora_workbench.process as lifecycle
+from bora_workbench._process_state import (
+    ServiceState,
+    StartLockError,
+    acquire_start_lock,
+    write_state,
+)
 from bora_workbench.process import status_services, stop_services
 
 
@@ -112,9 +116,9 @@ def test_stop_escalates_from_terminate_to_kill_after_ten_seconds(tmp_path, monke
     fake.is_running.return_value = True
     fake.create_time.return_value = service.create_time
     fake.wait.side_effect = [psutil.TimeoutExpired(10, pid=service.pid), None]
-    monkeypatch.setattr(control.psutil, "Process", lambda pid: fake)
+    monkeypatch.setattr(lifecycle.psutil, "Process", lambda pid: fake)
 
-    assert control._terminate_service(service) is True
+    assert lifecycle._terminate_service(service) is True
     fake.terminate.assert_called_once()
     fake.kill.assert_called_once()
     assert fake.wait.call_args_list[0].kwargs["timeout"] == 10
@@ -133,9 +137,9 @@ def test_stop_skips_process_dying_between_recheck_and_terminate(tmp_path, monkey
     fake.is_running.return_value = True
     fake.create_time.return_value = service.create_time
     fake.terminate.side_effect = psutil.NoSuchProcess(service.pid)
-    monkeypatch.setattr(control.psutil, "Process", lambda pid: fake)
+    monkeypatch.setattr(lifecycle.psutil, "Process", lambda pid: fake)
 
-    assert control._terminate_service(service) is False
+    assert lifecycle._terminate_service(service) is False
     fake.kill.assert_not_called()
 
 

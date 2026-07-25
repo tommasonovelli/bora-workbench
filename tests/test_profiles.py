@@ -8,9 +8,8 @@ import pytest
 import bora_workbench._calibration_record as record_module
 import bora_workbench._calibration_reuse as reuse_module
 from bora_workbench._calibration_record import write_record
-from bora_workbench._hardware_monitoring import GpuSnapshot
 from bora_workbench.config import DEFAULT_MODEL, Config
-from bora_workbench.hardware import HardwareInfo
+from bora_workbench.hardware import GpuSnapshot, HardwareInfo
 from bora_workbench.profiles import (
     ContentError,
     LaunchRequest,

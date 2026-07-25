@@ -7,7 +7,7 @@ import pytest
 from typer.testing import CliRunner
 
 import bora_workbench._cli_uninstall as uninstall_cli
-import bora_workbench._uninstall as uninstall_module
+import bora_workbench.uninstall as uninstall_module
 from bora_workbench.cli import app
 
 runner = CliRunner()
@@ -30,7 +30,7 @@ def patch_uninstall_dependencies(tmp_path, monkeypatch) -> list[object]:
 def patch_managed_roots(tmp_path, monkeypatch) -> dict[str, Path]:
     """Redirect the four managed roots into one isolated test tree.
 
-    The `_uninstall` module binds the path helpers at import time, so each lookup is patched on that
+    The `uninstall` module binds the path helpers at import time, so each lookup is patched on that
     module directly, mirroring how the record module is patched elsewhere.
     """
     roots = {

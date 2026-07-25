@@ -1,8 +1,15 @@
-"""Identify and hand off removal of the current uv-managed tool environment.
+"""Remove the exact public managed roots and hand the uv tool environment to a helper.
 
-The handoff runs from the base interpreter because Windows cannot remove the virtual environment
-of the Python process that is still executing this command. The helper waits for this process to
-exit, then invokes uv without a shell (specification sections 5.10-5.12).
+Uninstall deletes managed data, cache, state, and configuration after a single confirmation, never
+touches the Hugging Face cache, and stays idempotent (specification sections 5.2, 5.10, and 5.12).
+Confined removal lives here so `cli.py` keeps to presentation and exit-code mapping (section 4.1).
+
+The Python tool is removed from a detached helper running on the base interpreter, because Windows
+cannot delete the virtual environment of the process that is still executing this command. The
+helper waits for this process to exit and then invokes uv without a shell (sections 5.10-5.12).
+
+Neither half branches on the operating system: the four public roots already come from `paths.py`,
+and the handoff is identical on every supported platform.
 """
 
 from __future__ import annotations
@@ -16,14 +23,41 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from bora_workbench.paths import cache_dir, config_dir, data_dir, state_dir
+
 _TOOL_NAME = "bora-workbench"
 _HANDOFF_TIMEOUT_SECONDS = 5.0
+
+# The helper detects parent exit by watching the accepted socket close, so the channel and the child
+# handle must outlive `schedule_tool_removal`. Module-level references keep the file descriptor open
+# until the interpreter itself tears down.
 _HANDOFF_CHANNELS: list[socket.socket] = []
 _HELPER_PROCESSES: list[subprocess.Popen[bytes]] = []
 
 
+class UninstallError(RuntimeError):
+    """Signal an actionable uninstall failure mapped to exit code 1 without a traceback."""
+
+
 class ToolUninstallError(RuntimeError):
     """Report an actionable failure to inspect or schedule uv tool removal."""
+
+
+@dataclass(frozen=True, slots=True)
+class ManagedRoot:
+    """Name one public managed root and whether it currently exists on disk."""
+
+    label: str
+    path: Path
+    exists: bool
+
+
+@dataclass(frozen=True, slots=True)
+class RemovalReport:
+    """Report which managed roots were deleted and which were already absent."""
+
+    removed: tuple[Path, ...]
+    absent: tuple[Path, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +71,71 @@ class ToolInstallation:
     def is_managed_by_uv(self) -> bool:
         """Return whether uv can safely remove this exact running installation."""
         return self.uv_executable is not None
+
+
+def _named_roots() -> tuple[tuple[str, Path], ...]:
+    """Return the four exact public roots allowed by specification section 5.2."""
+    return (
+        ("configuration", config_dir()),
+        ("data", data_dir()),
+        ("cache", cache_dir()),
+        ("state", state_dir()),
+    )
+
+
+def managed_roots() -> tuple[ManagedRoot, ...]:
+    """Return the exact configuration, data, cache, and state roots as a removal preview.
+
+    The Hugging Face cache is excluded from the deletion set by construction (section 5.10).
+    """
+    return tuple(
+        ManagedRoot(label, path, path.exists() or path.is_symlink())
+        for label, path in _named_roots()
+    )
+
+
+def _remove_one(path: Path) -> bool:
+    """Delete exactly one managed root and report whether it existed.
+
+    Removal is confined to the given root: a symlinked root is refused rather than followed, so
+    deletion can never escape the managed tree, and an absent root is a no-op that keeps uninstall
+    idempotent (specification sections 5.10 and 5.12).
+    """
+    if path.is_symlink():
+        raise UninstallError(f"refusing to remove a symlinked managed root: {path}")
+    if not path.exists():
+        return False
+    try:
+        shutil.rmtree(path)
+    except OSError as error:
+        raise UninstallError(f"could not remove {path}: {error}") from error
+    return True
+
+
+def _validate_roots(roots: tuple[ManagedRoot, ...]) -> None:
+    """Refuse any deletion set other than the current exact public roots (section 5.10)."""
+    expected = _named_roots()
+    actual = tuple((root.label, root.path) for root in roots)
+    if actual != expected:
+        raise UninstallError("managed root set changed; refusing to remove anything")
+    for root in roots:
+        if root.exists and root.path.is_symlink():
+            raise UninstallError(f"refusing to remove a symlinked managed root: {root.path}")
+        if root.exists and not root.path.is_dir():
+            raise UninstallError(f"managed root is not a directory: {root.path}")
+
+
+def remove_managed_roots(roots: tuple[ManagedRoot, ...]) -> RemovalReport:
+    """Delete roots present in the confirmed preview and leave later creations untouched."""
+    _validate_roots(roots)
+    removed: list[Path] = []
+    absent: list[Path] = []
+    for root in roots:
+        if root.exists and _remove_one(root.path):
+            removed.append(root.path)
+        else:
+            absent.append(root.path)
+    return RemovalReport(tuple(removed), tuple(absent))
 
 
 def _query_tool_root(uv_executable: Path) -> Path:
