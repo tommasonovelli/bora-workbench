@@ -1,4 +1,4 @@
-"""Offline tests for the calibration/v6-lite quick-bench workload and metric extraction."""
+"""Offline tests for the calibration quick-bench workload and metric extraction."""
 
 from __future__ import annotations
 

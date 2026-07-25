@@ -1,29 +1,42 @@
-"""Collect explicit calibration/v1 inputs and present draft evidence."""
+"""Present the calibration command and map its failures onto the contractual exit codes."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
 import typer
 from rich.console import Console
 
-from qwen_launcher._cli_theme import print_error, print_heading, print_success, print_warning
+from qwen_launcher._calibration_outcomes import UnclassifiableTrialError
+from qwen_launcher._calibration_record import RecordError, promote_candidate
+from qwen_launcher._calibration_run import run_calibration
+from qwen_launcher._calibration_run_types import RunOptions, RunResult
+from qwen_launcher._calibration_types import (
+    CONTEXT_SCALE,
+    DEFAULT_PREFERENCE,
+    PREFERENCES,
+    Preference,
+    SearchError,
+)
+from qwen_launcher._cli_calibration_preflight import show_preflight
+from qwen_launcher._cli_calibration_progress import CalibrationProgress
+from qwen_launcher._cli_calibration_summary import show_outcome
+from qwen_launcher._cli_theme import print_error, print_success, print_warning
 from qwen_launcher.calibration import (
     CalibrationError,
-    CalibrationOutcome,
     CalibrationRunError,
-    CalibrationSettings,
     CalibrationTarget,
-    parse_candidate,
     prepare_target,
-    run_calibration,
+    selected_mode_ids,
 )
 from qwen_launcher.config import ConfigError
 from qwen_launcher.engine import EngineError
 from qwen_launcher.hardware import HardwareError
-from qwen_launcher.paths import data_dir
 from qwen_launcher.process import ProcessError
 from qwen_launcher.profiles import ContentError, PlanError
+
+_APPROVED_CTX = set(CONTEXT_SCALE)
 
 
 class CalibrationCancelled(RuntimeError):
@@ -32,12 +45,9 @@ class CalibrationCancelled(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class CalibrationCliInput:
-    """Group raw CLI values that may still require interactive completion."""
+    """Group the raw CLI values of one calibration invocation."""
 
     mode: str
-    candidate_values: tuple[str, ...]
-    settings_value: str | None
-    protocol: str = "v5"
     no_activate: bool = False
     activate: bool = False
     target_ctx: int | None = None
@@ -52,149 +62,77 @@ class CalibrationCliOutput:
     stderr: Console
 
 
-def _prompt_candidates(target: CalibrationTarget) -> tuple[str, ...]:
-    """Collect at least one candidate and stop only when the operator explicitly declines more."""
-    syntax = "ID:CTX:N_CPU_MOE" if target.hardware.backend == "cuda" else "ID:CTX"
-    values: list[str] = []
-    while True:
-        values.append(typer.prompt(f"Candidate ({syntax})"))
-        if not typer.confirm("Add another candidate?", default=False):
-            return tuple(values)
+def _preference(value: str | None) -> Preference:
+    """Normalize and validate the requested launch envelope preference."""
+    normalized = (value or DEFAULT_PREFERENCE).replace("-", "_")
+    if normalized not in PREFERENCES:
+        allowed = ", ".join(name.replace("_", "-") for name in PREFERENCES)
+        raise CalibrationError(f"unknown preference {value!r}; use one of: {allowed}")
+    return cast(Preference, normalized)
 
 
-def _explicit_settings(
-    value: str, target: CalibrationTarget
-) -> tuple[int, float | None, float | None]:
-    """Parse explicit CUDA reserve and release tolerance without hidden defaults."""
-    fields = value.split(":")
-    expected = 3 if target.hardware.backend == "cuda" else 1
-    if len(fields) != expected:
-        syntax = "RUNS:MIN_FREE_VRAM_GIB:RELEASE_TOLERANCE_GIB" if expected == 3 else "RUNS"
-        raise CalibrationError(f"--settings must use {syntax} syntax")
-    try:
-        if expected == 1:
-            return int(fields[0]), None, None
-        return int(fields[0]), float(fields[1]), float(fields[2])
-    except ValueError as error:
-        raise CalibrationError("--settings values must be numeric") from error
-
-
-def _settings(target: CalibrationTarget, options: CalibrationCliInput) -> CalibrationSettings:
-    """Resolve missing policy-free values interactively without assigning author defaults."""
-    values = options.candidate_values or _prompt_candidates(target)
-    candidates = tuple(parse_candidate(value, target.hardware.backend) for value in values)
-    if options.settings_value is not None:
-        starts, reserve, tolerance = _explicit_settings(options.settings_value, target)
-    else:
-        starts = typer.prompt("Required fresh stable starts per candidate", type=int)
-        reserve = None
-        tolerance = None
-        if target.hardware.backend == "cuda":
-            reserve = typer.prompt("Minimum free VRAM reserve in GiB", type=float)
-            tolerance = typer.prompt("Post-stop VRAM release tolerance in GiB", type=float)
-    return CalibrationSettings(candidates, starts, reserve, tolerance)
-
-
-def _show_preflight(
-    target: CalibrationTarget, settings: CalibrationSettings, console: Console
-) -> None:
-    """Show exact workload, risk, evidence location, and detected baseline before confirmation."""
-    print_heading(console, "Calibration preflight")
-    print_warning(console, "calibration/v1 is gate-only and cannot create a portable profile.")
-    console.print(f"Modes: {', '.join(mode.id for mode in target.modes)}")
-    console.print(f"Backend: {target.hardware.backend}; engine: {target.lock['release']}")
-    console.print(
-        f"RAM: {target.hardware.ram_total_gib:.3f} GiB total, "
-        f"{target.hardware.ram_available_gib:.3f} GiB available"
-    )
-    if target.hardware.vram_total_gib is not None:
-        console.print(
-            f"VRAM baseline: {target.hardware.vram_total_gib:.3f} GiB total, "
-            f"{target.hardware.vram_free_gib:.3f} GiB free"
-        )
-    console.print("Candidates: " + ", ".join(candidate.id for candidate in settings.candidates))
-    if settings.vram_release_tolerance_gib is not None:
-        console.print(
-            f"Post-stop VRAM release: 10 s window, "
-            f"{settings.vram_release_tolerance_gib:.3f} GiB tolerance"
-        )
-    starts = len(target.modes) * len(settings.candidates) * settings.stable_start_runs
-    console.print(
-        f"Workload: {starts} fresh server start(s); each final start runs 1 warm-up + 5 measures."
-    )
-    console.print(
-        "Duration: potentially hours; exact duration depends on measured hardware performance."
-    )
-    console.print(
-        f"Trial ports: use configured {target.config.llama_port} when free; "
-        "otherwise use a temporary loopback port."
-    )
-    console.print(f"Destination: {data_dir() / 'calibrations'}")
-    console.print("Disk: redacted process logs and JSON evidence are retained in the destination.")
-    console.print("Risk: a trial process may crash or be discarded; production state is isolated.")
-
-
-def _show_outcome(outcome: CalibrationOutcome, console: Console) -> None:
-    """Print candidate outcomes, shareable files, and the manual review boundary."""
-    path = outcome.bundle_path
-    print_success(console, "Draft bundle created", str(path))
-    console.print("Proposed selections are not accepted profiles and no data was uploaded.")
-    for mode_id, candidate_id in outcome.proposed_selections:
-        if candidate_id is None:
-            print_warning(console, f"{mode_id}: no valid candidate; bundle contains discards only.")
-        else:
-            console.print(f"{mode_id}: proposed candidate {candidate_id}")
-    files = sorted(file for file in path.rglob("*") if file.is_file())
-    for file in files:
-        relative = file.relative_to(path).as_posix()
-        console.print()
-        print_heading(console, f"Exact shareable preview: {relative}")
-        console.print(file.read_text(encoding="utf-8", errors="replace"), markup=False)
-    console.print("Review every file above; privacy_reviewed remains false until human review.")
-
-
-def _dispatch(options: CalibrationCliInput, output: CalibrationCliOutput) -> bool:
-    """Route to calibration/v5 unless the operator explicitly selects the v1 laboratory."""
-    has_v5_options = options.no_activate or options.activate or options.target_ctx is not None
-    if options.preference is not None and options.protocol != "v6":
-        raise CalibrationError("--preference requires --protocol v6")
-    if options.protocol == "v1":
-        if has_v5_options:
-            raise CalibrationError("activation and target context options require calibration/v5")
-        return False
-    if options.protocol == "v6":
-        from qwen_launcher._cli_calibration_v6 import run_calibrate_v6
-
-        run_calibrate_v6(options, output)
-        return True
-    if options.protocol != "v5":
-        raise CalibrationError(
-            f"unknown calibration protocol {options.protocol!r}; use v5, v6, or v1"
-        )
+def _validate(options: CalibrationCliInput) -> None:
+    """Reject conflicting activation and unapproved target contexts before any process starts."""
     if options.no_activate and options.activate:
         raise CalibrationError("--no-activate and --activate are mutually exclusive")
     if options.activate and options.target_ctx is not None:
         raise CalibrationError("--target-ctx cannot be used while activating a pending candidate")
-    if options.candidate_values or options.settings_value is not None:
-        raise CalibrationError("explicit candidates and settings require --protocol v1")
-    from qwen_launcher._cli_calibration_v5 import run_calibrate_v5
+    if options.target_ctx is not None and options.target_ctx not in _APPROVED_CTX:
+        allowed = ", ".join(str(value) for value in sorted(_APPROVED_CTX, reverse=True))
+        raise CalibrationError(f"--target-ctx must be one of: {allowed}")
 
-    run_calibrate_v5(options, output)
-    return True
+
+def _activate(mode_value: str, console: Console) -> None:
+    """Promote already measured candidates without rerunning expensive trials."""
+    for mode_id in selected_mode_ids(mode_value):
+        try:
+            path = promote_candidate(mode_id)
+        except RecordError as error:
+            raise CalibrationRunError(str(error)) from error
+        print_success(console, "Activated calibration candidate", str(path))
+
+
+def _measure(target: CalibrationTarget, run_options: RunOptions) -> RunResult:
+    """Map search and classification failures onto the contractual operational exit code.
+
+    Both are operational: the input was valid and processes already ran (spec 5.11).
+    """
+    try:
+        return run_calibration(target, run_options)
+    except (UnclassifiableTrialError, SearchError) as error:
+        raise CalibrationRunError(str(error)) from error
+
+
+def _run(options: CalibrationCliInput, output: CalibrationCliOutput) -> None:
+    """Activate pending candidates or measure the three envelopes of the selected modes."""
+    _validate(options)
+    preference = _preference(options.preference)
+    if options.activate:
+        _activate(options.mode, output.stdout)
+        return
+    target = prepare_target(options.mode)
+    show_preflight(target, options, output.stdout)
+    if not typer.confirm("Start calibration?", default=False):
+        raise CalibrationCancelled("calibration cancelled before process start")
+    with CalibrationProgress(output.stdout) as progress:
+        run_options = RunOptions(
+            preference=preference,
+            target_ctx=options.target_ctx,
+            is_activate=not options.no_activate,
+            progress=progress,
+        )
+        result = _measure(target, run_options)
+    show_outcome(result, preference, output.stdout)
+    if result.failures:
+        # The records that were written stay valid and activated; the run is still incomplete, so
+        # the exit code must not claim success for modes that produced nothing (spec 5.11).
+        raise CalibrationRunError("calibration did not complete for: " + "; ".join(result.failures))
 
 
 def run_calibrate(options: CalibrationCliInput, output: CalibrationCliOutput) -> None:
-    """Run the selected calibration protocol with contractual error and cancellation mapping."""
+    """Run calibration with contractual error and cancellation mapping (spec 5.11)."""
     try:
-        if _dispatch(options, output):
-            return
-        target = prepare_target(options.mode)
-        settings = _settings(target, options)
-        _show_preflight(target, settings, output.stdout)
-        if not typer.confirm("Start local calibration?", default=False):
-            raise CalibrationCancelled("calibration cancelled before process start")
-        outcome = run_calibration(target, settings)
-        _show_outcome(outcome, output.stdout)
+        _run(options, output)
     except (KeyboardInterrupt, typer.Abort, CalibrationCancelled) as error:
         print_warning(output.stderr, f"Calibration cancelled: {error}")
         raise typer.Exit(code=130) from error

@@ -1,4 +1,4 @@
-"""Offline tests for calibration/v5's immutable run-scoped WDDM context population."""
+"""Offline tests for the immutable run-scoped WDDM context population."""
 
 from __future__ import annotations
 

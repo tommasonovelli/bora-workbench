@@ -1,162 +1,173 @@
-"""CLI tests for explicit inputs, interactive completion, cancellation, and bundle paths."""
+"""Offline tests for calibration CLI routing, option validation, and exit codes."""
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
-from typer.testing import CliRunner
+import typer
+from rich.console import Console
 
 import qwen_launcher._cli_calibration as calibration_cli
-from qwen_launcher.calibration import CalibrationOutcome
-from qwen_launcher.cli import app
-from tests.test_calibration import cpu_target
-from tests.test_calibration_drift import cuda_target
+from qwen_launcher._calibration_outcomes import UnclassifiableTrialError
+from qwen_launcher._calibration_run_types import RunResult
+from qwen_launcher._calibration_runner import ModeResult
+from qwen_launcher._calibration_types import (
+    CONTEXT_SCALE,
+    PREFERENCES,
+    EnvelopeResult,
+    GateResult,
+    SearchError,
+)
+from qwen_launcher._cli_calibration import (
+    CalibrationCliInput,
+    CalibrationCliOutput,
+    _preference,
+    _validate,
+    run_calibrate,
+)
+from qwen_launcher._cli_calibration_options import parse_calibration_options
+from qwen_launcher._cli_calibration_summary import show_outcome
+from qwen_launcher.calibration import CalibrationError
+from qwen_launcher.profiles import load_catalog
+from tests.sample_fixtures import sample
 
-runner = CliRunner()
+
+def _output() -> CalibrationCliOutput:
+    """Return quiet CLI streams for exit-code assertions."""
+    return CalibrationCliOutput(Console(quiet=True), Console(quiet=True))
 
 
-def fake_outcome(tmp_path: Path) -> CalibrationOutcome:
-    """Create the two exact preview documents expected from a completed draft bundle."""
-    report_id = "calibration-20260716t120000000000"
-    bundle = tmp_path / report_id
-    bundle.mkdir()
-    (bundle / f"{report_id}.json").write_text(
-        json.dumps({"decision": "draft", "privacy_reviewed": False}), encoding="utf-8"
+def test_preference_normalization_and_rejection() -> None:
+    """Normalize max-context, default to balanced, and reject an unknown preference."""
+    assert _preference("max-context") == "max_context"
+    assert _preference(None) == "balanced"
+    with pytest.raises(CalibrationError):
+        _preference("turbo")
+
+
+def test_extras_parse_activation_and_target_context() -> None:
+    """Accept exactly the documented extras and reject anything else before hardware work."""
+    parsed = parse_calibration_options(["--no-activate", "--target-ctx", "65536"])
+
+    assert (parsed.no_activate, parsed.activate, parsed.target_ctx) == (True, False, 65536)
+    assert parse_calibration_options(["--activate"]).activate is True
+    with pytest.raises(CalibrationError):
+        parse_calibration_options(["--candidate", "safe:8192"])
+    with pytest.raises(CalibrationError):
+        parse_calibration_options(["--target-ctx"])
+    with pytest.raises(CalibrationError):
+        parse_calibration_options(["--target-ctx", "65536", "--target-ctx", "32768"])
+
+
+def test_validation_rejects_conflicts_and_unapproved_context() -> None:
+    """Reject conflicting activation and off-scale target contexts before hardware detection."""
+    with pytest.raises(CalibrationError):
+        _validate(CalibrationCliInput("coding", activate=True, no_activate=True))
+    with pytest.raises(CalibrationError):
+        _validate(CalibrationCliInput("coding", activate=True, target_ctx=65536))
+    with pytest.raises(CalibrationError):
+        _validate(CalibrationCliInput("coding", target_ctx=12345))
+    _validate(CalibrationCliInput("coding", target_ctx=65536))
+
+
+@pytest.mark.parametrize("target_ctx", CONTEXT_SCALE)
+def test_every_scale_step_is_an_approved_expert_target(target_ctx: int) -> None:
+    """Accept each searched context as an explicit target, including the small ones."""
+    _validate(CalibrationCliInput("coding", target_ctx=target_ctx))
+
+
+def test_outcome_shows_all_three_envelopes_and_marks_the_active_one() -> None:
+    """Explain what was measured, because the record launches with only one of the envelopes."""
+    mode = load_catalog().mode("coding")
+    assert mode is not None
+    envelopes = {
+        preference: EnvelopeResult(
+            preference, sample(65536, 37, 100.0), GateResult(True, True, None)
+        )
+        for preference in PREFERENCES
+    }
+    result = RunResult(
+        "a" * 32,
+        (Path("/records/coding.json"),),
+        (ModeResult(mode, envelopes, (sample(65536, 37, 100.0),), {}),),
+        Path("/evidence/run"),
     )
-    (bundle / "profile-proposal.json").write_text(
-        json.dumps({"status": "draft-not-distributable"}), encoding="utf-8"
+    console = Console(record=True, width=200)
+    show_outcome(result, "max_context", console)
+    text = console.export_text()
+    assert "fast" in text and "balanced" in text
+    assert "max_context (active)" in text
+    assert "n_cpu_moe=37" in text
+    assert "/evidence/run" in text
+
+
+@pytest.mark.parametrize(
+    "error",
+    [
+        SearchError("no feasible context step produced a usable sample"),
+        UnclassifiableTrialError("unsupported trial error: ProcessError: broken"),
+    ],
+)
+def test_a_failed_search_exits_operationally_without_a_traceback(monkeypatch, error) -> None:
+    """Map every measured-run failure onto exit code 1, because the input itself was valid."""
+    monkeypatch.setattr(calibration_cli, "prepare_target", lambda mode: object())
+    monkeypatch.setattr(calibration_cli, "show_preflight", lambda *args: None)
+    monkeypatch.setattr(calibration_cli.typer, "confirm", lambda *args, **kwargs: True)
+
+    def failing(target, run_options):
+        raise error
+
+    monkeypatch.setattr(calibration_cli, "run_calibration", failing)
+
+    with pytest.raises(typer.Exit) as exit_info:
+        run_calibrate(CalibrationCliInput("coding"), _output())
+
+    assert exit_info.value.exit_code == 1
+
+
+def test_declining_the_confirmation_cancels_with_the_contractual_code(monkeypatch) -> None:
+    """Leave exit code 130 to an operator who declines before any process starts."""
+    monkeypatch.setattr(calibration_cli, "prepare_target", lambda mode: object())
+    monkeypatch.setattr(calibration_cli, "show_preflight", lambda *args: None)
+    monkeypatch.setattr(calibration_cli.typer, "confirm", lambda *args, **kwargs: False)
+
+    with pytest.raises(typer.Exit) as exit_info:
+        run_calibrate(CalibrationCliInput("coding"), _output())
+
+    assert exit_info.value.exit_code == 130
+
+
+def test_a_partial_run_prints_its_records_and_still_exits_operationally(monkeypatch) -> None:
+    """Report what was measured, then refuse to call an incomplete run a success (D-067)."""
+    mode = load_catalog().mode("coding")
+    assert mode is not None
+    envelopes = {
+        preference: EnvelopeResult(
+            preference, sample(65536, 37, 100.0), GateResult(True, True, None)
+        )
+        for preference in PREFERENCES
+    }
+    result = RunResult(
+        "a" * 32,
+        (Path("/records/coding.json"),),
+        (ModeResult(mode, envelopes, (sample(65536, 37, 100.0),), {}),),
+        Path("/evidence/run"),
+        ("vstudio: (65536, 36) is no longer feasible",),
     )
-    return CalibrationOutcome(bundle, report_id, (("coding", "safe"),))
+    monkeypatch.setattr(calibration_cli, "prepare_target", lambda mode_value: object())
+    monkeypatch.setattr(calibration_cli, "show_preflight", lambda *args: None)
+    monkeypatch.setattr(calibration_cli.typer, "confirm", lambda *args, **kwargs: True)
+    monkeypatch.setattr(calibration_cli, "run_calibration", lambda target, options: result)
+    console = Console(record=True, width=200)
 
+    with pytest.raises(typer.Exit) as exit_info:
+        run_calibrate(
+            CalibrationCliInput("all"), CalibrationCliOutput(console, Console(quiet=True))
+        )
 
-def test_explicit_policy_free_options_still_require_confirmation(tmp_path, monkeypatch) -> None:
-    """Display preflight and map a clean operator refusal to exit code 130 before any trial."""
-    monkeypatch.setattr(calibration_cli, "prepare_target", lambda mode: cpu_target())
-    called = False
-
-    def forbidden(*args):
-        """Prove cancellation happens before candidate processes or bundle generation."""
-        nonlocal called
-        called = True
-        raise AssertionError("calibration must not start")
-
-    monkeypatch.setattr(calibration_cli, "run_calibration", forbidden)
-    result = runner.invoke(
-        app,
-        [
-            "calibrate",
-            "--mode",
-            "coding",
-            "--protocol",
-            "v1",
-            "--candidate",
-            "safe:8192",
-            "--settings",
-            "1",
-        ],
-        input="n\n",
-    )
-
-    assert result.exit_code == 130
-    assert "potentially hours" in result.stdout
-    assert "gate-only" in result.stdout
-    assert "cancelled" in result.output
-    assert called is False
-
-
-def test_interactive_values_generate_exact_draft_preview(tmp_path, monkeypatch) -> None:
-    """Collect every absent value explicitly and show generated shareable JSON without upload."""
-    outcome = fake_outcome(tmp_path)
-    monkeypatch.setattr(calibration_cli, "prepare_target", lambda mode: cpu_target())
-    monkeypatch.setattr(calibration_cli, "run_calibration", lambda target, settings: outcome)
-
-    result = runner.invoke(
-        app,
-        ["calibrate", "--mode", "coding", "--protocol", "v1"],
-        input="safe:8192\nn\n1\ny\n",
-    )
-
-    assert result.exit_code == 0
-    assert "Exact shareable preview" in result.stdout
-    assert '"decision": "draft"' in result.stdout
-    assert "no data was uploaded" in result.stdout
-
-
-def test_cuda_settings_require_reserve_and_release_tolerance() -> None:
-    """Accept only the new explicit three-part CUDA settings syntax."""
-    selected_target = cuda_target()
-
-    assert calibration_cli._explicit_settings("2:0.25:0.0625", selected_target) == (
-        2,
-        0.25,
-        0.0625,
-    )
-    with pytest.raises(calibration_cli.CalibrationError, match="RELEASE_TOLERANCE_GIB"):
-        calibration_cli._explicit_settings("2:0.25", selected_target)
-
-
-def test_all_discarded_outcome_is_explicit(tmp_path, monkeypatch) -> None:
-    """Tell the operator when a successful bundle contains no valid candidate."""
-    outcome = fake_outcome(tmp_path)
-    outcome = CalibrationOutcome(outcome.bundle_path, outcome.report_id, (("coding", None),))
-    monkeypatch.setattr(calibration_cli, "prepare_target", lambda mode: cpu_target())
-    monkeypatch.setattr(calibration_cli, "run_calibration", lambda target, settings: outcome)
-
-    result = runner.invoke(
-        app,
-        [
-            "calibrate",
-            "--mode",
-            "coding",
-            "--protocol",
-            "v1",
-            "--candidate",
-            "safe:8192",
-            "--settings",
-            "1",
-        ],
-        input="y\n",
-    )
-
-    assert result.exit_code == 0
-    assert "no valid candidate; bundle contains discards only" in result.stdout
-
-
-def test_invalid_candidate_is_cli_input_error(monkeypatch) -> None:
-    """Map malformed explicit candidate syntax to code 2 with no traceback."""
-    monkeypatch.setattr(calibration_cli, "prepare_target", lambda mode: cpu_target())
-
-    result = runner.invoke(
-        app,
-        [
-            "calibrate",
-            "--mode",
-            "coding",
-            "--protocol",
-            "v1",
-            "--candidate",
-            "safe:8192:48",
-            "--settings",
-            "1",
-        ],
-    )
-
-    assert result.exit_code == 2
-    assert "Calibration input error" in result.output
-    assert "Traceback" not in result.output
-
-
-def test_validate_path_does_not_replace_default_resource_validation(tmp_path) -> None:
-    """Dispatch an explicit bundle path independently while retaining default validate behavior."""
-    invalid_bundle = tmp_path / "bundle"
-    invalid_bundle.mkdir()
-
-    explicit = runner.invoke(app, ["validate", "--path", str(invalid_bundle)])
-    default = runner.invoke(app, ["validate"])
-
-    assert explicit.exit_code == 1
-    assert "exactly one report" in explicit.output
-    assert default.exit_code == 0
-    assert "Validation passed" in default.stdout
+    text = console.export_text()
+    assert exit_info.value.exit_code == 1
+    assert "/records/coding.json" in text
+    assert "vstudio" in text
+    assert "partially" in text

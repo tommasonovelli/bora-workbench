@@ -1,78 +1,60 @@
-"""Explain calibration/v5 selections and retained record paths."""
+"""Explain the measured envelopes, gate outcomes, and retained record paths."""
 
 from __future__ import annotations
 
-from statistics import median
-
 from rich.console import Console
 
-from qwen_launcher._calibration_v5_types import (
-    SELECTION_CPU_BASELINE,
-    SELECTION_DOMINANCE,
-    SELECTION_DRIFT,
-    SELECTION_FREE_VRAM,
-    SELECTION_PRUDENT,
-    SELECTION_SINGLE,
-    ModeCalibration,
-    V5Outcome,
-)
-from qwen_launcher._cli_theme import print_note, print_success
-
-_SELECTION_EXPLANATIONS = {
-    SELECTION_CPU_BASELINE: "confirmed the fixed CPU baseline",
-    SELECTION_SINGLE: "selected the only finalist that passed confirmation",
-    SELECTION_DOMINANCE: "selected the finalist that won both paired rounds",
-    SELECTION_FREE_VRAM: "resolved equivalent throughput by measured free VRAM",
-    SELECTION_PRUDENT: "resolved equivalent throughput with the prudent boundary",
-    SELECTION_DRIFT: "used the safe tie-break after measured VRAM baseline drift",
-}
+from qwen_launcher._calibration_run_types import RunResult
+from qwen_launcher._calibration_runner import ModeResult
+from qwen_launcher._calibration_types import PREFERENCES, EnvelopeResult, Preference
+from qwen_launcher._cli_theme import print_note, print_success, print_warning
 
 
-def _selected_rates(calibration: ModeCalibration) -> tuple[float, ...]:
-    """Return every measured rate belonging to the selected finalist."""
-    return tuple(
-        rate
-        for session in calibration.selected.sessions
-        if session.benchmark is not None
-        for rate in session.benchmark.measured_tok_s
-    )
+def _offload(envelope: EnvelopeResult) -> str:
+    """Name the measured offload position, which a CPU backend does not have."""
+    value = envelope.sample.n_cpu_moe
+    return "baseline" if value is None else str(value)
 
 
-def _memory_summary(calibration: ModeCalibration) -> str:
-    """Describe the selected finalist's measured minimum available memory."""
-    selected = calibration.selected
-    values = []
-    if selected.ram is not None:
-        values.append(f"RAM available min {selected.ram.minimum_available_gib:.2f} GiB")
-    if selected.vram is not None:
-        values.append(f"VRAM free min {selected.vram.minimum_free_gib:.2f} GiB")
-    return ", ".join(values) if values else "memory evidence unavailable"
+def _memory(envelope: EnvelopeResult) -> str:
+    """Describe the minimum memory margin measured while this envelope was running."""
+    sample = envelope.sample
+    values = [f"RAM available min {sample.ram_min_available_gib:.2f} GiB"]
+    if sample.vram_min_free_gib is not None:
+        values.append(f"VRAM free min {sample.vram_min_free_gib:.2f} GiB")
+    return ", ".join(values)
 
 
-def _mode_summary(calibration: ModeCalibration) -> str:
-    """Summarize the selected envelope, paired reason, and measured headroom."""
-    value = calibration.selected.n_cpu_moe
-    n_cpu_moe = "baseline" if value is None else str(value)
-    rates = _selected_rates(calibration)
-    speed = "n/a" if not rates else f"{median(rates):.3f} tok/s confirmed median"
-    reason = _SELECTION_EXPLANATIONS.get(calibration.selection_rule, calibration.selection_rule)
+def _envelope_line(preference: Preference, envelope: EnvelopeResult, is_active: bool) -> str:
+    """Summarize one measured envelope and mark the one this record will launch with."""
+    sample = envelope.sample
+    marker = " (active)" if is_active else ""
     return (
-        f"{calibration.mode.id}: ctx={calibration.ctx}, n_cpu_moe={n_cpu_moe}; {speed}; "
-        f"{reason}; {_memory_summary(calibration)}; {len(calibration.probes)} screening probe(s)"
+        f"  {preference}{marker}: ctx={sample.ctx}, n_cpu_moe={_offload(envelope)}; "
+        f"{sample.e2e_ms:.0f} ms short e2e, {sample.decode_tps:.2f} tok/s decode, "
+        f"{sample.prefill_tps:.2f} tok/s prefill; {_memory(envelope)}"
     )
 
 
-def show_calibration_outcome(outcome: V5Outcome, console: Console) -> None:
-    """Print record paths, selection reasons, and measured resource summaries."""
-    print_success(console, "Local calibration completed.")
-    for calibration in outcome.calibrations:
-        console.print(_mode_summary(calibration))
-    for path in outcome.active_paths:
-        print_note(console, "Active record", str(path))
-    if not outcome.active_paths:
-        for path in outcome.candidate_paths:
-            if path.exists():
-                print_note(console, "Candidate record", str(path))
-        console.print("Review candidate records, then activate with `calibrate --activate`.")
-    console.print(f"Private run evidence: {outcome.evidence_path}")
+def _mode_lines(result: ModeResult, active: Preference) -> list[str]:
+    """Build the per-mode header and one line per measured preference envelope."""
+    lines = [f"{result.mode.id}: {len(result.samples)} measured sample(s)"]
+    for preference in PREFERENCES:
+        envelope = result.envelopes[preference]
+        lines.append(_envelope_line(preference, envelope, preference == active))
+    return lines
+
+
+def show_outcome(result: RunResult, active: Preference, console: Console) -> None:
+    """Print the three measured envelopes per mode, then the record and evidence locations."""
+    state = "completed for every selected mode" if not result.failures else "completed partially"
+    print_success(console, f"Local calibration {state}.")
+    for mode_result in result.mode_results:
+        for line in _mode_lines(mode_result, active):
+            console.print(line)
+    for path in result.record_paths:
+        print_note(console, "Record", str(path))
+    for failure in result.failures:
+        print_warning(console, f"No record written for {failure}")
+    console.print(f"Private run evidence: {result.evidence_path}")
     console.print("No private record or process log was uploaded.")

@@ -33,10 +33,10 @@ def _resource_probe() -> str:
         "'1c7182235411da2d4fe6fca130e3effb0b0d965569c52abd8fd45327103ddb2e'; "
         "assert hashlib.sha256(resource('benchmark-v1/request.json').read_bytes()).hexdigest() == "
         "'025dc91aeb61a790d5fd36c27f127e04761ae7f1c3d6b542d0cfd9d37bc5c19f'; "
-        "record_schema = read_json('schemas/calibration-record.v3.json'); "
-        "assert record_schema['properties']['calibration_protocol']['const'] == 'calibration/v4'; "
-        "assert record_schema['properties']['search']['properties']['vram_reserve_gib']['const'] "
-        "== 0.3; "
+        "record_schema = read_json('schemas/calibration-record.v5.json'); "
+        "assert record_schema['properties']['calibration_protocol']['const'] == 'calibration'; "
+        "assert record_schema['properties']['reserves']['required'] "
+        "== ['vram_gib', 'ram_gib', 'release_tolerance_gib']; "
         "policy = read_json('content/calibration-policy.json'); "
         "report_path = 'content/' + policy['evidence'][0]['path']; "
         "report_bytes = resource(report_path).read_bytes(); "
@@ -44,8 +44,7 @@ def _resource_probe() -> str:
         "report = read_json(report_path); "
         "assert report['gate']['overall_status'] == 'gate-partial'; "
         "assert not report['gate']['constants_validated_on_materially_different_hardware']; "
-        "assert [(s.mode_id, s.n_cpu_moe) for s in load_catalog().calibration_seeds] == "
-        "[('coding', 37), ('studio', 37), ('vstudio', 39)]"
+        "assert [mode.id for mode in load_catalog().modes] == ['coding', 'studio', 'vstudio']"
     )
 
 
@@ -93,7 +92,6 @@ def _verify_sdist() -> bool:
         print(f"expected exactly one sdist in dist/, found {len(archives)}", file=sys.stderr)
         return False
     required = (
-        "CALIBRATION.md",
         "CHANGELOG.md",
         "CONTRIBUTING.md",
         "IMPLEMENTATION_SPEC.md",

@@ -1,4 +1,4 @@
-"""Apply calibration/v5's immutable run-scoped WDDM executable baseline."""
+"""Apply the immutable run-scoped WDDM executable baseline of one calibration run."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from qwen_launcher._hardware_monitoring import GpuSnapshot, query_gpu_snapshot
 
 @dataclass(frozen=True, slots=True)
 class GpuContextBaseline:
-    """Hold the complete compute-process population captured once for a v5 run."""
+    """Hold the complete compute-process population captured once for one run."""
 
     is_wddm: bool
     contexts: tuple[GpuProcessIdentity, ...]
@@ -23,7 +23,7 @@ def legacy_foreign_pids(
     baseline: GpuSnapshot,
     managed: GpuProcessIdentity | int | None,
 ) -> set[int]:
-    """Preserve calibration/v1's historical per-trial exact-PID WDDM contract."""
+    """Preserve the historical per-trial exact-PID WDDM contract."""
     baseline_pids = set(baseline.compute_pids) if baseline.is_wddm else set()
     managed_pid = managed.pid if isinstance(managed, GpuProcessIdentity) else managed
     managed_pids = set() if managed_pid is None else {managed_pid}

@@ -57,7 +57,7 @@ def _resource_issues(document: Document, path: str, candidate: JsonObject) -> li
 
 
 def _winner(candidates: list[JsonObject], backend: str) -> str | None:
-    """Recompute the calibration/v1 winner from valid measured candidates only."""
+    """Recompute the packaged report winner from valid measured candidates only."""
     valid = [
         (index, value) for index, value in enumerate(candidates) if value["outcome"] == "valid"
     ]

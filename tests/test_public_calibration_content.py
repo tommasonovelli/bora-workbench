@@ -7,24 +7,12 @@ import shutil
 from pathlib import Path
 
 from qwen_launcher._calibration_privacy import privacy_findings
-from qwen_launcher._calibration_v5_search import ProbeMeasurement, ScreeningPlan, screen
 from qwen_launcher.profiles import load_catalog
 from qwen_launcher.resources import read_json, resource
 from qwen_launcher.validation import validate_resources
 
 _REPORT_PATH = "content/calibrations/windows-11-rtx-2060-super-v3.json"
 _MANIFEST = Path("evidence/calibration/windows-11-rtx-2060-super-v3/SHA256SUMS")
-
-
-def _probe(order: list[int]):
-    """Build one deterministic local boundary independent of shared report values."""
-
-    def measure(value: int) -> ProbeMeasurement:
-        """Record local probe order and report a boundary at 38."""
-        order.append(value)
-        return ProbeMeasurement(value >= 38, 7.5 - 0.05 * value)
-
-    return measure
 
 
 def test_packaged_policy_and_reference_evidence_are_valid() -> None:
@@ -88,32 +76,13 @@ def test_manifest_reproduces_every_public_reference() -> None:
         assert hashlib.sha256(Path(name).read_bytes()).hexdigest() == digest
 
 
-def test_installed_reference_exposes_only_ordering_seeds() -> None:
-    """Load 37/37/39 as hints without exposing context, hardware, or remote envelopes."""
-    seeds = load_catalog().calibration_seeds
+def test_installed_reference_never_becomes_a_launch_plan() -> None:
+    """Keep the shared report descriptive: no remote envelope may reach the runtime catalog."""
+    catalog = load_catalog()
 
-    assert [(item.mode_id, item.n_cpu_moe) for item in seeds] == [
-        ("coding", 37),
-        ("studio", 37),
-        ("vstudio", 39),
-    ]
-    assert all(not hasattr(item, "ctx") and not hasattr(item, "hardware") for item in seeds)
-
-
-def test_ignoring_packaged_seed_keeps_complete_domain_and_result() -> None:
-    """Change first-probe order only, preserving domain endpoints and local boundary."""
-    seed = load_catalog().calibration_seeds[0].n_cpu_moe
-    seeded_order: list[int] = []
-    plain_order: list[int] = []
-    seeded_plan = ScreeningPlan(41, 5.45, 7.5, seed, 12)
-    plain_plan = ScreeningPlan(41, 5.45, 7.5, None, 12)
-
-    seeded = screen(_probe(seeded_order), seeded_plan)
-    plain = screen(_probe(plain_order), plain_plan)
-
-    assert seeded_plan.domain_maximum == plain_plan.domain_maximum == 41
-    assert seeded.boundary == plain.boundary == 38
-    assert seeded_order[0] == 37
+    assert catalog.profiles == ()
+    assert not hasattr(catalog, "calibration_seeds")
+    assert [mode.id for mode in catalog.modes] == ["coding", "studio", "vstudio"]
 
 
 def test_contribution_guide_keeps_publication_manual_and_checklisted() -> None:

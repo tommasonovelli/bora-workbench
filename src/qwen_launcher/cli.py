@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from importlib.metadata import PackageNotFoundError, version
-from pathlib import Path
 from typing import Annotated
 
 import typer
@@ -34,10 +33,10 @@ _stdout = create_console()
 _stderr = create_console(stderr=True)
 _MEMORY_GATE_HELP = "Bypass only the default-model total and available RAM gate."
 _CALIBRATION_EPILOG = (
-    "v5 extras: --no-activate keeps candidates; --activate promotes them; --target-ctx N fixes "
-    "one of 131072, 98304, 65536, 49152, 32768, 16384, 8192. "
-    "v1 extras: --candidate ID:CTX[:N_CPU_MOE] (repeatable), --settings VALUES. "
-    "Specialized extras are parsed strictly after Typer's common options."
+    "Extras: --no-activate keeps the measured candidates without replacing the active records; "
+    "--activate promotes candidates measured earlier without measuring again; --target-ctx N "
+    "searches only one of 131072, 98304, 65536, 49152, 32768, 16384, 8192. "
+    "Extras are parsed strictly after Typer's common options."
 )
 
 
@@ -71,13 +70,9 @@ def main(
 
 
 @app.command("validate")
-def validate_command(
-    path: Annotated[
-        Path | None, typer.Option("--path", help="Validate a local calibration bundle.")
-    ] = None,
-) -> None:
-    """Validate installed resources or one explicit local calibration bundle."""
-    run_validate(path, _stdout, _stderr)
+def validate_command() -> None:
+    """Validate the installed modes, policy, and reference calibration content."""
+    run_validate(_stdout, _stderr)
 
 
 @app.command()
@@ -131,22 +126,15 @@ def vstudio(
 def calibrate(
     context: typer.Context,
     mode: Annotated[str, typer.Option("--mode", help="Packaged mode id or 'all'.")],
-    protocol: Annotated[
-        str,
-        typer.Option(
-            "--protocol",
-            help="calibration protocol: default 'v5', opt-in 'v6', or gate-only lab 'v1'.",
-        ),
-    ] = "v5",
     preference: Annotated[
         str | None,
         typer.Option(
             "--preference",
-            help="v6 launch envelope written to the record: fast, balanced, or max-context.",
+            help="Launch envelope written to the record: fast, balanced (default), max-context.",
         ),
     ] = None,
 ) -> None:
-    """Run v5 with --activate/--no-activate/--target-ctx, v6 with --preference, or v1 candidates."""
+    """Measure the launch envelopes of one packaged mode or of all of them."""
     try:
         parsed = parse_calibration_options(context.args)
     except CalibrationError as error:
@@ -154,9 +142,6 @@ def calibrate(
         raise typer.Exit(code=2) from error
     options = CalibrationCliInput(
         mode,
-        tuple(parsed.candidates),
-        parsed.settings,
-        protocol,
         parsed.no_activate,
         parsed.activate,
         parsed.target_ctx,

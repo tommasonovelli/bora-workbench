@@ -1,4 +1,4 @@
-"""Deterministic RAM monitoring and reserve tests for every calibration/v5 backend."""
+"""Deterministic RAM monitoring and reserve tests for every calibration backend."""
 
 from __future__ import annotations
 

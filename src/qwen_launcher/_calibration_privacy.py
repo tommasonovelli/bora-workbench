@@ -1,11 +1,10 @@
-"""Redact private bundle text and detect absolute paths or host identity leaks."""
+"""Detect absolute paths or host identity leaks in content meant to be shared."""
 
 from __future__ import annotations
 
 import getpass
 import re
 import socket
-from collections.abc import Mapping, Sequence
 from pathlib import Path
 
 _GENERIC_PRIVATE_PATTERNS = (
@@ -19,36 +18,6 @@ _GENERIC_PRIVATE_PATTERNS = (
 def has_private_path_pattern(text: str) -> bool:
     """Return whether text contains a generic POSIX, Windows, or UNC private path."""
     return any(pattern.search(text) for pattern in _GENERIC_PRIVATE_PATTERNS)
-
-
-def redact_text(text: str, private_values: tuple[str, ...]) -> str:
-    """Replace every known private value and slash-normalized variant in text."""
-    for value in private_values:
-        text = text.replace(value, "<redacted>")
-    return text
-
-
-def relative_log_reason(
-    reason: str | None, sources: tuple[Path, ...], evidence: tuple[tuple[str, str], ...]
-) -> str | None:
-    """Replace private runtime log paths with their copied bundle-relative counterparts."""
-    if reason is None:
-        return None
-    for source, (relative, _digest) in zip(sources, evidence, strict=False):
-        reason = reason.replace(str(source), relative)
-        reason = reason.replace(source.as_posix(), relative)
-    return reason
-
-
-def redact_document(value: object, private_values: tuple[str, ...]) -> object:
-    """Recursively redact every string in one generated shareable JSON document."""
-    if isinstance(value, str):
-        return redact_text(value, private_values)
-    if isinstance(value, Mapping):
-        return {key: redact_document(item, private_values) for key, item in value.items()}
-    if isinstance(value, Sequence) and not isinstance(value, (bytes, bytearray)):
-        return [redact_document(item, private_values) for item in value]
-    return value
 
 
 def _local_markers(root: Path) -> tuple[str, ...]:

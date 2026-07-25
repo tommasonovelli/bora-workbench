@@ -4,24 +4,31 @@ from __future__ import annotations
 
 import socket
 from dataclasses import replace
-from types import SimpleNamespace
 
-import qwen_launcher._calibration_runner as v1_runner
-from qwen_launcher._calibration_v5_plan import build_plan
-from qwen_launcher.calibration import Candidate
+from qwen_launcher._calibration_trial import TrialRunner
 from qwen_launcher.config import Config
-from tests.test_calibration import cpu_target
+from tests.record_fixtures import cpu_hardware, record_target
 
 
-def test_calibration_plans_avoid_an_occupied_configured_port() -> None:
-    """Keep both calibration protocols usable while another local service owns llama_port."""
+def test_calibration_plans_avoid_an_occupied_configured_port(tmp_path) -> None:
+    """Keep calibration usable while another local service already owns llama_port."""
     with socket.socket() as occupied:
         occupied.bind(("127.0.0.1", 0))
         port = occupied.getsockname()[1]
-        target = replace(cpu_target(), config=Config(llama_port=port))
-        v1_plan = v1_runner._plan(target, target.modes[0], Candidate("safe", 8192, None))
-        run = SimpleNamespace(target=target, mode=target.modes[0])
-        v3_plan = build_plan(run, 8192, None)
+        target = replace(record_target(cpu_hardware()), config=Config(llama_port=port))
+        runner = TrialRunner(target, target.modes[0], tmp_path)
+        plan = runner._plan((8192, None))
 
-    assert v1_plan.port != port
-    assert v3_plan.port != port
+    assert plan.port != port
+
+
+def test_calibration_plans_use_the_configured_port_when_it_is_free(tmp_path) -> None:
+    """Prefer the configured port so a trial stays observable at the documented address."""
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    target = replace(record_target(cpu_hardware()), config=Config(llama_port=port))
+
+    plan = TrialRunner(target, target.modes[0], tmp_path)._plan((8192, None))
+
+    assert plan.port == port

@@ -1,35 +1,103 @@
-"""Serialize measured calibration/v5 evidence into calibration-record/v4 documents."""
+"""Serialize one measured mode into a lean private calibration record (spec 3.6).
+
+Probes, pruned candidates, and logs are not duplicated here; they live in the evidence tree keyed by
+``evidence_run_id``. Only the envelopes and the per-round medians that reconstruct the selection are
+retained, consistent with the repository norm for reproducible records.
+"""
 
 from __future__ import annotations
 
+import hashlib
+import json
+from dataclasses import dataclass
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import cast
 
 from qwen_launcher._calibration_metadata import launcher_version
-from qwen_launcher._calibration_record_evidence import (
-    finalist_entry,
-    probe_trial_entry,
-    selected_benchmark_entry,
-    vram_needed,
-)
-from qwen_launcher._calibration_v5_types import (
-    CALIBRATION_V5_PROTOCOL,
-    CONFIRM_ROUNDS,
-    CONTEXT_SCALE,
-    MODE_PROBE_CAP,
-    OBJECTIVE,
+from qwen_launcher._calibration_runner import ModeResult
+from qwen_launcher._calibration_types import (
+    BALANCED_CEILING,
+    CALIBRATION_PROTOCOL,
+    DEADBAND_PCT,
+    MIN_CTX_FAST,
+    PREFERENCES,
     RAM_RESERVE_GIB,
     RELEASE_TOLERANCE_GIB,
     VRAM_RESERVE_GIB,
-    ModeCalibration,
+    EnvelopeResult,
+    Preference,
 )
-from qwen_launcher._gpu_process_identity import GPU_CONTEXT_IDENTITY_MODEL
 from qwen_launcher.calibration import CalibrationTarget
+from qwen_launcher.profiles import Mode
 
 JsonObject = dict[str, object]
 
 
-def _hardware_identity(target: CalibrationTarget, gpu_driver: str | None) -> JsonObject:
+def fail(path: Path, message: str) -> Exception:
+    """Build one actionable semantic record rejection tied to its file."""
+    from qwen_launcher._calibration_record import RecordError
+
+    return RecordError(f"local calibration record {path} is invalid: {message}")
+
+
+@dataclass(frozen=True, slots=True)
+class RecordContext:
+    """Group per-run identity the builder cannot read from the measured samples."""
+
+    target: CalibrationTarget
+    evidence_run_id: str
+    active_preference: Preference
+    gpu_driver: str | None
+
+
+def mode_policy_sha256(mode: Mode) -> str:
+    """Digest the canonical mode/v2 behavior so record identity tracks the used policy."""
+    sampling = mode.sampling
+    canonical = {
+        "id": mode.id,
+        "services": {"ui": mode.services.ui, "vision": mode.services.vision},
+        "sampling": {
+            "temp": sampling.temp,
+            "top_p": sampling.top_p,
+            "top_k": sampling.top_k,
+            "min_p": sampling.min_p,
+            "presence_penalty": sampling.presence_penalty,
+            "repeat_penalty": sampling.repeat_penalty,
+            "reasoning": sampling.reasoning,
+        },
+    }
+    payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _envelope_entry(result: EnvelopeResult) -> JsonObject:
+    """Serialize one gated envelope's identity, quick summary, needs, and minima."""
+    sample = result.sample
+    return {
+        "ctx": sample.ctx,
+        "n_cpu_moe": sample.n_cpu_moe,
+        "speculative": sample.speculative,
+        "quick": {
+            "e2e_ms": sample.e2e_ms,
+            "prefill_tps": sample.prefill_tps,
+            "decode_tps": sample.decode_tps,
+        },
+        "gate": {
+            "smoke": result.gate.smoke,
+            "multi_turn": result.gate.multi_turn,
+            "vision": result.gate.vision,
+        },
+        "ram_needed_gib": sample.ram_needed_gib,
+        "vram_needed_gib": sample.vram_needed_gib,
+        "minima": {
+            "minimum_ram_available_gib": sample.ram_min_available_gib,
+            "minimum_vram_free_gib": sample.vram_min_free_gib,
+        },
+    }
+
+
+def _hardware(target: CalibrationTarget, gpu_driver: str | None) -> JsonObject:
     """Build the stable hardware identity required for local reuse."""
     hardware = target.hardware
     return {
@@ -43,87 +111,64 @@ def _hardware_identity(target: CalibrationTarget, gpu_driver: str | None) -> Jso
     }
 
 
-def _observed_entry(calibration: ModeCalibration) -> JsonObject:
-    """Serialize selected minima and conservative needs used by launch-time headroom."""
-    selected = calibration.selected
-    if selected.ram is None:
-        raise ValueError("selected finalist requires measured RAM evidence")
+def _selection_inputs(result: ModeResult) -> JsonObject:
+    """Serialize the per-round finalist medians that reconstruct each confirmation."""
     return {
-        "ram_needed_gib": selected.ram.needed_gib,
-        "minimum_ram_available_gib": selected.ram.minimum_available_gib,
-        "vram_needed_gib": vram_needed(selected),
-        "minimum_vram_free_gib": (
-            None if selected.vram is None else selected.vram.minimum_free_gib
-        ),
+        preference: {
+            "round_medians": [list(pair) for pair in result.selection_inputs.get(preference, ())]
+        }
+        for preference in PREFERENCES
     }
 
 
-def _probe_entry(probe: object) -> JsonObject:
-    """Serialize one typed probe without broadening the public record builder interface."""
-    from qwen_launcher._calibration_v5_types import ProbeRecord
+def build_record(context: RecordContext, result: ModeResult) -> JsonObject:
+    """Build one complete candidate record document for one measured mode."""
+    from qwen_launcher._calibration_record import RECORD_SCHEMA, command_contract_sha256
 
-    if not isinstance(probe, ProbeRecord):
-        raise TypeError("calibration probe has an invalid runtime type")
-    return {
-        "ctx": probe.ctx,
-        "n_cpu_moe": probe.n_cpu_moe,
-        "is_feasible": probe.is_feasible,
-        "reason": probe.reason,
-        "trial": probe_trial_entry(probe.trial),
-    }
-
-
-def _search_entry(calibration: ModeCalibration, is_cuda: bool) -> JsonObject:
-    """Serialize constants, context identity, screening, sessions, drift, and winners."""
-    return {
-        "context_scale": list(CONTEXT_SCALE),
-        "context_identity_model": GPU_CONTEXT_IDENTITY_MODEL if is_cuda else None,
-        "target_ctx": calibration.target_ctx,
-        "probe_cap": MODE_PROBE_CAP,
-        "vram_reserve_gib": VRAM_RESERVE_GIB,
-        "ram_reserve_gib": RAM_RESERVE_GIB,
-        "release_tolerance_gib": RELEASE_TOLERANCE_GIB,
-        "confirm_rounds": CONFIRM_ROUNDS,
-        "did_degrade": calibration.did_degrade,
-        "baseline_drift_gib": calibration.baseline_drift_gib,
-        "round_winners": list(calibration.round_winners),
-        "probes": [_probe_entry(probe) for probe in calibration.probes],
-        "finalists": [
-            finalist_entry(finalist, finalist is calibration.selected)
-            for finalist in calibration.finalists
-        ],
-    }
-
-
-def build_record_document(
-    target: CalibrationTarget, calibration: ModeCalibration, evidence_run_id: str
-) -> JsonObject:
-    """Build one complete calibration-record/v4 candidate document."""
-    from qwen_launcher._calibration_record import command_contract_sha256
-
-    selected = calibration.selected
+    target = context.target
     artifact = cast(JsonObject, target.lock["default_model_artifact"])
-    gpu_driver = None if selected.vram is None else selected.vram.driver_version
     return {
-        "schema": "calibration-record/v4",
-        "mode": calibration.mode.id,
+        "schema": RECORD_SCHEMA,
+        "mode": result.mode.id,
         "created_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
         "launcher_version": launcher_version(),
-        "calibration_protocol": CALIBRATION_V5_PROTOCOL,
-        "benchmark_protocol": "benchmark/v1",
-        "objective": OBJECTIVE,
-        "evidence_run_id": evidence_run_id,
+        "calibration_protocol": CALIBRATION_PROTOCOL,
         "model": target.config.model,
         "model_sha256": artifact["sha256"],
         "engine_release": target.lock["release"],
         "engine_source_commit": target.lock["source_commit"],
         "command_contract_sha256": command_contract_sha256(target.lock),
+        "mode_policy_sha256": mode_policy_sha256(result.mode),
         "os_name": target.hardware.os_name,
         "backend": target.hardware.backend,
-        "hardware": _hardware_identity(target, gpu_driver),
-        "envelope": {"ctx": calibration.ctx, "n_cpu_moe": selected.n_cpu_moe},
-        "observed": _observed_entry(calibration),
-        "benchmark": selected_benchmark_entry(selected),
-        "search": _search_entry(calibration, target.hardware.backend == "cuda"),
-        "selection_rule": calibration.selection_rule,
+        "hardware": _hardware(target, context.gpu_driver),
+        "evidence_run_id": context.evidence_run_id,
+        "active_preference": context.active_preference,
+        "thresholds": {
+            "deadband_pct": DEADBAND_PCT,
+            "balanced_ceiling": BALANCED_CEILING,
+            "min_ctx_fast": MIN_CTX_FAST,
+        },
+        "reserves": {
+            "vram_gib": VRAM_RESERVE_GIB,
+            "ram_gib": RAM_RESERVE_GIB,
+            "release_tolerance_gib": RELEASE_TOLERANCE_GIB,
+        },
+        "envelopes": {pref: _envelope_entry(result.envelopes[pref]) for pref in PREFERENCES},
+        "selection_inputs": _selection_inputs(result),
     }
+
+
+def verify_record(document: JsonObject, path: Path) -> None:
+    """Cross-check the fields JSON Schema cannot: reserves and the active envelope."""
+    reserves = cast(JsonObject, document["reserves"])
+    expected = {
+        "vram_gib": VRAM_RESERVE_GIB,
+        "ram_gib": RAM_RESERVE_GIB,
+        "release_tolerance_gib": RELEASE_TOLERANCE_GIB,
+    }
+    if reserves != expected:
+        raise fail(path, "record reserves do not match the pinned calibration constants")
+    envelopes = cast(JsonObject, document["envelopes"])
+    if document["active_preference"] not in envelopes:
+        raise fail(path, "active preference must name one recorded envelope")

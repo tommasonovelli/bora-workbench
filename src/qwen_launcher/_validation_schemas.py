@@ -8,7 +8,5 @@ SCHEMA_FILES = {
     "calibration-policy/v2": "calibration-policy.v2.json",
     "calibration-report/v1": "calibration-report.v1.json",
     "calibration-report/v2": "calibration-report.v2.json",
-    "calibration-record/v2": "calibration-record.v2.json",
-    "calibration-record/v3": "calibration-record.v3.json",
-    "calibration-record/v4": "calibration-record.v4.json",
+    "calibration-record/v5": "calibration-record.v5.json",
 }

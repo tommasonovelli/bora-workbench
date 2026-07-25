@@ -1,6 +1,8 @@
-"""Unit tests for class-based v6-lite and spike trial outcomes."""
+"""Unit tests for the class-based trial outcome taxonomy."""
 
 from __future__ import annotations
+
+from pathlib import Path
 
 import httpx
 import pytest
@@ -18,6 +20,7 @@ from qwen_launcher._calibration_vram import (
     VramReserveError,
 )
 from qwen_launcher.benchmark import BenchmarkError, BenchmarkHttpError
+from qwen_launcher.process import ProcessError, ServerStartupError
 
 
 @pytest.mark.parametrize(
@@ -54,3 +57,29 @@ def test_classify_rejects_run_invalidating_or_unknown_errors(error) -> None:
     """Keep unreliable environment evidence outside the candidate taxonomy."""
     with pytest.raises(UnclassifiableTrialError):
         classify(error)
+
+
+def test_classify_reads_a_startup_failure_as_infeasible_only_with_oom_evidence(
+    tmp_path: Path,
+) -> None:
+    """Map the only observable form of exhausted VRAM: a server that dies during model load."""
+    log = tmp_path / "llama-server.log"
+    log.write_text("cudaMalloc failed: out of memory\n", encoding="utf-8")
+    outcome = classify(ServerStartupError("llama-server exited", log))
+    assert outcome == ClassifiedOutcome(TrialOutcome.MEMORY_INFEASIBLE, "vram")
+
+
+def test_classify_treats_a_startup_failure_without_oom_evidence_as_retryable(
+    tmp_path: Path,
+) -> None:
+    """Never fabricate a memory boundary from a start that failed for an unrelated reason."""
+    log = tmp_path / "llama-server.log"
+    log.write_text("srv init: health timeout\n", encoding="utf-8")
+    assert classify(ServerStartupError("health timeout", log)).outcome is TrialOutcome.RETRYABLE
+    assert classify(ServerStartupError("no log", None)).outcome is TrialOutcome.RETRYABLE
+
+
+def test_classify_still_rejects_a_preflight_process_error() -> None:
+    """Keep an occupied port or a live service outside the candidate taxonomy."""
+    with pytest.raises(UnclassifiableTrialError):
+        classify(ProcessError("port 8080 is already occupied"))

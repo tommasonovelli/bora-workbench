@@ -1,4 +1,4 @@
-"""Offline tests for versioned record building, migration, and lifecycle promotion."""
+"""Offline tests for record validation and the candidate/active/previous lifecycle."""
 
 from __future__ import annotations
 
@@ -9,35 +9,18 @@ import pytest
 from qwen_launcher._calibration_record import (
     RecordError,
     RecordSupersededError,
-    build_record,
     candidate_record_path,
     load_record,
     previous_record_path,
     promote_candidate,
     write_record,
 )
-from qwen_launcher.profiles import load_catalog
-from tests.record_fixtures import (
-    RUN_ID,
-    cpu_calibration,
-    cpu_hardware,
-    cuda_calibration,
-    cuda_hardware,
-    record_target,
-)
+from tests.record_fixtures import calibration_document, cpu_hardware, cuda_hardware
 
 
-def record_document(calibration_builder, hardware):
-    """Build one coherent synthetic calibration-record/v4 document."""
-    target = record_target(hardware)
-    mode = load_catalog().mode("coding")
-    return build_record(target, calibration_builder(mode), RUN_ID)
-
-
-def written_record(tmp_path, calibration_builder, hardware):
+def written_record(tmp_path, hardware):
     """Build, write, and return one synthetic active record path."""
-    document = record_document(calibration_builder, hardware)
-    return write_record(document, tmp_path / "records" / "coding.json")
+    return write_record(calibration_document(hardware), tmp_path / "records" / "coding.json")
 
 
 def rewrite(path, mutate) -> None:
@@ -47,35 +30,28 @@ def rewrite(path, mutate) -> None:
     path.write_text(json.dumps(document), encoding="utf-8")
 
 
-def test_cuda_and_cpu_records_round_trip_complete_paired_evidence(tmp_path) -> None:
-    """Revalidate CUDA and CPU documents with ten selected benchmark measures."""
-    cuda_path = written_record(tmp_path / "cuda", cuda_calibration, cuda_hardware())
-    cpu_path = written_record(tmp_path / "cpu", cpu_calibration, cpu_hardware())
+def test_cuda_and_cpu_records_round_trip_their_three_envelopes(tmp_path) -> None:
+    """Revalidate both backends and keep every measured envelope readable."""
+    cuda_path = written_record(tmp_path / "cuda", cuda_hardware())
+    cpu_path = written_record(tmp_path / "cpu", cpu_hardware())
 
     cuda = load_record(cuda_path)
     cpu = load_record(cpu_path)
 
-    assert cuda["schema"] == "calibration-record/v4"
-    assert cuda["calibration_protocol"] == "calibration/v5"
-    assert cuda["search"]["vram_reserve_gib"] == 0.3
-    assert len(cuda["benchmark"]["measured_tok_s"]) == 10
-    assert cuda["search"]["round_winners"] == [0, 0]
-    assert cuda["search"]["context_identity_model"] == "executable-file-id/v1"
-    first_vram = cuda["search"]["finalists"][0]["sessions"][0]["vram"]
-    assert first_vram["telemetry"] is None
-    assert first_vram["context_replacement_count"] == 0
-    assert cpu["search"]["context_identity_model"] is None
-    assert cpu["selection_rule"] == "cpu-baseline-confirmation"
-    assert cpu["observed"]["vram_needed_gib"] is None
+    assert cuda["calibration_protocol"] == "calibration"
+    assert cuda["reserves"]["vram_gib"] == 0.5
+    assert sorted(cuda["envelopes"]) == ["balanced", "fast", "max_context"]
+    assert cuda["envelopes"]["balanced"]["ctx"] == 131072
+    assert cpu["envelopes"]["balanced"]["n_cpu_moe"] is None
+    assert cpu["backend"] == "cpu"
 
 
 def test_candidate_promotes_atomically_and_preserves_one_previous_slot(tmp_path) -> None:
-    """Promote candidate→active while retaining the prior active bytes for rollback."""
+    """Promote candidate to active while retaining the prior active bytes for rollback."""
     root = tmp_path / "records"
-    first = record_document(cpu_calibration, cpu_hardware())
-    active = write_record(first, root / "coding.json")
+    active = write_record(calibration_document(cpu_hardware()), root / "coding.json")
     original = active.read_bytes()
-    second = record_document(cpu_calibration, cpu_hardware())
+    second = calibration_document(cpu_hardware())
     second["created_at"] = "2026-07-18T11:00:00Z"
     write_record(second, candidate_record_path("coding", root))
 
@@ -86,85 +62,27 @@ def test_candidate_promotes_atomically_and_preserves_one_previous_slot(tmp_path)
     assert not candidate_record_path("coding", root).exists()
 
 
-def test_historical_v1_record_is_actionably_superseded(tmp_path) -> None:
-    """Neutralize rejected calibration/v2 evidence without attempting migration."""
+def test_record_written_by_an_older_launcher_is_actionably_superseded(tmp_path) -> None:
+    """Diagnose an older record schema without attempting any migration."""
     path = tmp_path / "records" / "coding.json"
     path.parent.mkdir(parents=True)
-    path.write_text('{"schema":"calibration-record/v1"}', encoding="utf-8")
+    path.write_text('{"schema":"calibration-record/v4"}', encoding="utf-8")
 
     with pytest.raises(RecordSupersededError, match="rerun"):
         load_record(path)
 
 
-def test_envelope_and_headroom_must_repeat_selected_finalist(tmp_path) -> None:
-    """Reject edits that detach launch settings or resource needs from paired evidence."""
-    envelope = written_record(tmp_path / "envelope", cuda_calibration, cuda_hardware())
-    rewrite(envelope, lambda record: record["envelope"].update(n_cpu_moe=36))
-    with pytest.raises(RecordError, match="envelope does not match"):
-        load_record(envelope)
+def test_tampered_reserves_and_active_preference_are_rejected(tmp_path) -> None:
+    """Reject edits that detach the recorded margins or the active envelope from the evidence."""
+    reserves = written_record(tmp_path / "reserves", cuda_hardware())
+    rewrite(reserves, lambda record: record["reserves"].update(vram_gib=0.3))
+    with pytest.raises(RecordError, match="reserves"):
+        load_record(reserves)
 
-    headroom = written_record(tmp_path / "headroom", cuda_calibration, cuda_hardware())
-    rewrite(headroom, lambda record: record["observed"].update(vram_needed_gib=0.0))
-    with pytest.raises(RecordError, match="observed vram_needed_gib"):
-        load_record(headroom)
-
-
-def test_abba_order_and_round_winners_are_reconstructed(tmp_path) -> None:
-    """Reject temporal-order and winner labels that contradict session evidence."""
-    order = written_record(tmp_path / "order", cuda_calibration, cuda_hardware())
-    rewrite(
-        order,
-        lambda record: record["search"]["finalists"][0]["sessions"][1].update(global_position=3),
-    )
-    with pytest.raises(RecordError, match="ABBA"):
-        load_record(order)
-
-    winners = written_record(tmp_path / "winners", cuda_calibration, cuda_hardware())
-    rewrite(winners, lambda record: record["search"].update(round_winners=[1, 1]))
-    with pytest.raises(RecordError, match="round winners"):
-        load_record(winners)
-
-
-def test_selection_and_rule_follow_unanimous_rounds(tmp_path) -> None:
-    """Reject a selected finalist and label that contradict paired medians."""
-    path = written_record(tmp_path, cuda_calibration, cuda_hardware())
-
-    def swap(record) -> None:
-        """Move selection and envelope to the unanimously dominated finalist."""
-        finalists = record["search"]["finalists"]
-        finalists[0]["is_selected"] = False
-        finalists[1]["is_selected"] = True
-        record["envelope"]["n_cpu_moe"] = finalists[1]["n_cpu_moe"]
-
-    rewrite(path, swap)
-    with pytest.raises(RecordError, match="paired round dominance"):
-        load_record(path)
-
-
-def test_benchmark_summary_and_ram_reserve_are_reconstructed(tmp_path) -> None:
-    """Reject fabricated selected summaries and confirmation below the RAM reserve."""
-    summary = written_record(tmp_path / "summary", cuda_calibration, cuda_hardware())
-    rewrite(summary, lambda record: record["benchmark"]["tok_s"].update(median=99.0))
-    with pytest.raises(RecordError, match="benchmark summary"):
-        load_record(summary)
-
-    reserve = written_record(tmp_path / "reserve", cuda_calibration, cuda_hardware())
-    rewrite(
-        reserve,
-        lambda record: record["search"]["finalists"][0]["sessions"][0]["ram"].update(
-            minimum_available_gib=1.0
-        ),
-    )
-    with pytest.raises(RecordError, match="RAM reserve"):
-        load_record(reserve)
-
-
-def test_expert_target_context_must_match_envelope(tmp_path) -> None:
-    """Reject an expert target that contradicts the measured envelope."""
-    path = written_record(tmp_path, cuda_calibration, cuda_hardware())
-    rewrite(path, lambda record: record["search"].update(target_ctx=65536))
-    with pytest.raises(RecordError, match="expert target context"):
-        load_record(path)
+    preference = written_record(tmp_path / "preference", cuda_hardware())
+    rewrite(preference, lambda record: record.update(active_preference="fastest"))
+    with pytest.raises(RecordError, match="is invalid"):
+        load_record(preference)
 
 
 def test_malformed_and_schema_invalid_records_are_rejected(tmp_path) -> None:
@@ -175,7 +93,13 @@ def test_malformed_and_schema_invalid_records_are_rejected(tmp_path) -> None:
     with pytest.raises(RecordError, match="cannot read"):
         load_record(malformed)
 
-    invalid = written_record(tmp_path / "invalid", cuda_calibration, cuda_hardware())
-    rewrite(invalid, lambda record: record.update(backend="cpu"))
+    invalid = written_record(tmp_path / "invalid", cuda_hardware())
+    rewrite(invalid, lambda record: record.update(backend="amd"))
     with pytest.raises(RecordError, match="is invalid"):
         load_record(invalid)
+
+
+def test_record_file_name_must_match_the_recorded_mode(tmp_path) -> None:
+    """Refuse a record stored under another mode's lifecycle name."""
+    with pytest.raises(RecordError, match="mode must match file name"):
+        write_record(calibration_document(cpu_hardware()), tmp_path / "studio.json")

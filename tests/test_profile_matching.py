@@ -7,7 +7,7 @@ import pytest
 
 import qwen_launcher._calibration_record as record_module
 import qwen_launcher._calibration_reuse as reuse_module
-from qwen_launcher._calibration_record import build_record, write_record
+from qwen_launcher._calibration_record import write_record
 from qwen_launcher._hardware_monitoring import GpuSnapshot
 from qwen_launcher.config import DEFAULT_MODEL, Config
 from qwen_launcher.hardware import HardwareInfo
@@ -19,7 +19,7 @@ from qwen_launcher.profiles import (
     load_catalog,
 )
 from tests.content_fixtures import build_valid_content
-from tests.record_fixtures import RUN_ID, cuda_calibration, cuda_hardware, record_target
+from tests.record_fixtures import calibration_document, cuda_hardware
 
 
 def hardware(backend: str = "cuda", *, ram: float = 32, available: float = 24) -> HardwareInfo:
@@ -68,9 +68,7 @@ def test_shared_profile_is_seed_only_even_inside_its_exact_class(tmp_path, backe
 def install_cuda_record(tmp_path, monkeypatch) -> None:
     """Write one valid CUDA coding record into an isolated managed data directory."""
     monkeypatch.setattr(record_module, "data_dir", lambda: tmp_path / "data")
-    calibration = cuda_calibration(load_catalog().mode("coding"))
-    document = build_record(record_target(cuda_hardware()), calibration, RUN_ID)
-    write_record(document, record_module.record_path("coding"))
+    write_record(calibration_document(cuda_hardware()), record_module.record_path("coding"))
 
 
 def test_valid_local_record_steers_the_launch_plan(tmp_path, monkeypatch) -> None:

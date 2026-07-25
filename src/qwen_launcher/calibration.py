@@ -1,47 +1,28 @@
-"""Prepare explicit calibration/v1 inputs and coordinate local candidate trials."""
+"""Verify the local artifacts, hardware, and modes one calibration run is allowed to measure."""
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Literal, cast
+from typing import Literal
 
 from qwen_launcher._calibration_errors import CalibrationError, CalibrationRunError
 from qwen_launcher.config import DEFAULT_MODEL, Config, load_config
 from qwen_launcher.engine import JsonObject, load_engine_lock, locate, resolve_model
 from qwen_launcher.hardware import HardwareInfo, detect_hardware, ensure_launch_supported
-from qwen_launcher.paths import data_dir
 from qwen_launcher.process import status_services
-from qwen_launcher.profiles import (
-    Catalog,
-    Mode,
-    PlanError,
-    enforce_memory_gate,
-    load_catalog,
-)
+from qwen_launcher.profiles import Catalog, Mode, enforce_memory_gate, load_catalog
 
-_ID_PATTERN = re.compile(r"^[a-z0-9-]+$")
+__all__ = [
+    "Backend",
+    "CalibrationError",
+    "CalibrationRunError",
+    "CalibrationTarget",
+    "prepare_target",
+    "selected_mode_ids",
+]
+
 Backend = Literal["cuda", "cpu"]
-
-
-@dataclass(frozen=True, slots=True)
-class Candidate:
-    """Describe one explicitly supplied calibration envelope candidate."""
-
-    id: str
-    ctx: int
-    n_cpu_moe: int | None
-
-
-@dataclass(frozen=True, slots=True)
-class CalibrationSettings:
-    """Hold policy-free calibration/v1 values supplied explicitly by the operator."""
-
-    candidates: tuple[Candidate, ...]
-    stable_start_runs: int
-    minimum_free_vram_gib: float | None
-    vram_release_tolerance_gib: float | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,81 +39,6 @@ class CalibrationTarget:
     mmproj_path: Path | None
 
 
-@dataclass(frozen=True, slots=True)
-class CalibrationOutcome:
-    """Identify the atomically promoted draft bundle and proposed per-mode selections."""
-
-    bundle_path: Path
-    report_id: str
-    proposed_selections: tuple[tuple[str, str | None], ...]
-
-
-def parse_candidate(value: str, backend: Backend) -> Candidate:
-    """Parse explicit ``ID:CTX[:N_CPU_MOE]`` input without assigning hidden defaults."""
-    fields = value.split(":")
-    expected = 3 if backend == "cuda" else 2
-    if len(fields) != expected:
-        syntax = "ID:CTX:N_CPU_MOE" if backend == "cuda" else "ID:CTX"
-        raise CalibrationError(f"candidate must use {syntax} syntax for {backend}")
-    candidate_id = fields[0]
-    if not _ID_PATTERN.fullmatch(candidate_id):
-        raise CalibrationError("candidate id must contain lowercase letters, digits, and hyphens")
-    try:
-        ctx = int(fields[1])
-        n_cpu_moe = int(fields[2]) if backend == "cuda" else None
-    except ValueError as error:
-        raise CalibrationError("candidate context and n_cpu_moe must be integers") from error
-    candidate = Candidate(candidate_id, ctx, n_cpu_moe)
-    _validate_candidate(candidate, backend)
-    return candidate
-
-
-def _validate_candidate(candidate: Candidate, backend: Backend) -> None:
-    """Apply report-schema and backend constraints before any process starts."""
-    if candidate.ctx < 1024:
-        raise CalibrationError(f"candidate {candidate.id!r} context must be at least 1024")
-    if backend == "cuda" and (candidate.n_cpu_moe is None or candidate.n_cpu_moe < 0):
-        raise CalibrationError(f"candidate {candidate.id!r} requires non-negative n_cpu_moe")
-    if backend == "cpu" and candidate.n_cpu_moe is not None:
-        raise CalibrationError(f"candidate {candidate.id!r} forbids n_cpu_moe on CPU")
-
-
-def _validate_candidate_set(candidates: tuple[Candidate, ...], backend: Backend) -> None:
-    """Enforce the comparable candidate set required by specification section 5.6."""
-    ids = [candidate.id for candidate in candidates]
-    if len(ids) != len(set(ids)):
-        raise CalibrationError("candidate ids must be unique")
-    for candidate in candidates:
-        _validate_candidate(candidate, backend)
-    if len({candidate.ctx for candidate in candidates}) != 1:
-        raise CalibrationError("all candidates in one calibration run must use the same context")
-    if backend == "cpu" and len(candidates) > 1:
-        raise CalibrationError("CPU calibration has no varying envelope at a fixed context")
-    if backend == "cuda":
-        values = [cast(int, candidate.n_cpu_moe) for candidate in candidates]
-        if len(values) != len(set(values)):
-            raise CalibrationError("CUDA candidates must use unique n_cpu_moe values")
-        if values != sorted(values, reverse=True):
-            raise CalibrationError("CUDA candidates must be ordered from prudent to aggressive")
-
-
-def validate_settings(settings: CalibrationSettings, backend: Backend) -> None:
-    """Require complete calibration/v1 settings without comparing unlike contexts."""
-    if not settings.candidates:
-        raise CalibrationError("at least one explicit candidate is required without a policy")
-    _validate_candidate_set(settings.candidates, backend)
-    if settings.stable_start_runs < 1:
-        raise CalibrationError("stable start runs must be at least 1")
-    reserve = settings.minimum_free_vram_gib
-    tolerance = settings.vram_release_tolerance_gib
-    if backend == "cuda" and (reserve is None or reserve < 0):
-        raise CalibrationError("minimum free VRAM GiB is required and non-negative on CUDA")
-    if backend == "cuda" and (tolerance is None or tolerance < 0):
-        raise CalibrationError("VRAM release tolerance GiB is required and non-negative on CUDA")
-    if backend == "cpu" and (reserve is not None or tolerance is not None):
-        raise CalibrationError("VRAM settings are forbidden on CPU")
-
-
 def _selected_modes(mode_value: str, catalog: Catalog) -> tuple[Mode, ...]:
     """Resolve one mode or all packaged modes in deterministic catalog order."""
     if mode_value == "all":
@@ -142,6 +48,15 @@ def _selected_modes(mode_value: str, catalog: Catalog) -> tuple[Mode, ...]:
         valid = ", ".join([mode.id for mode in catalog.modes] + ["all"])
         raise CalibrationError(f"unknown calibration mode {mode_value!r}; valid values: {valid}")
     return (mode,)
+
+
+def selected_mode_ids(mode_value: str) -> tuple[str, ...]:
+    """Resolve the selected mode identifiers without verifying any local artifact.
+
+    Activation only moves already measured records, so it must not require the engine, the model,
+    or free memory that a full measurement run does.
+    """
+    return tuple(mode.id for mode in _selected_modes(mode_value, load_catalog()))
 
 
 def prepare_target(mode_value: str) -> CalibrationTarget:
@@ -170,27 +85,3 @@ def prepare_target(mode_value: str) -> CalibrationTarget:
         model.model_path,
         model.mmproj_path,
     )
-
-
-def run_calibration(
-    target: CalibrationTarget,
-    settings: CalibrationSettings,
-    destination_root: Path | None = None,
-) -> CalibrationOutcome:
-    """Run every explicit candidate and atomically promote a privacy-safe draft bundle."""
-    from qwen_launcher._calibration_bundle import BundleWorkspace
-    from qwen_launcher._calibration_runner import run_trials
-
-    backend = cast(Backend, target.hardware.backend)
-    validate_settings(settings, backend)
-    root = data_dir() / "calibrations" if destination_root is None else destination_root
-    workspace = BundleWorkspace.create(root)
-    try:
-        trial = run_trials(target, settings, workspace.runtime_path)
-        return workspace.finalize(target, settings, trial)
-    except (OSError, PlanError) as error:
-        workspace.abort()
-        raise CalibrationRunError(str(error)) from error
-    except BaseException:
-        workspace.abort()
-        raise

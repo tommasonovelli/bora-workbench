@@ -1,7 +1,7 @@
-"""Run the calibration/v6-lite quick-bench selection workload (IMPLEMENTATION_SPEC.md 1.3).
+"""Run the calibration quick-bench selection workload (IMPLEMENTATION_SPEC.md 1.3).
 
 Every metric is read from the response ``timings`` and the wall clock, so no server log parsing or
-SSE is needed. ``benchmark.py`` (benchmark/v1) stays intact for calibration/v5.
+SSE is needed. ``benchmark.py`` (benchmark/v1) stays intact for the feasibility probe.
 """
 
 from __future__ import annotations
@@ -58,7 +58,7 @@ class QuickBenchResult:
 
     @property
     def decode_tps_median(self) -> float:
-        """Return the median short decode throughput used as the v5-style tie-break."""
+        """Return the median short decode throughput used as the ordering tie-break."""
         return median(metric.predicted_per_second for metric in self.short)
 
     @property

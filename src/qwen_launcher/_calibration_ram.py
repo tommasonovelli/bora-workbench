@@ -1,6 +1,6 @@
 """Sample available RAM around one calibration trial for every backend.
 
-calibration/v5 must observe and reserve available RAM during load, workload, and benchmark on CPU
+Calibration must observe and reserve available RAM during load, workload, and benchmark on CPU
 and CUDA alike (D-038/D-042). The sampling interval is the same 250 ms
 protocol interval used for VRAM, so the two evidence streams stay comparable.
 """

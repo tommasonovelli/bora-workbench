@@ -32,7 +32,7 @@
     "mode": { "type": "string", "pattern": "^[a-z0-9-]+$" },
     "created_at": { "type": "string", "format": "date-time" },
     "launcher_version": { "type": "string", "minLength": 1 },
-    "calibration_protocol": { "const": "calibration/v6-lite" },
+    "calibration_protocol": { "const": "calibration" },
     "model": { "type": "string", "minLength": 1 },
     "model_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
     "engine_release": { "type": "string", "minLength": 1 },

@@ -28,44 +28,6 @@ def _minimum(values: list[float]) -> float | None:
     return min(values) if values else None
 
 
-def combine_telemetry(
-    summaries: list[GpuTelemetrySummary | None],
-) -> GpuTelemetrySummary | None:
-    """Combine session summaries conservatively without using them for selection."""
-    present = [summary for summary in summaries if summary is not None]
-    if not present:
-        return None
-    utilization = [
-        value.maximum_utilization_percent
-        for value in present
-        if value.maximum_utilization_percent is not None
-    ]
-    clocks = [
-        value.minimum_sm_clock_mhz for value in present if value.minimum_sm_clock_mhz is not None
-    ]
-    temperatures = [
-        value.maximum_temperature_celsius
-        for value in present
-        if value.maximum_temperature_celsius is not None
-    ]
-    powers = [
-        value.maximum_power_draw_watts
-        for value in present
-        if value.maximum_power_draw_watts is not None
-    ]
-    reasons = sorted(
-        {reason for value in present if value.throttle_reasons for reason in value.throttle_reasons}
-    )
-    has_reasons = any(value.throttle_reasons is not None for value in present)
-    return GpuTelemetrySummary(
-        _maximum(utilization),
-        _minimum(clocks),
-        _maximum(temperatures),
-        _maximum(powers),
-        tuple(reasons) if has_reasons else None,
-    )
-
-
 def summarize_telemetry(samples: list[GpuSnapshot]) -> GpuTelemetrySummary | None:
     """Aggregate supported fields while keeping unsupported driver evidence nullable."""
     telemetry = [sample.telemetry for sample in samples if sample.telemetry is not None]

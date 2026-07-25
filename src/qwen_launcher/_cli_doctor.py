@@ -21,7 +21,7 @@ class DoctorData:
 
     config: Config
     hardware: HardwareInfo
-    shared_seeds: int
+    compatible_profiles: int
     version: str
     directories: tuple[Path, Path, Path, Path]
     engine: EngineStatus
@@ -58,7 +58,7 @@ def build_doctor_table(data: DoctorData) -> Table:
         ("GPU", _gpu_label(hardware)),
         ("VRAM total", _gib(hardware.vram_total_gib)),
         ("VRAM free", _gib(hardware.vram_free_gib)),
-        ("Shared profile seeds", str(data.shared_seeds) if data.shared_seeds else "none"),
+        ("Shared profiles", str(data.compatible_profiles) if data.compatible_profiles else "none"),
         ("Managed engine", "active" if data.engine.is_active else "not installed"),
         ("Engine release", data.engine.release or "none"),
         ("Engine backend", data.engine.backend or "none"),
@@ -149,15 +149,15 @@ def run_doctor(version: str, stdout: Console, stderr: Console) -> None:
         print_error(stderr, "Hardware error", str(error))
         raise typer.Exit(code=1) from error
     validation = validate_resources()
-    shared_seeds = 0
+    compatible_profiles = 0
     record_lines: tuple[str, ...] = ()
     if not validation.errors:
         catalog = load_catalog()
-        shared_seeds = sum(profile.is_engine_compatible for profile in catalog.profiles)
+        compatible_profiles = sum(profile.is_engine_compatible for profile in catalog.profiles)
         record_lines = _record_lines(config, hardware)
     managed_engine = engine_status()
     directories = (config_dir(), data_dir(), cache_dir(), state_dir())
-    data = DoctorData(config, hardware, shared_seeds, version, directories, managed_engine)
+    data = DoctorData(config, hardware, compatible_profiles, version, directories, managed_engine)
     stdout.print(build_doctor_table(data))
     for warning in hardware.warnings:
         print_warning(stdout, warning)

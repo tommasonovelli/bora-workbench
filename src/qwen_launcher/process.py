@@ -13,16 +13,21 @@ from typing import cast
 import psutil
 
 from qwen_launcher._process_control import ControlError, ServiceReport, status_at, stop_at
+from qwen_launcher._process_failures import (
+    EXPECTED_START_FAILURES,
+    ProcessError,
+    ServerStartupError,
+    abandon_start,
+    terminate_popen,
+)
 from qwen_launcher._process_health import (
-    HealthError,
     HealthTarget,
     port_is_available,
     wait_for_health,
 )
-from qwen_launcher._process_lock import StartLockError, acquire_start_lock
+from qwen_launcher._process_lock import acquire_start_lock
 from qwen_launcher._process_state import (
     ServiceState,
-    StateError,
     clean_state,
     remove_service,
     write_state,
@@ -30,10 +35,6 @@ from qwen_launcher._process_state import (
 from qwen_launcher.engine import JsonObject
 from qwen_launcher.paths import state_dir
 from qwen_launcher.profiles import LaunchPlan
-
-
-class ProcessError(RuntimeError):
-    """Report an expected lifecycle failure with an actionable remedy."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,21 +108,6 @@ def _service_state(
     )
 
 
-def _terminate_popen(process: subprocess.Popen[str]) -> None:
-    """Terminate for ten seconds, then kill and wait up to five seconds."""
-    if process.poll() is not None:
-        return
-    process.terminate()
-    try:
-        process.wait(timeout=10)
-    except subprocess.TimeoutExpired:
-        process.kill()
-        try:
-            process.wait(timeout=5)
-        except subprocess.TimeoutExpired as error:
-            raise ProcessError("llama-server did not stop after terminate and kill") from error
-
-
 def _health_target(request: StartRequest, log_path: Path) -> HealthTarget:
     """Build the loopback health URL exclusively from the locked path and configured port."""
     health = cast(JsonObject, request.lock["health_contract"])
@@ -133,6 +119,7 @@ def start_service(request: StartRequest, root: Path | None = None) -> RunningSer
     selected_root = state_dir() if root is None else root
     process: subprocess.Popen[str] | None = None
     service: ServiceState | None = None
+    log_path: Path | None = None
     try:
         with acquire_start_lock(selected_root):
             snapshot = clean_state(selected_root)
@@ -158,12 +145,16 @@ def start_service(request: StartRequest, root: Path | None = None) -> RunningSer
         running = RunningService(process, service, snapshot.warnings)
         wait_for_health(process, _health_target(request, log_path))
         return running
-    except (HealthError, OSError, ProcessError, StartLockError, StateError) as error:
-        if process is not None:
-            _terminate_popen(process)
-        if service is not None:
-            remove_service(selected_root, service)
-        raise ProcessError(str(error)) from error
+    except BaseException as error:
+        # Cleanup must not depend on the failure class. An unexpected exception that skipped it
+        # would leave both a live child and a registered service, and the next start would refuse
+        # to run against that phantom state (spec 5.9).
+        abandon_start(selected_root, process, service)
+        if not isinstance(error, EXPECTED_START_FAILURES):
+            raise
+        if process is None:
+            raise ProcessError(str(error)) from error
+        raise ServerStartupError(str(error), log_path) from error
 
 
 def status_services(root: Path | None = None) -> ServiceReport:
@@ -188,7 +179,7 @@ def wait_foreground(running: RunningService, root: Path | None = None) -> None:
     try:
         return_code = running.process.wait()
     except KeyboardInterrupt:
-        _terminate_popen(running.process)
+        terminate_popen(running.process)
         remove_service(selected_root, running.state)
         raise
     remove_service(selected_root, running.state)

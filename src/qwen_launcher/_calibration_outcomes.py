@@ -1,4 +1,4 @@
-"""Classify v6/spike trials without changing calibration/v5 behavior."""
+"""Classify one trial failure into the four outcome classes of D-059."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ from typing import Literal
 
 import httpx
 
+from qwen_launcher._calibration_oom import oom_resource, read_logs
 from qwen_launcher._calibration_ram import RamError, RamReserveError
 from qwen_launcher._calibration_vram import (
     VramEnvironmentError,
@@ -15,10 +16,11 @@ from qwen_launcher._calibration_vram import (
     VramReserveError,
 )
 from qwen_launcher.benchmark import BenchmarkError, BenchmarkRetryableError
+from qwen_launcher.process import ServerStartupError
 
 
 class TrialOutcome(Enum):
-    """Name the four v6-lite trial outcomes from D-059."""
+    """Name the four trial outcome classes from D-059."""
 
     SUCCESS = "success"
     MEMORY_INFEASIBLE = "memory_infeasible"
@@ -38,12 +40,27 @@ class UnclassifiableTrialError(ValueError):
     """Report an error that invalidates the run rather than one candidate."""
 
 
+def _startup_outcome(error: ServerStartupError) -> ClassifiedOutcome:
+    """Classify a server that died before READY using the engine's own log diagnosis.
+
+    Only explicit out-of-memory evidence proves an infeasible candidate. Any other early exit is
+    treated as retryable, so a transient start never fabricates a memory boundary (spec 5.6).
+    """
+    paths = () if error.log_path is None else (error.log_path,)
+    resource = oom_resource(read_logs(paths))
+    if resource is None:
+        return ClassifiedOutcome(TrialOutcome.RETRYABLE)
+    return ClassifiedOutcome(TrialOutcome.MEMORY_INFEASIBLE, resource)
+
+
 def classify(error: BaseException | None) -> ClassifiedOutcome:
     """Map class-defined failures to D-059 outcomes and reject run-invalidating evidence."""
     if error is None:
         return ClassifiedOutcome(TrialOutcome.SUCCESS)
     if isinstance(error, (VramEnvironmentError, RamError)):
         raise UnclassifiableTrialError(f"run-invalidating error: {error}") from error
+    if isinstance(error, ServerStartupError):
+        return _startup_outcome(error)
     if isinstance(error, VramReserveError):
         return ClassifiedOutcome(TrialOutcome.MEMORY_INFEASIBLE, "vram")
     if isinstance(error, RamReserveError):
@@ -53,4 +70,6 @@ def classify(error: BaseException | None) -> ClassifiedOutcome:
         return ClassifiedOutcome(TrialOutcome.RETRYABLE)
     if isinstance(error, BenchmarkError):
         return ClassifiedOutcome(TrialOutcome.PROTOCOL_INVALID)
-    raise UnclassifiableTrialError(f"unsupported trial error: {type(error).__name__}") from error
+    raise UnclassifiableTrialError(
+        f"unsupported trial error: {type(error).__name__}: {error}"
+    ) from error

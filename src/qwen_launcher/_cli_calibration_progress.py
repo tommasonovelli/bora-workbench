@@ -1,4 +1,4 @@
-"""Render calibration/v5 progress without changing the measured protocol."""
+"""Render calibration progress without changing the measured protocol."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from types import TracebackType
 from rich.console import Console
 from rich.progress import Progress, TaskID, TimeElapsedColumn
 
-from qwen_launcher._calibration_v5_types import ProgressEvent
+from qwen_launcher._calibration_progress import ProgressEvent
 from qwen_launcher._cli_theme import (
     metric_column,
     phase_result_style,
@@ -29,18 +29,23 @@ def _format_duration(seconds: float) -> str:
     return f"{remaining_seconds}s"
 
 
+# Phases whose total is a budget cap rather than an exact trial count: an adaptive search may
+# finish well below it, so the count and the projection must not read as a fixed schedule.
+_CAPPED_PHASES = frozenset({"screening", "search", "pairing", "gate"})
+
+
 def _count_text(event: ProgressEvent) -> str:
-    """Distinguish the screening budget cap from an exact phase total."""
-    separator = "/≤" if event.phase == "screening" else "/"
+    """Distinguish a budget cap from an exact phase total."""
+    separator = "/≤" if event.phase in _CAPPED_PHASES else "/"
     return f"{event.completed}{separator}{event.total}"
 
 
 def _remaining_text(event: ProgressEvent) -> str:
-    """Label screening time as a cap projection and confirmation time as an ETA."""
+    """Label capped-phase time as a cap projection and an exact phase as an ETA."""
     if event.estimated_remaining_seconds is None:
         return "learning duration…"
     duration = _format_duration(event.estimated_remaining_seconds)
-    if event.phase == "screening":
+    if event.phase in _CAPPED_PHASES:
         return f"cap projection ≈ {duration}"
     return f"ETA ≈ {duration}"
 

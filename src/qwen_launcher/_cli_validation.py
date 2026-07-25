@@ -1,8 +1,6 @@
-"""Present installed-resource or local calibration-bundle validation results."""
+"""Present installed-resource validation results."""
 
 from __future__ import annotations
-
-from pathlib import Path
 
 import typer
 from rich.console import Console
@@ -30,14 +28,9 @@ def show_validation(result: ValidationResult, stdout: Console, stderr: Console) 
         print_success(stdout, "Validation passed", f"with {len(result.warnings)} warning(s)")
 
 
-def run_validate(source: Path | None, stdout: Console, stderr: Console) -> None:
-    """Validate installed content or one explicit local calibration/v1 bundle."""
-    if source is None:
-        result = validate_resources()
-    else:
-        from qwen_launcher._calibration_validation import validate_bundle
-
-        result = validate_bundle(source)
+def run_validate(stdout: Console, stderr: Console) -> None:
+    """Validate the installed modes, policy, and reference calibration content."""
+    result = validate_resources()
     show_validation(result, stdout, stderr)
     if result.errors:
         raise typer.Exit(code=1)

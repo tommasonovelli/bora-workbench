@@ -1,28 +1,34 @@
-"""Synthetic calibration/v5 paired evidence builders shared by record and reuse tests."""
+"""Synthetic record builders shared by the record, reuse, and profile-matching tests."""
 
 from __future__ import annotations
 
-from dataclasses import replace
+from pathlib import Path
 
-from qwen_launcher._calibration_ram import RamSummary
-from qwen_launcher._calibration_v5_types import (
-    SELECTION_CPU_BASELINE,
-    SELECTION_DOMINANCE,
-    FinalistEvidence,
-    ModeCalibration,
-    ProbeRecord,
-    TrialEvidence,
-    TrialOrder,
-)
-from qwen_launcher._calibration_vram import VramSummary
-from qwen_launcher.benchmark import BenchmarkResult
+from qwen_launcher._calibration_record_build import RecordContext, build_record
+from qwen_launcher._calibration_runner import ModeResult
+from qwen_launcher._calibration_types import EnvelopeResult, GateResult, Preference
+from qwen_launcher.calibration import CalibrationTarget
+from qwen_launcher.config import Config
+from qwen_launcher.engine import load_engine_lock
 from qwen_launcher.hardware import HardwareInfo
-from qwen_launcher.profiles import TokenRate
-from tests.test_calibration import cpu_target
+from qwen_launcher.profiles import Mode, load_catalog
+from tests.sample_fixtures import sample
 
 RUN_ID = "a" * 32
-_START = "2026-07-18T10:00:00Z"
-_END = "2026-07-18T10:01:00Z"
+DRIVER = "test-driver"
+
+# One envelope per preference. The recorded needs (4.0 GiB RAM, 6.0 GiB VRAM) plus the pinned
+# reserves fit the fixture hardware and fall outside the reduced-headroom variants of the tests.
+_CUDA_ENVELOPES: dict[Preference, tuple[int, int | None]] = {
+    "fast": (32768, 41),
+    "balanced": (131072, 38),
+    "max_context": (131072, 37),
+}
+_CPU_ENVELOPES: dict[Preference, tuple[int, int | None]] = {
+    "fast": (8192, None),
+    "balanced": (8192, None),
+    "max_context": (8192, None),
+}
 
 
 def cuda_hardware() -> HardwareInfo:
@@ -35,91 +41,42 @@ def cpu_hardware() -> HardwareInfo:
     return HardwareInfo("linux", "test", "Test CPU", 12, 32, 24, "cpu", 0, None, None, None, None)
 
 
-def record_target(hardware: HardwareInfo, mode_ids: tuple[str, ...] = ("coding",)):
+def record_target(
+    hardware: HardwareInfo, mode_ids: tuple[str, ...] = ("coding",)
+) -> CalibrationTarget:
     """Build a calibration target whose identity matches fixture hardware."""
-    return replace(cpu_target(mode_ids), hardware=hardware)
-
-
-def benchmark(rate: float) -> BenchmarkResult:
-    """Build one complete benchmark result with a constant measured rate."""
-    values = (rate, rate, rate, rate, rate)
-    return BenchmarkResult(rate, values, TokenRate(rate, rate, rate))
-
-
-def _session(
-    rate: float, round_index: int, position: int, vram: VramSummary | None
-) -> TrialEvidence:
-    """Build one complete paired confirmation session."""
-    order = TrialOrder("confirmation", position, round_index, position)
-    return TrialEvidence(
-        order,
-        _START,
-        _END,
-        benchmark(rate),
-        vram,
-        RamSummary(24.0, 20.0),
+    catalog = load_catalog()
+    modes = tuple(mode for mode in catalog.modes if mode.id in mode_ids)
+    return CalibrationTarget(
+        Config(),
+        hardware,
+        catalog,
+        modes,
+        load_engine_lock(),
+        Path("llama-server"),
+        Path("model.gguf"),
         None,
     )
 
 
-def cuda_finalist(
-    n_cpu_moe: int, rates: tuple[float, float], positions: tuple[int, int], ctx: int = 131072
-) -> FinalistEvidence:
-    """Build one valid CUDA finalist with paired sessions and coherent VRAM evidence."""
-    peak = 7.5 - 0.05 * n_cpu_moe
-    vram = VramSummary(0.5, peak, 8 - peak, 0.5, "test-driver")
-    sessions = (
-        _session(rates[0], 1, positions[0], vram),
-        _session(rates[1], 2, positions[1], vram),
-    )
-    return FinalistEvidence(ctx, n_cpu_moe, "valid", None, sessions, vram, RamSummary(24.0, 20.0))
+def mode_result(mode: Mode, envelopes: dict[Preference, tuple[int, int | None]]) -> ModeResult:
+    """Build one gated three-envelope result for the requested mode."""
+    gated = {
+        preference: EnvelopeResult(
+            preference, sample(ctx, n_cpu_moe, 100.0), GateResult(True, True, None)
+        )
+        for preference, (ctx, n_cpu_moe) in envelopes.items()
+    }
+    return ModeResult(mode, gated, (), {preference: () for preference in envelopes})
 
 
-def _probe() -> ProbeRecord:
-    """Build one feasible screening probe with reduced process evidence."""
-    vram = VramSummary(0.5, 5.6, 2.4, 0.5, "test-driver")
-    trial = TrialEvidence(
-        TrialOrder("screening", 1), _START, _END, None, vram, RamSummary(24.0, 20.0), None
-    )
-    return ProbeRecord(131072, 38, True, None, trial)
-
-
-def cuda_calibration(mode) -> ModeCalibration:
-    """Build one unanimously dominance-selected CUDA calibration."""
-    finalists = (
-        cuda_finalist(38, (62.0, 62.0), (1, 4)),
-        cuda_finalist(39, (61.0, 61.0), (2, 3)),
-    )
-    return ModeCalibration(
-        mode,
-        131072,
-        None,
-        (_probe(),),
-        False,
-        finalists,
-        finalists[0],
-        SELECTION_DOMINANCE,
-        (0, 0),
-        0.0,
-    )
-
-
-def cpu_calibration(mode) -> ModeCalibration:
-    """Build one twice-confirmed CPU baseline calibration."""
-    sessions = (
-        _session(9.0, 1, 1, None),
-        _session(9.0, 2, 2, None),
-    )
-    finalist = FinalistEvidence(8192, None, "valid", None, sessions, None, RamSummary(24.0, 20.0))
-    return ModeCalibration(
-        mode,
-        8192,
-        None,
-        (),
-        False,
-        (finalist,),
-        finalist,
-        SELECTION_CPU_BASELINE,
-        (None, None),
-        None,
-    )
+def calibration_document(
+    hardware: HardwareInfo, mode_id: str = "coding", preference: Preference = "balanced"
+) -> dict[str, object]:
+    """Build one coherent synthetic record document for the given backend and mode."""
+    mode = load_catalog().mode(mode_id)
+    assert mode is not None
+    envelopes = _CPU_ENVELOPES if hardware.backend == "cpu" else _CUDA_ENVELOPES
+    driver = None if hardware.backend == "cpu" else DRIVER
+    context = RecordContext(record_target(hardware, (mode_id,)), RUN_ID, preference, driver)
+    return build_record(context, mode_result(mode, envelopes))

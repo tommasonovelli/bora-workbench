@@ -68,7 +68,10 @@ def wait_for_health(process: subprocess.Popen[str], target: HealthTarget) -> Non
             raise HealthError(f"llama-server exited during startup; inspect {target.log_path}")
         try:
             response = httpx.get(target.url, timeout=_REQUEST_TIMEOUT_SECONDS)
-        except (httpx.ConnectError, httpx.TimeoutException):
+        except httpx.TransportError:
+            # Every transport failure means "not ready yet", including the connection reset a
+            # server produces while it is dying: the loop decides on process death or the
+            # deadline, so no transport class may escape and bypass the caller's cleanup.
             response = None
         if response is not None:
             if _ready(response, target.contract):
