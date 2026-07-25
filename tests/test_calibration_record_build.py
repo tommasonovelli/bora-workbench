@@ -6,12 +6,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from qwen_launcher._calibration_record import RecordError, load_record, write_record
-from qwen_launcher._calibration_record_build import RecordContext, build_record
-from qwen_launcher._calibration_runner import ModeResult
-from qwen_launcher._calibration_types import EnvelopeResult, GateResult
-from qwen_launcher.engine import load_engine_lock
-from qwen_launcher.profiles import load_catalog
+from bora_workbench._calibration_record import RecordError, load_record, write_record
+from bora_workbench._calibration_record_build import RecordContext, build_record
+from bora_workbench._calibration_runner import ModeResult
+from bora_workbench._calibration_types import EnvelopeResult, GateResult
+from bora_workbench.engine import load_engine_lock
+from bora_workbench.profiles import load_catalog
 from tests.sample_fixtures import sample
 
 
@@ -83,7 +83,7 @@ def test_record_rejects_tampered_reserves(tmp_path) -> None:
 
 def test_reuse_reads_active_envelope_and_headroom() -> None:
     """Select the active envelope and apply the record's own reserves at reuse time."""
-    from qwen_launcher._calibration_reuse import _active_envelope, _headroom_for
+    from bora_workbench._calibration_reuse import _active_envelope, _headroom_for
 
     document = build_record(
         RecordContext(_target(), "run-abc123", "max_context", "test-driver"), _mode_result()

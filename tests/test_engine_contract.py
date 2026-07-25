@@ -6,9 +6,9 @@ from dataclasses import replace
 
 import pytest
 
-import qwen_launcher.engine as engine
-from qwen_launcher._calibration_record import command_contract_sha256
-from qwen_launcher.profiles import PlanError
+import bora_workbench.engine as engine
+from bora_workbench._calibration_record import command_contract_sha256
+from bora_workbench.profiles import PlanError
 from tests.test_engine_runtime import plan
 
 

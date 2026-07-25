@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from qwen_launcher._calibration_selection import near_tied_rival, select_envelopes
+from bora_workbench._calibration_selection import near_tied_rival, select_envelopes
 from tests.sample_fixtures import sample
 
 

@@ -5,7 +5,7 @@
 For anyone opening the project for the first time:
 
 ```text
-src/qwen_launcher/       Python package
+src/bora_workbench/       Python package
 ├── cli.py               public command group
 ├── config.py            configuration
 ├── paths.py             per-OS directories
@@ -50,7 +50,7 @@ Baseline and final verification:
 uv run --frozen ruff check .
 uv run --frozen ruff format --check .
 uv run --frozen pytest
-uv run --frozen qwen-launcher validate
+uv run --frozen bora validate
 ```
 
 If packaging, installers, documents included in the sdist, or resources change:
@@ -97,7 +97,7 @@ consume it. Avoid renames, refactors, or formatting unrelated to the purpose.
 
 The code favors readability and narrow responsibilities:
 
-- at most 200 lines per file and 40 per function in hand-written code;
+- at most 600 lines per file and 40 per function in hand-written code;
 - at most three production parameters, excluding `self`/`cls`;
 - at most three nesting levels;
 - small functions, precise types, and frozen/slotted dataclasses for runtime models;
@@ -113,7 +113,7 @@ platform, lifecycle, or calibration logic.
 Modes are JSON under:
 
 ```text
-src/qwen_launcher/resources/content/modes/
+src/bora_workbench/resources/content/modes/
 ```
 
 `mode/v1` contains only:
@@ -213,7 +213,7 @@ Before adding one:
 ## Packaging and resources
 
 The backend is `uv_build` with an `src/` layout. The wheel must contain everything under
-`qwen_launcher/resources/`; the sdist additionally includes the installers, documentation, plan, and
+`bora_workbench/resources/`; the sdist additionally includes the installers, documentation, plan, and
 evidence.
 
 Use `importlib.resources.files()` and keep the resources as a `Traversable`. `as_file()` is allowed

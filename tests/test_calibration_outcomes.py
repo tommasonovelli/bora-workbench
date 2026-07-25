@@ -7,20 +7,20 @@ from pathlib import Path
 import httpx
 import pytest
 
-from qwen_launcher._calibration_outcomes import (
+from bora_workbench._calibration_outcomes import (
     ClassifiedOutcome,
     TrialOutcome,
     UnclassifiableTrialError,
     classify,
 )
-from qwen_launcher._calibration_ram import RamError, RamReserveError, RamSummary
-from qwen_launcher._calibration_vram import (
+from bora_workbench._calibration_ram import RamError, RamReserveError, RamSummary
+from bora_workbench._calibration_vram import (
     VramEnvironmentError,
     VramReleaseError,
     VramReserveError,
 )
-from qwen_launcher.benchmark import BenchmarkError, BenchmarkHttpError
-from qwen_launcher.process import ProcessError, ServerStartupError
+from bora_workbench.benchmark import BenchmarkError, BenchmarkHttpError
+from bora_workbench.process import ProcessError, ServerStartupError
 
 
 @pytest.mark.parametrize(

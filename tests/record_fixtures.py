@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from qwen_launcher._calibration_record_build import RecordContext, build_record
-from qwen_launcher._calibration_runner import ModeResult
-from qwen_launcher._calibration_types import EnvelopeResult, GateResult, Preference
-from qwen_launcher.calibration import CalibrationTarget
-from qwen_launcher.config import Config
-from qwen_launcher.engine import load_engine_lock
-from qwen_launcher.hardware import HardwareInfo
-from qwen_launcher.profiles import Mode, load_catalog
+from bora_workbench._calibration_record_build import RecordContext, build_record
+from bora_workbench._calibration_runner import ModeResult
+from bora_workbench._calibration_types import EnvelopeResult, GateResult, Preference
+from bora_workbench.calibration import CalibrationTarget
+from bora_workbench.config import Config
+from bora_workbench.engine import load_engine_lock
+from bora_workbench.hardware import HardwareInfo
+from bora_workbench.profiles import Mode, load_catalog
 from tests.sample_fixtures import sample
 
 RUN_ID = "a" * 32

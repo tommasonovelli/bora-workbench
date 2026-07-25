@@ -26,7 +26,7 @@ For a short overview and a quick start, see the [main README](../README.md).
 | Question | Source |
 |---|---|
 | What does the program do today? | the code, locks, schemas, tests, and this documentation |
-| Which versions and checksums are accepted? | `src/qwen_launcher/resources/engine.lock` and the versioned content |
+| Which versions and checksums are accepted? | `src/bora_workbench/resources/engine.lock` and the versioned content |
 | Which measurements do the locks and reports come from? | [`evidence/`](../evidence/README.md) |
 | How do I contribute? | [CONTRIBUTING.md](../CONTRIBUTING.md) and [development](development.md) |
 | What is planned but not implemented? | [IMPLEMENTATION_SPEC.md](../IMPLEMENTATION_SPEC.md) |

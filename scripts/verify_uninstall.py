@@ -13,10 +13,10 @@ _REPOSITORY = Path(__file__).resolve().parents[1]
 
 
 def _wheel() -> Path:
-    """Return the single built qwen-launcher wheel expected in ``dist``."""
-    wheels = sorted((_REPOSITORY / "dist").glob("qwen_launcher-*.whl"))
+    """Return the single built bora-workbench wheel expected in ``dist``."""
+    wheels = sorted((_REPOSITORY / "dist").glob("bora_workbench-*.whl"))
     if len(wheels) != 1:
-        raise RuntimeError(f"expected one qwen-launcher wheel, found {len(wheels)}")
+        raise RuntimeError(f"expected one bora-workbench wheel, found {len(wheels)}")
     return wheels[0]
 
 
@@ -66,7 +66,7 @@ def _wait_until_absent(path: Path) -> None:
 
 def main() -> None:
     """Install the wheel with isolated uv roots, uninstall once, and require no tool remains."""
-    with tempfile.TemporaryDirectory(prefix="qwen-launcher-uninstall-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="bora-workbench-uninstall-") as temporary:
         root = Path(temporary)
         environment = _isolated_environment(root)
         _run(
@@ -82,11 +82,11 @@ def main() -> None:
             environment,
         )
         suffix = ".exe" if os.name == "nt" else ""
-        command = root / "bin" / f"qwen-launcher{suffix}"
+        command = root / "bin" / f"bora{suffix}"
         if not command.is_file():
-            raise RuntimeError(f"uv did not create the qwen-launcher command: {command}")
+            raise RuntimeError(f"uv did not create the bora-workbench command: {command}")
         _run([str(command), "uninstall"], environment, input_text="y\n")
-        _wait_until_absent(root / "uv-tools" / "qwen-launcher")
+        _wait_until_absent(root / "uv-tools" / "bora-workbench")
         _wait_until_absent(command)
     print("Complete uv-tool uninstall smoke test passed.")
 

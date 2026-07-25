@@ -4,16 +4,16 @@ from __future__ import annotations
 
 import pytest
 
-import qwen_launcher._calibration_gpu_contexts as contexts_module
-from qwen_launcher._calibration_gpu_contexts import (
+import bora_workbench._calibration_gpu_contexts as contexts_module
+from bora_workbench._calibration_gpu_contexts import (
     GpuContextBaseline,
     capture_gpu_context_baseline,
     count_context_replacements,
     validate_gpu_contexts,
 )
-from qwen_launcher._calibration_vram import VramEnvironmentError
-from qwen_launcher._gpu_process_identity import GpuProcessIdentity
-from qwen_launcher._hardware_monitoring import GpuSnapshot
+from bora_workbench._calibration_vram import VramEnvironmentError
+from bora_workbench._gpu_process_identity import GpuProcessIdentity
+from bora_workbench._hardware_monitoring import GpuSnapshot
 
 
 def context(pid: int, created: float, executable: str) -> GpuProcessIdentity:

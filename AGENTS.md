@@ -1,7 +1,7 @@
 # Agent Guidelines
 
 These rules apply to every AI agent and contributor working in this repository. They are tailored to
-`qwen-launcher`; rules copied from unrelated Go, TypeScript, web, or habit-tracking projects do not
+`bora-workbench`; rules copied from unrelated Go, TypeScript, web, or habit-tracking projects do not
 apply here.
 
 ## Sources of truth
@@ -29,7 +29,7 @@ apply here.
   0.1.6 (D-067) makes calibration a single working protocol and removes the redundant ones; a record
   written by an earlier version is diagnosed as superseded, never migrated.
 - **There is exactly one calibration protocol** (D-067): the three-envelope search reached by
-  `qwen-launcher calibrate`. The earlier laboratory and paired-search protocols, their `--protocol`
+  `bora calibrate`. The earlier laboratory and paired-search protocols, their `--protocol`
   option, and the older record formats were removed, so never reintroduce a protocol switch, never
   describe calibration as versioned in user-facing text, and never write a record format other than
   the one `_calibration_record.RECORD_SCHEMA` names. A record written by an older launcher is
@@ -46,8 +46,8 @@ apply here.
 
 - CPython `3.12.13`; package metadata remains `>=3.12,<3.13`.
 - `uv 0.11.28`, `uv_build`, committed `uv.lock`, and frozen development/CI commands.
-- Source layout: `src/qwen_launcher/`; tests: `tests/`; packaged data:
-  `src/qwen_launcher/resources/`.
+- Source layout: `src/bora_workbench/`; tests: `tests/`; packaged data:
+  `src/bora_workbench/resources/`.
 - Supported targets are Ubuntu 22.04+ x86-64 and Windows 11 x86-64, with CPU or one explicitly
   selected NVIDIA CUDA GPU.
 - Keep the module responsibilities from specification section 4.1. Only `paths.py`, `process.py`,
@@ -64,12 +64,14 @@ Readability and maintainability outrank brevity, micro-optimizations, and person
 
 For hand-written Python in `src/`, `tests/`, and `scripts/`:
 
-- file: maximum 200 lines;
+- file: maximum 600 lines;
 - function or method: maximum 40 lines;
 - production function parameters: maximum 3, excluding `self`/`cls`;
 - nesting: maximum 3 levels; prefer guard clauses and early returns.
 
-Split code by responsibility before exceeding a limit. Test fixtures may require additional injected
+Split code by responsibility before exceeding a limit. The file limit is a ceiling, not a target:
+a module holds one area of competence, so prefer one readable module per area over a constellation
+of two-function files that a reader has to reassemble mentally. Test fixtures may require additional injected
 parameters when grouping them would reduce clarity. Normative documentation, measured evidence,
 lockfiles, generated artifacts, JSON schemas, and declarative content are exempt from code-size
 limits and must retain their required format.
@@ -125,7 +127,7 @@ A TODO must include date and context, for example:
 
 ## Side effects and resources
 
-- Importing `qwen_launcher` must not access the network, create files/directories, write state, or
+- Importing `bora_workbench` must not access the network, create files/directories, write state, or
   start processes.
 - Path helpers compute paths only. Creation belongs to the operation that owns the data.
 - Access packaged resources with `importlib.resources` and `Traversable`. Use `as_file()` only within
@@ -181,7 +183,7 @@ uv build
 uv run --frozen python scripts/verify_wheel.py
 ```
 
-Run `qwen-launcher validate` once that command exists. If a required tool or platform is unavailable,
+Run `bora validate` once that command exists. If a required tool or platform is unavailable,
 report that limitation explicitly; do not claim the check passed.
 
 ## Git and change discipline

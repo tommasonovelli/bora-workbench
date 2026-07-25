@@ -11,8 +11,8 @@ from typing import cast
 
 import pytest
 
-from qwen_launcher._engine_archive import ExtractionRequest, extract_asset
-from qwen_launcher._engine_types import ArchiveKind, EngineAsset, EngineError, TransferProgress
+from bora_workbench._engine_archive import ExtractionRequest, extract_asset
+from bora_workbench._engine_types import ArchiveKind, EngineAsset, EngineError, TransferProgress
 
 
 def asset(archive: str) -> EngineAsset:

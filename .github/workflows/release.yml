@@ -43,7 +43,7 @@ jobs:
         run: uv run --frozen pytest
 
       - name: Validate packaged content
-        run: uv run --frozen qwen-launcher validate
+        run: uv run --frozen bora validate
 
   build:
     name: Build tested distributions
@@ -69,7 +69,7 @@ jobs:
       - name: Verify tag matches package version
         shell: bash
         run: |
-          version="$(uv run --frozen python -c 'from importlib.metadata import version; print(version("qwen-launcher"))')"
+          version="$(uv run --frozen python -c 'from importlib.metadata import version; print(version("bora-workbench"))')"
           test "v${version}" = "${GITHUB_REF_NAME}"
 
       - name: Build wheel and source distribution
@@ -93,7 +93,7 @@ jobs:
     runs-on: ubuntu-22.04
     environment:
       name: pypi
-      url: https://pypi.org/p/qwen-launcher
+      url: https://pypi.org/p/bora-workbench
     permissions:
       contents: read
       id-token: write

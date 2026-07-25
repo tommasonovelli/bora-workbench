@@ -17,6 +17,14 @@ def test_release_actions_are_pinned_to_full_commit_shas() -> None:
     assert all(re.search(r"@[0-9a-f]{40}(?:\s+#\s+\S+)?$", line) for line in action_lines)
 
 
+def test_release_triggers_on_v_prefixed_version_tags() -> None:
+    """Pin the `vx.y.z` tag convention that the build job compares to the package version."""
+    text = WORKFLOW.read_text(encoding="utf-8")
+
+    assert '- "v*"' in text
+    assert 'test "v${version}" = "${GITHUB_REF_NAME}"' in text
+
+
 def test_publish_job_uses_tested_artifact_oidc_and_protected_environment() -> None:
     """Keep opt-in OIDC publication confined to the job consuming the tested build."""
     text = WORKFLOW.read_text(encoding="utf-8")

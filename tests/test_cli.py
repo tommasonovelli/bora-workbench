@@ -4,17 +4,17 @@ from types import SimpleNamespace
 
 from typer.testing import CliRunner
 
-import qwen_launcher._calibration_record as record_module
-import qwen_launcher._cli_control as control_cli
-import qwen_launcher._cli_doctor as doctor_cli
-import qwen_launcher._cli_services as service_cli
-import qwen_launcher._cli_validation as validation_cli
-import qwen_launcher.config as config_module
-import qwen_launcher.engine as engine_module
-import qwen_launcher.paths as paths_module
-from qwen_launcher.cli import app
-from qwen_launcher.hardware import HardwareError, HardwareInfo
-from qwen_launcher.validation import ValidationIssue, ValidationResult
+import bora_workbench._calibration_record as record_module
+import bora_workbench._cli_control as control_cli
+import bora_workbench._cli_doctor as doctor_cli
+import bora_workbench._cli_services as service_cli
+import bora_workbench._cli_validation as validation_cli
+import bora_workbench.config as config_module
+import bora_workbench.engine as engine_module
+import bora_workbench.paths as paths_module
+from bora_workbench.cli import app
+from bora_workbench.hardware import HardwareError, HardwareInfo
+from bora_workbench.validation import ValidationIssue, ValidationResult
 
 runner = CliRunner()
 
@@ -22,10 +22,10 @@ runner = CliRunner()
 def patch_directories(tmp_path, monkeypatch):
     """Redirect all public directories to one isolated test root."""
     directories = {
-        "config_dir": tmp_path / "config" / "qwen-launcher",
-        "data_dir": tmp_path / "data" / "qwen-launcher",
-        "cache_dir": tmp_path / "cache" / "qwen-launcher",
-        "state_dir": tmp_path / "state" / "qwen-launcher",
+        "config_dir": tmp_path / "config" / "bora-workbench",
+        "data_dir": tmp_path / "data" / "bora-workbench",
+        "cache_dir": tmp_path / "cache" / "bora-workbench",
+        "state_dir": tmp_path / "state" / "bora-workbench",
     }
     monkeypatch.setattr(config_module, "config_dir", lambda: directories["config_dir"])
     for name, path in directories.items():
@@ -67,7 +67,7 @@ def test_version() -> None:
     """Expose the package version through the eager global option."""
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert result.stdout.strip() == "0.1.6"
+    assert result.stdout.strip() == "0.2.0"
 
 
 def test_validate_passes_with_complete_engine_assets() -> None:
@@ -97,7 +97,7 @@ def test_doctor_is_read_only_and_reports_hardware(tmp_path, monkeypatch) -> None
     result = runner.invoke(app, ["doctor"])
 
     assert result.exit_code == 0
-    assert "qwen-launcher diagnostics" in result.stdout
+    assert "bora-workbench diagnostics" in result.stdout
     assert "Test CPU" in result.stdout
     assert "32.00 GiB" in result.stdout
     assert "no active record" in result.stdout

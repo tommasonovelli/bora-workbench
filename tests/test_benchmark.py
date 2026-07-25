@@ -8,7 +8,7 @@ import json
 import httpx
 import pytest
 
-from qwen_launcher.benchmark import (
+from bora_workbench.benchmark import (
     PROMPT_SHA256,
     REQUEST_SHA256,
     VISION_REQUEST_SHA256,
@@ -17,7 +17,7 @@ from qwen_launcher.benchmark import (
     run_vision_probe,
     verify_protocol_resources,
 )
-from qwen_launcher.resources import resource
+from bora_workbench.resources import resource
 
 
 def response(rate: float, *, tokens: int = 256, finish_reason: str = "length") -> dict[str, object]:

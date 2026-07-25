@@ -5,11 +5,11 @@
 When something does not work, run in this order:
 
 ```bash
-qwen-launcher --version
-qwen-launcher validate
-qwen-launcher doctor
-qwen-launcher status
-qwen-launcher engine status
+bora --version
+bora validate
+bora doctor
+bora status
+bora engine status
 ```
 
 These commands quickly separate four categories: tool installation, content, machine, and
@@ -138,8 +138,8 @@ instances than expected still invalidate the run.
 ### The engine is missing
 
 ```bash
-qwen-launcher engine install
-qwen-launcher engine status
+bora engine install
+bora engine status
 ```
 
 The managed installation selects the detected backend. If you want to use an external executable,
@@ -170,8 +170,8 @@ For `coding`, `studio`, and `vstudio`, change `llama_port` or stop the owner. If
 service:
 
 ```bash
-qwen-launcher status
-qwen-launcher stop
+bora status
+bora stop
 ```
 
 Do not delete `services.json` to free the port. Since `v0.1.1` only calibration trials can pick a
@@ -213,7 +213,7 @@ manageable through the corrupt file — is still running.
 headroom. Only an active `<mode>.json` is reusable. The normal remedy is to free memory or re-run:
 
 ```bash
-qwen-launcher calibrate --mode <mode>
+bora calibrate --mode <mode>
 ```
 
 Do not fix the JSON by hand and do not copy a record from another machine.
@@ -223,7 +223,7 @@ Do not fix the JSON by hand and do not copy a record from another machine.
 Promote it without new trials:
 
 ```bash
-qwen-launcher calibrate --mode <mode> --activate
+bora calibrate --mode <mode> --activate
 ```
 
 Check `doctor` first. Activation atomically replaces the active record and keeps a single

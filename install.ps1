@@ -1,5 +1,5 @@
 <#
-install.ps1 - explicit-source installer for qwen-launcher 0.1 on Windows.
+install.ps1 - explicit-source installer for bora-workbench 0.1 on Windows.
 
 IMPLEMENTATION_SPEC.md sections 5.10-5.12 require a small, idempotent installer that verifies
 prerequisites, pins uv 0.11.28 through its official versioned installer, and installs the tool with
@@ -20,7 +20,7 @@ $ErrorActionPreference = 'Stop'
 
 $UvVersion = '0.11.28'
 $PythonVersion = '3.12.13'
-$RepoUrl = 'https://github.com/tommasonovelli/qwen-launcher.git'
+$RepoUrl = 'https://github.com/tommasonovelli/bora-workbench.git'
 $UvInstallerUrl = "https://astral.sh/uv/$UvVersion/install.ps1"
 
 # Print an actionable error to stderr without a traceback and exit with a contractual code
@@ -147,14 +147,14 @@ else {
 
 # Build the single explicit install target and install the tool with the pinned Python.
 if ($Wheel) { $target = $Wheel }
-elseif ($GitCommit) { $target = "qwen-launcher @ git+$RepoUrl@$GitCommit" }
-else { $target = "qwen-launcher==$PypiVersion" }
+elseif ($GitCommit) { $target = "bora-workbench @ git+$RepoUrl@$GitCommit" }
+else { $target = "bora-workbench==$PypiVersion" }
 
 & $uvBin @('tool', 'install', '--force', '--python', $PythonVersion, $target)
 if ($LASTEXITCODE -ne 0) {
     Stop-WithError "uv could not install the tool from the requested source" 1
 }
 
-Write-Output "install.ps1: installed qwen-launcher with uv $UvVersion and Python $PythonVersion."
+Write-Output "install.ps1: installed bora-workbench with uv $UvVersion and Python $PythonVersion."
 Write-Output "install.ps1: re-running this installer is safe."
-Write-Output "install.ps1: to remove the tool and managed data, run: qwen-launcher uninstall"
+Write-Output "install.ps1: to remove the tool and managed data, run: bora uninstall"

@@ -9,9 +9,9 @@ from typing import cast
 
 import pytest
 
-import qwen_launcher._engine_install as installer
-import qwen_launcher.engine as engine
-from qwen_launcher._engine_types import (
+import bora_workbench._engine_install as installer
+import bora_workbench.engine as engine
+from bora_workbench._engine_types import (
     Backend,
     EngineAsset,
     EngineError,

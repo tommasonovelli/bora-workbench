@@ -6,7 +6,7 @@ import subprocess
 from types import SimpleNamespace
 from unittest.mock import Mock
 
-import qwen_launcher._hardware_monitoring as monitoring
+import bora_workbench._hardware_monitoring as monitoring
 
 
 def test_optional_telemetry_is_parsed_without_becoming_a_threshold(monkeypatch) -> None:

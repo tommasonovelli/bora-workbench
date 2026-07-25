@@ -9,7 +9,7 @@ def test_import_has_no_filesystem_side_effects(tmp_path):
     environment = os.environ.copy()
     environment["PYTHONPATH"] = str(source_root)
     subprocess.run(
-        [sys.executable, "-c", "import qwen_launcher"],
+        [sys.executable, "-c", "import bora_workbench"],
         cwd=tmp_path,
         env=environment,
         check=True,

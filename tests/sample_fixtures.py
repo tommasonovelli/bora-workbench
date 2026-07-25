@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from qwen_launcher._calibration_types import Sample
-from qwen_launcher.benchmark_quick import QuickBenchResult, QuickMetric
+from bora_workbench._calibration_types import Sample
+from bora_workbench.benchmark_quick import QuickBenchResult, QuickMetric
 
 
 def quick_result(

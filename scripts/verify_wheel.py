@@ -21,9 +21,9 @@ def _resource_probe() -> str:
     return (
         "import hashlib; "
         "from importlib.metadata import version; "
-        "from qwen_launcher.profiles import load_catalog; "
-        "from qwen_launcher.resources import read_json, read_text, resource; "
-        "assert version('qwen-launcher') == '0.1.6'; "
+        "from bora_workbench.profiles import load_catalog; "
+        "from bora_workbench.resources import read_json, read_text, resource; "
+        "assert version('bora-workbench') == '0.2.0'; "
         "assert 'Spike 0' in read_text('README.txt'); "
         "lock = read_json('engine.lock'); "
         "assert lock['release'] == 'b10011' and lock['assets_complete']; "
@@ -52,18 +52,18 @@ def _verify_install(python: Path, environment: dict[str, str]) -> None:
     """Exercise installed metadata, resources, validation, engine status, and calibration CLI."""
     subprocess.run([str(python), "-c", _resource_probe()], check=True, env=environment)
     subprocess.run(
-        [str(python), "-m", "qwen_launcher.cli", "--version"], check=True, env=environment
+        [str(python), "-m", "bora_workbench.cli", "--version"], check=True, env=environment
     )
     subprocess.run(
-        [str(python), "-m", "qwen_launcher.cli", "validate"], check=True, env=environment
+        [str(python), "-m", "bora_workbench.cli", "validate"], check=True, env=environment
     )
     subprocess.run(
-        [str(python), "-m", "qwen_launcher.cli", "engine", "status"],
+        [str(python), "-m", "bora_workbench.cli", "engine", "status"],
         check=True,
         env=environment,
     )
     subprocess.run(
-        [str(python), "-m", "qwen_launcher.cli", "calibrate", "--help"],
+        [str(python), "-m", "bora_workbench.cli", "calibrate", "--help"],
         check=True,
         env=environment,
     )
@@ -139,7 +139,7 @@ def main() -> int:
         print("uv is required to verify the wheel", file=sys.stderr)
         return 1
 
-    with tempfile.TemporaryDirectory(prefix="qwen-launcher-wheel-") as directory:
+    with tempfile.TemporaryDirectory(prefix="bora-workbench-wheel-") as directory:
         environment = Path(directory) / "venv"
         subprocess.run([uv, "venv", "--python", "3.12", str(environment)], check=True)
         subprocess.run(

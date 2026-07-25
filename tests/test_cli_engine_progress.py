@@ -7,8 +7,8 @@ from io import StringIO
 import pytest
 from rich.console import Console
 
-from qwen_launcher._cli_engine_progress import EngineInstallProgress
-from qwen_launcher._engine_types import InstallProgressEvent
+from bora_workbench._cli_engine_progress import EngineInstallProgress
+from bora_workbench._engine_types import InstallProgressEvent
 
 
 def test_redirected_progress_prints_each_phase_once() -> None:

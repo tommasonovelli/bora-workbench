@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-import qwen_launcher._engine_download as downloader
-from qwen_launcher._engine_types import EngineAsset, EngineError, TransferProgress
+import bora_workbench._engine_download as downloader
+from bora_workbench._engine_types import EngineAsset, EngineError, TransferProgress
 
 
 class FakeResponse:

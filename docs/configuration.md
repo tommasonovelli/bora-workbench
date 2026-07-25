@@ -26,11 +26,11 @@ never creates or rewrites `config.toml` automatically.
 
 | Key | Environment variable | Default | Constraint |
 |---|---|---|---|
-| `model` | `QWEN_LAUNCHER_MODEL` | the pinned model | non-empty string |
-| `model_path` | `QWEN_LAUNCHER_MODEL_PATH` | absent | path string |
-| `llama_port` | `QWEN_LAUNCHER_LLAMA_PORT` | `8080` | integer 1–65535 |
-| `engine_path` | `QWEN_LAUNCHER_ENGINE_PATH` | absent | path string |
-| `open_browser` | `QWEN_LAUNCHER_OPEN_BROWSER` | `true` | boolean |
+| `model` | `BORA_MODEL` | the pinned model | non-empty string |
+| `model_path` | `BORA_MODEL_PATH` | absent | path string |
+| `llama_port` | `BORA_LLAMA_PORT` | `8080` | integer 1–65535 |
+| `engine_path` | `BORA_ENGINE_PATH` | absent | path string |
+| `open_browser` | `BORA_OPEN_BROWSER` | `true` | boolean |
 
 In TOML, booleans must be `true` or `false`. In the environment the following are accepted,
 case-insensitively:
@@ -39,7 +39,7 @@ case-insensitively:
 true/false  1/0  yes/no  on/off
 ```
 
-A `QWEN_LAUNCHER_MODEL_PATH` or `QWEN_LAUNCHER_ENGINE_PATH` variable that is present but empty
+A `BORA_MODEL_PATH` or `BORA_ENGINE_PATH` variable that is present but empty
 clears the path. Other empty variables are errors. Paths expand `~`, but they are not checked
 against the filesystem while the configuration alone is being loaded.
 
@@ -88,14 +88,14 @@ The helpers compute the paths without creating any directory.
 
 | Root | Ubuntu/Linux | Windows |
 |---|---|---|
-| configuration | `${XDG_CONFIG_HOME:-~/.config}/qwen-launcher` | `%APPDATA%\qwen-launcher` |
-| data | `${XDG_DATA_HOME:-~/.local/share}/qwen-launcher` | `%LOCALAPPDATA%\qwen-launcher\data` |
-| cache | `${XDG_CACHE_HOME:-~/.cache}/qwen-launcher` | `%LOCALAPPDATA%\qwen-launcher\cache` |
-| state | `${XDG_STATE_HOME:-~/.local/state}/qwen-launcher` | `%LOCALAPPDATA%\qwen-launcher\state` |
+| configuration | `${XDG_CONFIG_HOME:-~/.config}/bora-workbench` | `%APPDATA%\bora-workbench` |
+| data | `${XDG_DATA_HOME:-~/.local/share}/bora-workbench` | `%LOCALAPPDATA%\bora-workbench\data` |
+| cache | `${XDG_CACHE_HOME:-~/.cache}/bora-workbench` | `%LOCALAPPDATA%\bora-workbench\cache` |
+| state | `${XDG_STATE_HOME:-~/.local/state}/bora-workbench` | `%LOCALAPPDATA%\bora-workbench\state` |
 
 An XDG, `APPDATA`, or `LOCALAPPDATA` variable that is missing, empty, or relative uses the fallback;
 an absolute value is honored. On Windows the fallbacks are `~/AppData/Roaming` and
-`~/AppData/Local`. `qwen-launcher doctor` prints the four paths resolved for the current machine.
+`~/AppData/Local`. `bora doctor` prints the four paths resolved for the current machine.
 
 ## Data layout
 
@@ -138,7 +138,7 @@ After confirmation, exactly the four roots above are deleted. Excluded are:
 - uv, its caches, and other tools;
 - any path outside the managed roots.
 
-If the current command belongs to exactly the `qwen-launcher` environment configured by uv, the same
+If the current command belongs to exactly the `bora-workbench` environment configured by uv, the same
 confirmation also schedules the removal of that environment and of the command. Python installations
 outside `uv tool` stay unchanged and are reported in the summary.
 

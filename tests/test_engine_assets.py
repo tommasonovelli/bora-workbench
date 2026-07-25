@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import pytest
 
-import qwen_launcher.engine as engine
-from qwen_launcher._engine_assets import select_assets
-from qwen_launcher._engine_types import EngineError
-from qwen_launcher.engine import load_engine_lock
-from qwen_launcher.validation import validate_resources
+import bora_workbench.engine as engine
+from bora_workbench._engine_assets import select_assets
+from bora_workbench._engine_types import EngineError
+from bora_workbench.engine import load_engine_lock
+from bora_workbench.validation import validate_resources
 from tests.content_fixtures import copy_resource_root, read_json, write_json
 
 

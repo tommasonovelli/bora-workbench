@@ -7,8 +7,8 @@ from io import StringIO
 import pytest
 from rich.console import Console
 
-from qwen_launcher._calibration_progress import ProgressEvent
-from qwen_launcher._cli_calibration_progress import CalibrationProgress
+from bora_workbench._calibration_progress import ProgressEvent
+from bora_workbench._cli_calibration_progress import CalibrationProgress
 
 
 def test_redirected_progress_prints_only_completed_trials() -> None:

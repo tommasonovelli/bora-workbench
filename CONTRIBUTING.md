@@ -1,4 +1,4 @@
-# Contributing to qwen-launcher
+# Contributing to bora-workbench
 
 Thank you for your interest. Before opening a change, read:
 
@@ -97,7 +97,7 @@ uv sync --frozen
 uv run --frozen ruff check .
 uv run --frozen ruff format --check .
 uv run --frozen pytest
-uv run --frozen qwen-launcher validate
+uv run --frozen bora validate
 ```
 
 If packaging, resources, installers, or documents included in the sdist change:

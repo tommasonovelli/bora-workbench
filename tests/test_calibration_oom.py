@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from qwen_launcher._calibration_oom import oom_resource, read_logs
+from bora_workbench._calibration_oom import oom_resource, read_logs
 
 _CUDA_FAILURE = (
     "ggml_backend_cuda_buffer_type_alloc_buffer: allocating 11807.70 MiB on device 0: "

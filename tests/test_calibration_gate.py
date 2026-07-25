@@ -6,8 +6,8 @@ import json
 
 import httpx
 
-from qwen_launcher._calibration_gate import run_gate
-from qwen_launcher.profiles import load_catalog
+from bora_workbench._calibration_gate import run_gate
+from bora_workbench.profiles import load_catalog
 
 
 def _mode(mode_id: str):

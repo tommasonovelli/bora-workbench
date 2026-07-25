@@ -6,7 +6,7 @@ from unittest.mock import Mock
 
 import pytest
 
-import qwen_launcher.hardware as hardware
+import bora_workbench.hardware as hardware
 
 _GIB = 1024**3
 

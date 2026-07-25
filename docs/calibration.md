@@ -9,7 +9,7 @@ each feasible configuration responds.
 You do not need to know any `llama.cpp` parameter to start:
 
 ```bash
-qwen-launcher calibrate --mode all
+bora calibrate --mode all
 ```
 
 The command:
@@ -67,10 +67,10 @@ You need:
 Check first:
 
 ```bash
-qwen-launcher validate
-qwen-launcher doctor
-qwen-launcher engine status
-qwen-launcher status
+bora validate
+bora doctor
+bora engine status
+bora status
 ```
 
 Calibration uses `llama_port` when it is free; when it is busy, each trial picks a temporary port on
@@ -90,20 +90,20 @@ profiles: the differences enter the decision only through the RAM and VRAM obser
 Calibrate every mode and activate the results:
 
 ```bash
-qwen-launcher calibrate --mode all
+bora calibrate --mode all
 ```
 
 Calibrate a single mode:
 
 ```bash
-qwen-launcher calibrate --mode coding
+bora calibrate --mode coding
 ```
 
 Pick which envelope the records will launch with:
 
 ```bash
-qwen-launcher calibrate --mode all --preference fast
-qwen-launcher calibrate --mode all --preference max-context
+bora calibrate --mode all --preference fast
+bora calibrate --mode all --preference max-context
 ```
 
 On an interactive terminal the CLI shows a bar, the elapsed time, the running trial, and a remaining
@@ -119,7 +119,7 @@ their records written and activated. The summary then names the group that produ
 the command still exits with an error, because the run was not complete. Re-run just that mode:
 
 ```bash
-qwen-launcher calibrate --mode vstudio
+bora calibrate --mode vstudio
 ```
 
 On a nearly full GPU the memory boundary can move between two measurements of the same
@@ -131,8 +131,8 @@ tried instead. None of these ends the mode.
 When it finishes, check the result and launch:
 
 ```bash
-qwen-launcher doctor
-qwen-launcher coding
+bora doctor
+bora coding
 ```
 
 If the active record is valid and the headroom is sufficient, startup reports
@@ -143,7 +143,7 @@ If the active record is valid and the headroom is sufficient, startup reports
 To experiment, or to prepare evidence before committing to it:
 
 ```bash
-qwen-launcher calibrate --mode all --no-activate
+bora calibrate --mode all --no-activate
 ```
 
 Results are written as candidates:
@@ -156,7 +156,7 @@ Launches keep using the previous active record, or the baseline. After reviewing
 the candidates without repeating any trial:
 
 ```bash
-qwen-launcher calibrate --mode all --activate
+bora calibrate --mode all --activate
 ```
 
 Promotion is atomic. If an active record already exists, a copy of it is kept in:
@@ -179,7 +179,7 @@ The search descends this ladder:
 You can collapse it onto a single approved step:
 
 ```bash
-qwen-launcher calibrate --mode coding --target-ctx 98304
+bora calibrate --mode coding --target-ctx 98304
 ```
 
 Allowed values: `131072`, `98304`, `65536`, `49152`, `32768`, `16384`, `8192` — every step of the
@@ -193,22 +193,22 @@ latency versus decode throughput).
 
 ```bash
 # Everything, activated, with the default balanced envelope
-qwen-launcher calibrate --mode all
+bora calibrate --mode all
 
 # Coding only, recording `fast` as the envelope launches will use
-qwen-launcher calibrate --mode coding --preference fast
+bora calibrate --mode coding --preference fast
 
 # Measure everything but leave the active records untouched
-qwen-launcher calibrate --mode all --preference max-context --no-activate
+bora calibrate --mode all --preference max-context --no-activate
 
 # Promote candidates measured earlier, without re-running any trial
-qwen-launcher calibrate --mode all --activate
+bora calibrate --mode all --activate
 
 # Lowest latency at a fixed context
-qwen-launcher calibrate --mode coding --target-ctx 65536 --preference fast
+bora calibrate --mode coding --target-ctx 65536 --preference fast
 
 # Highest throughput at that same fixed context
-qwen-launcher calibrate --mode coding --target-ctx 65536 --preference max-context
+bora calibrate --mode coding --target-ctx 65536 --preference max-context
 ```
 
 Constraints: `--activate` does not combine with `--target-ctx`, and `--activate` and `--no-activate`
@@ -332,7 +332,7 @@ manifest, and checksums.
 Prepare it without activating anything:
 
 ```bash
-qwen-launcher calibrate --mode all --no-activate
+bora calibrate --mode all --no-activate
 ```
 
 Keep both successes and failures private until reviewed, and strip hostnames, usernames, serial
@@ -345,6 +345,6 @@ Pull request checklist:
 - [ ] `privacy_reviewed=true` only after reviewing the final bytes;
 - [ ] explicit scope, portability limit, SHA-256, and manifest;
 - [ ] a declarative PR with no changes to the Python core;
-- [ ] `qwen-launcher validate`, Ruff, pytest, build, and wheel verification green.
+- [ ] `bora validate`, Ruff, pytest, build, and wheel verification green.
 
 **Next:** [Operations and diagnostics](operations.md)

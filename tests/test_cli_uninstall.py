@@ -6,9 +6,9 @@ from types import SimpleNamespace
 import pytest
 from typer.testing import CliRunner
 
-import qwen_launcher._cli_uninstall as uninstall_cli
-import qwen_launcher._uninstall as uninstall_module
-from qwen_launcher.cli import app
+import bora_workbench._cli_uninstall as uninstall_cli
+import bora_workbench._uninstall as uninstall_module
+from bora_workbench.cli import app
 
 runner = CliRunner()
 
@@ -18,7 +18,7 @@ def patch_uninstall_dependencies(tmp_path, monkeypatch) -> list[object]:
     """Isolate service inspection and uv self-removal from the host installation."""
     empty = SimpleNamespace(services=(), warnings=())
     installation = uninstall_cli.ToolInstallation(
-        tmp_path / "uv-tools" / "qwen-launcher", tmp_path / "bin" / "uv"
+        tmp_path / "uv-tools" / "bora-workbench", tmp_path / "bin" / "uv"
     )
     scheduled: list[object] = []
     monkeypatch.setattr(uninstall_cli, "status_services", lambda: empty)
@@ -34,10 +34,10 @@ def patch_managed_roots(tmp_path, monkeypatch) -> dict[str, Path]:
     module directly, mirroring how the record module is patched elsewhere.
     """
     roots = {
-        "config_dir": tmp_path / "config" / "qwen-launcher",
-        "data_dir": tmp_path / "data" / "qwen-launcher",
-        "cache_dir": tmp_path / "cache" / "qwen-launcher",
-        "state_dir": tmp_path / "state" / "qwen-launcher",
+        "config_dir": tmp_path / "config" / "bora-workbench",
+        "data_dir": tmp_path / "data" / "bora-workbench",
+        "cache_dir": tmp_path / "cache" / "bora-workbench",
+        "state_dir": tmp_path / "state" / "bora-workbench",
     }
     for name, path in roots.items():
         monkeypatch.setattr(uninstall_module, name, lambda path=path: path)
@@ -146,7 +146,7 @@ def test_uninstall_refuses_to_orphan_a_running_service(tmp_path, monkeypatch) ->
     result = runner.invoke(app, ["uninstall"])
 
     assert result.exit_code == 1
-    assert "qwen-launcher stop" in result.stderr
+    assert "bora stop" in result.stderr
     assert all(path.exists() for path in roots.values())
 
 

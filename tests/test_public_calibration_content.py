@@ -6,10 +6,10 @@ import hashlib
 import shutil
 from pathlib import Path
 
-from qwen_launcher._calibration_privacy import privacy_findings
-from qwen_launcher.profiles import load_catalog
-from qwen_launcher.resources import read_json, resource
-from qwen_launcher.validation import validate_resources
+from bora_workbench._calibration_privacy import privacy_findings
+from bora_workbench.profiles import load_catalog
+from bora_workbench.resources import read_json, resource
+from bora_workbench.validation import validate_resources
 
 _REPORT_PATH = "content/calibrations/windows-11-rtx-2060-super-v3.json"
 _MANIFEST = Path("evidence/calibration/windows-11-rtx-2060-super-v3/SHA256SUMS")
@@ -94,7 +94,7 @@ def test_contribution_guide_keeps_publication_manual_and_checklisted() -> None:
     for required in (
         "## Contributing new evidence",
         "Pull request checklist:",
-        "qwen-launcher validate",
+        "bora validate",
         "privacy_reviewed",
         "performs no logins, uploads, commits, remote branches, issues, or pull requests",
     ):
@@ -106,8 +106,8 @@ def test_shareable_public_files_pass_privacy_scan(tmp_path) -> None:
     """Reject local identity or private-path leaks across distributed evidence and guidance."""
     root = tmp_path / "shareable"
     names = (
-        "src/qwen_launcher/resources/content/calibration-policy.json",
-        "src/qwen_launcher/resources/content/calibrations/windows-11-rtx-2060-super-v3.json",
+        "src/bora_workbench/resources/content/calibration-policy.json",
+        "src/bora_workbench/resources/content/calibrations/windows-11-rtx-2060-super-v3.json",
         "evidence/calibration/windows-11-rtx-2060-super-v3/README.md",
         "docs/calibration.md",
     )

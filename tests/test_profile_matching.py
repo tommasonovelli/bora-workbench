@@ -5,13 +5,13 @@ from pathlib import Path
 
 import pytest
 
-import qwen_launcher._calibration_record as record_module
-import qwen_launcher._calibration_reuse as reuse_module
-from qwen_launcher._calibration_record import write_record
-from qwen_launcher._hardware_monitoring import GpuSnapshot
-from qwen_launcher.config import DEFAULT_MODEL, Config
-from qwen_launcher.hardware import HardwareInfo
-from qwen_launcher.profiles import (
+import bora_workbench._calibration_record as record_module
+import bora_workbench._calibration_reuse as reuse_module
+from bora_workbench._calibration_record import write_record
+from bora_workbench._hardware_monitoring import GpuSnapshot
+from bora_workbench.config import DEFAULT_MODEL, Config
+from bora_workbench.hardware import HardwareInfo
+from bora_workbench.profiles import (
     LaunchRequest,
     PlanError,
     build_launch_plan,

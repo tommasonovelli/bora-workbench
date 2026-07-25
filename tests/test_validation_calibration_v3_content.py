@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 
-from qwen_launcher.validation import validate_resources
+from bora_workbench.validation import validate_resources
 from tests.content_fixtures import read_json, write_json
 from tests.v3_content_fixtures import build_v3_content
 

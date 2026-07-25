@@ -7,7 +7,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from qwen_launcher.resources import resource
+from bora_workbench.resources import resource
 from tests.calibration_fixtures import valid_policy
 
 _ENGINE_COMMIT = "bf2c86ddc0685f580595954056c2e77ebabfab4f"

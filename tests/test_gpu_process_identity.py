@@ -6,8 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
-import qwen_launcher._gpu_process_identity as identity_module
-from qwen_launcher._gpu_process_identity import identify_gpu_process
+import bora_workbench._gpu_process_identity as identity_module
+from bora_workbench._gpu_process_identity import identify_gpu_process
 
 
 class _Process:

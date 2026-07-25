@@ -1,4 +1,4 @@
-# qwen-launcher — Implementation specification and roadmap
+# bora-workbench — Implementation specification and roadmap
 
 This is the only normative plan in the repository. It describes the constraints future work must
 preserve and the activities not implemented yet. The behavior available today is documented in
@@ -85,7 +85,7 @@ releases, uploads, and remote settings always require authorization in the curre
 
 ### 1.1 Current product
 
-`qwen-launcher` is a specialized local distribution built around
+`bora-workbench` is a specialized local distribution built around
 `unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M`. It detects the hardware, verifies the model and
 engine, builds a plan, governs `llama-server`, exposes three modes, and measures one envelope
 locally for each machine.
@@ -218,10 +218,10 @@ Only `paths.py`, `process.py`, `hardware.py`, and `engine.py` may branch on the 
 
 ### 4.2 Repository territories
 
-- `src/qwen_launcher/resources/schemas/`: versioned contracts;
-- `src/qwen_launcher/resources/content/`: contributed content;
-- `src/qwen_launcher/resources/*.lock`: pinned external compatibility;
-- the rest of `src/qwen_launcher/`: core maintained by the owner;
+- `src/bora_workbench/resources/schemas/`: versioned contracts;
+- `src/bora_workbench/resources/content/`: contributed content;
+- `src/bora_workbench/resources/*.lock`: pinned external compatibility;
+- the rest of `src/bora_workbench/`: core maintained by the owner;
 - `docs/`: current behavior for users and contributors;
 - `evidence/`: measured output and manifests, not manuals;
 - `IMPLEMENTATION_SPEC.md`: roadmap and normative constraints;
@@ -234,7 +234,7 @@ A PR changes core or declarative content, never both.
 The wheel's resources are `Traversable`. Use `read_text()`/`read_bytes()`; `as_file()` only inside
 its context manager. Do not assume a physical `Path`.
 
-Importing `qwen_launcher` uses no network, creates no directories, writes no files, and starts no
+Importing `bora_workbench` uses no network, creates no directories, writes no files, and starts no
 processes.
 
 ---
@@ -261,21 +261,21 @@ keys and malformed values are errors; the launcher does not modify the file.
 
 | Key | Environment | Default |
 |---|---|---|
-| `model` | `QWEN_LAUNCHER_MODEL` | the pinned model |
-| `model_path` | `QWEN_LAUNCHER_MODEL_PATH` | `None` |
-| `llama_port` | `QWEN_LAUNCHER_LLAMA_PORT` | `8080` |
-| `engine_path` | `QWEN_LAUNCHER_ENGINE_PATH` | `None` |
-| `open_browser` | `QWEN_LAUNCHER_OPEN_BROWSER` | `true` |
+| `model` | `BORA_MODEL` | the pinned model |
+| `model_path` | `BORA_MODEL_PATH` | `None` |
+| `llama_port` | `BORA_LLAMA_PORT` | `8080` |
+| `engine_path` | `BORA_ENGINE_PATH` | `None` |
+| `open_browser` | `BORA_OPEN_BROWSER` | `true` |
 
 Ports 1–65535. Environment booleans: `true/false`, `1/0`, `yes/no`, `on/off`. Only the two path
 variables may be empty to mean `None`.
 
 | Root | Linux | Windows |
 |---|---|---|
-| config | `${XDG_CONFIG_HOME:-~/.config}/qwen-launcher` | `%APPDATA%\qwen-launcher` |
-| data | `${XDG_DATA_HOME:-~/.local/share}/qwen-launcher` | `%LOCALAPPDATA%\qwen-launcher\data` |
-| cache | `${XDG_CACHE_HOME:-~/.cache}/qwen-launcher` | `%LOCALAPPDATA%\qwen-launcher\cache` |
-| state | `${XDG_STATE_HOME:-~/.local/state}/qwen-launcher` | `%LOCALAPPDATA%\qwen-launcher\state` |
+| config | `${XDG_CONFIG_HOME:-~/.config}/bora-workbench` | `%APPDATA%\bora-workbench` |
+| data | `${XDG_DATA_HOME:-~/.local/share}/bora-workbench` | `%LOCALAPPDATA%\bora-workbench\data` |
+| cache | `${XDG_CACHE_HOME:-~/.cache}/bora-workbench` | `%LOCALAPPDATA%\bora-workbench\cache` |
+| state | `${XDG_STATE_HOME:-~/.local/state}/bora-workbench` | `%LOCALAPPDATA%\bora-workbench\state` |
 
 Base variables that are missing, empty, or relative use the fallback. The path helpers create no
 directories.
@@ -413,9 +413,9 @@ are limited to the managed data/cache after verification.
 
 `uninstall` shows config/data/cache/state and the current Python installation, asks for a single
 confirmation, refuses live services and symlinks, never touches the Hugging Face cache, and does not
-remove uv. When the running command matches `uv tool dir/qwen-launcher` exactly and owns the uv
+remove uv. When the running command matches `uv tool dir/bora-workbench` exactly and owns the uv
 receipt, a helper on the base Python waits for the process to exit and invokes
-`uv tool uninstall qwen-launcher` without a shell. A Python installation outside uv is not removed
+`uv tool uninstall bora-workbench` without a shell. A Python installation outside uv is not removed
 on a guess and is reported explicitly as unchanged.
 
 ### 5.11 Errors and exit codes
@@ -472,7 +472,7 @@ uv sync --frozen
 uv run --frozen ruff check .
 uv run --frozen ruff format --check .
 uv run --frozen pytest
-uv run --frozen qwen-launcher validate
+uv run --frozen bora validate
 ```
 
 If packaging or resources change:
@@ -497,14 +497,14 @@ pushes and publication are not.
 The maintainer configures the Trusted Publisher on PyPI:
 
 ```text
-project:      qwen-launcher
-owner/repo:   tommasonovelli/qwen-launcher
+project:      bora-workbench
+owner/repo:   tommasonovelli/bora-workbench
 workflow:     release.yml
 environment:  pypi
 ```
 
 They then re-run only the failed `publish` job of run `29739366272`. After it succeeds they verify
-`qwen-launcher==0.1.0` on Ubuntu and Windows and compare the digests with GitHub. The existing
+`bora-workbench==0.1.0` on Ubuntu and Windows and compare the digests with GitHub. The existing
 artifacts are not rebuilt.
 
 ### 7.2 Release 0.1.1 completed
@@ -641,7 +641,7 @@ Installation:
 - a failure leaves the previous manifest and version intact;
 - cleanup of inactive managed environments only.
 
-0.2 configuration: `webui_port=8081` and `QWEN_LAUNCHER_WEBUI_PORT`; port 1–65535 and different from
+0.2 configuration: `webui_port=8081` and `BORA_WEBUI_PORT`; port 1–65535 and different from
 `llama_port`.
 
 A minimal environment, only after the lock has been verified: a dedicated data dir, host

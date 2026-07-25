@@ -1,7 +1,7 @@
-# qwen-launcher
+# bora-workbench
 
-[![CI](https://github.com/tommasonovelli/qwen-launcher/actions/workflows/ci.yml/badge.svg)](https://github.com/tommasonovelli/qwen-launcher/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/tommasonovelli/qwen-launcher.svg)](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.6)
+[![CI](https://github.com/tommasonovelli/bora-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/tommasonovelli/bora-workbench/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/tommasonovelli/bora-workbench.svg)](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.1.6)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-31213/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -9,11 +9,11 @@
 
 | Command | What you get |
 |---|---|
-| `qwen-launcher coding` | a local OpenAI-compatible API for editors, scripts, and agents |
-| `qwen-launcher studio` | browser-based local chat in the built-in `llama.cpp` UI |
-| `qwen-launcher vstudio` | the same UI with the pinned vision projector, for multimodal chat |
+| `bora coding` | a local OpenAI-compatible API for editors, scripts, and agents |
+| `bora studio` | browser-based local chat in the built-in `llama.cpp` UI |
+| `bora vstudio` | the same UI with the pinned vision projector, for multimodal chat |
 
-`qwen-launcher` is a ready-to-use local Qwen environment. It installs the verified `llama.cpp`
+`bora-workbench` is a ready-to-use local Qwen environment. It installs the verified `llama.cpp`
 engine for the hardware it detects, resolves and checks the model, and manages the complete service
 lifecycle: start, health check, status, logs, and an identity-safe stop. Services listen on
 `127.0.0.1` only.
@@ -55,16 +55,20 @@ If this is your first time opening the project, the simplest path is:
 ## Project status
 
 > [!WARNING]
-> The `0.1` series is intended for evaluation. The CLI, configuration, record formats, procedures,
-> and performance carry no stability guarantee. Do not use it for critical workloads without
-> independent verification and backups of your local data.
+> The `0.2` series is **not stable** and is intended for evaluation, exactly like `0.1` before it.
+> The CLI, configuration, record formats, procedures, and performance carry no stability guarantee.
+> Do not use it for critical workloads without independent verification and backups of your local
+> data.
 
-The current release is **`0.1.6`**, published on
-[GitHub Releases](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.6). It makes
-calibration a single working protocol: the earlier laboratory and paired-search protocols, the
-`--protocol` option, and the older record formats are gone, and the search that remains is validated
-on hardware. A record written by an earlier version is diagnosed as superseded, so re-run
-`calibrate` after upgrading. PyPI remains unavailable.
+Version **`0.2.0`** is prepared in this branch and **not published yet**: it renames the project to
+`bora-workbench`, whose command is `bora`. Everything up to `0.1.6` was released under the previous
+name, `qwen-launcher`, so an installation of that series is replaced rather than upgraded — its
+configuration, data, cache, and state directories are not read by `bora`.
+
+The calibration behavior is the one introduced in `0.1.6`: a single working protocol. The earlier
+laboratory and paired-search protocols, the `--protocol` option, and the older record formats are
+gone, and the search that remains is validated on hardware. A record written by an earlier version
+is diagnosed as superseded, so re-run `calibrate` after installing. PyPI remains unavailable.
 
 ## Requirements
 
@@ -86,8 +90,8 @@ test/build run. Use the wheel digest reported in the attached manifest.
 ### Ubuntu
 
 ```bash
-base="https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.6"
-wheel="qwen_launcher-0.1.6-py3-none-any.whl"
+base="https://github.com/tommasonovelli/bora-workbench/releases/download/v0.1.6"
+wheel="bora_workbench-0.1.6-py3-none-any.whl"
 curl --fail --location "$base/install.sh" --output install.sh
 curl --fail --location "$base/$wheel" --output "$wheel"
 curl --fail --location "$base/SHA256SUMS" --output SHA256SUMS
@@ -102,8 +106,8 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 From PowerShell:
 
 ```powershell
-$base = "https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.6"
-$wheel = "qwen_launcher-0.1.6-py3-none-any.whl"
+$base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v0.1.6"
+$wheel = "bora_workbench-0.1.6-py3-none-any.whl"
 Invoke-WebRequest "$base/install.ps1" -OutFile install.ps1
 Invoke-WebRequest "$base/$wheel" -OutFile $wheel
 Invoke-WebRequest "$base/SHA256SUMS" -OutFile SHA256SUMS
@@ -125,9 +129,9 @@ administrative privileges. Details and alternatives are in
 Verify immediately:
 
 ```bash
-qwen-launcher --version
-qwen-launcher validate
-qwen-launcher doctor
+bora --version
+bora validate
+bora doctor
 ```
 
 ## Model
@@ -151,14 +155,14 @@ it.
 Install the engine that matches the detected hardware:
 
 ```bash
-qwen-launcher engine install
-qwen-launcher engine status
+bora engine install
+bora engine status
 ```
 
 Then pick an experience and start it:
 
 ```bash
-qwen-launcher coding
+bora coding
 ```
 
 After READY the CLI shows the API/UI URLs and the log path. All three modes serve the API at
@@ -169,8 +173,8 @@ stays in the foreground, and `Ctrl-C` stops it and cleans up the state.
 Control it from another terminal:
 
 ```bash
-qwen-launcher status
-qwen-launcher stop
+bora status
+bora stop
 ```
 
 The full command surface, options, and exit codes are in [Commands](docs/commands.md).
@@ -183,7 +187,7 @@ The launcher is useful before you ever calibrate. All three modes start on the v
 Calibration is what you run once the setup already works, to fit it to *this* machine:
 
 ```bash
-qwen-launcher calibrate --mode all
+bora calibrate --mode all
 ```
 
 It measures `coding`, `studio`, and `vstudio`, finds how much context the hardware can actually
@@ -192,7 +196,7 @@ gets one private record holding three launch envelopes — `fast`, `balanced`, a
 which one is active:
 
 ```bash
-qwen-launcher calibrate --mode all --preference max-context
+bora calibrate --mode all --preference max-context
 ```
 
 It does not change the model or the quality of the answers: it changes how much context you can
@@ -255,7 +259,7 @@ uv sync --frozen
 uv run --frozen ruff check .
 uv run --frozen ruff format --check .
 uv run --frozen pytest
-uv run --frozen qwen-launcher validate
+uv run --frozen bora validate
 ```
 
 For packaging or resources:

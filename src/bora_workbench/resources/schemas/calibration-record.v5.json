@@ -1,0 +1,177 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://bora-workbench.dev/schemas/calibration-record.v5.json",
+  "title": "bora-workbench calibration-record/v5",
+  "description": "Lean opt-in calibration/v6-lite record: identity, three preference envelopes, and the inputs that reconstruct the selection (IMPLEMENTATION_SPEC.md 3.6).",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "mode",
+    "created_at",
+    "launcher_version",
+    "calibration_protocol",
+    "model",
+    "model_sha256",
+    "engine_release",
+    "engine_source_commit",
+    "command_contract_sha256",
+    "mode_policy_sha256",
+    "os_name",
+    "backend",
+    "hardware",
+    "evidence_run_id",
+    "active_preference",
+    "thresholds",
+    "reserves",
+    "envelopes",
+    "selection_inputs"
+  ],
+  "properties": {
+    "schema": { "const": "calibration-record/v5" },
+    "mode": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "created_at": { "type": "string", "format": "date-time" },
+    "launcher_version": { "type": "string", "minLength": 1 },
+    "calibration_protocol": { "const": "calibration" },
+    "model": { "type": "string", "minLength": 1 },
+    "model_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "engine_release": { "type": "string", "minLength": 1 },
+    "engine_source_commit": { "type": "string", "minLength": 1 },
+    "command_contract_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "mode_policy_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "os_name": { "type": "string", "minLength": 1 },
+    "backend": { "enum": ["cuda", "cpu"] },
+    "hardware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cpu_name",
+        "cpu_cores",
+        "ram_total_gib",
+        "gpu_count",
+        "gpu_name",
+        "gpu_driver",
+        "vram_total_gib"
+      ],
+      "properties": {
+        "cpu_name": { "type": "string" },
+        "cpu_cores": { "type": "integer", "minimum": 1 },
+        "ram_total_gib": { "type": "number", "exclusiveMinimum": 0 },
+        "gpu_count": { "type": "integer", "minimum": 0 },
+        "gpu_name": { "type": ["string", "null"] },
+        "gpu_driver": { "type": ["string", "null"] },
+        "vram_total_gib": { "type": ["number", "null"] }
+      }
+    },
+    "evidence_run_id": { "type": "string", "minLength": 1 },
+    "active_preference": { "enum": ["fast", "balanced", "max_context"] },
+    "thresholds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deadband_pct", "balanced_ceiling", "min_ctx_fast"],
+      "properties": {
+        "deadband_pct": { "type": "number", "exclusiveMinimum": 0 },
+        "balanced_ceiling": { "type": "number", "minimum": 1 },
+        "min_ctx_fast": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "reserves": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["vram_gib", "ram_gib", "release_tolerance_gib"],
+      "properties": {
+        "vram_gib": { "type": "number", "minimum": 0 },
+        "ram_gib": { "type": "number", "minimum": 0 },
+        "release_tolerance_gib": { "type": "number", "minimum": 0 }
+      }
+    },
+    "envelopes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fast", "balanced", "max_context"],
+      "properties": {
+        "fast": { "$ref": "#/$defs/envelope" },
+        "balanced": { "$ref": "#/$defs/envelope" },
+        "max_context": { "$ref": "#/$defs/envelope" }
+      }
+    },
+    "selection_inputs": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fast", "balanced", "max_context"],
+      "properties": {
+        "fast": { "$ref": "#/$defs/selection_input" },
+        "balanced": { "$ref": "#/$defs/selection_input" },
+        "max_context": { "$ref": "#/$defs/selection_input" }
+      }
+    }
+  },
+  "$defs": {
+    "envelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ctx",
+        "n_cpu_moe",
+        "speculative",
+        "quick",
+        "gate",
+        "ram_needed_gib",
+        "vram_needed_gib",
+        "minima"
+      ],
+      "properties": {
+        "ctx": { "type": "integer", "minimum": 1 },
+        "n_cpu_moe": { "type": ["integer", "null"], "minimum": 0 },
+        "speculative": { "enum": ["mtp2", "disabled"] },
+        "quick": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["e2e_ms", "prefill_tps", "decode_tps"],
+          "properties": {
+            "e2e_ms": { "type": "number", "minimum": 0 },
+            "prefill_tps": { "type": "number", "minimum": 0 },
+            "decode_tps": { "type": "number", "minimum": 0 }
+          }
+        },
+        "gate": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["smoke", "multi_turn", "vision"],
+          "properties": {
+            "smoke": { "type": "boolean" },
+            "multi_turn": { "type": "boolean" },
+            "vision": { "type": ["boolean", "null"] }
+          }
+        },
+        "ram_needed_gib": { "type": "number", "minimum": 0 },
+        "vram_needed_gib": { "type": ["number", "null"], "minimum": 0 },
+        "minima": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["minimum_ram_available_gib", "minimum_vram_free_gib"],
+          "properties": {
+            "minimum_ram_available_gib": { "type": "number", "minimum": 0 },
+            "minimum_vram_free_gib": { "type": ["number", "null"], "minimum": 0 }
+          }
+        }
+      }
+    },
+    "selection_input": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["round_medians"],
+      "properties": {
+        "round_medians": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 2,
+            "maxItems": 2
+          }
+        }
+      }
+    }
+  }
+}

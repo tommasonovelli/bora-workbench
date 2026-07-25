@@ -6,7 +6,7 @@ import threading
 
 import pytest
 
-from qwen_launcher._calibration_ram import RamError, RamMonitor, RamReserveError
+from bora_workbench._calibration_ram import RamError, RamMonitor, RamReserveError
 
 
 def query_sequence(polled_gib: float):

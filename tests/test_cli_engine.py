@@ -7,9 +7,9 @@ from types import SimpleNamespace
 
 from typer.testing import CliRunner
 
-import qwen_launcher._cli_engine as engine_cli
-from qwen_launcher._engine_types import EngineStatus, InstallProgressEvent, InstallResult
-from qwen_launcher.cli import app
+import bora_workbench._cli_engine as engine_cli
+from bora_workbench._engine_types import EngineStatus, InstallProgressEvent, InstallResult
+from bora_workbench.cli import app
 
 runner = CliRunner()
 

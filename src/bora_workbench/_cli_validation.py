@@ -1,0 +1,36 @@
+"""Present installed-resource validation results."""
+
+from __future__ import annotations
+
+import typer
+from rich.console import Console
+
+from bora_workbench._cli_theme import print_error, print_success, print_warning
+from bora_workbench.validation import ValidationIssue, ValidationResult, validate_resources
+
+
+def _print_issue(item: ValidationIssue, stdout: Console, stderr: Console) -> None:
+    """Print one validation issue to the stream appropriate for its severity."""
+    label = f"{item.file}:{item.field_path}: {item.message}"
+    if item.severity == "error":
+        print_error(stderr, "Invalid resource", label)
+    else:
+        print_warning(stdout, label)
+
+
+def show_validation(result: ValidationResult, stdout: Console, stderr: Console) -> None:
+    """Print deterministic validation details and a concise summary."""
+    for item in result.issues:
+        _print_issue(item, stdout, stderr)
+    if result.errors:
+        print_error(stderr, "Validation failed", f"{len(result.errors)} error(s)")
+    else:
+        print_success(stdout, "Validation passed", f"with {len(result.warnings)} warning(s)")
+
+
+def run_validate(stdout: Console, stderr: Console) -> None:
+    """Validate the installed modes, policy, and reference calibration content."""
+    result = validate_resources()
+    show_validation(result, stdout, stderr)
+    if result.errors:
+        raise typer.Exit(code=1)

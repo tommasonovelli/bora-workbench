@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from qwen_launcher._calibration_outcomes import ClassifiedOutcome, TrialOutcome
-from qwen_launcher._calibration_progress import TrialProgress
-from qwen_launcher._calibration_runner import (
+from bora_workbench._calibration_outcomes import ClassifiedOutcome, TrialOutcome
+from bora_workbench._calibration_progress import TrialProgress
+from bora_workbench._calibration_runner import (
     MAX_GATE_TRIALS,
     MAX_PAIRING_TRIALS,
     GateTarget,
@@ -14,8 +14,8 @@ from qwen_launcher._calibration_runner import (
     SearchProvider,
     run_group,
 )
-from qwen_launcher._calibration_types import GateResult, SearchError, TrialInfeasibleError
-from qwen_launcher.profiles import load_catalog
+from bora_workbench._calibration_types import GateResult, SearchError, TrialInfeasibleError
+from bora_workbench.profiles import load_catalog
 from tests.sample_fixtures import sample
 
 _VRAM = ClassifiedOutcome(TrialOutcome.MEMORY_INFEASIBLE, "vram")

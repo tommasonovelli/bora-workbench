@@ -10,11 +10,11 @@ from unittest.mock import Mock
 import psutil
 import pytest
 
-import qwen_launcher._process_health as health
-import qwen_launcher.process as lifecycle
-from qwen_launcher._process_state import ServiceState, write_state
-from qwen_launcher.engine import load_engine_lock
-from qwen_launcher.profiles import LaunchPlan, load_catalog
+import bora_workbench._process_health as health
+import bora_workbench.process as lifecycle
+from bora_workbench._process_state import ServiceState, write_state
+from bora_workbench.engine import load_engine_lock
+from bora_workbench.profiles import LaunchPlan, load_catalog
 
 _FAKE_SERVER = Path(__file__).parent / "fakes" / "fake_server.py"
 

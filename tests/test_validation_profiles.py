@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from qwen_launcher.profiles import load_catalog
-from qwen_launcher.validation import validate_resources
+from bora_workbench.profiles import load_catalog
+from bora_workbench.validation import validate_resources
 from tests.content_fixtures import (
     build_valid_content,
     read_json,

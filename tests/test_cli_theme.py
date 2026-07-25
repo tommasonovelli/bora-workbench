@@ -4,7 +4,7 @@ from io import StringIO
 
 from rich.console import Console
 
-from qwen_launcher._cli_theme import (
+from bora_workbench._cli_theme import (
     print_error,
     print_heading,
     print_note,

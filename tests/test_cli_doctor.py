@@ -1,7 +1,7 @@
 """Test doctor presentation of local calibration record lifecycle states."""
 
-import qwen_launcher._cli_doctor as doctor_cli
-from qwen_launcher._calibration_reuse import RecordEvaluation
+import bora_workbench._cli_doctor as doctor_cli
+from bora_workbench._calibration_reuse import RecordEvaluation
 
 
 def test_doctor_distinguishes_record_lifecycle_states() -> None:

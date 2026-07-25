@@ -6,8 +6,8 @@ import httpx
 import psutil
 import pytest
 
-import qwen_launcher._process_health as health
-import qwen_launcher.process as lifecycle
+import bora_workbench._process_health as health
+import bora_workbench.process as lifecycle
 from tests.test_process_lifecycle import fast_health, free_port, request
 
 

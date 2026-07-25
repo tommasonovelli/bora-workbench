@@ -6,9 +6,9 @@ from collections.abc import Callable
 
 import pytest
 
-from qwen_launcher._calibration_outcomes import ClassifiedOutcome, TrialOutcome
-from qwen_launcher._calibration_search import search_step
-from qwen_launcher._calibration_types import SearchError
+from bora_workbench._calibration_outcomes import ClassifiedOutcome, TrialOutcome
+from bora_workbench._calibration_search import search_step
+from bora_workbench._calibration_types import SearchError
 
 _VRAM = ClassifiedOutcome(TrialOutcome.MEMORY_INFEASIBLE, "vram")
 _RAM = ClassifiedOutcome(TrialOutcome.MEMORY_INFEASIBLE, "ram")

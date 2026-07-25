@@ -5,13 +5,13 @@ from __future__ import annotations
 import copy
 from dataclasses import replace
 
-import qwen_launcher._calibration_record as record_module
-import qwen_launcher._calibration_reuse as reuse_module
-from qwen_launcher._calibration_record import candidate_record_path, write_record
-from qwen_launcher._calibration_reuse import ReuseQuery, evaluate_record
-from qwen_launcher._hardware_monitoring import GpuSnapshot
-from qwen_launcher.config import Config
-from qwen_launcher.engine import load_engine_lock
+import bora_workbench._calibration_record as record_module
+import bora_workbench._calibration_reuse as reuse_module
+from bora_workbench._calibration_record import candidate_record_path, write_record
+from bora_workbench._calibration_reuse import ReuseQuery, evaluate_record
+from bora_workbench._hardware_monitoring import GpuSnapshot
+from bora_workbench.config import Config
+from bora_workbench.engine import load_engine_lock
 from tests.record_fixtures import calibration_document, cpu_hardware, cuda_hardware
 
 
@@ -50,7 +50,7 @@ def test_missing_record_reports_the_baseline_invitation(tmp_path, monkeypatch) -
     evaluation = evaluate_record(query(cpu_hardware()))
 
     assert evaluation.status == "missing"
-    assert "qwen-launcher calibrate" in evaluation.diagnostics[0]
+    assert "bora calibrate" in evaluation.diagnostics[0]
 
 
 def test_hardware_identity_divergence_invalidates_with_diagnostics(tmp_path, monkeypatch) -> None:

@@ -3,7 +3,7 @@
 The general form is:
 
 ```text
-qwen-launcher [--version] <command> [options]
+bora [--version] <command> [options]
 ```
 
 `--help` is available on the main group and on every command. Typer also exposes
@@ -29,7 +29,7 @@ qwen-launcher [--version] <command> [options]
 ## `validate`
 
 ```bash
-qwen-launcher validate
+bora validate
 ```
 
 It validates the installed resources:
@@ -46,7 +46,7 @@ error exits with 1.
 ## `doctor`
 
 ```bash
-qwen-launcher doctor
+bora doctor
 ```
 
 Shows the version, resolved configuration, OS, CPU, RAM, backend, GPU/VRAM, the managed engine, the
@@ -67,7 +67,7 @@ exits with 2; a hardware or content error with 1; diagnostic warnings with 0.
 ## `engine status`
 
 ```bash
-qwen-launcher engine status
+bora engine status
 ```
 
 Shows the active manifest, release, backend, executable, and compatibility with `engine.lock`. A
@@ -77,8 +77,8 @@ incompatible exits with 1.
 ## `engine install`
 
 ```bash
-qwen-launcher engine install
-qwen-launcher engine install --force
+bora engine install
+bora engine install --force
 ```
 
 Detects CPU/CUDA, selects the exact asset set from the lock, downloads over HTTPS, verifies SHA-256,
@@ -97,9 +97,9 @@ installs no system prerequisites and never elevates privileges.
 ## Run modes
 
 ```bash
-qwen-launcher coding [--force]
-qwen-launcher studio [--force]
-qwen-launcher vstudio [--force]
+bora coding [--force]
+bora studio [--force]
+bora vstudio [--force]
 ```
 
 All three follow the same flow: configuration → hardware → RAM gate → content → model → plan →
@@ -143,7 +143,7 @@ returns 130. A natural non-zero exit returns 1 and points to the log.
 ## `status`
 
 ```bash
-qwen-launcher status
+bora status
 ```
 
 Shows the service, PID, mode, backend, port, and log. It first verifies each entry through
@@ -154,7 +154,7 @@ quarantined as `services.corrupt-<timestamp>.json`. No services at all is a succ
 ## `stop`
 
 ```bash
-qwen-launcher stop
+bora stop
 ```
 
 Stops only processes whose identity matches the state. It waits up to 10 seconds after `terminate`,
@@ -164,7 +164,7 @@ then uses `kill` and waits up to 5 seconds. It is idempotent: no services return
 ## `calibrate`
 
 ```bash
-qwen-launcher calibrate --mode <coding|studio|vstudio|all> [--preference <envelope>]
+bora calibrate --mode <coding|studio|vstudio|all> [--preference <envelope>]
 ```
 
 The command shows a preflight and asks for confirmation before starting any process. It measures
@@ -180,11 +180,11 @@ candidate record per completed mode, and activates it atomically unless told oth
 | `--target-ctx N` | collapses the context ladder onto a single approved step |
 
 ```bash
-qwen-launcher calibrate --mode all
-qwen-launcher calibrate --mode coding --preference fast
-qwen-launcher calibrate --mode all --preference max-context --no-activate
-qwen-launcher calibrate --mode all --activate
-qwen-launcher calibrate --mode coding --target-ctx 98304
+bora calibrate --mode all
+bora calibrate --mode coding --preference fast
+bora calibrate --mode all --preference max-context --no-activate
+bora calibrate --mode all --activate
+bora calibrate --mode coding --target-ctx 98304
 ```
 
 Allowed targets: `131072`, `98304`, `65536`, `49152`, `32768`, `16384`, `8192` — the same steps the
@@ -212,7 +212,7 @@ Algorithm and record details: [Calibration](calibration.md).
 ## `uninstall`
 
 ```bash
-qwen-launcher uninstall
+bora uninstall
 ```
 
 Refuses to proceed while a live managed service exists. It shows the configuration, data, cache,

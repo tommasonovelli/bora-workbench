@@ -8,28 +8,28 @@ import pytest
 import typer
 from rich.console import Console
 
-import qwen_launcher._cli_calibration as calibration_cli
-from qwen_launcher._calibration_outcomes import UnclassifiableTrialError
-from qwen_launcher._calibration_run_types import RunResult
-from qwen_launcher._calibration_runner import ModeResult
-from qwen_launcher._calibration_types import (
+import bora_workbench._cli_calibration as calibration_cli
+from bora_workbench._calibration_outcomes import UnclassifiableTrialError
+from bora_workbench._calibration_run_types import RunResult
+from bora_workbench._calibration_runner import ModeResult
+from bora_workbench._calibration_types import (
     CONTEXT_SCALE,
     PREFERENCES,
     EnvelopeResult,
     GateResult,
     SearchError,
 )
-from qwen_launcher._cli_calibration import (
+from bora_workbench._cli_calibration import (
     CalibrationCliInput,
     CalibrationCliOutput,
     _preference,
     _validate,
     run_calibrate,
 )
-from qwen_launcher._cli_calibration_options import parse_calibration_options
-from qwen_launcher._cli_calibration_summary import show_outcome
-from qwen_launcher.calibration import CalibrationError
-from qwen_launcher.profiles import load_catalog
+from bora_workbench._cli_calibration_options import parse_calibration_options
+from bora_workbench._cli_calibration_summary import show_outcome
+from bora_workbench.calibration import CalibrationError
+from bora_workbench.profiles import load_catalog
 from tests.sample_fixtures import sample
 
 

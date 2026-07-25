@@ -6,7 +6,7 @@ import json
 
 import pytest
 
-from qwen_launcher._calibration_record import (
+from bora_workbench._calibration_record import (
     RecordError,
     RecordSupersededError,
     candidate_record_path,

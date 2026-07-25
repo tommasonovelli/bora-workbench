@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from qwen_launcher._calibration_outcomes import ClassifiedOutcome, TrialOutcome
-from qwen_launcher._calibration_sampling import GroupPlan, SearchProvider, search_samples
-from qwen_launcher._calibration_types import (
+from bora_workbench._calibration_outcomes import ClassifiedOutcome, TrialOutcome
+from bora_workbench._calibration_sampling import GroupPlan, SearchProvider, search_samples
+from bora_workbench._calibration_types import (
     CONTEXT_SCALE,
     Sample,
     SearchError,

@@ -8,14 +8,14 @@ import json
 import httpx
 import pytest
 
-from qwen_launcher.benchmark import BenchmarkError
-from qwen_launcher.benchmark_quick import (
+from bora_workbench.benchmark import BenchmarkError
+from bora_workbench.benchmark_quick import (
     LONG_REQUEST_SHA256,
     SHORT_REQUEST_SHA256,
     run_quick_bench,
     verify_protocol_resources,
 )
-from qwen_launcher.resources import resource
+from bora_workbench.resources import resource
 
 
 def quick_response(

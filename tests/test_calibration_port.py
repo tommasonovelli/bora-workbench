@@ -5,8 +5,8 @@ from __future__ import annotations
 import socket
 from dataclasses import replace
 
-from qwen_launcher._calibration_trial import TrialRunner
-from qwen_launcher.config import Config
+from bora_workbench._calibration_trial import TrialRunner
+from bora_workbench.config import Config
 from tests.record_fixtures import cpu_hardware, record_target
 
 

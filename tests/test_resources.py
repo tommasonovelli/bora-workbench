@@ -2,7 +2,7 @@ import hashlib
 
 import pytest
 
-from qwen_launcher.resources import read_json, read_text, resource_as_file
+from bora_workbench.resources import read_json, read_text, resource_as_file
 
 
 def test_read_packaged_resource():

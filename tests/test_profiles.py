@@ -4,7 +4,7 @@ from dataclasses import FrozenInstanceError
 
 import pytest
 
-from qwen_launcher.profiles import ContentError, load_catalog
+from bora_workbench.profiles import ContentError, load_catalog
 from tests.content_fixtures import build_valid_content, copy_resource_root, read_json, write_json
 
 

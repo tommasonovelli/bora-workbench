@@ -9,10 +9,10 @@ from pathlib import Path
 import httpx
 import pytest
 
-import qwen_launcher._process_health as health
-from qwen_launcher.engine import load_engine_lock
-from qwen_launcher.process import StartRequest, start_service, stop_services
-from qwen_launcher.profiles import LaunchPlan, load_catalog
+import bora_workbench._process_health as health
+from bora_workbench.engine import load_engine_lock
+from bora_workbench.process import StartRequest, start_service, stop_services
+from bora_workbench.profiles import LaunchPlan, load_catalog
 
 _FAKE_SERVER = Path(__file__).parent / "fakes" / "fake_server.py"
 

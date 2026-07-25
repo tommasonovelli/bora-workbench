@@ -9,10 +9,10 @@ from unittest.mock import Mock
 
 import pytest
 
-import qwen_launcher._engine_probe as engine_probe
-import qwen_launcher.engine as engine
-from qwen_launcher.config import Config
-from qwen_launcher.profiles import LaunchPlan, load_catalog
+import bora_workbench._engine_probe as engine_probe
+import bora_workbench.engine as engine
+from bora_workbench.config import Config
+from bora_workbench.profiles import LaunchPlan, load_catalog
 
 
 def plan(tmp_path: Path, backend: str = "cpu", mode_id: str = "coding") -> LaunchPlan:

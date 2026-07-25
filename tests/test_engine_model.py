@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-import qwen_launcher.engine as engine
-from qwen_launcher.config import Config
+import bora_workbench.engine as engine
+from bora_workbench.config import Config
 
 
 def tiny_lock(data: bytes = b"model") -> engine.JsonObject:

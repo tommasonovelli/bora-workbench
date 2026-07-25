@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from qwen_launcher._calibration_gguf import GgufError, read_block_count
+from bora_workbench._calibration_gguf import GgufError, read_block_count
 
 
 def _string(value: str) -> bytes:

@@ -34,7 +34,7 @@ uv sync --frozen
 uv run --frozen ruff check .
 uv run --frozen ruff format --check .
 uv run --frozen pytest
-uv run --frozen qwen-launcher validate
+uv run --frozen bora validate
 ```
 
 Delete `dist/` before the build, then:
@@ -188,8 +188,8 @@ The `0.1.0` job failed with `invalid-publisher` because PyPI does not have the m
 configuration yet. The Trusted Publisher must specify:
 
 ```text
-project:      qwen-launcher
-owner/repo:   tommasonovelli/qwen-launcher
+project:      bora-workbench
+owner/repo:   tommasonovelli/bora-workbench
 workflow:     release.yml
 environment:  pypi
 ```

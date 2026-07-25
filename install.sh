@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# install.sh - explicit-source installer for qwen-launcher 0.1 on Linux.
+# install.sh - explicit-source installer for bora-workbench 0.1 on Linux.
 #
 # IMPLEMENTATION_SPEC.md sections 5.10-5.12 require a small, idempotent installer that verifies
 # prerequisites, pins uv 0.11.28 through its official versioned installer, and installs the tool
@@ -9,7 +9,7 @@ set -eu
 
 UV_VERSION="0.11.28"
 PYTHON_VERSION="3.12.13"
-REPO_URL="https://github.com/tommasonovelli/qwen-launcher.git"
+REPO_URL="https://github.com/tommasonovelli/bora-workbench.git"
 UV_INSTALLER_URL="https://astral.sh/uv/${UV_VERSION}/install.sh"
 
 # Print an actionable error to stderr without a traceback and exit with a contractual code
@@ -148,15 +148,15 @@ fi
 if [ -n "$wheel" ]; then
     target="$wheel"
 elif [ -n "$git_commit" ]; then
-    target="qwen-launcher @ git+${REPO_URL}@${git_commit}"
+    target="bora-workbench @ git+${REPO_URL}@${git_commit}"
 else
-    target="qwen-launcher==${pypi_version}"
+    target="bora-workbench==${pypi_version}"
 fi
 
 "$uv_bin" tool install --force --python "$PYTHON_VERSION" "$target" ||
     die "uv could not install the tool from the requested source" 1
 
-printf 'install.sh: installed qwen-launcher with uv %s and Python %s.\n' \
+printf 'install.sh: installed bora-workbench with uv %s and Python %s.\n' \
     "$UV_VERSION" "$PYTHON_VERSION"
 printf 'install.sh: re-running this installer is safe.\n'
-printf 'install.sh: to remove the tool and managed data, run: qwen-launcher uninstall\n'
+printf 'install.sh: to remove the tool and managed data, run: bora uninstall\n'

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from qwen_launcher._calibration_progress import ProgressEvent, TrialProgress
+from bora_workbench._calibration_progress import ProgressEvent, TrialProgress
 
 
 class _Clock:

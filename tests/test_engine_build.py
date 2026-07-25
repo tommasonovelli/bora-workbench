@@ -8,9 +8,9 @@ from unittest.mock import Mock
 
 import pytest
 
-import qwen_launcher._engine_build as builder
-from qwen_launcher._engine_types import EngineError
-from qwen_launcher.engine import load_engine_lock
+import bora_workbench._engine_build as builder
+from bora_workbench._engine_types import EngineError
+from bora_workbench.engine import load_engine_lock
 
 
 class _FakeProcess:

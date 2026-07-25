@@ -10,12 +10,12 @@ import pytest
 from rich.console import Console
 from typer.testing import CliRunner
 
-import qwen_launcher._cli_services as service_cli
-from qwen_launcher.cli import app
-from qwen_launcher.config import Config
-from qwen_launcher.engine import ResolvedModel
-from qwen_launcher.hardware import HardwareInfo
-from qwen_launcher.profiles import load_catalog
+import bora_workbench._cli_services as service_cli
+from bora_workbench.cli import app
+from bora_workbench.config import Config
+from bora_workbench.engine import ResolvedModel
+from bora_workbench.hardware import HardwareInfo
+from bora_workbench.profiles import load_catalog
 
 runner = CliRunner()
 

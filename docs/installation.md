@@ -2,7 +2,7 @@
 
 ## 1. Requirements
 
-`qwen-launcher` supports:
+`bora-workbench` supports:
 
 - Ubuntu 22.04 or later, x86-64;
 - Windows 11, x86-64;
@@ -20,15 +20,15 @@ data, the launcher uses the CPU backend and shows why.
 ## 2. Installing the public release
 
 The public release is `0.1.6`. PyPI is still unavailable; use the artifacts of the
-[GitHub Release v0.1.6](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.6).
+[GitHub Release v0.1.6](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.1.6).
 The release attaches the wheel, sdist, installers, and `SHA256SUMS` produced by the cross-platform
 test/build run. A published release is never modified in place.
 
 ### Ubuntu
 
 ```bash
-base="https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.6"
-wheel="qwen_launcher-0.1.6-py3-none-any.whl"
+base="https://github.com/tommasonovelli/bora-workbench/releases/download/v0.1.6"
+wheel="bora_workbench-0.1.6-py3-none-any.whl"
 curl --fail --location "$base/install.sh" --output install.sh
 curl --fail --location "$base/$wheel" --output "$wheel"
 curl --fail --location "$base/SHA256SUMS" --output SHA256SUMS
@@ -43,8 +43,8 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 From PowerShell:
 
 ```powershell
-$base = "https://github.com/tommasonovelli/qwen-launcher/releases/download/v0.1.6"
-$wheel = "qwen_launcher-0.1.6-py3-none-any.whl"
+$base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v0.1.6"
+$wheel = "bora_workbench-0.1.6-py3-none-any.whl"
 Invoke-WebRequest "$base/install.ps1" -OutFile install.ps1
 Invoke-WebRequest "$base/$wheel" -OutFile $wheel
 Invoke-WebRequest "$base/SHA256SUMS" -OutFile SHA256SUMS
@@ -79,9 +79,9 @@ install.ps1 -PypiVersion VERSION
 ## 3. Verifying the tool
 
 ```bash
-qwen-launcher --version
-qwen-launcher validate
-qwen-launcher doctor
+bora --version
+bora validate
+bora doctor
 ```
 
 `validate` checks the installed locks, schemas, and content. `doctor` reads the configuration,
@@ -111,8 +111,8 @@ because an alternative mmproj is not configurable.
 ## 5. Installing the engine
 
 ```bash
-qwen-launcher engine install
-qwen-launcher engine status
+bora engine install
+bora engine status
 ```
 
 The backend is chosen from the detected hardware. Ubuntu CPU and Windows CPU use verified prebuilts;
@@ -132,8 +132,8 @@ minutes. The final version and help probes stay bounded to 60 seconds each. See 
 The minimal path:
 
 ```bash
-qwen-launcher doctor
-qwen-launcher coding
+bora doctor
+bora coding
 ```
 
 Without a valid local record the launcher uses the verified `ctx=8192` baseline; on CUDA it also
@@ -142,7 +142,7 @@ uses `n_cpu_moe=48`. The CLI declares it as not optimized.
 To measure the machine before ordinary launches:
 
 ```bash
-qwen-launcher calibrate --mode all
+bora calibrate --mode all
 ```
 
 Calibration can run for a long time, creates local processes, and activates the resulting records by
@@ -151,24 +151,24 @@ default. Read [Calibration](calibration.md) before starting it.
 The available modes are:
 
 ```bash
-qwen-launcher coding    # text API, no UI and no vision
-qwen-launcher studio    # text chat in the built-in UI
-qwen-launcher vstudio   # built-in UI and image input
+bora coding    # text API, no UI and no vision
+bora studio    # text chat in the built-in UI
+bora vstudio   # built-in UI and image input
 ```
 
 The processes stay in the foreground. `Ctrl-C` performs the cleanup and exits with code 130. From
 another terminal you can use:
 
 ```bash
-qwen-launcher status
-qwen-launcher stop
+bora status
+bora stop
 ```
 
 ## 7. Removal
 
 ```bash
-qwen-launcher stop
-qwen-launcher uninstall
+bora stop
+bora uninstall
 ```
 
 `uninstall` shows the four managed roots and the Python installation, then asks for a single

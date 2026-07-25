@@ -12,10 +12,10 @@ from unittest.mock import Mock
 import psutil
 import pytest
 
-import qwen_launcher._process_control as control
-from qwen_launcher._process_lock import StartLockError, acquire_start_lock
-from qwen_launcher._process_state import ServiceState, write_state
-from qwen_launcher.process import status_services, stop_services
+import bora_workbench._process_control as control
+from bora_workbench._process_lock import StartLockError, acquire_start_lock
+from bora_workbench._process_state import ServiceState, write_state
+from bora_workbench.process import status_services, stop_services
 
 
 def service_for(process: subprocess.Popen[str], root: Path, *, create_time: float | None = None):

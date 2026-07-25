@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from qwen_launcher.validation import validate_resources
+from bora_workbench.validation import validate_resources
 from tests.content_fixtures import copy_resource_root, read_json, write_json
 
 

@@ -8,9 +8,9 @@ from unittest.mock import Mock
 
 import pytest
 
-import qwen_launcher._calibration_vram as vram_module
-import qwen_launcher._hardware_monitoring as monitoring
-from qwen_launcher._calibration_vram import (
+import bora_workbench._calibration_vram as vram_module
+import bora_workbench._hardware_monitoring as monitoring
+from bora_workbench._calibration_vram import (
     VramEnvironmentError,
     VramError,
     VramMonitor,
@@ -18,7 +18,7 @@ from qwen_launcher._calibration_vram import (
     VramReserveError,
     VramThresholds,
 )
-from qwen_launcher._hardware_monitoring import GpuSnapshot
+from bora_workbench._hardware_monitoring import GpuSnapshot
 
 
 def snapshot(

@@ -6,13 +6,13 @@ from unittest.mock import Mock
 
 import pytest
 
-import qwen_launcher._tool_uninstall as tool_uninstall
-import qwen_launcher._tool_uninstall_helper as helper
+import bora_workbench._tool_uninstall as tool_uninstall
+import bora_workbench._tool_uninstall_helper as helper
 
 
 def _tool_environment(tmp_path: Path) -> Path:
     """Create the minimum uv receipt required to identify one managed tool environment."""
-    environment = tmp_path / "tools" / "qwen-launcher"
+    environment = tmp_path / "tools" / "bora-workbench"
     environment.mkdir(parents=True)
     (environment / "uv-receipt.toml").write_text("[tool]\n", encoding="utf-8")
     return environment

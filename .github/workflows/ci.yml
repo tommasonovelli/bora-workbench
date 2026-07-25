@@ -42,7 +42,7 @@ jobs:
         run: uv run --frozen pytest
 
       - name: Validate packaged content
-        run: uv run --frozen qwen-launcher validate
+        run: uv run --frozen bora validate
 
       - name: Build distributions
         run: uv build

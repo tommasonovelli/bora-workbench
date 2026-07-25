@@ -7,10 +7,10 @@ from pathlib import Path
 
 import pytest
 
-import qwen_launcher._engine_manifest as manifest_module
-import qwen_launcher.engine as engine
-from qwen_launcher._engine_manifest import Activation
-from qwen_launcher._engine_types import EngineError
+import bora_workbench._engine_manifest as manifest_module
+import bora_workbench.engine as engine
+from bora_workbench._engine_manifest import Activation
+from bora_workbench._engine_types import EngineError
 
 
 def test_interrupted_atomic_replace_preserves_current_manifest(tmp_path, monkeypatch) -> None:

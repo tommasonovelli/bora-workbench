@@ -3,8 +3,8 @@ requires = ["uv_build>=0.11.28,<0.12"]
 build-backend = "uv_build"
 
 [project]
-name = "qwen-launcher"
-version = "0.1.6"
+name = "bora-workbench"
+version = "0.2.0"
 description = "Local, reproducible launcher for a calibrated Qwen model and llama.cpp"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
@@ -20,7 +20,7 @@ dependencies = [
 ]
 
 [project.scripts]
-qwen-launcher = "qwen_launcher.cli:app"
+bora = "bora_workbench.cli:app"
 
 [dependency-groups]
 dev = [

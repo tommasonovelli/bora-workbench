@@ -6,14 +6,14 @@ import threading
 
 import pytest
 
-from qwen_launcher._calibration_gpu_contexts import GpuContextBaseline
-from qwen_launcher._calibration_vram import (
+from bora_workbench._calibration_gpu_contexts import GpuContextBaseline
+from bora_workbench._calibration_vram import (
     VramEnvironmentError,
     VramMonitor,
     VramThresholds,
 )
-from qwen_launcher._gpu_process_identity import GpuProcessIdentity
-from qwen_launcher._hardware_monitoring import GpuSnapshot
+from bora_workbench._gpu_process_identity import GpuProcessIdentity
+from bora_workbench._hardware_monitoring import GpuSnapshot
 
 
 def context(pid: int, created: float, executable: str) -> GpuProcessIdentity:

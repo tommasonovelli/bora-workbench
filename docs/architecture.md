@@ -2,7 +2,7 @@
 
 ## Product scope
 
-`qwen-launcher` is a specialized launcher, not a generic model manager. It governs one precise
+`bora-workbench` is a specialized launcher, not a generic model manager. It governs one precise
 combination of:
 
 - the default Qwen model and vision projector;
@@ -78,7 +78,7 @@ It contains no production `profile/v1` profiles, and nothing in the shared repor
 runtime catalog: context, hardware, tok/s, and the observed envelope cannot enter another host's
 plan.
 
-`qwen-launcher validate` meta-validates the schemas, validates the documents, and reconstructs the
+`bora validate` meta-validates the schemas, validates the documents, and reconstructs the
 links JSON Schema cannot express, including digests, domain, reserves, candidates, and lock
 compatibility.
 
@@ -203,7 +203,7 @@ The algorithm, record lifecycle, and empirical limits are described in
 
 ## Security boundaries and side effects
 
-Importing `qwen_launcher` uses no network, creates no directories, writes no state, and starts no
+Importing `bora_workbench` uses no network, creates no directories, writes no state, and starts no
 processes. Every side effect belongs to the operation that requires it.
 
 The main invariants:
