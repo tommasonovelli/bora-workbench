@@ -87,11 +87,13 @@ def test_outcome_shows_all_three_envelopes_and_marks_the_active_one() -> None:
         )
         for preference in PREFERENCES
     }
+    record_path = Path("/records/coding.json")
+    evidence_path = Path("/evidence/run")
     result = RunResult(
         "a" * 32,
-        (Path("/records/coding.json"),),
+        (record_path,),
         (ModeResult(mode, envelopes, (sample(65536, 37, 100.0),), {}),),
-        Path("/evidence/run"),
+        evidence_path,
     )
     console = Console(record=True, width=200)
     show_outcome(result, "max_context", console)
@@ -99,7 +101,8 @@ def test_outcome_shows_all_three_envelopes_and_marks_the_active_one() -> None:
     assert "fast" in text and "balanced" in text
     assert "max_context (active)" in text
     assert "n_cpu_moe=37" in text
-    assert "/evidence/run" in text
+    # Compare rendered paths, not POSIX literals: the separator differs per platform.
+    assert str(evidence_path) in text
 
 
 @pytest.mark.parametrize(
@@ -148,9 +151,10 @@ def test_a_partial_run_prints_its_records_and_still_exits_operationally(monkeypa
         )
         for preference in PREFERENCES
     }
+    record_path = Path("/records/coding.json")
     result = RunResult(
         "a" * 32,
-        (Path("/records/coding.json"),),
+        (record_path,),
         (ModeResult(mode, envelopes, (sample(65536, 37, 100.0),), {}),),
         Path("/evidence/run"),
         ("vstudio: (65536, 36) is no longer feasible",),
@@ -168,6 +172,7 @@ def test_a_partial_run_prints_its_records_and_still_exits_operationally(monkeypa
 
     text = console.export_text()
     assert exit_info.value.exit_code == 1
-    assert "/records/coding.json" in text
+    # Compare rendered paths, not POSIX literals: the separator differs per platform.
+    assert str(record_path) in text
     assert "vstudio" in text
     assert "partially" in text
