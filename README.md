@@ -5,20 +5,40 @@
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-31213/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-`qwen-launcher` installs, calibrates, and governs one precise local configuration of Qwen and
-`llama.cpp`. It is meant for anyone who wants to start the model without rebuilding flags, checksums,
-profiles, and server lifecycle every time.
+**One Qwen setup, three local experiences.**
 
-The project pins:
+| Command | What you get |
+|---|---|
+| `qwen-launcher coding` | a local OpenAI-compatible API for editors, scripts, and agents |
+| `qwen-launcher studio` | browser-based local chat in the built-in `llama.cpp` UI |
+| `qwen-launcher vstudio` | the same UI with the pinned vision projector, for multimodal chat |
 
-- the `unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M` model;
-- `llama.cpp b10011` at its verified commit;
-- three usage modes (`coding`, `studio`, `vstudio`);
-- a safe engine installation;
-- local calibration for the current machine;
-- status, logs, health checks, and identity-safe stop.
+`qwen-launcher` is a ready-to-use local Qwen environment. It installs the verified `llama.cpp`
+engine for the hardware it detects, resolves and checks the model, and manages the complete service
+lifecycle: start, health check, status, logs, and an identity-safe stop. Services listen on
+`127.0.0.1` only.
 
-It is not a generic model manager and it runs no plugins. Services listen on `127.0.0.1` only.
+You provide the weights. Everything else — engine build, flags, checksums, ports, and process
+lifetime — is already decided, pinned, and verified.
+
+## Why it exists
+
+Running a large MoE model locally normally means rebuilding the same decisions by hand every time:
+which engine build matches the GPU, which flags the model card actually requires, whether the files
+on disk are the ones those flags were tested against, which port is free, and what is still running
+an hour later. This launcher turns that into one decision, made once:
+
+- the `unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M` model, pinned to one revision and digest;
+- `llama.cpp b10011` at its verified commit, installed for the detected backend;
+- three modes whose flags and sampling come from validated declarative content;
+- status, logs, health checks, and a stop that verifies process identity before killing anything.
+
+It is a finished, opinionated setup rather than a fitting algorithm. It does not survey the model
+landscape to suggest what you should run, and it does not stop at making memory fit: it gives you
+three defined ways to use one combination that is known to work, and then offers to tune that
+combination for your machine.
+
+It is not a generic model manager and it runs no plugins.
 
 ## Start here
 
@@ -28,8 +48,9 @@ If this is your first time opening the project, the simplest path is:
 2. [install the release](#installation);
 3. make the [pinned model](#model) available;
 4. run `engine install`;
-5. start `coding`, or calibrate the machine first;
-6. use the [full documentation](docs/README.md) when you want to understand configuration and details.
+5. start `coding`, `studio`, or `vstudio`;
+6. once that works, [calibrate the machine](#calibration-is-the-second-step-not-the-entry-price);
+7. use the [full documentation](docs/README.md) when you want configuration and details.
 
 ## Project status
 
@@ -41,10 +62,7 @@ If this is your first time opening the project, the simplest path is:
 The current release is **`0.1.5`**, published on
 [GitHub Releases](https://github.com/tommasonovelli/qwen-launcher/releases/tag/v0.1.5). It is the
 first fully English release and republishes the calibration evidence with a regenerated digest
-chain; the runtime is unchanged. `calibration/v5` remains the default and the only protocol to use for a
-real calibration: `calibration/v6-lite` ships opt-in (`--protocol v6`) but **does not work yet**,
-because its real trial adapter has never been validated on hardware (D-066).
-PyPI remains unavailable.
+chain; the runtime is unchanged. PyPI remains unavailable.
 
 ## Requirements
 
@@ -135,19 +153,48 @@ qwen-launcher engine install
 qwen-launcher engine status
 ```
 
-You can then start right away on the verified baseline:
+Then pick an experience and start it:
 
 ```bash
 qwen-launcher coding
 ```
 
-The baseline uses `ctx=8192` and, on CUDA, `n_cpu_moe=48`. It works, but it is not optimized.
+After READY the CLI shows the API/UI URLs and the log path. All three modes serve the API at
+`http://127.0.0.1:<llama_port>/v1`; `coding` keeps UI and vision disabled, while `studio` and
+`vstudio` also serve the built-in UI and open the browser only when `open_browser=true`. The process
+stays in the foreground, and `Ctrl-C` stops it and cleans up the state.
 
-To measure the machine first and activate a local configuration for every mode:
+Control it from another terminal:
+
+```bash
+qwen-launcher status
+qwen-launcher stop
+```
+
+The full command surface, options, and exit codes are in [Commands](docs/commands.md).
+
+## Calibration is the second step, not the entry price
+
+The launcher is useful before you ever calibrate. All three modes start on the verified baseline —
+`ctx=8192`, and on CUDA `n_cpu_moe=48` — and the CLI states plainly that it is not optimized.
+
+Calibration is what you run once the setup already works, to fit it to *this* machine:
 
 ```bash
 qwen-launcher calibrate --mode all
 ```
+
+It measures `coding`, `studio`, and `vstudio`, finds how much context the hardware can actually
+serve, and compares the feasible configurations by latency, throughput, and memory margin. Each mode
+gets one private record holding three launch envelopes — `fast`, `balanced`, and `max-context` — of
+which one is active:
+
+```bash
+qwen-launcher calibrate --mode all --preference max-context
+```
+
+It does not change the model or the quality of the answers: it changes how much context you can
+hold, how the work is split between CPU and GPU, and the throughput you get from that split.
 
 Calibration can run for a long time and starts many temporary processes; it always shows a preflight
 and asks for confirmation. Read [Local calibration](docs/calibration.md) before running it.
@@ -158,29 +205,10 @@ and asks for confirmation. Read [Local calibration](docs/calibration.md) before 
 - **Mode**: the service behavior (UI, vision, and sampling).
 - **Baseline**: the verified configuration used when no local calibration exists.
 - **Local record**: the private result of calibrating this machine, for one mode only.
-- **Shared seed**: a hint about trial ordering; it never copies another machine's configuration.
+- **Envelope**: one measured set of launch parameters; a record holds three, one of them active.
 
 The launcher reuses a record only when the machine, model, engine, mode, and current memory are still
 compatible. Otherwise it explains why and falls back to the baseline.
-
-## Available modes
-
-| Command | Experience |
-|---|---|
-| `qwen-launcher coding` | text-only OpenAI-compatible API, UI and vision disabled |
-| `qwen-launcher studio` | text chat in the built-in llama.cpp UI |
-| `qwen-launcher vstudio` | built-in UI with the pinned vision projector |
-
-After READY the CLI shows the API/UI URLs and the log path. `studio` and `vstudio` open the browser
-only when `open_browser=true`. The process stays in the foreground; `Ctrl-C` stops it and cleans up
-the state.
-
-Control it from another terminal:
-
-```bash
-qwen-launcher status
-qwen-launcher stop
-```
 
 ## Minimal configuration
 
