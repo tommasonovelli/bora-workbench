@@ -8,7 +8,7 @@ import pytest
 from rich.console import Console
 
 from bora_workbench._cli_engine_progress import EngineInstallProgress
-from bora_workbench._engine_types import InstallProgressEvent
+from bora_workbench.engine import InstallProgressEvent
 
 
 def test_redirected_progress_prints_each_phase_once() -> None:

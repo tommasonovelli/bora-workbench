@@ -14,7 +14,7 @@ from bora_workbench._cli_theme import (
     phase_result_style,
     progress_columns,
 )
-from bora_workbench._engine_types import InstallProgressEvent
+from bora_workbench.engine import InstallProgressEvent
 
 
 def _format_duration(seconds: float) -> str:

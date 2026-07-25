@@ -10,8 +10,8 @@ from rich.console import Console
 from rich.table import Table
 
 from bora_workbench._cli_theme import print_error, print_warning, status_table
-from bora_workbench._engine_types import EngineStatus
 from bora_workbench.config import Config, ConfigError, load_config
+from bora_workbench.engine import EngineStatus
 from bora_workbench.hardware import HardwareError, HardwareInfo, detect_hardware
 
 

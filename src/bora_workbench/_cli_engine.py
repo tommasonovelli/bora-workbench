@@ -13,8 +13,14 @@ from bora_workbench._cli_theme import (
     print_warning,
     status_table,
 )
-from bora_workbench._engine_types import Backend, EngineStatus, InstallResult
-from bora_workbench.engine import EngineError, engine_status, install_engine
+from bora_workbench.engine import (
+    Backend,
+    EngineError,
+    EngineStatus,
+    InstallResult,
+    engine_status,
+    install_engine,
+)
 from bora_workbench.hardware import HardwareError, detect_hardware
 
 

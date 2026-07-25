@@ -8,8 +8,8 @@ from types import SimpleNamespace
 from typer.testing import CliRunner
 
 import bora_workbench._cli_engine as engine_cli
-from bora_workbench._engine_types import EngineStatus, InstallProgressEvent, InstallResult
 from bora_workbench.cli import app
+from bora_workbench.engine import EngineStatus, InstallProgressEvent, InstallResult
 
 runner = CliRunner()
 
