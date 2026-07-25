@@ -1,10 +1,17 @@
-"""Run the immutable benchmark/v1 request and validate every measured response."""
+"""Run the immutable benchmark/v1 request and validate every measured response.
+
+benchmark/v1 is the only protocol this module implements (specification section 4.1); the
+calibration selection workload lives in `benchmark_quick.py` because it measures different
+evidence against different pinned payloads.
+"""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import math
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from statistics import median
 from typing import cast
@@ -79,6 +86,20 @@ def verify_protocol_resources() -> None:
             raise BenchmarkError(f"protocol resource digest mismatch: {path}")
 
 
+@contextmanager
+def _session(client: httpx.Client | None) -> Iterator[httpx.Client]:
+    """Yield the caller's client, or one this module owns and closes on exit.
+
+    A caller that runs several workloads passes its own client so the connection pool is reused;
+    when none is supplied the run must not leak the pool it created.
+    """
+    if client is not None:
+        yield client
+        return
+    with httpx.Client() as owned:
+        yield owned
+
+
 def _post(client: httpx.Client, url: str, request: JsonObject) -> JsonObject:
     """Submit one bounded loopback request and require a JSON object response."""
     try:
@@ -119,57 +140,41 @@ def _measurement(value: JsonObject) -> float:
     return measured
 
 
-def _client(selected: httpx.Client | None) -> tuple[httpx.Client, bool]:
-    """Return the injected client or one owned synchronous client."""
-    return (selected, False) if selected is not None else (httpx.Client(), True)
-
-
 def run_probe(base_url: str, client: httpx.Client | None = None) -> float:
     """Run one verified textual workload without treating it as a benchmark measurement set."""
     verify_protocol_resources()
-    selected, is_owned = _client(client)
-    try:
-        response = _post(selected, f"{base_url}/v1/chat/completions", _load_request(_REQUEST_PATH))
+    with _session(client) as session:
+        response = _post(session, f"{base_url}/v1/chat/completions", _load_request(_REQUEST_PATH))
         return _measurement(response)
-    finally:
-        if is_owned:
-            selected.close()
 
 
 def run_vision_probe(base_url: str, client: httpx.Client | None = None) -> None:
     """Run the red-image request verified by Spike 0 and require its observed answer."""
     verify_protocol_resources()
-    selected, is_owned = _client(client)
-    try:
-        response = _post(
-            selected,
-            f"{base_url}/v1/chat/completions",
-            _load_request(_VISION_REQUEST_PATH),
-        )
-        choices = cast(list[JsonObject], response.get("choices"))
-        message = cast(JsonObject, choices[0]["message"])
-        if "rosso" not in str(message["content"]).casefold():
-            raise BenchmarkError("vision workload did not identify the verified red image")
-    except (KeyError, IndexError, TypeError) as error:
-        raise BenchmarkError("vision response is missing assistant content") from error
-    finally:
-        if is_owned:
-            selected.close()
+    with _session(client) as session:
+        try:
+            response = _post(
+                session,
+                f"{base_url}/v1/chat/completions",
+                _load_request(_VISION_REQUEST_PATH),
+            )
+            choices = cast(list[JsonObject], response.get("choices"))
+            message = cast(JsonObject, choices[0]["message"])
+            if "rosso" not in str(message["content"]).casefold():
+                raise BenchmarkError("vision workload did not identify the verified red image")
+        except (KeyError, IndexError, TypeError) as error:
+            raise BenchmarkError("vision response is missing assistant content") from error
 
 
 def run_benchmark(base_url: str, client: httpx.Client | None = None) -> BenchmarkResult:
     """Execute one excluded warm-up and exactly five valid benchmark/v1 measurements."""
     verify_protocol_resources()
-    selected, is_owned = _client(client)
-    try:
+    with _session(client) as session:
         url = f"{base_url}/v1/chat/completions"
-        warmup = _measurement(_post(selected, url, _load_request(_REQUEST_PATH)))
+        warmup = _measurement(_post(session, url, _load_request(_REQUEST_PATH)))
         values = tuple(
-            _measurement(_post(selected, url, _load_request(_REQUEST_PATH))) for _ in range(5)
+            _measurement(_post(session, url, _load_request(_REQUEST_PATH))) for _ in range(5)
         )
-    finally:
-        if is_owned:
-            selected.close()
     measured = cast(tuple[float, float, float, float, float], values)
     summary = TokenRate(min(measured), median(measured), max(measured))
     return BenchmarkResult(warmup, measured, summary)

@@ -1,7 +1,9 @@
 """Run the calibration quick-bench selection workload (IMPLEMENTATION_SPEC.md 1.3).
 
 Every metric is read from the response ``timings`` and the wall clock, so no server log parsing or
-SSE is needed. ``benchmark.py`` (benchmark/v1) stays intact for the feasibility probe.
+SSE is needed. This is a separate protocol from the one in ``benchmark.py``: it measures different
+evidence (end-to-end latency, prefill throughput, MTP draft counters) against its own pinned
+payloads, and specification section 4.1 reserves ``benchmark.py`` for benchmark/v1.
 """
 
 from __future__ import annotations
@@ -9,6 +11,8 @@ from __future__ import annotations
 import hashlib
 import json
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from statistics import median
 from typing import cast
@@ -18,15 +22,23 @@ import httpx
 from bora_workbench.benchmark import BenchmarkError, BenchmarkHttpError, BenchmarkRetryableError
 from bora_workbench.resources import resource
 
-_SHORT_REQUEST_PATH = "benchmark-quick/short-request.json"
-_LONG_REQUEST_PATH = "benchmark-quick/long-request.json"
-SHORT_REQUEST_SHA256 = "c85566582ec1f7dbdefa2bdd4c44133729461047418a6a7dfc3cc9953733ee9e"
-LONG_REQUEST_SHA256 = "03492ca4051c2565bb75bf80e9e079ba7b0c7dbd8c78530a6b04c39bbcaaa0ee"
-_SHORT_TOKENS = 128
-_LONG_TOKENS = 64
-_SHORT_RUNS = 3
 _REQUEST_TIMEOUT_SECONDS = 15 * 60.0
 JsonObject = dict[str, object]
+
+
+@dataclass(frozen=True, slots=True)
+class _Workload:
+    """Group one quick-bench request template with its verification target."""
+
+    path: str
+    name: str
+    expected_n: int
+
+
+_SHORT_WORKLOAD = _Workload("benchmark-quick/short-request.json", "short", 128)
+_LONG_WORKLOAD = _Workload("benchmark-quick/long-request.json", "long", 64)
+SHORT_REQUEST_SHA256 = "c85566582ec1f7dbdefa2bdd4c44133729461047418a6a7dfc3cc9953733ee9e"
+LONG_REQUEST_SHA256 = "03492ca4051c2565bb75bf80e9e079ba7b0c7dbd8c78530a6b04c39bbcaaa0ee"
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,15 +79,6 @@ class QuickBenchResult:
         return self.long.prompt_per_second
 
 
-@dataclass(frozen=True, slots=True)
-class _Workload:
-    """Group one quick-bench request template with its verification target."""
-
-    path: str
-    name: str
-    expected_n: int
-
-
 def _load_request(path: str) -> JsonObject:
     """Load one immutable quick-bench request template as a fresh JSON object."""
     try:
@@ -90,12 +93,26 @@ def _load_request(path: str) -> JsonObject:
 def verify_protocol_resources() -> None:
     """Require byte-identical quick-bench resources before measuring (section 5.6)."""
     expected = (
-        (_SHORT_REQUEST_PATH, SHORT_REQUEST_SHA256),
-        (_LONG_REQUEST_PATH, LONG_REQUEST_SHA256),
+        (_SHORT_WORKLOAD.path, SHORT_REQUEST_SHA256),
+        (_LONG_WORKLOAD.path, LONG_REQUEST_SHA256),
     )
     for path, digest in expected:
         if hashlib.sha256(resource(path).read_bytes()).hexdigest() != digest:
             raise BenchmarkError(f"quick-bench resource digest mismatch: {path}")
+
+
+@contextmanager
+def _session(client: httpx.Client | None) -> Iterator[httpx.Client]:
+    """Yield the caller's client, or one this module owns and closes on exit.
+
+    A caller that runs several workloads passes its own client so the connection pool is reused;
+    when none is supplied the run must not leak the pool it created.
+    """
+    if client is not None:
+        yield client
+        return
+    with httpx.Client() as owned:
+        yield owned
 
 
 def _post(client: httpx.Client, url: str, request: JsonObject) -> tuple[JsonObject, float]:
@@ -157,11 +174,6 @@ def _metric(value: JsonObject, elapsed_ms: float, workload: _Workload) -> QuickM
     return metric
 
 
-def _client(selected: httpx.Client | None) -> tuple[httpx.Client, bool]:
-    """Return the injected client or one owned synchronous client."""
-    return (selected, False) if selected is not None else (httpx.Client(), True)
-
-
 def _measure(client: httpx.Client, url: str, workload: _Workload) -> QuickMetric:
     """Post one workload template and validate its measured response."""
     value, elapsed_ms = _post(client, url, _load_request(workload.path))
@@ -171,16 +183,10 @@ def _measure(client: httpx.Client, url: str, workload: _Workload) -> QuickMetric
 def run_quick_bench(base_url: str, client: httpx.Client | None = None) -> QuickBenchResult:
     """Run one excluded warm-up, three short requests, and one ~8K prefill request (spec 1.3)."""
     verify_protocol_resources()
-    short = _Workload(_SHORT_REQUEST_PATH, "short", _SHORT_TOKENS)
-    long_workload = _Workload(_LONG_REQUEST_PATH, "long", _LONG_TOKENS)
-    selected, is_owned = _client(client)
-    try:
+    with _session(client) as session:
         url = f"{base_url}/v1/chat/completions"
-        _measure(selected, url, short)
-        short_metrics = tuple(_measure(selected, url, short) for _ in range(_SHORT_RUNS))
-        long_metric = _measure(selected, url, long_workload)
-    finally:
-        if is_owned:
-            selected.close()
+        _measure(session, url, _SHORT_WORKLOAD)
+        short_metrics = tuple(_measure(session, url, _SHORT_WORKLOAD) for _ in range(3))
+        long_metric = _measure(session, url, _LONG_WORKLOAD)
     triple = cast(tuple[QuickMetric, QuickMetric, QuickMetric], short_metrics)
     return QuickBenchResult(triple, long_metric)

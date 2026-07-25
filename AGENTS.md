@@ -69,9 +69,11 @@ For hand-written Python in `src/`, `tests/`, and `scripts/`:
 - production function parameters: maximum 3, excluding `self`/`cls`;
 - nesting: maximum 3 levels; prefer guard clauses and early returns.
 
-Split code by responsibility before exceeding a limit. The file limit is a ceiling, not a target:
-a module holds one area of competence, so prefer one readable module per area over a constellation
-of two-function files that a reader has to reassemble mentally. Test fixtures may require additional injected
+Split code by responsibility before exceeding a limit. The file limit is a ceiling, not a target: a
+module holds one area of competence, so prefer one readable module per area over a constellation of
+two-function files that a reader has to reassemble mentally.
+
+Test fixtures may require additional injected
 parameters when grouping them would reduce clarity. Normative documentation, measured evidence,
 lockfiles, generated artifacts, JSON schemas, and declarative content are exempt from code-size
 limits and must retain their required format.

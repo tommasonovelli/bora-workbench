@@ -15,7 +15,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from bora_workbench._config_paths import ConfigError, validate_engine_path, validate_model_path
 from bora_workbench.paths import config_dir
 
 DEFAULT_MODEL = "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M"
@@ -32,6 +31,10 @@ _ENVIRONMENT_KEYS = {
 }
 _TRUE_VALUES = {"true", "1", "yes", "on"}
 _FALSE_VALUES = {"false", "0", "no", "off"}
+
+
+class ConfigError(ValueError):
+    """Report expected, actionable configuration errors to the CLI boundary."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -68,6 +71,30 @@ def _validate_boolean(value: Any, *, source: str) -> bool:
     return value
 
 
+def _validate_file_path(value: Any, key: str, source: str) -> Path:
+    """Return the expanded optional path declared for `key` in the configuration file.
+
+    The value is only expanded, never resolved or probed on disk, because a physical path stays
+    declarative here and is checked by the operation that uses it (specification section 5.2).
+    """
+    if not isinstance(value, str):
+        raise ConfigError(f"{source}: {key!r} must be a string")
+    if not value.strip():
+        raise ConfigError(f"{source}: {key!r} must not be empty")
+    return Path(value).expanduser()
+
+
+def _environment_path_override(value: str) -> Path | None:
+    """Return the expanded path an environment variable names, or None when it is blank.
+
+    An empty variable means "unset the value the file supplied" rather than "invalid": it is the
+    only way to drop an optional path without editing `config.toml` (specification section 5.2).
+    """
+    if not value.strip():
+        return None
+    return Path(value).expanduser()
+
+
 def _validate_file_values(values: Mapping[str, Any], *, source: str) -> dict[str, Any]:
     """Validate every key of a parsed TOML file and return the accepted values.
 
@@ -83,11 +110,11 @@ def _validate_file_values(values: Mapping[str, Any], *, source: str) -> dict[str
     if "model" in values:
         validated["model"] = _validate_model(values["model"], source=source)
     if "model_path" in values:
-        validated["model_path"] = validate_model_path(values["model_path"], source=source)
+        validated["model_path"] = _validate_file_path(values["model_path"], "model_path", source)
     if "llama_port" in values:
         validated["llama_port"] = _validate_port(values["llama_port"], source=source)
     if "engine_path" in values:
-        validated["engine_path"] = validate_engine_path(values["engine_path"], source=source)
+        validated["engine_path"] = _validate_file_path(values["engine_path"], "engine_path", source)
     if "open_browser" in values:
         validated["open_browser"] = _validate_boolean(values["open_browser"], source=source)
     return validated
@@ -122,16 +149,10 @@ def _environment_overrides(environ: Mapping[str, str]) -> dict[str, Any]:
         value = environ[variable]
         if key == "model":
             overrides[key] = _validate_model(value, source=f"environment variable {variable}")
-        elif key == "model_path":
-            overrides[key] = validate_model_path(
-                value, source=f"environment variable {variable}", allow_empty=True
-            )
+        elif key in ("model_path", "engine_path"):
+            overrides[key] = _environment_path_override(value)
         elif key == "llama_port":
             overrides[key] = _parse_environment_port(value, variable=variable)
-        elif key == "engine_path":
-            overrides[key] = validate_engine_path(
-                value, source=f"environment variable {variable}", allow_empty=True
-            )
         else:
             overrides[key] = _parse_environment_boolean(value, variable=variable)
     return overrides
@@ -163,14 +184,8 @@ def load_config(
     config_path = config_dir() / "config.toml" if path is None else path
     environment = os.environ if environ is None else environ
 
-    values: dict[str, Any] = {
-        "model": DEFAULT_MODEL,
-        "model_path": None,
-        "llama_port": DEFAULT_LLAMA_PORT,
-        "engine_path": None,
-        "open_browser": DEFAULT_OPEN_BROWSER,
-    }
-    # Each layer overwrites the previous one, so the update order is the precedence rule itself.
-    values.update(_read_toml(config_path))
+    # Each layer overwrites the previous one, so the update order is the precedence rule itself;
+    # a key neither layer supplies keeps the code default declared on `Config`.
+    values = _read_toml(config_path)
     values.update(_environment_overrides(environment))
     return Config(**values)

@@ -1,3 +1,5 @@
+"""Tests for Traversable-based packaged resource access and path confinement."""
+
 import hashlib
 
 import pytest
@@ -6,17 +8,20 @@ from bora_workbench.resources import read_json, read_text, resource_as_file
 
 
 def test_read_packaged_resource():
+    """Read a packaged text resource without assuming it is a physical file."""
     text = read_text("README.txt")
     assert "Spike 0" in text
 
 
 def test_resource_can_be_materialized_temporarily():
+    """Expose a real path only for the lifetime of the `as_file()` context manager."""
     with resource_as_file("README.txt") as path:
         assert path.is_file()
         assert path.read_text(encoding="utf-8").startswith("Package resources")
 
 
 def test_engine_lock_is_packaged():
+    """Ship the pinned engine lock with its exact release, commit, and asset set."""
     lock = read_json("engine.lock")
 
     assert lock["schema"] == "engine-lock/v1"
@@ -42,5 +47,6 @@ def test_managed_engine_notices_match_spike_evidence():
 
 @pytest.mark.parametrize("path", ["../README.md", "/tmp/file", r"C:\\tmp\\file"])
 def test_resource_rejects_unsafe_path(path):
+    """Refuse absolute, drive-relative, and parent-relative names before joining them."""
     with pytest.raises(ValueError):
         read_text(path)

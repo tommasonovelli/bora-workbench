@@ -52,6 +52,17 @@ def _environment_path(variable: str, fallback: Path, *, windows: bool) -> Path:
     return Path(raw_value)
 
 
+def _windows_local_root() -> Path:
+    """Return the machine-local Windows root shared by the data, cache, and state directories.
+
+    Windows collapses those three roots into LOCALAPPDATA, so each of them adds its own
+    subdirectory below this one; XDG already hands out three distinct roots (specification
+    section 5.2).
+    """
+    fallback = Path.home() / "AppData" / "Local"
+    return _environment_path("LOCALAPPDATA", fallback, windows=True) / _APP_NAME
+
+
 def config_dir() -> Path:
     """Return the directory holding the user's `config.toml`, without creating it.
 
@@ -68,33 +79,23 @@ def config_dir() -> Path:
 
 def data_dir() -> Path:
     """Return the managed data directory without creating it."""
-    home = Path.home()
     if _system_name() == "windows":
-        base = _environment_path("LOCALAPPDATA", home / "AppData" / "Local", windows=True)
-        # Windows collapses data, cache, and state into one root, so each needs its own
-        # subdirectory; XDG already hands out three distinct roots.
-        return base / _APP_NAME / "data"
-    base = _environment_path("XDG_DATA_HOME", home / ".local" / "share", windows=False)
+        return _windows_local_root() / "data"
+    base = _environment_path("XDG_DATA_HOME", Path.home() / ".local" / "share", windows=False)
     return base / _APP_NAME
 
 
 def cache_dir() -> Path:
     """Return the cache directory without creating it."""
-    home = Path.home()
     if _system_name() == "windows":
-        base = _environment_path("LOCALAPPDATA", home / "AppData" / "Local", windows=True)
-        # Distinct subdirectory under the shared LOCALAPPDATA root; see data_dir().
-        return base / _APP_NAME / "cache"
-    base = _environment_path("XDG_CACHE_HOME", home / ".cache", windows=False)
+        return _windows_local_root() / "cache"
+    base = _environment_path("XDG_CACHE_HOME", Path.home() / ".cache", windows=False)
     return base / _APP_NAME
 
 
 def state_dir() -> Path:
     """Return the runtime state directory without creating it."""
-    home = Path.home()
     if _system_name() == "windows":
-        base = _environment_path("LOCALAPPDATA", home / "AppData" / "Local", windows=True)
-        # Distinct subdirectory under the shared LOCALAPPDATA root; see data_dir().
-        return base / _APP_NAME / "state"
-    base = _environment_path("XDG_STATE_HOME", home / ".local" / "state", windows=False)
+        return _windows_local_root() / "state"
+    base = _environment_path("XDG_STATE_HOME", Path.home() / ".local" / "state", windows=False)
     return base / _APP_NAME

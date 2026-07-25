@@ -1,9 +1,12 @@
+"""Tests for the per-OS directory layout computed without touching the filesystem."""
+
 from pathlib import Path
 
 import bora_workbench.paths as paths
 
 
 def test_linux_xdg_paths(monkeypatch):
+    """Honor every XDG base directory variable when it names an absolute directory."""
     monkeypatch.setattr(paths, "_system_name", lambda: "linux")
     monkeypatch.setattr(paths.Path, "home", classmethod(lambda cls: Path("/home/tester")))
     monkeypatch.setenv("XDG_CONFIG_HOME", "/tmp/xdg/config")
@@ -18,6 +21,7 @@ def test_linux_xdg_paths(monkeypatch):
 
 
 def test_linux_empty_or_relative_xdg_uses_fallback(monkeypatch):
+    """Fall back to the XDG defaults when a variable is empty, relative, or absent."""
     monkeypatch.setattr(paths, "_system_name", lambda: "linux")
     monkeypatch.setattr(paths.Path, "home", classmethod(lambda cls: Path("/home/tester")))
     monkeypatch.setenv("XDG_CONFIG_HOME", "")
@@ -32,6 +36,7 @@ def test_linux_empty_or_relative_xdg_uses_fallback(monkeypatch):
 
 
 def test_windows_paths_can_be_simulated_on_linux(monkeypatch):
+    """Split the shared LOCALAPPDATA root while keeping configuration under roaming APPDATA."""
     monkeypatch.setattr(paths, "_system_name", lambda: "windows")
     monkeypatch.setenv("APPDATA", r"C:\Users\Tester\AppData\Roaming")
     monkeypatch.setenv("LOCALAPPDATA", r"C:\Users\Tester\AppData\Local")
