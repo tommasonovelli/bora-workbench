@@ -5,14 +5,15 @@ explicit human authorization is always required for pushes, tags, GitHub Release
 
 ## Public status
 
-- current public version: `0.1.5`;
-- remote tags: `v0.1.0`, `v0.1.1`, `v0.1.2`, `v0.1.3`, `v0.1.4`, and `v0.1.5`;
-- GitHub Release `v0.1.5`: published with the installers, wheel, sdist, and `SHA256SUMS`;
-- the `0.1.5` digests are the ones in the manifest attached to the release and come from the green
+- current public version: `0.1.6`;
+- remote tags: `v0.1.0`, `v0.1.1`, `v0.1.2`, `v0.1.3`, `v0.1.4`, `v0.1.5`, and `v0.1.6`;
+- GitHub Release `v0.1.6`: published with the installers, wheel, sdist, and `SHA256SUMS`;
+- the `0.1.6` digests are the ones in the manifest attached to the release and come from the green
   build job;
-- PyPI: not published yet, and excluded from the `0.1.5` authorization;
-- public release `v0.1.5`: the first fully English release, republishing the calibration evidence
-  with a regenerated digest chain; the runtime is unchanged.
+- PyPI: not published yet, and excluded from the `0.1.6` authorization;
+- public release `v0.1.6`: calibration becomes a single working protocol, validated on hardware on
+  Ubuntu; the redundant protocols, the `--protocol` option, and the older record formats are
+  removed.
 
 The sections below describe what each published release contained. They name the protocol versions
 that existed at the time on purpose: they are the history of the artifacts, not a description of the
@@ -55,6 +56,29 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.1.6
+
+`0.1.6` exists because calibration finally works. `0.1.5` had recorded that the three-envelope
+search did not run at all (D-066): four defects made every attempt fail, two of them in the shared
+process lifecycle that ordinary launches use as well. This release fixes them, and a full hardware
+run then exposed two more failures that no offline test could reach, both caused by a memory
+boundary that moves on a nearly full GPU.
+
+With one protocol working, the redundant ones are removed: the gate-only laboratory, the
+paired-search protocol, the `--protocol` option, `validate --path`, the `calibration-record/v2`-`/v4`
+formats and their schemas, and the repository-only cross-context spike package. `calibrate` is one
+command with `--preference`, `--target-ctx`, `--activate`, and `--no-activate`.
+
+This is a breaking change for local state: a record written by `0.1.5` or earlier is diagnosed as
+superseded rather than migrated, so re-run `calibrate` after upgrading. Nothing else moves — the
+engine, the model, the command contract, and `command_contract_sha256` are unchanged.
+
+Validated on hardware on Ubuntu (RTX 2060 SUPER 8 GiB): the shared `coding`+`studio` group completed
+its search, its pairing, and six envelope gates; a separate `vstudio` run completed 44 trials in 61
+minutes and wrote a valid candidate record whose three envelopes all passed smoke, multi-turn, and
+the vision gate. Windows validation on hardware is still open; the offline suite runs on both
+platforms in CI.
 
 ### Release 0.1.5
 

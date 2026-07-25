@@ -56,6 +56,9 @@ Updated on 24 July 2026.
   their original text because they are measurement inputs.
 - [x] Version `0.1.5` republishes the calibration evidence with a regenerated digest chain and
   realigns the published artifacts with the branch; no runtime behavior changes.
+- [x] Version `0.1.6`, tag `v0.1.6`, and the GitHub Release distribute D-067: one working
+  calibration protocol, validated on hardware on Ubuntu, with the redundant protocols and record
+  formats removed. PyPI remains excluded.
 
 ### Open work
 
@@ -548,10 +551,26 @@ bytes the report and policy digests are computed over, so the artifacts publishe
 no longer match the branch. `0.1.5` is the version that realigns them. Earlier artifacts stay
 untouched, and PyPI stays excluded.
 
-### 7.7 Heterogeneous evidence
+### 7.7 Release 0.1.6
 
-When it becomes available, repeat v5 with `--no-activate` on materially different hardware, review
-privacy, and update the report/policy in a declarative PR. The outcome is not reconstructed by hand
+Version `0.1.6` distributes D-067: one working calibration protocol. It is the first release whose
+calibration engine has been observed to complete on real hardware; `0.1.4` and `0.1.5` shipped it as
+code that never ran a full run (D-066).
+
+It is a breaking change for local state and only for that. A record written by `0.1.5` or earlier
+declares a schema this version no longer reads, so it is diagnosed as superseded and the operator
+re-runs `calibrate`. No migration is attempted, because the removed formats recorded a different
+protocol's evidence and inventing the missing fields would fabricate measurements. The engine, the
+model, the mode content, and `command_contract_sha256` are unchanged, so an existing installation
+keeps launching exactly as before while its records are re-measured.
+
+Hardware validation covers Ubuntu only. Windows keeps the full offline suite in CI on every release
+tag, and its hardware validation stays open work.
+
+### 7.8 Heterogeneous evidence
+
+When it becomes available, repeat calibration with `--no-activate` on materially different hardware,
+review privacy, and update the report/policy in a declarative PR. The outcome is not reconstructed by hand
 and does not retroactively turn the single current host into universal evidence.
 
 ---

@@ -38,10 +38,11 @@ of the launcher.
 
 ## Current status
 
-The public release is `0.1.5`: the first fully English release, which also republishes the
-calibration evidence with a regenerated digest chain.
+The public release is `0.1.6`: calibration became a single protocol, repaired and validated on
+hardware, and the redundant protocols and record formats were removed. A record written by an
+earlier version is diagnosed as superseded; re-run `calibrate` after upgrading.
 
-PyPI remains unavailable. The verified artifacts are in the `v0.1.5` GitHub Release and must not be
+PyPI remains unavailable. The verified artifacts are in the `v0.1.6` GitHub Release and must not be
 rebuilt or replaced.
 
 ## Current limits

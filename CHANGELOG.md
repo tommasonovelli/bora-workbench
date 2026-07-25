@@ -3,7 +3,7 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
-## [Unreleased]
+## [0.1.6] - 2026-07-25
 
 Calibration becomes a single protocol. `0.1.5` recorded that the three-envelope search did not work
 (D-066); this change finds and fixes the reasons, then removes the redundant protocols it was
