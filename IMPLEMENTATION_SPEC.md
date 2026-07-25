@@ -43,6 +43,14 @@ Updated on 24 July 2026.
 - [x] Version `0.1.4` distributes opt-in `calibration/v6-lite` (D-063/D-064): `mode/v2`, quick-bench,
   the v6 engine, v5 records, the `--protocol v6 --preference` CLI, and v5 reuse/`doctor`; `v5`
   remains the default and the offline suite stays green.
+- [x] The three-envelope protocol is repaired and becomes the only calibration protocol (D-067):
+  the laboratory and paired-search protocols, the `--protocol` option, and the older record formats
+  are removed, and the CLI exposes one calibration command.
+- [x] The trial adapter is validated on Ubuntu (D-067), measured on 25 July 2026 on an RTX 2060
+  SUPER 8 GiB. The shared `coding`+`studio` group completed its search, its pairing, and six
+  envelope gates; a separate `vstudio` run completed 44 trials in 61 minutes and wrote a valid
+  candidate record whose three envelopes all passed smoke, multi-turn, and the vision gate. No
+  candidate was activated.
 - [x] The repository is fully English (D-065): documentation, normative plan, changelog, and
   measured-evidence prose. The byte-pinned benchmark payloads and the mirroring spike prompt keep
   their original text because they are measurement inputs.
@@ -53,16 +61,12 @@ Updated on 24 July 2026.
 
 - [ ] Configure the PyPI Trusted Publisher and re-run only the failed `publish` job of
   `29739366272`; do not rebuild the `0.1.0` artifacts.
-- [ ] Perform, as `0.1.2` post-release verification, the real upgrade from `0.1.1`, v5 calibration
+- [ ] Perform, as `0.1.2` post-release verification, the real upgrade from `0.1.1`, calibration
   without activation, and a complete uninstall on Ubuntu and Windows.
-- [ ] Run the cross-context spike and commit a human `GO`/`NO-GO` verdict; **promoting**
-  `calibration/v6-lite` to the default protocol stays blocked until a measured `GO` (the opt-in
-  `--protocol v6` engine already ships in 0.1.4 under the D-063 override).
-- [ ] Validate the real `calibration/v6-lite` trial adapter on hardware (Ubuntu and Windows): server
-  startup, monitoring with the 0.5/2.0/0.125 reserves, quick-bench, gate; the logic is covered by
-  offline tests.
+- [ ] Validate the trial adapter on Windows: server startup, monitoring with the 0.5/2.0/0.125
+  reserves, quick-bench, and gate. The logic is covered by offline tests on both platforms.
 - [ ] Stabilize the 0.1 series further before starting 0.2.
-- [~] Repeat `calibration/v5 --no-activate` on materially different hardware; coverage remains
+- [~] Repeat `calibrate --no-activate` on materially different hardware; coverage remains
   `GATE-PARTIAL` and no envelope is transferred between hosts.
 - [ ] Step 7 — skills and deterministic router.
 - [ ] Step 8 — managed Open WebUI and sync.
@@ -179,6 +183,8 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-065 | The repository is written in English end to end: documentation, this plan, the changelog, the pull request template, and the prose of the measured evidence. Measured values, digests, decision ids, constants, protocol names, and gate wording are preserved verbatim; the byte-pinned benchmark payloads (`benchmark-v1`, `benchmark-quick`, `calibration-v1`) and the mirroring prompt constant in `scripts/spike_ctx/quick.py` keep their original text, because they are measurement inputs and changing them would change what is measured. Translating the checksum-bound evidence changed its bytes, so the whole chain was regenerated: `gate.md`/`protocol.md` → the report's `source_references` → the report digest → the policy evidence digest → `SHA256SUMS`. `0.1.5` distributes the result and realigns the published artifacts with the branch; the artifacts of `0.1.0`–`0.1.4` embed the previous digests and are neither rebuilt nor replaced. No runtime behavior, contract, or `command_contract_sha256` changes. |
 
 | D-066 | Correction of record, 25 July 2026: `calibration/v6-lite` **does not work**. The real trial adapter was never validated on hardware, so the corresponding claim in D-063, `CHANGELOG` `0.1.4`, `docs/calibration.md`, and `docs/releasing.md` was premature and is withdrawn. Only the search, selection, confirmation, gate, and record logic is exercised, by offline tests with fakes. `--protocol v6` stays shipped and opt-in, but the documentation must present it as non-functional; `calibration/v5` remains the only protocol for real calibration. The open tracker item for hardware validation was already correct and stands. Do not describe v6 as usable, benchmarked, or validated until a real run on Ubuntu and Windows is committed. |
+
+| D-067 | Calibration becomes a single protocol, 25 July 2026, and the trial adapter behind D-066 is repaired. Four defects made every run fail. (1) `wait_for_health` caught only `ConnectError` and `TimeoutException`, so the `ReadError` a dying server produces escaped `start_service` and bypassed its cleanup, leaving a live child and a registered service that made the next start refuse; every transport class is now read as "not ready yet". (2) `start_service` cleaned up only for a listed set of exception classes; it now cleans up whatever escapes. (3) Exhausted VRAM was unclassifiable: the driver rejects the allocation, so free VRAM never crosses the monitored reserve and the engine only reports it by dying during model load. (4) The final gate sized its smoke prompt in words instead of tokens, overshooting the window by roughly 2.3x, so the gate could never pass. D-059 stays class-based with one declared exception: `ServerStartupError` carries the process log, and only the VRAM side of `MEMORY_INFEASIBLE` is decided from that log, because no monitor class can observe a rejected allocation. A first full hardware run then exposed two failures no offline test could reach, both caused by a memory boundary that moves between measurements on a nearly full GPU. (5) A group that failed discarded the modes that had already completed, because records were persisted only after every group finished; each group now persists its own records and the run reports which groups produced nothing while still exiting operationally. (6) A finalist that stopped fitting the reserves during ABBA failed the whole mode; the comparison is now abandoned and the surviving finalist confirmed, and the same point reached at the gate counts as a gate it cannot pass. With the protocol working, the redundant ones are removed: the `calibration/v1` laboratory, `calibration/v5`, the `--protocol` option, the `calibration-record/v2`-`/v4` formats and their schemas, `validate --path`, the repository-only cross-context spike package, and the public ordering seeds the search no longer consumes. `calibrate` is one command with `--preference`, `--target-ctx`, `--activate`, and `--no-activate`; the surviving modules drop their version infix, and user-facing documentation stops naming protocol versions. The on-disk record format keeps its identifier as a data-format marker so a record written by an older launcher is diagnosed as superseded rather than misread. |
 
 A new durable decision updates this table in the same step that authorizes it.
 
@@ -343,8 +349,13 @@ keep refusing a busy port.
 Records: `<mode>.candidate.json`, active `<mode>.json`, rollback `<mode>.previous.json`. By default:
 atomic promotion; `--no-activate` keeps the candidate; `--activate` promotes without new trials.
 
-`calibration/v1` stays an explicit laboratory and produces draft bundles only. v1 records are
-superseded and inert. `calibration/v4` starts no new runs; the records it produced remain supported.
+One protocol exists (D-067). It measures three envelopes per mode and writes one record in the
+single supported format. It searches the seven-step context scale with the reserves 0.5 GiB VRAM,
+2.0 GiB RAM, and 0.125 GiB release tolerance, under shared probe budgets of 28 for the
+`coding`+`studio` group and 20 for `vstudio`. An infeasible context step costs one prudent probe, so
+the ladder degrades to the smaller contexts instead of failing. On CPU it confirms the baseline
+context and records a null `n_cpu_moe`: no CPU axis is invented. A record written by an older
+launcher is diagnosed as superseded and never migrated.
 
 ### 5.7 Engine command
 
@@ -518,15 +529,13 @@ Version `0.1.3` distributes D-058–D-061 while keeping `calibration/v5` as the 
 runs. Those verifications stay post-release and are not a passed Gate. PyPI, candidate activation,
 and Phase 2 stay excluded; the public artifacts come only from the green workflow.
 
-### 7.5 Cross-context decision gate for v6-lite
+### 7.5 Cross-context decision gate (historical)
 
-The repository-only [`scripts/spike_ctx/`](scripts/spike_ctx/) package prepares, without running it
-automatically, a spike over 131K/65K/32K. It compares the short end-to-end, 8K prefill, decode, and
-minimum RAM/VRAM; MTP off↔2 and reasoning off are informational appendices. It is `GO` when the best
-of 65K and 32K, relative to the best 131K, achieves at least one of: median short e2e `≤0.92×`, 8K
-prefill `≥1.25×`, or performance within a 3% deadband with at least 0.5 GiB more minimum free VRAM.
-The verdict is human and must be committed with redacted evidence and checksums. Without a `GO`,
-v6-lite is not implemented.
+A repository-only spike package once prepared a manual comparison over 131K/65K/32K to decide
+whether the three-envelope protocol was worth implementing. The protocol now implements that
+comparison itself, per context step and on the operator's own hardware, so the separate package was
+removed with D-067. The decision it was meant to inform is settled; its thresholds survive in the
+protocol as the `fast`/`balanced` deadband and ceiling.
 
 ### 7.6 Release 0.1.5
 

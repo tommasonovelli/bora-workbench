@@ -144,7 +144,7 @@ Loaders build runtime models only after validation. Defaults belong to the loade
 to a silent correction of unknown input.
 
 Do not propose new `profile/v1` documents as transferable configurations. The runtime envelope comes
-only from an active local v2 record; shared reports and profiles are evidence or seeds.
+only from the active local record; shared reports and profiles are evidence, never plans.
 
 ## Updating `engine.lock`
 
@@ -174,7 +174,7 @@ Any divergence between the output, archive, digest, and lock stops the update.
 Follow the [Contributing new evidence](calibration.md#contributing-new-evidence) section. In short,
 an evidence PR:
 
-- uses `calibration/v5`, `benchmark/v1`, and the pinned model and engine;
+- uses the current calibration protocol and the pinned model and engine;
 - contains a privacy-safe `calibration-report/v2` report;
 - declares the actually measured scope and the portability limit;
 - updates the policy and the SHA-256 of the exact bytes;

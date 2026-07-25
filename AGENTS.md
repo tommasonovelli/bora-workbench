@@ -19,28 +19,24 @@ apply here.
 - This is a Python 3.12 launcher for a local, calibrated Qwen model served by an exact, verified
   `llama.cpp` release. It is not a generic model manager or plugin framework.
 - Work one implementation step at a time and do not anticipate later milestones.
-- **Steps 3, 4, 5, 5A, 5B, 6A and 6B are complete; Step 7 (`calibration/v6-lite`) ships opt-in since
-  0.1.4.** Versions `0.1.0`–`0.1.5`, their tags and
+- **Steps 3, 4, 5, 5A, 5B, 6A, 6B and 7 are complete.** Versions `0.1.0`–`0.1.5`, their tags and
   GitHub Releases are public; release artifacts come only from their green release test/build jobs.
   The maintainer authorized `0.1.3` on 24 July 2026 before the local spike runs, `0.1.4` with the
   D-063 override, and `0.1.5` on 25 July 2026; do not claim a Gate passed. PyPI remains unconfigured
-  and excluded; do not upload, rebuild or replace published artifacts. Version 0.1.4 ships
-  `calibration/v6-lite` as an opt-in
-  `--protocol v6` (records `calibration-record/v5`) under the D-063 maintainer override, built before
-  the spike GO; `calibration/v5` and `calibration-record/v4` stay the default, with 96K and 48K in
-  the automatic scale. Version 0.1.5 (D-065) makes the repository fully English and republishes the
-  calibration evidence with a regenerated digest chain; it changes no runtime behavior, and the
-  artifacts of `0.1.0`–`0.1.4` embed the previous digests. **`--protocol v6` does not work** (D-066):
-  its real trial adapter was never validated on hardware, so never describe v6 as usable,
-  benchmarked or validated, and never present it as an alternative to v5 for a real calibration.
-  Historical v2/v3 records remain readable,
-  but D-060 invalidates reuse of
-  records with the old command digest. Q8 remains pinned, `n_cpu_moe` is `[0, 41]`, and calibration
-  coverage remains `GATE-PARTIAL`. The three local candidates remain inactive. Do not promote v6-lite
-  to the default protocol without a committed human GO, activate candidates, or claim a Gate passed.
-- Write everything in English: code, comments, docs, evidence prose and commits. The only exceptions
-  are the byte-pinned benchmark payloads and the mirroring prompt in `scripts/spike_ctx/quick.py`,
-  which are measurement inputs; leave their text alone.
+  and excluded; do not upload, rebuild or replace published artifacts. Version 0.1.5 (D-065) makes
+  the repository fully English and republishes the calibration evidence with a regenerated digest
+  chain; the artifacts of `0.1.0`–`0.1.4` embed the previous digests.
+- **There is exactly one calibration protocol** (D-067): the three-envelope search reached by
+  `qwen-launcher calibrate`. The earlier laboratory and paired-search protocols, their `--protocol`
+  option, and the older record formats were removed, so never reintroduce a protocol switch, never
+  describe calibration as versioned in user-facing text, and never write a record format other than
+  the one `_calibration_record.RECORD_SCHEMA` names. A record written by an older launcher is
+  diagnosed as superseded, never migrated.
+- Q8 remains pinned, `n_cpu_moe` is `[0, 41]`, and public calibration coverage remains
+  `GATE-PARTIAL`: the packaged reference report describes one machine and never becomes a launch
+  plan. Do not activate candidates on the maintainer's behalf or claim a Gate passed.
+- Write everything in English: code, comments, docs, evidence prose and commits. The only exception
+  is the byte-pinned benchmark payloads, which are measurement inputs; leave their text alone.
 - Never invent engine flags, checksums, source commits, benchmark results, hardware support, profiles,
   health responses, or compatibility claims.
 

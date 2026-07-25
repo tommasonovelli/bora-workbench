@@ -12,9 +12,11 @@ explicit human authorization is always required for pushes, tags, GitHub Release
   build job;
 - PyPI: not published yet, and excluded from the `0.1.5` authorization;
 - public release `v0.1.5`: the first fully English release, republishing the calibration evidence
-  with a regenerated digest chain. The runtime is unchanged: `calibration/v6-lite` stays opt-in
-  (`--protocol v6`, v5 records) under the D-063 override, `calibration/v5` remains the default, and
-  promoting v6 to the default requires a human GO.
+  with a regenerated digest chain; the runtime is unchanged.
+
+The sections below describe what each published release contained. They name the protocol versions
+that existed at the time on purpose: they are the history of the artifacts, not a description of the
+current CLI, which offers one calibration protocol and no `--protocol` option.
 
 Published artifacts are immutable. Do not rebuild, replace, or re-upload files under the same
 version to include later fixes: that requires a new version.

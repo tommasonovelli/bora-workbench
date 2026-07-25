@@ -5,6 +5,82 @@ live in `IMPLEMENTATION_SPEC.md`.
 
 ## [Unreleased]
 
+Calibration becomes a single protocol. `0.1.5` recorded that the three-envelope search did not work
+(D-066); this change finds and fixes the reasons, then removes the redundant protocols it was
+competing with. `qwen-launcher calibrate` is now one command with no `--protocol` option (D-067).
+
+### Fixed
+
+- **A dying server leaked its transport error out of the readiness wait.** `wait_for_health` caught
+  only `ConnectError` and `TimeoutException`, so the `ReadError` a server produces while it is dying
+  escaped and bypassed `start_service`'s cleanup entirely: the child was never terminated and its
+  service record stayed in the state file. The next start then refused to run with "a managed
+  service is already running". Every transport failure is now read as "not ready yet", and the
+  readiness loop keeps deciding on process death or the deadline. This also affected normal `run`.
+- **A failed start now always cleans up.** `start_service` performed its cleanup only for a listed
+  set of exception classes; any other failure left both a live child and a registered service.
+- **Exhausted VRAM is classified instead of aborting the run.** The engine reports it only by dying
+  during model load — the driver rejects the allocation, so free VRAM never crosses the monitored
+  reserve and no monitor class can see it. `start_service` now raises `ServerStartupError` carrying
+  the process log, and the trial classifies it as `MEMORY_INFEASIBLE` when the log names an
+  out-of-memory failure and as retryable otherwise. Previously the bisection died on its first
+  infeasible probe with `unsupported trial error: ProcessError`, which is why no run completed.
+- **The final gate sized its smoke prompt in words instead of tokens.** Each generated word costs
+  about three tokens, so the "80% of the context" prompt was roughly 2.3x the window and the server
+  rejected it (`request (152614 tokens) exceeds the available context size (65536 tokens)`). The
+  prompt is now sized from a measured tokens-per-word ratio, so the gate exercises what it claims.
+- **A group whose memory boundary moved discarded every mode that had already finished.** Records
+  were written only after all groups completed, so a failure in the last group threw away hours of
+  valid, gated measurements from the earlier ones. Groups share hardware, not a decision: each one
+  now persists its own records, the summary names the groups that produced nothing, and the exit
+  code still reports the run as incomplete.
+- **Confirmation failed the whole mode when a finalist stopped fitting the reserves.** A point the
+  search had accepted can violate the VRAM reserve when ABBA re-measures it. Such a point cannot
+  become a launch envelope, so the comparison is now abandoned and the surviving finalist is
+  confirmed with no recorded rounds, instead of ending the mode. The same point reached at the
+  final gate counts as a gate it cannot pass, which triggers the existing fallback to its rival.
+- **Two phases reported a position above their own total.** The search cap was the probe budget,
+  which bounds probes only, so a real run displayed `41/≤28` once the quick-bench measurements of
+  each feasible step were counted too. The pairing cap described the rounds of a single preference,
+  while confirmation pairs each preference separately, so a real run displayed `7/≤6`. Both caps now
+  cover every trial their phase can start, and a test asserts that for all three phases.
+- An unclassifiable trial failure reported only the exception class name and discarded its message,
+  and a search failure reached the CLI unmapped and printed a traceback instead of exiting 1.
+
+### Removed
+
+- **The `--protocol` option and the two redundant protocols.** The gate-only laboratory and the
+  paired-search protocol are gone, together with `--candidate`, `--settings`, the draft bundles they
+  produced, and `validate --path`. `calibrate` measures three envelopes and nothing else.
+- **The older record formats.** Only the current record format is written and read; a record written
+  by an older launcher is diagnosed as superseded, with the same actionable message as before, and
+  the superseded schemas are no longer packaged.
+- **The repository-only cross-context spike package** and the public ordering seeds, which the
+  current search never consulted. The packaged reference report and its digests are unchanged; only
+  the runtime catalog stops exposing a field nothing read.
+
+### Added
+
+- Calibration supports the CPU backend end to end: it confirms the baseline context without
+  inventing an offload axis, and records a null `n_cpu_moe`.
+- Trials use the immutable run-scoped GPU context population that D-046 requires, instead of the
+  per-trial legacy contract.
+- The run reports live progress and prints the three measured envelopes, their gate outcomes, and
+  the measured memory margins when it ends. Previously it printed nothing for 40-60 processes.
+
+### Changed
+
+- The automatic context scale is the full `131072 → 98304 → 65536 → 49152 → 32768 → 16384 → 8192`
+  ladder, so hardware that cannot afford 32768 still produces a usable envelope. The previous
+  three-step scale left `98304`/`49152` reachable only as explicit targets and had no floor below
+  `32768`. The shared probe budget grows to 28 (text) and 20 (vision): an infeasible step still
+  costs a single prudent probe.
+- The VRAM-side bisection is written directly instead of reusing the old screening routine with
+  placeholder arguments. That routine's peak model, interpolation, and monotonicity check were
+  inert under those arguments, so the behavior is unchanged and the reasoning is now visible.
+- Documentation describes one calibration protocol and stops naming protocol versions. `CALIBRATION.md`
+  is removed; `docs/calibration.md` is the guide.
+
 ## [0.1.5] - 2026-07-25
 
 Translates the whole repository into English and republishes the calibration evidence with a

@@ -14,7 +14,7 @@ qwen-launcher [--version] <command> [options]
 | Command | Purpose | Changes local data? |
 |---|---|---:|
 | `--version` | shows the installed version | no |
-| `validate` | validates resources or a local bundle | no |
+| `validate` | validates the installed resources | no |
 | `doctor` | describes configuration, hardware, engine, and records | no |
 | `engine status` | inspects the managed engine | no |
 | `engine install` | installs and activates the engine from the lock | yes |
@@ -30,10 +30,9 @@ qwen-launcher [--version] <command> [options]
 
 ```bash
 qwen-launcher validate
-qwen-launcher validate --path <bundle-directory>
 ```
 
-Without `--path` it validates the installed resources:
+It validates the installed resources:
 
 - JSON Schema Draft 2020-12;
 - modes, policies, and reports;
@@ -41,9 +40,8 @@ Without `--path` it validates the installed resources:
 - engine lock semantics and flag coverage;
 - cross-cutting constraints a schema cannot express.
 
-With `--path` it validates a shareable bundle produced by the `calibration/v1` laboratory, including
-the manifest, relative references, and the privacy scan. Errors report the file, the field path, and
-the reason. Warnings alone exit with 0; at least one error exits with 1.
+Errors report the file, the field path, and the reason. Warnings alone exit with 0; at least one
+error exits with 1.
 
 ## `doctor`
 
@@ -51,9 +49,9 @@ the reason. Warnings alone exit with 0; at least one error exits with 1.
 qwen-launcher doctor
 ```
 
-Shows the version, resolved configuration, OS, CPU, RAM, backend, GPU/VRAM, the number of shared
-seeds, the managed engine, the four public directories, and content validation. For each mode it
-also evaluates the state of the local record:
+Shows the version, resolved configuration, OS, CPU, RAM, backend, GPU/VRAM, the managed engine, the
+four public directories, and content validation. For each mode it also evaluates the state of the
+local record:
 
 - active and valid, with the calibrated parameters applied to launches (`ctx` and, on CUDA,
   `--n-cpu-moe`);
@@ -163,97 +161,53 @@ Stops only processes whose identity matches the state. It waits up to 10 seconds
 then uses `kill` and waits up to 5 seconds. It is idempotent: no services returns 0. Do not delete
 `services.json` by hand while the process is alive.
 
-## `calibrate`: current v5 protocol
+## `calibrate`
 
 ```bash
-qwen-launcher calibrate --mode <coding|studio|vstudio|all>
+qwen-launcher calibrate --mode <coding|studio|vstudio|all> [--preference <envelope>]
 ```
 
-`--protocol v5` is the default. The command shows a preflight and asks for confirmation before
-starting processes. By default it writes one candidate per completed mode and activates it
-atomically.
+The command shows a preflight and asks for confirmation before starting any process. It measures
+three launch envelopes per mode — `fast`, `balanced`, and `max-context` — writes all three into one
+candidate record per completed mode, and activates it atomically unless told otherwise.
 
-v5 options:
+| Option | Effect |
+|---|---|
+| `--mode <id\|all>` | the packaged mode to measure, or every mode (required) |
+| `--preference fast\|balanced\|max-context` | which envelope the record launches with, default `balanced` |
+| `--no-activate` | keeps the new records as candidates, leaving the active ones untouched |
+| `--activate` | promotes candidates measured earlier, without new trials |
+| `--target-ctx N` | collapses the context ladder onto a single approved step |
 
 ```bash
-qwen-launcher calibrate --mode all --no-activate
-qwen-launcher calibrate --mode coding --activate
+qwen-launcher calibrate --mode all
+qwen-launcher calibrate --mode coding --preference fast
+qwen-launcher calibrate --mode all --preference max-context --no-activate
+qwen-launcher calibrate --mode all --activate
 qwen-launcher calibrate --mode coding --target-ctx 98304
 ```
 
-| Option | Effect |
-|---|---|
-| `--no-activate` | keeps the new records as candidates without changing the active ones |
-| `--activate` | promotes already valid candidates, without new trials |
-| `--target-ctx N` | uses a single approved expert context |
+Allowed targets: `131072`, `98304`, `65536`, `49152`, `32768`, `16384`, `8192` — the same steps the
+automatic ladder descends. `--activate` cannot be combined with `--target-ctx`, and `--activate` and
+`--no-activate` are mutually exclusive; both are input errors reported before any process starts.
 
-The allowed targets are `131072`, `98304`, `65536`, `49152`, `32768`, `16384`, and `8192`; they are
-the same steps used by the automatic scale. `--activate` cannot be combined with `--target-ctx`;
-`--activate` and `--no-activate` are mutually exclusive.
+`--mode` and `--preference` are ordinary Typer options; the other three are handled by the command's
+specialized parser, so `calibrate --help` lists them in the epilog rather than in the generated
+table. The syntax above is the one actually supported.
 
-The three options are handled by the command's specialized parser. `calibrate --help` lists them in
-the epilog together with the v1 extras, while the table generated by Typer contains only the common
-options; the syntax above is the one actually supported.
+Trial reserves, written into every record: 0.5 GiB VRAM, 2.0 GiB RAM, 0.125 GiB release tolerance.
 
-On an interactive terminal the v5 run shows a live bar with the phase, trial, elapsed time, and an
-adaptive estimate; redirected output stays line-oriented. Screening shows `≤14` and a duration
-projection up to that cap, not a limit or a promise. The final summary includes the selection
-rationale and the lowest observed RAM/VRAM values.
+On an interactive terminal the run shows a live bar with the phase, the trial, the elapsed time, and
+an estimate learned from the current phase; redirected output stays line-oriented, one line per
+completed trial. Every phase total is a cap (`≤N`), not a schedule or a promise. The final summary
+prints all three measured envelopes, marks the active one, and reports the lowest observed RAM and
+VRAM values.
 
-Calibration performs no uploads, does not modify `config.toml`, and installs neither the model nor
-the engine. Trials use the configured port when it is free; on the current branch they fall back to
-a system-assigned loopback port when it is busy. This fallback does not apply to the three normal
-launches.
+Calibration uploads nothing, does not modify `config.toml`, and installs neither the model nor the
+engine. Trials use the configured port when it is free and fall back to a system-assigned loopback
+port when it is busy; that fallback does not apply to the three normal launches.
 
 Algorithm and record details: [Calibration](calibration.md).
-
-## `calibrate`: experimental v6 protocol
-
-> [!WARNING]
-> **`--protocol v6` does not work yet.** Its real trial adapter has never been validated on
-> hardware. Use the default `v5` for any real calibration.
-
-```bash
-qwen-launcher calibrate --mode all --protocol v6 --preference balanced
-```
-
-`calibration/v6-lite` is **opt-in** (`--protocol v6`); `v5` remains the default. It measures three
-envelopes per mode (`fast`, `balanced`, `max_context`) and writes all of them into the
-`calibration-record/v5` record.
-
-| Option | Effect |
-|---|---|
-| `--protocol v6` | runs the experimental three-envelope search (v5 remains the default) |
-| `--preference fast\|balanced\|max-context` | pins the active envelope in the record (default `balanced`); only with `v6` |
-| `--target-ctx N` | collapses the v6 scale onto a single approved step |
-| `--no-activate` / `--activate` | as in v5: keeps or promotes the candidates |
-
-Allowed v6 targets: `131072`, `98304`, `65536`, `49152`, `32768`. `--preference` is rejected without
-`--protocol v6`. v6 trial reserves: 0.5 GiB VRAM, 2.0 GiB RAM, 0.125 GiB release tolerance.
-Promoting v6 to the default protocol is a human decision (D-063), never automatic.
-Details: [Calibration — calibration/v6-lite](calibration.md#calibrationv6-lite-experimental).
-
-## `calibrate`: v1 laboratory
-
-The historical protocol remains executable only as an explicit laboratory and produces a draft
-bundle, not an active record:
-
-```bash
-qwen-launcher calibrate \
-  --mode coding \
-  --protocol v1 \
-  --candidate safe:8192:41 \
-  --candidate mixed:8192:30 \
-  --settings 2:0.5:0.125
-```
-
-On CUDA each candidate uses `ID:CTX:N_CPU_MOE` and the settings use
-`RUNS:MIN_FREE_VRAM_GIB:RELEASE_TOLERANCE_GIB`. On CPU the candidate uses `ID:CTX` and `--settings`
-contains only `RUNS`. `--candidate` is repeatable. If candidates or settings are missing, the CLI
-asks for them interactively; it assigns no implicit defaults.
-
-The v5 options are not valid with `--protocol v1`. Candidates and `--settings` are not valid with
-v5. `--protocol v3` and `--protocol v4` start no new runs; historical records remain supported.
 
 ## `uninstall`
 

@@ -114,8 +114,7 @@ data_dir()/
 │   │   ├── <mode>.json                 # active record
 │   │   ├── <mode>.candidate.json       # inactive candidate
 │   │   └── <mode>.previous.json        # single previous slot
-│   └── evidence/<run-id>/              # private logs of the last v4 run
-└── calibrations/<bundle-id>/            # redacted bundles from the v1 laboratory
+│   └── evidence/<run-id>/              # private logs of the last calibration run
 
 cache_dir()/
 └── llama.cpp/                           # managed engine downloads and staging

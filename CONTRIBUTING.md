@@ -71,9 +71,10 @@ together.
 
 ## Calibration evidence
 
-A calibration PR uses the current `calibration/v4` protocol and follows the
-[Contributing new evidence](docs/calibration.md#contributing-new-evidence) section. The public v2
-contract still describes v3: v4 evidence first requires a new schema in a separate content PR.
+A calibration PR uses the current calibration protocol and follows the
+[Contributing new evidence](docs/calibration.md#contributing-new-evidence) section. The public
+contract still describes the historical reference method, so evidence from the current protocol
+first requires a new schema in a separate content PR.
 
 The following are mandatory:
 

@@ -43,11 +43,11 @@ different models, releases, flags, ports, or assets.
 | `paths.py` | computing the four per-OS roots, without creating them |
 | `config.py`, `_config_paths.py` | TOML, environment, precedence, and types |
 | `hardware.py`, `_hardware_monitoring.py` | CPU/RAM, NVIDIA, GPU processes, and telemetry |
-| `profiles.py`, `_profile_*` | runtime modes, shared seeds, gates, and `LaunchPlan` |
+| `profiles.py`, `_profile_*` | runtime modes, gates, and `LaunchPlan` |
 | `engine.py`, `_engine_*` | lock, model, assets, download/build, installation, and command |
 | `process.py`, `_process_*` | port, startup lock, process, health, state, status, and stop |
-| `calibration.py`, `_calibration_*` | v1 laboratory, v4 search, records, evidence, and reuse |
-| `benchmark.py` | the immutable `benchmark/v1` protocol used by calibration |
+| `calibration.py`, `_calibration_*` | target preparation, search, records, evidence, and reuse |
+| `benchmark.py`, `benchmark_quick.py` | the immutable feasibility probe and the quick-bench |
 | `validation.py`, `_validation_*` | JSON Schema and cross-cutting semantic invariants |
 | `resources/` | lock, schemas, modes, policies, reports, benchmarks, and notices in the wheel |
 | `install.sh`, `install.ps1` | tool installation from an explicit source |
@@ -68,18 +68,14 @@ extracted on disk. The schemas are JSON Schema 2020-12 and forbid undeclared pro
 |---|---|
 | `mode/v1` | mode services and sampling |
 | `profile/v1` | compatibility with class-based evidence; no production envelope is distributed |
-| `calibration-policy/v1` | the explicit laboratory contract |
-| `calibration-report/v1` | v1 laboratory bundles |
-| `calibration-policy/v2` | the historical public v3 method, used by v5 for seeds only |
-| `calibration-report/v2` | privacy-safe v3 evidence and ordering seeds |
-| `calibration-record/v2` | historical private record produced by v3 |
-| `calibration-record/v3` | historical private record produced by v4 |
-| `calibration-record/v4` | current private record produced by v5 |
+| `calibration-policy/v2` | the public reference method, distributed as evidence only |
+| `calibration-report/v2` | privacy-safe public reference evidence |
+| `calibration-record/v5` | the private record produced by a local calibration run |
 | `engine-lock/v1` | engine identity, command, API, health, and assets |
 
-The installed catalog contains three modes, one historical v3 policy, and one reference report. It
-contains no production `profile/v1` profiles. At runtime the shared report exposes only
-`seed_n_cpu_moe`: context, hardware, tok/s, and the observed envelope cannot enter another host's
+The installed catalog contains three modes, one public reference policy, and one reference report.
+It contains no production `profile/v1` profiles, and nothing in the shared report reaches the
+runtime catalog: context, hardware, tok/s, and the observed envelope cannot enter another host's
 plan.
 
 `qwen-launcher validate` meta-validates the schemas, validates the documents, and reconstructs the
@@ -105,10 +101,10 @@ A mode contains behavior, not performance:
 - `ctx` and `n_cpu_moe` from the active record or the baseline;
 - diagnostic references and warnings.
 
-The plan uses a record only when it is an active `calibration-record/v2` or `/v3` for that mode,
-semantically valid, and compatible with the model, digest, engine release/commit/contract, OS,
-backend, components, driver, and current memory. A maximum drift of 1 MiB is tolerated when
-comparing total RAM; RAM/VRAM headroom uses the reserve recorded by the record's protocol.
+The plan uses a record only when it is the active record for that mode, semantically valid, and
+compatible with the model, digest, engine release/commit/contract, OS, backend, components, driver,
+and current memory. A maximum drift of 1 MiB is tolerated when comparing total RAM; RAM and VRAM
+headroom use the reserves the record itself was measured with, applied to its active envelope.
 
 If the record is missing or not reusable, the baseline is `ctx=8192` and, on CUDA, `n_cpu_moe=48`.
 It is always presented as not optimized. Old hardware classes and shared reports produce no

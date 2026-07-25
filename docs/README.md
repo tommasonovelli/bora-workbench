@@ -12,8 +12,8 @@ The recommended reading order is linear:
    managed directories;
 4. [Architecture](architecture.md) — components, flows, contracts, lifecycle, and security
    boundaries;
-5. [Calibration](calibration.md) — local v5 search, benchmarks, records, reuse, and shared
-   evidence;
+5. [Calibration](calibration.md) — the local search, the measured envelopes, records, reuse,
+   and shared evidence;
 6. [Operations and diagnostics](operations.md) — routine checks, errors, and recovery;
 7. [Development](development.md) — repository structure, content, tests, packaging, and
    contributions;
@@ -39,10 +39,7 @@ of the launcher.
 ## Current status
 
 The public release is `0.1.5`: the first fully English release, which also republishes the
-calibration evidence with a regenerated digest chain. The runtime is unchanged — it keeps
-`calibration/v5` and v4 records as the default. `calibration/v6-lite` ships opt-in
-(`--protocol v6`) but **does not work yet**: its real trial adapter has never been validated on
-hardware (D-066), so v5 is the only protocol to use for a real calibration.
+calibration evidence with a regenerated digest chain.
 
 PyPI remains unavailable. The verified artifacts are in the `v0.1.5` GitHub Release and must not be
 rebuilt or replaced.
