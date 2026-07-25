@@ -1,4 +1,11 @@
-"""Validate packaged declarative content and report precise, actionable issues."""
+"""Validate packaged declarative content and report precise, actionable issues.
+
+The module owns the validation entry point of specification section 4.1: it declares the issue
+model shared by every checker, meta-validates the packaged Draft 2020-12 schemas, applies them to
+each content document, and delegates the cross-document semantics to the engine-lock, calibration,
+and profile checkers. Only documents that pass their schema reach those semantic checks, so a
+malformed file is reported once instead of producing a cascade of derived complaints.
+"""
 
 from __future__ import annotations
 
@@ -11,10 +18,20 @@ from typing import Literal
 from jsonschema import Draft202012Validator, FormatChecker
 from jsonschema.exceptions import SchemaError
 
-from bora_workbench._validation_schemas import SCHEMA_FILES
 from bora_workbench.resources import resource_root
 
 JsonObject = dict[str, object]
+
+_SCHEMA_FILES = {
+    "mode/v1": "mode.v1.json",
+    "mode/v2": "mode.v2.json",
+    "profile/v1": "profile.v1.json",
+    "calibration-policy/v1": "calibration-policy.v1.json",
+    "calibration-policy/v2": "calibration-policy.v2.json",
+    "calibration-report/v1": "calibration-report.v1.json",
+    "calibration-report/v2": "calibration-report.v2.json",
+    "calibration-record/v5": "calibration-record.v5.json",
+}
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,7 +97,7 @@ def _load_schemas(root: Traversable) -> tuple[dict[str, JsonObject], list[Valida
     schemas: dict[str, JsonObject] = {}
     issues: list[ValidationIssue] = []
     directory = root.joinpath("schemas")
-    for schema_id, name in SCHEMA_FILES.items():
+    for schema_id, name in _SCHEMA_FILES.items():
         document, read_issues = _read_object(directory.joinpath(name), f"schemas/{name}")
         issues.extend(read_issues)
         if document is None:
@@ -122,7 +139,7 @@ def _content_files(root: Traversable) -> tuple[tuple[Traversable, str], ...]:
 def _validate_schema(document: Document, schemas: dict[str, JsonObject]) -> list[ValidationIssue]:
     """Validate one document and preserve every field-level schema error."""
     schema_id = document.data.get("schema")
-    if not isinstance(schema_id, str) or schema_id not in SCHEMA_FILES:
+    if not isinstance(schema_id, str) or schema_id not in _SCHEMA_FILES:
         message = "unknown or missing schema identifier"
         return [ValidationIssue("error", document.file, "$.schema", message)]
     schema = schemas.get(schema_id)
@@ -140,7 +157,11 @@ def _validate_schema(document: Document, schemas: dict[str, JsonObject]) -> list
 
 
 def _load_engine(root: Traversable) -> tuple[JsonObject, list[ValidationIssue]]:
-    """Load and validate the machine lock while retaining its incomplete-asset warning."""
+    """Load and validate the machine lock while retaining its incomplete-asset warning.
+
+    The checker is imported here because it reads the issue model from this module; a module-scope
+    import would close that cycle.
+    """
     from bora_workbench._validation_engine import validate_engine_lock
 
     document, issues = _read_object(root.joinpath("engine.lock"), "engine.lock")
@@ -154,12 +175,24 @@ def _load_engine(root: Traversable) -> tuple[JsonObject, list[ValidationIssue]]:
 
 
 def _semantic_issues(documents: tuple[Document, ...], engine: JsonObject) -> list[ValidationIssue]:
-    """Delegate cross-document checks while keeping this public module focused."""
-    from bora_workbench._validation_calibration import validate_calibration
-    from bora_workbench._validation_profiles import validate_profiles
+    """Apply every cross-document check to the already schema-valid documents.
 
-    issues = validate_calibration(documents, engine)
-    issues.extend(validate_profiles(documents, engine))
+    The checkers read the issue model from this module, so they are imported here instead of at
+    module scope to keep that dependency acyclic.
+    """
+    from bora_workbench._validation_calibration import validate_calibration_content
+    from bora_workbench._validation_calibration_v3 import validate_v3_contracts
+    from bora_workbench._validation_profiles import (
+        collect_mode_ids,
+        validate_modes,
+        validate_profiles,
+    )
+
+    mode_ids = collect_mode_ids(documents)
+    issues = validate_modes(documents)
+    issues.extend(validate_calibration_content(documents, mode_ids))
+    issues.extend(validate_v3_contracts(documents, mode_ids, engine))
+    issues.extend(validate_profiles(documents, mode_ids, engine))
     return issues
 
 

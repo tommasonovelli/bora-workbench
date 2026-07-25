@@ -1,7 +1,16 @@
-"""Validate public calibration/v3 policy and privacy-safe reference evidence."""
+"""Validate the public calibration/v3 policy, its reference evidence, and the links between them.
+
+The module owns one area of competence: the calibration-policy/v2 and calibration-report/v2
+documents that publish the current method. Beyond schema shape it re-derives what the published
+claim depends on — the pinned model and engine identity copied from `engine.lock`, the
+metadata-reviewed `n_cpu_moe` domain, the reconstructed selection of each mode, and the privacy
+review of free text. The policy binds its evidence by exact digest and reproduces the measured
+scope of each report, so the D-047 coverage claim cannot be widened after the fact (section 5.6).
+"""
 
 from __future__ import annotations
 
+import hashlib
 from datetime import UTC, datetime
 from typing import cast
 
@@ -9,6 +18,13 @@ from bora_workbench._calibration_privacy import has_private_path_pattern
 from bora_workbench.validation import Document, JsonObject, ValidationIssue
 
 _EXPECTED_BLOCK_COUNT = 41
+_IDENTITY_FIELDS = (
+    "model",
+    "model_sha256",
+    "engine_release",
+    "engine_source_commit",
+    "command_contract_sha256",
+)
 
 
 def _error(document: Document, path: str, message: str) -> ValidationIssue:
@@ -145,6 +161,77 @@ def _report_issues(document: Document, mode_ids: set[str]) -> list[ValidationIss
     return issues
 
 
+def _scope_issues(policy: Document, report: Document, reference_id: str) -> list[ValidationIssue]:
+    """Require D-047 measured scope to reproduce the linked report hardware exactly."""
+    coverage = cast(JsonObject, policy.data["empirical_coverage"])
+    scopes = cast(list[JsonObject], coverage["measured_scope"])
+    scope = next((item for item in scopes if item["evidence_id"] == reference_id), None)
+    if scope is None:
+        path = "$.empirical_coverage.measured_scope"
+        return [_error(policy, path, "missing evidence scope")]
+    hardware = cast(JsonObject, report.data["hardware"])
+    fields = ("os_name", "os_version", "backend", "gpu_name", "vram_total_gib", "ram_total_gib")
+    if any(scope[field] != hardware[field] for field in fields):
+        path = "$.empirical_coverage.measured_scope"
+        return [_error(policy, path, "differs from report hardware")]
+    return []
+
+
+def _identity_issues(policy: Document, report: Document) -> list[ValidationIssue]:
+    """Require one report to copy exact model and engine policy identity."""
+    issues = []
+    if report.data["policy_id"] != policy.data["id"]:
+        issues.append(_error(report, "$.policy_id", "differs from referenced policy"))
+    for field in _IDENTITY_FIELDS:
+        if report.data[field] != policy.data[field]:
+            issues.append(_error(report, f"$.{field}", "differs from referenced policy"))
+    return issues
+
+
+def _domain_issue(policy: Document, report: Document) -> ValidationIssue | None:
+    """Require reference evidence to use the policy's metadata-reviewed upper bound."""
+    backends = cast(JsonObject, policy.data["backends"])
+    cuda = cast(JsonObject, backends["cuda"])
+    policy_axis = cast(JsonObject, cuda["axis"])
+    report_search = cast(JsonObject, report.data["search"])
+    report_domain = cast(JsonObject, report_search["n_cpu_moe_domain"])
+    if report_domain["maximum"] == policy_axis["expected_maximum"]:
+        return None
+    path = "$.search.n_cpu_moe_domain.maximum"
+    return _error(report, path, "differs from policy")
+
+
+def _reference_issues(
+    policy: Document, report: Document, reference: JsonObject
+) -> list[ValidationIssue]:
+    """Check one exact report path, digest, identity, domain, and measured scope."""
+    report_id = cast(str, reference["id"])
+    issues: list[ValidationIssue] = []
+    if reference["path"] != f"calibrations/{report_id}.json":
+        issues.append(_error(policy, "$.evidence", "report path does not match its id"))
+    if reference["sha256"] != hashlib.sha256(report.raw_bytes).hexdigest():
+        issues.append(_error(policy, "$.evidence", "report digest does not match exact bytes"))
+    issues.extend(_identity_issues(policy, report))
+    domain_issue = _domain_issue(policy, report)
+    if domain_issue is not None:
+        issues.append(domain_issue)
+    issues.extend(_scope_issues(policy, report, report_id))
+    return issues
+
+
+def _link_issues(policy: Document, reports: dict[str, Document]) -> list[ValidationIssue]:
+    """Bind all policy evidence references to present, byte-exact reports."""
+    issues: list[ValidationIssue] = []
+    for reference in cast(list[JsonObject], policy.data["evidence"]):
+        report_id = cast(str, reference["id"])
+        report = reports.get(report_id)
+        if report is None:
+            issues.append(_error(policy, "$.evidence", f"missing report {report_id!r}"))
+        else:
+            issues.extend(_reference_issues(policy, report, reference))
+    return issues
+
+
 def validate_v3_contracts(
     documents: tuple[Document, ...], mode_ids: set[str], engine: JsonObject
 ) -> list[ValidationIssue]:
@@ -156,11 +243,9 @@ def validate_v3_contracts(
         if item.data.get("schema") == "calibration-report/v2"
     }
     issues: list[ValidationIssue] = []
-    from bora_workbench._validation_calibration_v3_links import validate_v3_links
-
     for policy in policies:
         issues.extend(_policy_issues(policy, mode_ids, engine))
-        issues.extend(validate_v3_links(policy, reports))
+        issues.extend(_link_issues(policy, reports))
     referenced = {
         cast(str, reference["id"])
         for policy in policies

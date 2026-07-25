@@ -1,4 +1,13 @@
-"""Semantic and cross-document checks for profile/v1 content."""
+"""Validate the packaged runtime catalog: mode identities and profile/v1 shared seeds.
+
+The module owns the documents `profiles.load_catalog` turns into runtime models. A mode must own
+its file name, and a profile must reproduce the accepted calibration report it names: the exact
+report bytes, the selected candidate envelope, the measured hardware, and the policy class the
+report was approved under; those references and digests are checked semantically as specification
+section 5.3 requires. D-034 forbids presenting another machine's measurement as a local
+calibration, so a profile may never widen the window its evidence supports. A profile measured on
+a superseded engine release stays structurally valid and is only reported as a warning.
+"""
 
 from __future__ import annotations
 
@@ -6,13 +15,38 @@ import hashlib
 from itertools import combinations
 from typing import cast
 
-from bora_workbench._validation_profile_class import validate_profile_classes
+from bora_workbench._validation_calibration import index_policies
 from bora_workbench.validation import Document, JsonObject, ValidationIssue
 
 
 def _error(document: Document, path: str, message: str) -> ValidationIssue:
-    """Create a profile error tied to its source document."""
+    """Create a catalog error tied to its source document."""
     return ValidationIssue("error", document.file, path, message)
+
+
+def collect_mode_ids(documents: tuple[Document, ...]) -> set[str]:
+    """Return every packaged mode identifier that other content may reference."""
+    return {
+        cast(str, document.data["id"])
+        for document in documents
+        if document.data.get("schema") == "mode/v2"
+    }
+
+
+def validate_modes(documents: tuple[Document, ...]) -> list[ValidationIssue]:
+    """Require every mode to own its file name and to declare a unique identifier."""
+    seen: set[str] = set()
+    issues: list[ValidationIssue] = []
+    for document in documents:
+        if document.data.get("schema") != "mode/v2":
+            continue
+        mode_id = cast(str, document.data["id"])
+        if mode_id != document.stem:
+            issues.append(_error(document, "$.id", "must equal the file name"))
+        if mode_id in seen:
+            issues.append(_error(document, "$.id", f"duplicate mode id {mode_id!r}"))
+        seen.add(mode_id)
+    return issues
 
 
 def _range_valid(values: object) -> bool:
@@ -145,6 +179,34 @@ def _report_issues(
     return issues
 
 
+def _class_issues(
+    document: Document, report: Document | None, policies: dict[str, JsonObject]
+) -> list[ValidationIssue]:
+    """Compare one profile match object with its named class and measured operating system."""
+    if report is None:
+        return []
+    policy_id = cast(JsonObject, report.data["policy"])["id"]
+    policy = policies.get(cast(str, policy_id)) if policy_id is not None else None
+    if policy is None:
+        return []
+    classes = cast(list[JsonObject], policy["hardware_classes"])
+    class_id = report.data["hardware_class"]
+    hardware_class = next((item for item in classes if item["id"] == class_id), None)
+    if hardware_class is None:
+        return []
+    match = cast(JsonObject, document.data["match"])
+    issues: list[ValidationIssue] = []
+    for field in ("ram_gib", "vram_gib"):
+        if match[field] != hardware_class[field]:
+            message = "differs from the report's approved policy class"
+            issues.append(_error(document, f"$.match.{field}", message))
+    hardware = cast(JsonObject, report.data["hardware"])
+    if match.get("os") != [hardware["os_name"]]:
+        message = "must contain only the operating system measured by the report"
+        issues.append(_error(document, "$.match.os", message))
+    return issues
+
+
 def _profile_overlap(left: Document, right: Document) -> bool:
     """Return whether two profiles can apply to the same OS, backend, memory, and mode."""
     left_match = cast(JsonObject, left.data["match"])
@@ -166,29 +228,29 @@ def _profile_overlap(left: Document, right: Document) -> bool:
     )
 
 
-def validate_profiles(documents: tuple[Document, ...], engine: JsonObject) -> list[ValidationIssue]:
-    """Return all local, report-linked, and overlap profile issues."""
-    modes = {
-        cast(str, item.data["id"]) for item in documents if item.data.get("schema") == "mode/v2"
-    }
+def validate_profiles(
+    documents: tuple[Document, ...], mode_ids: set[str], engine: JsonObject
+) -> list[ValidationIssue]:
+    """Return all local, report-linked, class-provenance, and overlap profile issues."""
     reports = {
         cast(str, item.data["id"]): item
         for item in documents
         if item.data.get("schema") == "calibration-report/v1"
     }
+    policies = index_policies(documents)
     profiles = [item for item in documents if item.data.get("schema") == "profile/v1"]
     issues: list[ValidationIssue] = []
     for profile in profiles:
-        issues.extend(_local_issues(profile, modes))
-        report_id = cast(str, profile.data["calibration_report"])
-        issues.extend(_report_issues(profile, reports.get(report_id), engine))
+        issues.extend(_local_issues(profile, mode_ids))
+        report = reports.get(cast(str, profile.data["calibration_report"]))
+        issues.extend(_report_issues(profile, report, engine))
         if profile.data["engine"] != engine.get("release"):
             message = "engine differs from engine.lock; profile is not calibrated at runtime"
             issues.append(ValidationIssue("warning", profile.file, "$.engine", message))
+        issues.extend(_class_issues(profile, report, policies))
     for left, right in combinations(profiles, 2):
         if _profile_overlap(left, right):
             issues.append(
                 _error(right, "$.match", f"overlaps profile {cast(str, left.data['id'])!r}")
             )
-    issues.extend(validate_profile_classes(documents))
     return issues
