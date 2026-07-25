@@ -11,8 +11,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from bora_workbench._calibration_outcomes import ClassifiedOutcome, TrialOutcome
-from bora_workbench._calibration_progress import TrialProgress
 from bora_workbench._calibration_search import search_step
+from bora_workbench._calibration_trial_control import TrialProgress
 from bora_workbench._calibration_types import Sample, SearchError, TrialInfeasibleError
 
 ProbeAt = Callable[[int, int | None], ClassifiedOutcome]

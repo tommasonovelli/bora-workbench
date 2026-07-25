@@ -12,15 +12,20 @@ from pathlib import Path
 
 import psutil
 
-from bora_workbench._calibration_cleanup import prefer_cleanup_error
-from bora_workbench._calibration_gpu_contexts import GpuContextBaseline
-from bora_workbench._calibration_ram import RamMonitor, RamSummary
+from bora_workbench._calibration_memory import (
+    GpuContextBaseline,
+    RamMonitor,
+    RamSummary,
+    VramMonitor,
+    VramSummary,
+    VramThresholds,
+)
+from bora_workbench._calibration_trial_control import prefer_cleanup_error
 from bora_workbench._calibration_types import (
     RAM_RESERVE_GIB,
     RELEASE_TOLERANCE_GIB,
     VRAM_RESERVE_GIB,
 )
-from bora_workbench._calibration_vram import VramMonitor, VramSummary, VramThresholds
 from bora_workbench.calibration import CalibrationRunError
 from bora_workbench.hardware import GpuProcessIdentity
 from bora_workbench.process import RunningService, stop_services

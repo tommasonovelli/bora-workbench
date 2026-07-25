@@ -8,12 +8,14 @@ from typing import Literal
 
 import httpx
 
-from bora_workbench._calibration_oom import oom_resource, read_logs
-from bora_workbench._calibration_ram import RamError, RamReserveError
-from bora_workbench._calibration_vram import (
+from bora_workbench._calibration_memory import (
+    RamError,
+    RamReserveError,
     VramEnvironmentError,
     VramReleaseError,
     VramReserveError,
+    oom_resource,
+    read_logs,
 )
 from bora_workbench.benchmark import BenchmarkError, BenchmarkRetryableError
 from bora_workbench.process import ServerStartupError

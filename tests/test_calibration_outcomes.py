@@ -7,17 +7,19 @@ from pathlib import Path
 import httpx
 import pytest
 
+from bora_workbench._calibration_memory import (
+    RamError,
+    RamReserveError,
+    RamSummary,
+    VramEnvironmentError,
+    VramReleaseError,
+    VramReserveError,
+)
 from bora_workbench._calibration_outcomes import (
     ClassifiedOutcome,
     TrialOutcome,
     UnclassifiableTrialError,
     classify,
-)
-from bora_workbench._calibration_ram import RamError, RamReserveError, RamSummary
-from bora_workbench._calibration_vram import (
-    VramEnvironmentError,
-    VramReleaseError,
-    VramReserveError,
 )
 from bora_workbench.benchmark import BenchmarkError, BenchmarkHttpError
 from bora_workbench.process import ProcessError, ServerStartupError

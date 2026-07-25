@@ -12,14 +12,15 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from bora_workbench._calibration_cleanup import prefer_cleanup_error
 from bora_workbench._calibration_gate import run_gate
-from bora_workbench._calibration_gpu_contexts import GpuContextBaseline
+from bora_workbench._calibration_memory import GpuContextBaseline, RamSummary, VramSummary
 from bora_workbench._calibration_outcomes import ClassifiedOutcome, TrialOutcome, classify
-from bora_workbench._calibration_port import select_trial_port
-from bora_workbench._calibration_progress import TrialProgress
-from bora_workbench._calibration_ram import RamSummary
 from bora_workbench._calibration_session import create_session
+from bora_workbench._calibration_trial_control import (
+    TrialProgress,
+    prefer_cleanup_error,
+    select_trial_port,
+)
 from bora_workbench._calibration_types import (
     MAX_RETRY_PER_TRIAL,
     GateResult,
@@ -27,7 +28,6 @@ from bora_workbench._calibration_types import (
     SearchError,
     TrialInfeasibleError,
 )
-from bora_workbench._calibration_vram import VramSummary
 from bora_workbench.benchmark import run_probe
 from bora_workbench.benchmark_quick import QuickBenchResult, run_quick_bench
 from bora_workbench.calibration import CalibrationTarget

@@ -38,10 +38,10 @@ def _read_unsigned(source: BinaryIO, format_string: str) -> int:
     return int(struct.unpack(format_string, _read_exact(source, struct.calcsize(format_string)))[0])
 
 
-def _read_string(source: BinaryIO, maximum_bytes: int | None = None) -> str:
-    """Read one length-prefixed UTF-8 string, optionally bounding hostile lengths."""
+def _read_string(source: BinaryIO, maximum_bytes: int) -> str:
+    """Read one length-prefixed UTF-8 string while bounding a hostile declared length."""
     length = _read_unsigned(source, "<Q")
-    if maximum_bytes is not None and length > maximum_bytes:
+    if length > maximum_bytes:
         raise GgufError("GGUF metadata key exceeds the supported length")
     try:
         return _read_exact(source, length).decode("utf-8")

@@ -9,7 +9,7 @@ from types import TracebackType
 from rich.console import Console
 from rich.progress import Progress, TaskID, TimeElapsedColumn
 
-from bora_workbench._calibration_progress import ProgressEvent
+from bora_workbench._calibration_trial_control import ProgressEvent
 from bora_workbench._cli_theme import (
     metric_column,
     phase_result_style,

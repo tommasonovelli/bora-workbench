@@ -1,16 +1,35 @@
-"""Count calibration trials and report them where every fresh process passes.
+"""Give every fresh calibration trial its port, its count, and its failure order (spec 5.6).
 
-Progress is presentation only: it never changes the measured protocol or the persisted evidence.
-The search is adaptive, so no phase knows its exact trial count in advance; counting inside the
-trial runner keeps the reported position exact without threading a callback through the search,
-confirmation, and gate orchestration (spec 5.6).
+The three rules here surround one trial without measuring it. A trial server binds an isolated
+loopback port, because the configured port may already belong to a running service. A trial is
+counted where every fresh process passes, because the search is adaptive and no phase knows its
+exact trial count in advance; counting here keeps the reported position exact without threading a
+callback through the search, confirmation, and gate orchestration. Progress stays presentation
+only: it never changes the measured protocol or the persisted evidence.
+
+Cleanup runs even when the workload already failed, so two errors can compete for the same trial.
+D-058 fixes the order: control flow first, then evidence that invalidates the whole run, then the
+diagnostics that only discard one candidate.
 """
 
 from __future__ import annotations
 
+import socket
 from collections.abc import Callable
 from dataclasses import dataclass
 from time import monotonic
+
+from bora_workbench._calibration_memory import RamError, VramEnvironmentError
+from bora_workbench.process import port_is_available
+
+
+def select_trial_port(preferred_port: int) -> int:
+    """Use the configured port when free, otherwise ask the OS for a temporary loopback port."""
+    if port_is_available(preferred_port):
+        return preferred_port
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+        probe.bind(("127.0.0.1", 0))
+        return int(probe.getsockname()[1])
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,3 +105,16 @@ class TrialProgress:
                 is_running,
             )
         )
+
+
+def prefer_cleanup_error(current: BaseException | None, new: BaseException) -> BaseException:
+    """Prefer control flow, then run-invalidating failures, over candidate diagnostics."""
+    if current is not None and not isinstance(current, Exception):
+        return current
+    if not isinstance(new, Exception):
+        return new
+    if isinstance(current, (VramEnvironmentError, RamError)):
+        return current
+    if isinstance(new, (VramEnvironmentError, RamError)):
+        return new
+    return new if current is None else current

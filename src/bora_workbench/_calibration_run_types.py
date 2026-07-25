@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from bora_workbench._calibration_progress import ProgressCallback
 from bora_workbench._calibration_runner import ModeResult
+from bora_workbench._calibration_trial_control import ProgressCallback
 from bora_workbench._calibration_types import DEFAULT_PREFERENCE, Preference
 
 

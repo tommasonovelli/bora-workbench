@@ -7,7 +7,7 @@ from io import StringIO
 import pytest
 from rich.console import Console
 
-from bora_workbench._calibration_progress import ProgressEvent
+from bora_workbench._calibration_trial_control import ProgressEvent
 from bora_workbench._cli_calibration_progress import CalibrationProgress
 
 

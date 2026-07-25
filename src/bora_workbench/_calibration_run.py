@@ -13,11 +13,11 @@ from pathlib import Path
 from uuid import uuid4
 
 from bora_workbench._calibration_evidence import preserve_evidence
-from bora_workbench._calibration_gpu_contexts import (
+from bora_workbench._calibration_memory import (
     GpuContextBaseline,
+    VramEnvironmentError,
     capture_gpu_context_baseline,
 )
-from bora_workbench._calibration_progress import TrialProgress
 from bora_workbench._calibration_record import (
     candidate_record_path,
     promote_candidate,
@@ -28,6 +28,7 @@ from bora_workbench._calibration_run_types import RunOptions, RunResult
 from bora_workbench._calibration_runner import GateTarget, ModeResult, run_group
 from bora_workbench._calibration_sampling import GroupPlan, SearchProvider
 from bora_workbench._calibration_trial import TrialRunner
+from bora_workbench._calibration_trial_control import TrialProgress
 from bora_workbench._calibration_types import (
     BASELINE_CTX,
     CONTEXT_SCALE,
@@ -35,7 +36,6 @@ from bora_workbench._calibration_types import (
     VSTUDIO_SEARCH_BUDGET,
     SearchError,
 )
-from bora_workbench._calibration_vram import VramEnvironmentError
 from bora_workbench.calibration import CalibrationRunError, CalibrationTarget
 from bora_workbench.paths import data_dir
 from bora_workbench.profiles import Mode

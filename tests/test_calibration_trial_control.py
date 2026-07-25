@@ -1,8 +1,14 @@
-"""Offline tests for calibration trial counting and duration projection."""
+"""Offline tests for trial port isolation, trial counting, and duration projection."""
 
 from __future__ import annotations
 
-from bora_workbench._calibration_progress import ProgressEvent, TrialProgress
+import socket
+from dataclasses import replace
+
+from bora_workbench._calibration_trial import TrialRunner
+from bora_workbench._calibration_trial_control import ProgressEvent, TrialProgress
+from bora_workbench.config import Config
+from tests.record_fixtures import cpu_hardware, record_target
 
 
 class _Clock:
@@ -18,6 +24,30 @@ class _Clock:
         value = self._now
         self._now += self._step
         return value
+
+
+def test_calibration_plans_avoid_an_occupied_configured_port(tmp_path) -> None:
+    """Keep calibration usable while another local service already owns llama_port."""
+    with socket.socket() as occupied:
+        occupied.bind(("127.0.0.1", 0))
+        port = occupied.getsockname()[1]
+        target = replace(record_target(cpu_hardware()), config=Config(llama_port=port))
+        runner = TrialRunner(target, target.modes[0], tmp_path)
+        plan = runner._plan((8192, None))
+
+    assert plan.port != port
+
+
+def test_calibration_plans_use_the_configured_port_when_it_is_free(tmp_path) -> None:
+    """Prefer the configured port so a trial stays observable at the documented address."""
+    with socket.socket() as probe:
+        probe.bind(("127.0.0.1", 0))
+        port = probe.getsockname()[1]
+    target = replace(record_target(cpu_hardware()), config=Config(llama_port=port))
+
+    plan = TrialRunner(target, target.modes[0], tmp_path)._plan((8192, None))
+
+    assert plan.port == port
 
 
 def test_each_trial_reports_a_running_then_a_completed_event() -> None:
