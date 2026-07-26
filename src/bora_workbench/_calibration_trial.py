@@ -14,7 +14,6 @@ from pathlib import Path
 
 from bora_workbench._calibration_gate import run_gate
 from bora_workbench._calibration_memory import GpuContextBaseline, RamSummary, VramSummary
-from bora_workbench._calibration_outcomes import ClassifiedOutcome, TrialOutcome, classify
 from bora_workbench._calibration_session import create_session
 from bora_workbench._calibration_trial_control import (
     TrialProgress,
@@ -23,10 +22,13 @@ from bora_workbench._calibration_trial_control import (
 )
 from bora_workbench._calibration_types import (
     MAX_RETRY_PER_TRIAL,
+    ClassifiedOutcome,
     GateResult,
     Sample,
     SearchError,
     TrialInfeasibleError,
+    TrialOutcome,
+    classify,
 )
 from bora_workbench.benchmark import run_probe
 from bora_workbench.benchmark_quick import QuickBenchResult, run_quick_bench

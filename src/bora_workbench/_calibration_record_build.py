@@ -14,7 +14,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 
-from bora_workbench._calibration_metadata import launcher_version
 from bora_workbench._calibration_runner import ModeResult
 from bora_workbench._calibration_types import (
     BALANCED_CEILING,
@@ -27,6 +26,7 @@ from bora_workbench._calibration_types import (
     VRAM_RESERVE_GIB,
     EnvelopeResult,
     Preference,
+    launcher_version,
 )
 from bora_workbench.calibration import CalibrationTarget
 from bora_workbench.profiles import Mode

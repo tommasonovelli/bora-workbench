@@ -8,7 +8,6 @@ from typing import cast
 import typer
 from rich.console import Console
 
-from bora_workbench._calibration_outcomes import UnclassifiableTrialError
 from bora_workbench._calibration_record import RecordError, promote_candidate
 from bora_workbench._calibration_run import run_calibration
 from bora_workbench._calibration_run_types import RunOptions, RunResult
@@ -18,6 +17,7 @@ from bora_workbench._calibration_types import (
     PREFERENCES,
     Preference,
     SearchError,
+    UnclassifiableTrialError,
 )
 from bora_workbench._cli_calibration_preflight import show_preflight
 from bora_workbench._cli_calibration_progress import CalibrationProgress

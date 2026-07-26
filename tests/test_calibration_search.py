@@ -6,9 +6,8 @@ from collections.abc import Callable
 
 import pytest
 
-from bora_workbench._calibration_outcomes import ClassifiedOutcome, TrialOutcome
 from bora_workbench._calibration_search import search_step
-from bora_workbench._calibration_types import SearchError
+from bora_workbench._calibration_types import ClassifiedOutcome, SearchError, TrialOutcome
 
 _VRAM = ClassifiedOutcome(TrialOutcome.MEMORY_INFEASIBLE, "vram")
 _RAM = ClassifiedOutcome(TrialOutcome.MEMORY_INFEASIBLE, "ram")

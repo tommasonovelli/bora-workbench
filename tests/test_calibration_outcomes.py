@@ -15,7 +15,7 @@ from bora_workbench._calibration_memory import (
     VramReleaseError,
     VramReserveError,
 )
-from bora_workbench._calibration_outcomes import (
+from bora_workbench._calibration_types import (
     ClassifiedOutcome,
     TrialOutcome,
     UnclassifiableTrialError,
