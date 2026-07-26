@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      confirm_publish:
+        description: "Type publish-bora-workbench to authorize this PyPI run"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -78,18 +84,39 @@ jobs:
       - name: Verify wheel in isolation
         run: uv run --frozen python scripts/verify_wheel.py
 
+      - name: Verify complete uninstall in isolation
+        run: uv run --frozen python scripts/verify_uninstall.py
+
       - name: Upload distributions
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: python-package-distributions
-          path: dist/
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Build release bundle and SHA-256 manifest
+        shell: bash
+        run: |
+          mkdir release
+          cp dist/*.whl dist/*.tar.gz install.sh install.ps1 release/
+          cd release
+          sha256sum *.whl *.tar.gz install.sh install.ps1 > SHA256SUMS
+
+      - name: Upload release bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: bora-workbench-release-bundle
+          path: release/
           if-no-files-found: error
           retention-days: 7
 
   publish:
     name: Publish to PyPI
     needs: build
-    if: ${{ vars.PYPI_PUBLISH_ENABLED == 'true' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.confirm_publish == 'publish-bora-workbench' }}
     runs-on: ubuntu-22.04
     environment:
       name: pypi

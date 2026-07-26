@@ -1,10 +1,10 @@
-"""Decide the three envelopes of one calibration mode group (spec 1.2, 3.4-3.5).
+"""Decide one requested envelope for each mode in a calibration group (spec section 5.6).
 
-One decision runs in three stages over the samples a group measured: selection picks a winner per
-preference with pure rules, ABBA confirmation re-measures only the pairs selection could not
-separate, and the final gate accepts an envelope or falls back once to its near-tied rival. The
-three stages share the same near-tie definition, so they belong to one module: a rival the
-selection considers material is exactly the rival confirmation re-measures and the gate retries.
+One decision runs in three stages over the samples a group measured: selection picks the requested
+preference, ABBA confirmation re-measures only a pair selection could not separate, and the final
+gate accepts the envelope or falls back once to its near-tied rival. The stages share the same
+near-tie definition, so a material rival is exactly the one confirmation re-measures and the gate
+retries.
 
 Every selection and confirmation rule is a pure function of the measured samples, so the recorded
 choice can be reconstructed from the record. Trial execution is injected, which keeps this
@@ -29,7 +29,6 @@ from bora_workbench._calibration_types import (
     BALANCED_CEILING,
     DEADBAND_PCT,
     MIN_CTX_FAST,
-    PREFERENCES,
     EnvelopeResult,
     GateResult,
     Preference,
@@ -42,14 +41,13 @@ from bora_workbench.profiles import Mode
 GateAt = Callable[[int, int | None], GateResult]
 
 # max_context is decided by the largest feasible context, which re-measurement cannot change, so it
-# is the one preference that never pairs. Both phase totals are caps, not schedules: each paired
-# preference runs two or three ABBA rounds of two trials, and each envelope's gate may additionally
-# gate one rival.
-_PAIRED_PREFERENCES = tuple(name for name in PREFERENCES if name != "max_context")
+# never pairs. Both phase totals are caps, not schedules: the requested paired preference runs two
+# or three ABBA rounds of two trials, and its gate may additionally try one rival.
+_PAIRED_PREFERENCES = frozenset({"fast", "balanced"})
 _MAX_ABBA_ROUNDS = 3
 _TRIALS_PER_ROUND = 2
-MAX_PAIRING_TRIALS = len(_PAIRED_PREFERENCES) * _MAX_ABBA_ROUNDS * _TRIALS_PER_ROUND
-MAX_GATE_TRIALS = len(PREFERENCES) * 2
+MAX_PAIRING_TRIALS = _MAX_ABBA_ROUNDS * _TRIALS_PER_ROUND
+MAX_GATE_TRIALS = 2
 
 _DISPERSION_LIMIT = 0.10
 _THIRD_ROUND_FACTOR = 1.5
@@ -65,12 +63,12 @@ class GateTarget:
 
 @dataclass(frozen=True, slots=True)
 class ModeResult:
-    """Hold one mode's confirmed, gated envelopes and the shared samples behind them."""
+    """Hold one mode's requested gated envelope and the shared samples behind it."""
 
     mode: Mode
-    envelopes: dict[Preference, EnvelopeResult]
+    envelope: EnvelopeResult
     samples: tuple[Sample, ...]
-    selection_inputs: dict[Preference, tuple[tuple[float, float], ...]]
+    selection_inputs: tuple[tuple[float, float], ...]
 
 
 def _free_vram(sample: Sample) -> float:
@@ -120,14 +118,14 @@ def _select_max_context(samples: tuple[Sample, ...]) -> Sample:
     return max((s for s in samples if s.ctx == max_ctx), key=_throughput_key)
 
 
-def select_envelopes(samples: tuple[Sample, ...]) -> dict[Preference, Sample]:
-    """Select all three preference envelopes from one shared set of feasible samples (spec 3.4)."""
+def select_envelope(samples: tuple[Sample, ...], preference: Preference) -> Sample:
+    """Select only the requested preference from shared feasible samples (spec section 5.6)."""
+    if preference == "max_context":
+        return _select_max_context(samples)
     fast = _select_fast(samples)
-    return {
-        "fast": fast,
-        "balanced": _select_balanced(samples, fast),
-        "max_context": _select_max_context(samples),
-    }
+    if preference == "fast":
+        return fast
+    return _select_balanced(samples, fast)
 
 
 def _fast_rivals(samples: tuple[Sample, ...], winner: Sample) -> tuple[Sample, ...]:
@@ -185,7 +183,7 @@ def _aggregate(rounds: tuple[RoundResult, ...]) -> tuple[float, float]:
 
 
 def needs_third_round(rounds: tuple[RoundResult, RoundResult]) -> bool:
-    """Trigger a third round on discordant winners, a sub-1.5x gap, or a noisy round (spec 3.4)."""
+    """Trigger a third round on discordant winners, a sub-1.5x gap, or noise (spec section 5.6)."""
     winners = {value for value in (_round_winner(r.medians) for r in rounds) if value is not None}
     if len(winners) > 1:
         return True
@@ -245,10 +243,13 @@ def _remeasure(finalist: Sample, index: int, sample_at: SampleAt) -> Sample:
         raise _FinalistLost(index) from error
 
 
-def _abba_round(finalists: tuple[Sample, Sample], sample_at: SampleAt) -> RoundResult:
-    """Re-measure both finalists once and report their medians and dispersions for one round."""
-    first = _remeasure(finalists[0], 0, sample_at)
-    second = _remeasure(finalists[1], 1, sample_at)
+def _abba_round(
+    finalists: tuple[Sample, Sample], sample_at: SampleAt, is_reversed: bool = False
+) -> RoundResult:
+    """Measure one A-B or B-A round while returning metrics in canonical finalist order."""
+    order = (1, 0) if is_reversed else (0, 1)
+    measured = {index: _remeasure(finalists[index], index, sample_at) for index in order}
+    first, second = measured[0], measured[1]
     return RoundResult((first.e2e_ms, second.e2e_ms), (_dispersion(first), _dispersion(second)))
 
 
@@ -265,14 +266,17 @@ def _finalists(
 def _confirm(
     finalists: tuple[Sample, Sample], sample_at: SampleAt
 ) -> tuple[Sample, tuple[RoundResult, ...]]:
-    """Disambiguate two near-tied finalists with ABBA and the third-round rule (spec 3.4).
+    """Disambiguate near-tied finalists with ABBA and the third-round rule (spec section 5.6).
 
     A finalist that stops fitting the reserves between the search and confirmation cannot become a
     launch envelope, so the surviving finalist is confirmed with no recorded rounds instead of
     failing the mode: the comparison is abandoned, never silently continued with one side missing.
     """
     try:
-        rounds = [_abba_round(finalists, sample_at), _abba_round(finalists, sample_at)]
+        rounds = [
+            _abba_round(finalists, sample_at),
+            _abba_round(finalists, sample_at, is_reversed=True),
+        ]
         if needs_third_round((rounds[0], rounds[1])):
             rounds.append(_abba_round(finalists, sample_at))
     except _FinalistLost as lost:
@@ -280,18 +284,14 @@ def _confirm(
     return finalists[resolve(tuple(rounds), finalists)], tuple(rounds)
 
 
-def _confirm_all(
-    samples: tuple[Sample, ...], sample_at: SampleAt
-) -> tuple[dict[Preference, Sample], dict[Preference, tuple[tuple[float, float], ...]]]:
-    """Confirm every preference envelope from the shared samples of one group."""
-    confirmed: dict[Preference, Sample] = {}
-    inputs: dict[Preference, tuple[tuple[float, float], ...]] = {}
-    for preference, winner in select_envelopes(samples).items():
-        pair = _finalists(samples, winner, preference)
-        sample, rounds = (winner, ()) if pair is None else _confirm(pair, sample_at)
-        confirmed[preference] = sample
-        inputs[preference] = tuple(round_result.medians for round_result in rounds)
-    return confirmed, inputs
+def _confirm_selected(
+    samples: tuple[Sample, ...], sample_at: SampleAt, preference: Preference
+) -> tuple[Sample, tuple[tuple[float, float], ...]]:
+    """Confirm only the requested preference and retain its canonical finalist medians."""
+    winner = select_envelope(samples, preference)
+    pair = _finalists(samples, winner, preference)
+    sample, rounds = (winner, ()) if pair is None else _confirm(pair, sample_at)
+    return sample, tuple(round_result.medians for round_result in rounds)
 
 
 def _gate_candidates(
@@ -310,7 +310,7 @@ def _gate_candidates(
 def _gate_envelope(
     target: GateTarget, preference: Preference, candidates: Iterator[Sample]
 ) -> EnvelopeResult:
-    """Return the first candidate that passes the mode's final gate (spec 3.5).
+    """Return the first candidate that passes the mode's final gate (spec section 5.6).
 
     A point that turned infeasible since it was confirmed cannot become a launch envelope, so it
     counts as a gate it did not pass rather than as a failure of the whole run.
@@ -325,30 +325,21 @@ def _gate_envelope(
     raise SearchError(f"{preference} envelope failed the final gate for mode {target.mode.id}")
 
 
-def _gate_mode(
-    target: GateTarget, confirmed: dict[Preference, Sample], samples: tuple[Sample, ...]
-) -> dict[Preference, EnvelopeResult]:
-    """Gate one mode's confirmed envelopes, allowing its near-tied rival one second chance."""
-    envelopes: dict[Preference, EnvelopeResult] = {}
-    for preference, sample in confirmed.items():
-        candidates = _gate_candidates(samples, sample, preference)
-        envelopes[preference] = _gate_envelope(target, preference, candidates)
-    return envelopes
-
-
 def run_group(
     provider: SearchProvider, targets: tuple[GateTarget, ...], plan: GroupPlan
 ) -> tuple[ModeResult, ...]:
-    """Run one shared search, then confirm and gate each mode's envelopes from those samples."""
+    """Run one shared search, then confirm and gate the requested cell for each mode."""
     # The label names every mode of the group, because one search serves all of their trials.
     label = "+".join(target.mode.id for target in targets)
     plan.progress.enter(label, "search", plan.trial_cap)
     samples = search_samples(provider, plan)
-    plan.progress.enter(label, "pairing", MAX_PAIRING_TRIALS)
-    confirmed, inputs = _confirm_all(samples, provider.sample_at)
+    if plan.preference in _PAIRED_PREFERENCES:
+        plan.progress.enter(label, "pairing", MAX_PAIRING_TRIALS)
+    confirmed, inputs = _confirm_selected(samples, provider.sample_at, plan.preference)
     results = []
     for target in targets:
         plan.progress.enter(target.mode.id, "gate", MAX_GATE_TRIALS)
-        envelopes = _gate_mode(target, confirmed, samples)
-        results.append(ModeResult(target.mode, envelopes, samples, inputs))
+        candidates = _gate_candidates(samples, confirmed, plan.preference)
+        envelope = _gate_envelope(target, plan.preference, candidates)
+        results.append(ModeResult(target.mode, envelope, samples, inputs))
     return tuple(results)

@@ -1,4 +1,4 @@
-"""Search the feasible region of one calibration mode group (spec 1.2, 3.3, 5.6).
+"""Search the feasible region of one calibration mode group (spec section 5.6).
 
 Two nested searches live here because they answer the same question at two scales: which
 configurations this machine can actually serve.
@@ -23,16 +23,18 @@ from dataclasses import dataclass, field
 
 from bora_workbench._calibration_trial_control import TrialProgress
 from bora_workbench._calibration_types import (
+    DEFAULT_PREFERENCE,
     MAX_RETRY_PER_TRIAL,
     PRUDENT_N_CPU_MOE,
     ClassifiedOutcome,
+    Preference,
     Sample,
     SearchError,
     TrialInfeasibleError,
     TrialOutcome,
 )
 
-Probe = Callable[[int], ClassifiedOutcome]
+Probe = Callable[[int | None], ClassifiedOutcome]
 ProbeAt = Callable[[int, int | None], ClassifiedOutcome]
 SampleAt = Callable[[int, int | None], Sample]
 
@@ -52,7 +54,7 @@ class SearchProvider:
 
 @dataclass(frozen=True, slots=True)
 class GroupPlan:
-    """Hold the context scale, shared probe budget, offload axis, and progress of one group.
+    """Hold the context scale, probe budget, offload axis, progress, and selected preference.
 
     Progress belongs to the group because the group is exactly the scope whose trials are shared.
     """
@@ -61,6 +63,7 @@ class GroupPlan:
     budget: int
     has_offload_axis: bool = True
     progress: TrialProgress = field(default_factory=TrialProgress)
+    preference: Preference = DEFAULT_PREFERENCE
 
     @property
     def trial_cap(self) -> int:
@@ -70,7 +73,8 @@ class GroupPlan:
         and those trials are what the operator watches, so they belong in the reported cap.
         """
         if not self.has_offload_axis:
-            return 2 * len(self.contexts)
+            probe_cap = min(self.budget, (MAX_RETRY_PER_TRIAL + 1) * len(self.contexts))
+            return probe_cap + len(self.contexts)
         return self.budget + MAX_SAMPLES_PER_STEP * len(self.contexts)
 
 
@@ -94,10 +98,10 @@ class _StepBudget:
     """Track the shared per-step probe budget and record every probed value."""
 
     limit: int
-    probed: list[int] = field(default_factory=list)
+    probed: list[int | None] = field(default_factory=list)
     is_exhausted: bool = False
 
-    def spend(self, value: int) -> bool:
+    def spend(self, value: int | None) -> bool:
         """Reserve one probe for ``value`` or mark the step budget exhausted."""
         if len(self.probed) >= self.limit:
             self.is_exhausted = True
@@ -106,9 +110,11 @@ class _StepBudget:
         return True
 
 
-def _probe(probe: Probe, value: int) -> ClassifiedOutcome:
-    """Probe one value with a single retry; stop the mode on protocol-invalid evidence."""
+def _probe(probe: Probe, value: int | None, state: _StepBudget) -> ClassifiedOutcome | None:
+    """Probe within the shared budget and apply the same retry taxonomy on both backends."""
     for _ in range(MAX_RETRY_PER_TRIAL + 1):
+        if not state.spend(value):
+            return None
         outcome = probe(value)
         if outcome.outcome is TrialOutcome.PROTOCOL_INVALID:
             raise SearchError(f"n_cpu_moe={value} produced protocol-invalid evidence")
@@ -118,13 +124,13 @@ def _probe(probe: Probe, value: int) -> ClassifiedOutcome:
 
 
 def _descend_to_feasible(probe: Probe, state: _StepBudget) -> int | None:
-    """Find one feasible anchor below the prudent maximum after a RAM failure (spec 3.3)."""
+    """Find one feasible anchor below the prudent maximum after a RAM failure (section 5.6)."""
     low, high = 0, PRUDENT_N_CPU_MOE - 1
     while low <= high:
         mid = (low + high) // 2
-        if not state.spend(mid):
+        outcome = _probe(probe, mid, state)
+        if outcome is None:
             return None
-        outcome = _probe(probe, mid)
         if outcome.outcome is TrialOutcome.SUCCESS:
             return mid
         if outcome.resource == "ram":
@@ -136,9 +142,9 @@ def _descend_to_feasible(probe: Probe, state: _StepBudget) -> int | None:
 
 def _find_prudent_anchor(probe: Probe, state: _StepBudget) -> int | None:
     """Probe the prudent maximum; a VRAM failure there makes the whole step infeasible."""
-    if not state.spend(PRUDENT_N_CPU_MOE):
+    outcome = _probe(probe, PRUDENT_N_CPU_MOE, state)
+    if outcome is None:
         return None
-    outcome = _probe(probe, PRUDENT_N_CPU_MOE)
     if outcome.outcome is TrialOutcome.SUCCESS:
         return PRUDENT_N_CPU_MOE
     if outcome.resource == "vram":
@@ -155,9 +161,10 @@ def _bisect_vram_side(probe: Probe, prudent: int, state: _StepBudget) -> int:
     low, high = 0, prudent
     while low < high:
         split = (low + high) // 2
-        if not state.spend(split):
+        outcome = _probe(probe, split, state)
+        if outcome is None:
             return high
-        if _probe(probe, split).outcome is TrialOutcome.SUCCESS:
+        if outcome.outcome is TrialOutcome.SUCCESS:
             high = split
         else:
             low = split + 1
@@ -199,11 +206,13 @@ def _cuda_step(provider: SearchProvider, ctx: int, budget: int) -> tuple[list[Sa
     return _measure(provider, ctx, points), len(step.probed)
 
 
-def _cpu_step(provider: SearchProvider, ctx: int) -> tuple[list[Sample], int]:
+def _cpu_step(provider: SearchProvider, ctx: int, budget: int) -> tuple[list[Sample], int]:
     """Confirm one context on CPU without inventing an offload axis (spec 5.6)."""
-    if provider.probe_at(ctx, None).outcome is not TrialOutcome.SUCCESS:
-        return [], 1
-    return _measure(provider, ctx, (None,)), 1
+    state = _StepBudget(budget)
+    outcome = _probe(lambda value: provider.probe_at(ctx, value), None, state)
+    if outcome is None or outcome.outcome is not TrialOutcome.SUCCESS:
+        return [], len(state.probed)
+    return _measure(provider, ctx, (None,)), len(state.probed)
 
 
 def search_samples(provider: SearchProvider, plan: GroupPlan) -> tuple[Sample, ...]:
@@ -214,7 +223,7 @@ def search_samples(provider: SearchProvider, plan: GroupPlan) -> tuple[Sample, .
         if plan.has_offload_axis:
             measured, spent = _cuda_step(provider, ctx, remaining)
         else:
-            measured, spent = _cpu_step(provider, ctx)
+            measured, spent = _cpu_step(provider, ctx, remaining)
         samples.extend(measured)
         remaining -= spent
         if remaining <= 0:

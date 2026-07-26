@@ -70,7 +70,7 @@ class RunResult:
 
 @dataclass(frozen=True, slots=True)
 class _RunSpec:
-    """Group the immutable target, runtime root, context scale, and identity for one run."""
+    """Group the immutable target, runtime root, search preference, and identity for one run."""
 
     target: CalibrationTarget
     runtime_root: Path
@@ -78,6 +78,7 @@ class _RunSpec:
     run_id: str
     context_baseline: GpuContextBaseline | None
     progress: TrialProgress
+    preference: Preference = DEFAULT_PREFERENCE
 
 
 def _capture_context_baseline(target: CalibrationTarget) -> GpuContextBaseline | None:
@@ -119,7 +120,13 @@ def _run_group_for(
     provider = SearchProvider(search.probe, search.sample)
     targets = tuple(GateTarget(mode, runners[mode.id].gate) for mode in modes)
     has_offload_axis = spec.target.hardware.backend != "cpu"
-    plan = GroupPlan(spec.contexts, budget, has_offload_axis, spec.progress)
+    plan = GroupPlan(
+        spec.contexts,
+        budget,
+        has_offload_axis,
+        spec.progress,
+        preference=spec.preference,
+    )
     results = run_group(provider, targets, plan)
     return tuple((result, search.driver) for result in results)
 
@@ -127,7 +134,7 @@ def _run_group_for(
 def _persist(spec: _RunSpec, options: RunOptions, produced: tuple[ModeResult, str | None]) -> Path:
     """Write one candidate record and promote it unless activation was declined."""
     result, driver = produced
-    context = RecordContext(spec.target, spec.run_id, options.preference, driver)
+    context = RecordContext(spec.target, spec.run_id, driver)
     document = build_record(context, result)
     path = write_record(document, candidate_record_path(result.mode.id))
     return promote_candidate(result.mode.id) if options.is_activate else path
@@ -171,12 +178,18 @@ def run_calibration(target: CalibrationTarget, options: RunOptions) -> RunResult
         run_id,
         _capture_context_baseline(target),
         TrialProgress(options.progress),
+        options.preference,
     )
     try:
         produced, failures = _measure(spec)
-    except BaseException:
-        if runtime_root.exists():
-            preserve_evidence(root, runtime_root, run_id)
+    except BaseException as error:
+        try:
+            if runtime_root.exists():
+                preserve_evidence(root, runtime_root, run_id)
+        except BaseException as cleanup:
+            if not isinstance(error, Exception):
+                raise error from cleanup
+            raise
         raise
     evidence_path = preserve_evidence(root, runtime_root, run_id)
     if not produced:

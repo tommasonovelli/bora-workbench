@@ -20,6 +20,7 @@ def region_probe(
     """Model a contiguous feasible window: low n_cpu_moe lacks VRAM, high n_cpu_moe lacks RAM."""
 
     def probe(value: int) -> ClassifiedOutcome:
+        """Classify one point inside or outside the synthetic feasible window."""
         if seen is not None:
             seen.append(value)
         if value < vram_boundary:
@@ -64,6 +65,7 @@ def test_single_retry_is_tolerated_before_classifying() -> None:
     base = region_probe(37, 41, seen)
 
     def flaky(value: int) -> ClassifiedOutcome:
+        """Return one retryable outcome before delegating to the stable region."""
         if value == 41 and seen.count(41) == 0:
             seen.append(41)
             return ClassifiedOutcome(TrialOutcome.RETRYABLE)
@@ -72,6 +74,22 @@ def test_single_retry_is_tolerated_before_classifying() -> None:
     result = search_step(flaky, budget=24)
     assert result.boundary == 37
     assert seen.count(41) == 2
+
+
+def test_retry_attempts_spend_the_exact_shared_budget() -> None:
+    """Never start a retry after the last available probe slot has been consumed."""
+    seen: list[int] = []
+
+    def retryable(value: int) -> ClassifiedOutcome:
+        """Consume one budget slot with a retryable outcome."""
+        seen.append(value)
+        return ClassifiedOutcome(TrialOutcome.RETRYABLE)
+
+    result = search_step(retryable, budget=1)
+
+    assert seen == [41]
+    assert result.probed == (41,)
+    assert result.is_budget_exhausted
 
 
 def test_persistent_retryable_and_protocol_invalid_stop_the_mode() -> None:

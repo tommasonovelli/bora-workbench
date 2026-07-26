@@ -1,0 +1,385 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "engine-lock/v1",
+  "title": "bora-workbench engine lock",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "project",
+    "release",
+    "source_commit",
+    "default_model",
+    "default_model_artifact",
+    "verified_flags",
+    "version_contract",
+    "help_contract",
+    "command_contract",
+    "api_contract",
+    "health_contract",
+    "assets_complete",
+    "assets"
+  ],
+  "properties": {
+    "schema": {
+      "const": "engine-lock/v1"
+    },
+    "project": {
+      "const": "ggml-org/llama.cpp"
+    },
+    "release": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_commit": {
+      "$ref": "#/$defs/commit"
+    },
+    "default_model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "default_model_artifact": {
+      "$ref": "#/$defs/modelArtifact"
+    },
+    "verified_flags": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^-"
+      }
+    },
+    "version_contract": {
+      "$ref": "#/$defs/versionProbe"
+    },
+    "help_contract": {
+      "$ref": "#/$defs/helpProbe"
+    },
+    "command_contract": {
+      "$ref": "#/$defs/commandContract"
+    },
+    "api_contract": {
+      "$ref": "#/$defs/apiContract"
+    },
+    "health_contract": {
+      "$ref": "#/$defs/healthContract"
+    },
+    "assets_complete": {
+      "type": "boolean"
+    },
+    "assets": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/asset"
+      }
+    }
+  },
+  "$defs": {
+    "commit": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "positiveFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "filename",
+        "size_bytes",
+        "sha256"
+      ],
+      "properties": {
+        "filename": {
+          "type": "string",
+          "minLength": 1
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "modelArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "revision",
+        "filename",
+        "size_bytes",
+        "sha256",
+        "mmproj"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "$ref": "#/$defs/commit"
+        },
+        "filename": {
+          "type": "string",
+          "minLength": 1
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "mmproj": {
+          "$ref": "#/$defs/positiveFile"
+        }
+      }
+    },
+    "tokens": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "versionProbe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "args",
+        "exit_code",
+        "output_contains"
+      ],
+      "properties": {
+        "args": {
+          "$ref": "#/$defs/tokens"
+        },
+        "exit_code": {
+          "type": "integer"
+        },
+        "output_contains": {
+          "$ref": "#/$defs/tokens"
+        }
+      }
+    },
+    "helpProbe": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "args",
+        "exit_code",
+        "must_list_verified_flags"
+      ],
+      "properties": {
+        "args": {
+          "$ref": "#/$defs/tokens"
+        },
+        "exit_code": {
+          "type": "integer"
+        },
+        "must_list_verified_flags": {
+          "const": true
+        }
+      }
+    },
+    "namedTokenArrays": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/tokens"
+      }
+    },
+    "commandContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_args",
+        "context_args",
+        "sampling_args",
+        "extended_sampling_args",
+        "reasoning_args",
+        "network_args",
+        "metrics_args",
+        "fixed_args",
+        "speculative_args",
+        "post_speculative_args",
+        "ui_args",
+        "vision_args",
+        "backend_args"
+      ],
+      "properties": {
+        "model_args": {
+          "$ref": "#/$defs/tokens"
+        },
+        "context_args": {
+          "$ref": "#/$defs/tokens"
+        },
+        "sampling_args": {
+          "$ref": "#/$defs/namedTokenArrays"
+        },
+        "extended_sampling_args": {
+          "$ref": "#/$defs/namedTokenArrays"
+        },
+        "reasoning_args": {
+          "$ref": "#/$defs/namedTokenArrays"
+        },
+        "network_args": {
+          "$ref": "#/$defs/tokens"
+        },
+        "metrics_args": {
+          "$ref": "#/$defs/tokens"
+        },
+        "fixed_args": {
+          "$ref": "#/$defs/tokens"
+        },
+        "speculative_args": {
+          "$ref": "#/$defs/namedTokenArrays"
+        },
+        "post_speculative_args": {
+          "$ref": "#/$defs/tokens"
+        },
+        "ui_args": {
+          "$ref": "#/$defs/namedTokenArrays"
+        },
+        "vision_args": {
+          "$ref": "#/$defs/namedTokenArrays"
+        },
+        "backend_args": {
+          "$ref": "#/$defs/namedTokenArrays"
+        }
+      }
+    },
+    "apiContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_path",
+        "models_path",
+        "chat_completions_path",
+        "metrics_path",
+        "ui_path"
+      ],
+      "properties": {
+        "base_path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "models_path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "chat_completions_path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "metrics_path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "ui_path": {
+          "type": "string",
+          "pattern": "^/"
+        }
+      }
+    },
+    "healthContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "transient_statuses",
+        "transient_json",
+        "ready_status",
+        "ready_json"
+      ],
+      "properties": {
+        "path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "transient_statuses": {
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "minimum": 100,
+            "maximum": 599
+          }
+        },
+        "transient_json": {
+          "type": "object"
+        },
+        "ready_status": {
+          "type": "integer",
+          "minimum": 100,
+          "maximum": 599
+        },
+        "ready_json": {
+          "type": "object"
+        }
+      }
+    },
+    "asset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "os",
+        "backend",
+        "role",
+        "filename",
+        "url",
+        "sha256",
+        "archive",
+        "executable"
+      ],
+      "properties": {
+        "os": {
+          "enum": [
+            "ubuntu",
+            "windows"
+          ]
+        },
+        "backend": {
+          "enum": [
+            "cpu",
+            "cuda"
+          ]
+        },
+        "role": {
+          "enum": [
+            "server",
+            "cuda-runtime",
+            "source"
+          ]
+        },
+        "filename": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "pattern": "^https://"
+        },
+        "sha256": {
+          "$ref": "#/$defs/digest"
+        },
+        "archive": {
+          "enum": [
+            "zip",
+            "tar.gz"
+          ]
+        },
+        "executable": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    }
+  }
+}

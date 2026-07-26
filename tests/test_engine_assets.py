@@ -89,6 +89,20 @@ def test_validation_rejects_unsafe_asset_metadata(tmp_path) -> None:
     assert "$.assets[0].executable" in paths
 
 
+@pytest.mark.parametrize("value", ["CON.zip", "aux.txt", "name:stream", "trailing."])
+def test_validation_rejects_windows_ambiguous_asset_paths(tmp_path, value) -> None:
+    """Reject lock paths that Windows aliases, redirects, or normalizes."""
+    root = copy_resource_root(tmp_path)
+    path = root / "engine.lock"
+    lock = read_json(path)
+    lock["assets"][0]["filename"] = value
+    write_json(path, lock)
+
+    result = validate_resources(root)
+
+    assert any(issue.field_path == "$.assets[0].filename" for issue in result.errors)
+
+
 def test_validation_binds_source_url_and_complete_role_matrix(tmp_path) -> None:
     """Require the pinned source commit and every exact supported role set."""
     root = copy_resource_root(tmp_path)
@@ -109,11 +123,20 @@ def test_validation_binds_source_url_and_complete_role_matrix(tmp_path) -> None:
 class FakeResponse:
     """Provide the bounded httpx streaming surface used by the downloader."""
 
-    def __init__(self, chunks, url="https://example.invalid/engine.zip", total=None):
+    def __init__(
+        self,
+        chunks,
+        url="https://example.invalid/engine.zip",
+        total=None,
+        location=None,
+    ):
         """Store deterministic chunks, final URL, length, or a failing iterator."""
         self.chunks = chunks
         self.url = url
         self.headers = {} if total is None else {"Content-Length": str(total)}
+        if location is not None:
+            self.headers["Location"] = location
+        self.is_redirect = location is not None
 
     def __enter__(self):
         """Enter the fake response context."""
@@ -202,6 +225,26 @@ def test_interrupted_download_removes_partial(tmp_path, monkeypatch) -> None:
     assert not any(tmp_path.iterdir())
 
 
+def test_control_signal_during_download_removes_partial(tmp_path, monkeypatch) -> None:
+    """Remove partial bytes without replacing a caller control signal."""
+
+    def interrupted():
+        """Yield bytes before the caller interrupts the transfer."""
+        yield b"partial"
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(
+        assets.httpx,
+        "stream",
+        lambda *args, **kwargs: FakeResponse(interrupted()),
+    )
+
+    with pytest.raises(KeyboardInterrupt):
+        assets.download_asset(pinned_asset(b"complete"), tmp_path)
+
+    assert not any(tmp_path.iterdir())
+
+
 def test_rejects_redirect_downgrade_to_plain_http(tmp_path, monkeypatch) -> None:
     """Keep TLS mandatory even when an HTTPS endpoint responds with a downgrade redirect."""
     monkeypatch.setattr(
@@ -214,6 +257,40 @@ def test_rejects_redirect_downgrade_to_plain_http(tmp_path, monkeypatch) -> None
         assets.download_asset(pinned_asset(b"payload"), tmp_path)
 
     assert not any(tmp_path.iterdir())
+
+
+def test_rejects_intermediate_redirect_downgrade(tmp_path, monkeypatch) -> None:
+    """Reject an HTTPS-to-HTTP hop even when the final response returns to HTTPS."""
+    monkeypatch.setattr(
+        assets.httpx,
+        "stream",
+        lambda *args, **kwargs: FakeResponse(
+            [], "https://example.invalid/engine.zip", location="http://example.invalid/intermediate"
+        ),
+    )
+
+    with pytest.raises(EngineError, match="redirected away from HTTPS"):
+        assets.download_asset(pinned_asset(b"payload"), tmp_path)
+
+    assert not any(tmp_path.iterdir())
+
+
+def test_download_refuses_symlinked_cache_root(tmp_path, monkeypatch) -> None:
+    """Never redirect managed cache writes through a symlinked root."""
+    external = tmp_path / "external"
+    external.mkdir()
+    cache = tmp_path / "cache"
+    cache.symlink_to(external, target_is_directory=True)
+    monkeypatch.setattr(
+        assets.httpx,
+        "stream",
+        lambda *args, **kwargs: FakeResponse([b"payload"]),
+    )
+
+    with pytest.raises(EngineError, match=r"cache root.*symlink"):
+        assets.download_asset(pinned_asset(b"payload"), cache)
+
+    assert not any(external.iterdir())
 
 
 def test_reuses_only_a_valid_cached_archive(tmp_path, monkeypatch) -> None:
@@ -264,9 +341,29 @@ def test_extracts_regular_zip_and_tar_files(tmp_path) -> None:
         archive.addfile(info, io.BytesIO(b"ubuntu"))
     tar_out = tmp_path / "tar-out"
     extract_asset(ExtractionRequest(archive_asset("tar.gz"), tar_path, tar_out))
-
     assert (zip_out / "bin/llama-server.exe").read_bytes() == b"windows"
     assert (tar_out / "bin/llama-server").read_bytes() == b"ubuntu"
+
+
+@pytest.mark.parametrize(
+    "member",
+    [
+        "CON",
+        "aux.txt",
+        "folder/NUL.bin",
+        "folder/name:stream",
+        "folder/trailing.",
+        "folder/trailing ",
+    ],
+)
+def test_rejects_windows_ambiguous_archive_members(tmp_path, member) -> None:
+    """Reject names Windows aliases or normalizes before writing any archive member."""
+    path = tmp_path / "unsafe.zip"
+    with zipfile.ZipFile(path, "w") as archive:
+        archive.writestr(member, b"payload")
+
+    with pytest.raises(EngineError, match="unsafe archive member"):
+        extract_asset(ExtractionRequest(archive_asset("zip"), path, tmp_path / "out"))
 
 
 def test_reports_uncompressed_extraction_bytes(tmp_path) -> None:

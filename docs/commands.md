@@ -168,13 +168,13 @@ bora calibrate --mode <coding|studio|vstudio|all> [--preference <envelope>]
 ```
 
 The command shows a preflight and asks for confirmation before starting any process. It measures
-three launch envelopes per mode — `fast`, `balanced`, and `max-context` — writes all three into one
-candidate record per completed mode, and activates it atomically unless told otherwise.
+one `fast`, `balanced`, or `max-context` cell per selected mode, writes that cell into one candidate
+record per completed mode, and activates it atomically unless told otherwise.
 
 | Option | Effect |
 |---|---|
 | `--mode <id\|all>` | the packaged mode to measure, or every mode (required) |
-| `--preference fast\|balanced\|max-context` | which envelope the record launches with, default `balanced` |
+| `--preference fast\|balanced\|max-context` | optimization rule measured for the cell, default `balanced` |
 | `--no-activate` | keeps the new records as candidates, leaving the active ones untouched |
 | `--activate` | promotes candidates measured earlier, without new trials |
 | `--target-ctx N` | collapses the context ladder onto a single approved step |
@@ -189,7 +189,11 @@ bora calibrate --mode coding --target-ctx 98304
 
 Allowed targets: `131072`, `98304`, `65536`, `49152`, `32768`, `16384`, `8192` — the same steps the
 automatic ladder descends. `--activate` cannot be combined with `--target-ctx`, and `--activate` and
-`--no-activate` are mutually exclusive; both are input errors reported before any process starts.
+`--no-activate` are mutually exclusive. `--activate` cannot relabel a candidate with
+`--preference`; each conflict is an input error reported before any process starts.
+
+`--mode all` applies the same preference to all three modes. Run individual mode commands when,
+for example, `coding` should retain `fast`, `studio` `balanced`, and `vstudio` `max-context`.
 
 `--mode` and `--preference` are ordinary Typer options; the other three are handled by the command's
 specialized parser, so `calibrate --help` lists them in the epilog rather than in the generated
@@ -200,8 +204,7 @@ Trial reserves, written into every record: 0.5 GiB VRAM, 2.0 GiB RAM, 0.125 GiB 
 On an interactive terminal the run shows a live bar with the phase, the trial, the elapsed time, and
 an estimate learned from the current phase; redirected output stays line-oriented, one line per
 completed trial. Every phase total is a cap (`≤N`), not a schedule or a promise. The final summary
-prints all three measured envelopes, marks the active one, and reports the lowest observed RAM and
-VRAM values.
+prints the one measured cell per completed mode and reports its observed RAM and VRAM minima.
 
 Calibration uploads nothing, does not modify `config.toml`, and installs neither the model nor the
 engine. Trials use the configured port when it is free and fall back to a system-assigned loopback

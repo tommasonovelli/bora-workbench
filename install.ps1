@@ -1,5 +1,5 @@
 <#
-install.ps1 - explicit-source installer for bora-workbench 0.1 on Windows.
+install.ps1 - explicit-source installer for bora-workbench 0.2 on Windows.
 
 IMPLEMENTATION_SPEC.md sections 5.10-5.12 require a small, idempotent installer that verifies
 prerequisites, pins uv 0.11.28 through its official versioned installer, and installs the tool with
@@ -132,13 +132,21 @@ else {
     if (-not (Get-Command 'curl.exe' -ErrorAction SilentlyContinue)) {
         Stop-WithError "curl.exe is required to download uv $UvVersion" 1
     }
-    $installerTmp = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "uv-$UvVersion-install.ps1")
-    & curl.exe --fail --location --proto '=https' --tlsv1.2 --silent --show-error $UvInstallerUrl --output $installerTmp
-    if ($LASTEXITCODE -ne 0) { Stop-WithError "could not download the official uv $UvVersion installer" 1 }
-    $env:UV_INSTALL_DIR = $uvDir
-    & $installerTmp
-    if ($LASTEXITCODE -ne 0) { Stop-WithError "the uv $UvVersion installer failed" 1 }
-    Remove-Item -LiteralPath $installerTmp -Force -ErrorAction SilentlyContinue
+    $nonce = [System.Guid]::NewGuid().ToString('N')
+    $installerTmp = [System.IO.Path]::Combine(
+        [System.IO.Path]::GetTempPath(),
+        "uv-$UvVersion-$nonce-install.ps1"
+    )
+    try {
+        & curl.exe --fail --location --proto '=https' --tlsv1.2 --silent --show-error $UvInstallerUrl --output $installerTmp
+        if ($LASTEXITCODE -ne 0) { Stop-WithError "could not download the official uv $UvVersion installer" 1 }
+        $env:UV_INSTALL_DIR = $uvDir
+        & $installerTmp
+        if ($LASTEXITCODE -ne 0) { Stop-WithError "the uv $UvVersion installer failed" 1 }
+    }
+    finally {
+        Remove-Item -LiteralPath $installerTmp -Force -ErrorAction SilentlyContinue
+    }
     $uvExe = Join-Path $uvDir 'uv.exe'
     if (Test-UvVersion 'uv') { $uvBin = 'uv' }
     elseif (Test-UvVersion $uvExe) { $uvBin = $uvExe }

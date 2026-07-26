@@ -175,6 +175,20 @@ def test_engine_probe_requires_version_and_complete_help(tmp_path, monkeypatch) 
         engine.verify_engine(executable, lock)
 
 
+def test_engine_probe_maps_invalid_utf8_to_engine_error(tmp_path, monkeypatch) -> None:
+    """Report undecodable probe output as an expected engine failure."""
+    executable = tmp_path / "llama-server"
+    executable.write_bytes(b"binary")
+    monkeypatch.setattr(
+        engine.subprocess,
+        "run",
+        Mock(side_effect=UnicodeDecodeError("utf-8", b"\xff", 0, 1, "invalid")),
+    )
+
+    with pytest.raises(EngineError, match="cannot probe engine"):
+        engine.verify_engine(executable, tiny_lock())
+
+
 def test_locate_prefers_explicit_then_path(tmp_path, monkeypatch) -> None:
     """Honor explicit configuration before PATH and avoid silently changing candidates."""
     explicit = tmp_path / "explicit"
@@ -204,12 +218,33 @@ def test_managed_manifest_must_stay_below_installations(tmp_path, monkeypatch) -
         with pytest.raises(engine.EngineError, match="safe relative"):
             engine.locate(Config(), "cpu")
 
-    relative = "installations/b10011-cpu/llama-server"
+    relative = f"installations/b10011-cpu-{'a' * 32}/llama-server"
     (engine_root / "current.json").write_text(
         json.dumps({**manifest, "executable": relative}), encoding="utf-8"
     )
     monkeypatch.setattr(engine, "verify_engine", lambda path, lock: path)
     assert engine.locate(Config(), "cpu") == (engine_root / relative).resolve()
+
+
+def test_managed_manifest_cannot_relabel_installation_backend(tmp_path) -> None:
+    """Bind manifest release and backend to the immutable directory name."""
+    root = tmp_path / "engine"
+    directory = root / "installations" / f"b10011-cpu-{'a' * 32}"
+    directory.mkdir(parents=True)
+    executable = directory / "llama-server"
+    executable.write_bytes(b"server")
+    manifest = {
+        "schema": "managed-engine/v1",
+        "release": "b10011",
+        "backend": "cuda",
+        "executable": executable.relative_to(root).as_posix(),
+    }
+    (root / "current.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+    status = engine.inspect_status(root, tiny_lock())
+
+    assert status.is_active is False
+    assert "does not match release and backend" in status.differences[0]
 
 
 def test_interrupted_atomic_replace_preserves_current_manifest(tmp_path, monkeypatch) -> None:
@@ -238,14 +273,15 @@ def test_interrupted_atomic_replace_preserves_current_manifest(tmp_path, monkeyp
 def test_status_keeps_active_identity_when_engine_probe_fails(tmp_path, monkeypatch) -> None:
     """Report an active manifest and exact incompatibility instead of hiding its identity."""
     root = tmp_path / "engine"
-    executable = root / "installations/b10011-cpu/llama-server"
+    installation = f"b10011-cpu-{'a' * 32}"
+    executable = root / "installations" / installation / "llama-server"
     executable.parent.mkdir(parents=True)
     executable.write_bytes(b"server")
     current = {
         "schema": "managed-engine/v1",
         "release": "b10011",
         "backend": "cpu",
-        "executable": "installations/b10011-cpu/llama-server",
+        "executable": f"installations/{installation}/llama-server",
     }
     (root / "current.json").write_text(json.dumps(current), encoding="utf-8")
 
@@ -272,3 +308,21 @@ def test_install_diagnoses_an_unreadable_lock_before_the_host_check(monkeypatch)
 
     with pytest.raises(EngineError, match=r"engine\.lock"):
         engine.install_engine("cpu")
+
+
+def test_platform_selection_enforces_supported_os_versions(monkeypatch) -> None:
+    """Reject Windows 10 and Ubuntu 20.04 before selecting pinned assets."""
+    monkeypatch.setattr(engine.platform, "machine", lambda: "x86_64")
+    monkeypatch.setattr(engine.platform, "system", lambda: "Windows")
+    monkeypatch.setattr(engine.platform, "version", lambda: "10.0.19045")
+    with pytest.raises(EngineError, match="Windows 11"):
+        engine._platform_key()
+
+    monkeypatch.setattr(engine.platform, "system", lambda: "Linux")
+    monkeypatch.setattr(
+        engine.platform,
+        "freedesktop_os_release",
+        lambda: {"ID": "ubuntu", "VERSION_ID": "20.04"},
+    )
+    with pytest.raises(EngineError, match=r"Ubuntu 22\.04"):
+        engine._platform_key()

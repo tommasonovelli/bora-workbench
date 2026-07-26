@@ -5,12 +5,14 @@ explicit human authorization is always required for pushes, tags, GitHub Release
 
 ## Public status
 
-- current public version: `0.1.6`;
+- current branch: local `bora-workbench 0.2.0` candidate, not published;
+- current public version: historical `qwen-launcher 0.1.6`;
 - remote tags: `v0.1.0`, `v0.1.1`, `v0.1.2`, `v0.1.3`, `v0.1.4`, `v0.1.5`, and `v0.1.6`;
 - GitHub Release `v0.1.6`: published with the installers, wheel, sdist, and `SHA256SUMS`;
 - the `0.1.6` digests are the ones in the manifest attached to the release and come from the green
   build job;
-- PyPI: not published yet, and excluded from the `0.1.6` authorization;
+- PyPI: neither historical `qwen-launcher` nor current `bora-workbench` is published; the first
+  planned project/version is `bora-workbench==0.2.0`;
 - public release `v0.1.6`: calibration becomes a single working protocol, validated on hardware on
   Ubuntu; the redundant protocols, the `--protocol` option, and the older record formats are
   removed.
@@ -42,6 +44,7 @@ Delete `dist/` before the build, then:
 ```bash
 uv build
 uv run --frozen python scripts/verify_wheel.py
+uv run --frozen python scripts/verify_uninstall.py
 ```
 
 Check:
@@ -150,6 +153,9 @@ added to the public evidence.
 
 Limits and checks that were not run must be explicit. `0.1.3` was authorized for commit, push, tag,
 and GitHub Release before the real spike; this does not amount to a Gate, and PyPI remains excluded.
+For `0.2.0`, D-069 explicitly waives additional manual Ubuntu/Windows and hardware calibration runs
+before publication. The automated release matrix remains required; the waiver is not a passed Gate,
+and the maintainer will perform platform checks after release.
 
 ## Version, tag, and commit
 
@@ -168,24 +174,27 @@ git diff --staged
 
 ## GitHub workflow
 
-Pushing a `v*` tag triggers `.github/workflows/release.yml`:
+Pushing a `v*` tag or manually dispatching that tag runs `.github/workflows/release.yml`:
 
 1. a test matrix on Ubuntu and Windows;
 2. verification that the tag and metadata match;
 3. a single build after the tests;
-4. isolated verification of the wheel and inspection of the sdist;
-5. upload of the tested artifact between jobs;
-6. PyPI publication of that same artifact only when the repository variable
-   `PYPI_PUBLISH_ENABLED` is exactly `true`.
+4. isolated verification of the wheel, sdist, and complete self-uninstall;
+5. a `bora-workbench-release-bundle` containing wheel, sdist, both installers, and `SHA256SUMS`;
+6. a separate `python-package-distributions` artifact containing only the tested wheel and sdist;
+7. PyPI publication of that distribution artifact only on a manual dispatch whose required input
+   is exactly `publish-bora-workbench`.
 
 The actions are pinned to full SHAs. Global permissions are `contents: read`; only the `publish`
 job, protected by the `pypi` environment, receives `id-token: write`. There is no PyPI token in the
-repository. For `v0.1.3` the variable stays absent and the job is skipped.
+repository. A normal tag push builds and verifies but cannot publish.
 
 ## PyPI Trusted Publishing
 
-The `0.1.0` job failed with `invalid-publisher` because PyPI does not have the matching
-configuration yet. The Trusted Publisher must specify:
+The failed `0.1.0` publication belongs to distribution `qwen-launcher`; the maintainer closed that
+recovery on 26 July 2026. Do not rerun it, rebuild it, or point it at the renamed project.
+
+For the first authorized `bora-workbench==0.2.0` upload, configure this pending Trusted Publisher:
 
 ```text
 project:      bora-workbench
@@ -194,10 +203,10 @@ workflow:     release.yml
 environment:  pypi
 ```
 
-After configuration, only the failed publication job of run `29739366272` should be re-run. The
-tests and build of that run are already green and the same artifacts are in the GitHub Release; they
-must not be rebuilt. The opt-in variable concerns later workflows and can only be set with a
-separate remote authorization.
+The GitHub `pypi` environment must require a reviewer and restrict deployments to release tags. A
+pending publisher does not reserve the project name until its first successful upload. Creating the
+publisher, changing environment protection, dispatching publication, and the upload itself remain
+remote actions requiring explicit authorization in that session.
 
 Until PyPI actually contains a version, the installers must not use `--pypi-version` /
 `-PypiVersion` for that version.
@@ -213,8 +222,8 @@ The release attaches the same files produced by the build job:
 - `SHA256SUMS`.
 
 The title, notes, and prerelease flag must be consistent with the changelog and metadata. Do not
-upload a local build different from the one that went through the release matrix. `v0.1.3` is a
-stable GitHub release, not a prerelease.
+upload a local build different from the one that went through the release matrix. Historical
+`v0.1.6` stays under its `qwen-launcher` artifact identity.
 
 ## Verification after publication
 

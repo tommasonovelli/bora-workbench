@@ -23,6 +23,7 @@ from bora_workbench.resources import resource_root
 JsonObject = dict[str, object]
 
 _SCHEMA_FILES = {
+    "engine-lock/v1": "engine-lock.v1.json",
     "mode/v1": "mode.v1.json",
     "mode/v2": "mode.v2.json",
     "profile/v1": "profile.v1.json",
@@ -30,7 +31,7 @@ _SCHEMA_FILES = {
     "calibration-policy/v2": "calibration-policy.v2.json",
     "calibration-report/v1": "calibration-report.v1.json",
     "calibration-report/v2": "calibration-report.v2.json",
-    "calibration-record/v5": "calibration-record.v5.json",
+    "calibration-record/v6": "calibration-record.v6.json",
 }
 
 
@@ -156,7 +157,9 @@ def _validate_schema(document: Document, schemas: dict[str, JsonObject]) -> list
     ]
 
 
-def _load_engine(root: Traversable) -> tuple[JsonObject, list[ValidationIssue]]:
+def _load_engine(
+    root: Traversable, schemas: dict[str, JsonObject]
+) -> tuple[JsonObject, list[ValidationIssue]]:
     """Load and validate the machine lock while retaining its incomplete-asset warning.
 
     The checker is imported here because it reads the issue model from this module; a module-scope
@@ -167,6 +170,8 @@ def _load_engine(root: Traversable) -> tuple[JsonObject, list[ValidationIssue]]:
     document, issues = _read_object(root.joinpath("engine.lock"), "engine.lock")
     if document is None:
         return {}, issues
+    schema_issues = _validate_schema(document, schemas)
+    issues.extend(schema_issues)
     issues.extend(validate_engine_lock(document.data))
     if document.data.get("assets_complete") is not True:
         message = "engine assets are incomplete; managed installation is unavailable"
@@ -200,7 +205,7 @@ def validate_resources(root: Traversable | None = None) -> ValidationResult:
     """Validate installed resources without network, filesystem writes, or runtime assumptions."""
     selected_root = resource_root() if root is None else root
     schemas, issues = _load_schemas(selected_root)
-    engine, engine_issues = _load_engine(selected_root)
+    engine, engine_issues = _load_engine(selected_root, schemas)
     issues.extend(engine_issues)
     valid_documents: list[Document] = []
     files = _content_files(selected_root)

@@ -67,11 +67,11 @@ extracted on disk. The schemas are JSON Schema 2020-12 and forbid undeclared pro
 
 | Contract | Current role |
 |---|---|
-| `mode/v1` | mode services and sampling |
+| `mode/v2` | mode services, complete sampling, and reasoning |
 | `profile/v1` | compatibility with class-based evidence; no production envelope is distributed |
 | `calibration-policy/v2` | the public reference method, distributed as evidence only |
 | `calibration-report/v2` | privacy-safe public reference evidence |
-| `calibration-record/v5` | the private record produced by a local calibration run |
+| `calibration-record/v6` | one private calibrated preference cell for one mode |
 | `engine-lock/v1` | engine identity, command, API, health, and assets |
 
 The installed catalog contains three modes, one public reference policy, and one reference report.
@@ -79,7 +79,8 @@ It contains no production `profile/v1` profiles, and nothing in the shared repor
 runtime catalog: context, hardware, tok/s, and the observed envelope cannot enter another host's
 plan.
 
-`bora validate` meta-validates the schemas, validates the documents, and reconstructs the
+`bora validate` meta-validates the schemas—including the closed `engine-lock/v1` schema—validates
+the documents, and reconstructs the
 links JSON Schema cannot express, including digests, domain, reserves, candidates, and lock
 compatibility.
 
@@ -99,13 +100,13 @@ A mode contains behavior, not performance:
 - model identity and physical path;
 - port;
 - backend and GPU index;
-- `ctx` and `n_cpu_moe` from the active record or the baseline;
+- `ctx` and `n_cpu_moe` from the mode's calibrated cell or the baseline;
 - diagnostic references and warnings.
 
 The plan uses a record only when it is the active record for that mode, semantically valid, and
 compatible with the model, digest, engine release/commit/contract, OS, backend, components, driver,
 and current memory. A maximum drift of 1 MiB is tolerated when comparing total RAM; RAM and VRAM
-headroom use the reserves the record itself was measured with, applied to its active envelope.
+headroom use the reserves measured with that single calibrated cell.
 
 If the record is missing or not reusable, the baseline is `ctx=8192` and, on CUDA, `n_cpu_moe=48`.
 It is always presented as not optimized. Old hardware classes and shared reports produce no

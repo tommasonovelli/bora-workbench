@@ -12,6 +12,7 @@ from bora_workbench._calibration_reuse import ReuseQuery, evaluate_record
 from bora_workbench.config import Config
 from bora_workbench.engine import load_engine_lock
 from bora_workbench.hardware import GpuSnapshot
+from bora_workbench.profiles import load_catalog
 from tests.record_fixtures import calibration_document, cpu_hardware, cuda_hardware
 
 
@@ -28,7 +29,9 @@ def snapshot(free: float = 7.0, driver: str = "test-driver") -> GpuSnapshot:
 
 def query(hardware) -> ReuseQuery:
     """Build the current-state query matching the fixture identities."""
-    return ReuseQuery(Config(), "coding", hardware, load_engine_lock())
+    mode = load_catalog().mode("coding")
+    assert mode is not None
+    return ReuseQuery(Config(), mode, hardware, load_engine_lock())
 
 
 def test_matching_cuda_record_with_headroom_is_valid(tmp_path, monkeypatch) -> None:
@@ -40,6 +43,7 @@ def test_matching_cuda_record_with_headroom_is_valid(tmp_path, monkeypatch) -> N
 
     assert evaluation.status == "valid"
     assert (evaluation.ctx, evaluation.n_cpu_moe) == (131072, 38)
+    assert evaluation.preference == "balanced"
     assert evaluation.diagnostics == ()
 
 
@@ -92,18 +96,34 @@ def test_engine_contract_divergence_invalidates_the_record(tmp_path, monkeypatch
     lock = copy.deepcopy(load_engine_lock())
     lock["release"] = "b99999"
 
-    evaluation = evaluate_record(ReuseQuery(Config(), "coding", cpu_hardware(), lock))
+    mode = load_catalog().mode("coding")
+    assert mode is not None
+    evaluation = evaluate_record(ReuseQuery(Config(), mode, cpu_hardware(), lock))
 
     assert evaluation.status == "incompatible"
     assert any("engine release changed" in message for message in evaluation.diagnostics)
 
 
+def test_mode_policy_divergence_invalidates_the_record(tmp_path, monkeypatch) -> None:
+    """Ignore a record after the current mode behavior changes."""
+    install_record(tmp_path, monkeypatch, cpu_hardware())
+    path = record_module.record_path("coding")
+    document = copy.deepcopy(calibration_document(cpu_hardware()))
+    document["mode_policy_sha256"] = "0" * 64
+    write_record(document, path)
+
+    evaluation = evaluate_record(query(cpu_hardware()))
+
+    assert evaluation.status == "incompatible"
+    assert any("mode policy changed" in message for message in evaluation.diagnostics)
+
+
 def test_model_identity_divergence_invalidates_the_record(tmp_path, monkeypatch) -> None:
     """Never carry a default-model record onto a different configured model."""
     install_record(tmp_path, monkeypatch, cpu_hardware())
-    changed = ReuseQuery(
-        Config(model="other/model:file"), "coding", cpu_hardware(), load_engine_lock()
-    )
+    mode = load_catalog().mode("coding")
+    assert mode is not None
+    changed = ReuseQuery(Config(model="other/model:file"), mode, cpu_hardware(), load_engine_lock())
 
     evaluation = evaluate_record(changed)
 
@@ -142,6 +162,27 @@ def test_insufficient_ram_headroom_defers_reuse(tmp_path, monkeypatch) -> None:
 
     assert evaluation.status == "insufficient-headroom"
     assert any("available RAM" in message for message in evaluation.diagnostics)
+
+
+def test_exact_reuse_headroom_boundaries_remain_usable(tmp_path, monkeypatch) -> None:
+    """Treat equality with the measured need plus each pinned reserve as sufficient."""
+    install_record(tmp_path, monkeypatch, cuda_hardware())
+    hardware = replace(cuda_hardware(), ram_available_gib=6.0)
+    monkeypatch.setattr(reuse_module, "query_gpu_snapshot", lambda index: snapshot(free=6.5))
+
+    evaluation = evaluate_record(query(hardware))
+
+    assert evaluation.status == "valid"
+
+
+def test_exact_one_mib_ram_identity_difference_remains_compatible(tmp_path, monkeypatch) -> None:
+    """Keep the inclusive one-MiB identity tolerance at its exact boundary."""
+    install_record(tmp_path, monkeypatch, cpu_hardware())
+    changed = replace(cpu_hardware(), ram_total_gib=32 + (1 / 1024))
+
+    evaluation = evaluate_record(query(changed))
+
+    assert evaluation.status == "valid"
 
 
 def test_pending_candidate_never_steers_reuse(tmp_path, monkeypatch) -> None:

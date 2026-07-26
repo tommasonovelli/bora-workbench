@@ -33,7 +33,7 @@ def _resource_probe() -> str:
         "'1c7182235411da2d4fe6fca130e3effb0b0d965569c52abd8fd45327103ddb2e'; "
         "assert hashlib.sha256(resource('benchmark-v1/request.json').read_bytes()).hexdigest() == "
         "'025dc91aeb61a790d5fd36c27f127e04761ae7f1c3d6b542d0cfd9d37bc5c19f'; "
-        "record_schema = read_json('schemas/calibration-record.v5.json'); "
+        "record_schema = read_json('schemas/calibration-record.v6.json'); "
         "assert record_schema['properties']['calibration_protocol']['const'] == 'calibration'; "
         "assert record_schema['properties']['reserves']['required'] "
         "== ['vram_gib', 'ram_gib', 'release_tolerance_gib']; "
@@ -83,6 +83,44 @@ def _isolated_environment(root: Path) -> dict[str, str]:
         }
     )
     return environment
+
+
+def _install_locked_wheel(uv: str, python: Path, wheel: Path) -> None:
+    """Install frozen runtime dependencies offline, then add the wheel without resolving."""
+    export = subprocess.run(
+        [
+            uv,
+            "export",
+            "--frozen",
+            "--no-dev",
+            "--no-emit-project",
+            "--format",
+            "requirements-txt",
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    subprocess.run(
+        [
+            uv,
+            "pip",
+            "install",
+            "--offline",
+            "--python",
+            str(python),
+            "--require-hashes",
+            "--requirements",
+            "-",
+        ],
+        check=True,
+        input=export.stdout,
+        text=True,
+    )
+    subprocess.run(
+        [uv, "pip", "install", "--offline", "--no-deps", "--python", str(python), str(wheel)],
+        check=True,
+    )
 
 
 def _verify_sdist() -> bool:
@@ -142,10 +180,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="bora-workbench-wheel-") as directory:
         environment = Path(directory) / "venv"
         subprocess.run([uv, "venv", "--python", "3.12", str(environment)], check=True)
-        subprocess.run(
-            [uv, "pip", "install", "--python", str(environment), str(wheels[0].resolve())],
-            check=True,
-        )
+        _install_locked_wheel(uv, environment, wheels[0].resolve())
         python = environment / ("Scripts/python.exe" if sys.platform == "win32" else "bin/python")
         _verify_install(python, _isolated_environment(Path(directory) / "user-roots"))
     return 0

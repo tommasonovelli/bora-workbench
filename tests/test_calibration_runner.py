@@ -8,6 +8,7 @@ from bora_workbench._calibration_runner import (
     MAX_GATE_TRIALS,
     MAX_PAIRING_TRIALS,
     GateTarget,
+    _confirm,
     run_group,
 )
 from bora_workbench._calibration_search import GroupPlan, SearchProvider
@@ -40,9 +41,11 @@ def _provider() -> SearchProvider:
     """Build a shared provider whose feasibility and latency depend only on the context."""
 
     def probe_at(ctx: int, n_cpu_moe: int) -> ClassifiedOutcome:
+        """Classify points against the synthetic per-context boundary."""
         return _SUCCESS if n_cpu_moe >= _BOUNDARY[ctx] else _VRAM
 
     def sample_at(ctx: int, n_cpu_moe: int):
+        """Measure one synthetic sample with context-dependent latency."""
         return sample(ctx, n_cpu_moe, _E2E[ctx])
 
     return SearchProvider(probe_at, sample_at)
@@ -54,17 +57,34 @@ def _pass_gate(ctx: int, n_cpu_moe: int) -> GateResult:
 
 
 def test_shared_search_yields_identical_hardware_for_coding_and_studio() -> None:
-    """Run one hardware search and give coding and studio identical envelopes, distinct policies."""
+    """Run one search and give coding and studio the same selected cell with distinct gates."""
     targets = (GateTarget(_mode("coding"), _pass_gate), GateTarget(_mode("studio"), _pass_gate))
     coding, studio = run_group(_provider(), targets, GroupPlan(_CONTEXTS, 24))
     assert coding.mode.id == "coding"
     assert studio.mode.id == "studio"
-    for preference in ("fast", "balanced", "max_context"):
-        left = coding.envelopes[preference].sample
-        right = studio.envelopes[preference].sample
-        assert (left.ctx, left.n_cpu_moe) == (right.ctx, right.n_cpu_moe)
-    assert coding.envelopes["balanced"].sample.ctx == 65536
-    assert coding.envelopes["max_context"].sample.ctx == 131072
+    left = coding.envelope.sample
+    right = studio.envelope.sample
+    assert (left.ctx, left.n_cpu_moe) == (right.ctx, right.n_cpu_moe)
+    assert coding.envelope.preference == "balanced"
+    assert coding.envelope.sample.ctx == 65536
+
+
+def test_group_persists_only_the_requested_preference() -> None:
+    """Return one balanced cell instead of measuring and gating unused preferences."""
+    gated: list[tuple[int, int | None]] = []
+
+    def gate_at(ctx: int, n_cpu_moe: int | None) -> GateResult:
+        """Record each final-gate process started for the selected cell."""
+        gated.append((ctx, n_cpu_moe))
+        return GateResult(True, True, None)
+
+    (result,) = run_group(
+        _provider(), (GateTarget(_mode("coding"), gate_at),), GroupPlan(_CONTEXTS, 24)
+    )
+
+    assert result.envelope.preference == "balanced"
+    assert result.envelope.sample.ctx == 65536
+    assert len(gated) == 1
 
 
 def test_gate_failure_retries_next_candidate_then_errors() -> None:
@@ -72,19 +92,28 @@ def test_gate_failure_retries_next_candidate_then_errors() -> None:
     failing_context = 65536
 
     def gate_only_prudent(ctx: int, n_cpu_moe: int) -> GateResult:
+        """Reject only the prudent finalist at the configured context."""
         passed = not (ctx == failing_context and n_cpu_moe == 41)
         return GateResult(passed, passed, None)
 
     (result,) = run_group(
-        _provider(), (GateTarget(_mode("coding"), gate_only_prudent),), GroupPlan(_CONTEXTS, 24)
+        _provider(),
+        (GateTarget(_mode("coding"), gate_only_prudent),),
+        GroupPlan(_CONTEXTS, 24, preference="fast"),
     )
-    assert result.envelopes["fast"].sample.n_cpu_moe != 41
+    assert result.envelope.sample.n_cpu_moe != 41
 
     def gate_never(ctx: int, n_cpu_moe: int) -> GateResult:
+        """Reject every finalist at the final gate."""
+        del ctx, n_cpu_moe
         return GateResult(False, False, None)
 
     with pytest.raises(SearchError, match="final gate"):
-        run_group(_provider(), (GateTarget(_mode("coding"), gate_never),), GroupPlan(_CONTEXTS, 24))
+        run_group(
+            _provider(),
+            (GateTarget(_mode("coding"), gate_never),),
+            GroupPlan(_CONTEXTS, 24, preference="fast"),
+        )
 
 
 def _moving_boundary_provider(lost: tuple[int, int]) -> SearchProvider:
@@ -97,6 +126,7 @@ def _moving_boundary_provider(lost: tuple[int, int]) -> SearchProvider:
     seen = False
 
     def sample_at(ctx: int, n_cpu_moe: int):
+        """Allow the selected point once before making it infeasible."""
         nonlocal seen
         if (ctx, n_cpu_moe) == lost:
             if seen:
@@ -116,19 +146,42 @@ def test_a_finalist_that_stops_fitting_confirms_the_other_one() -> None:
     """
     provider = _provider()
     (reference,) = run_group(
-        provider, (GateTarget(_mode("coding"), _pass_gate),), GroupPlan(_CONTEXTS, 24)
+        provider,
+        (GateTarget(_mode("coding"), _pass_gate),),
+        GroupPlan(_CONTEXTS, 24, preference="fast"),
     )
-    confirmed = reference.envelopes["fast"].sample
+    confirmed = reference.envelope.sample
     assert confirmed.n_cpu_moe is not None
 
     moving = _moving_boundary_provider((confirmed.ctx, confirmed.n_cpu_moe))
     (result,) = run_group(
-        moving, (GateTarget(_mode("coding"), _pass_gate),), GroupPlan(_CONTEXTS, 24)
+        moving,
+        (GateTarget(_mode("coding"), _pass_gate),),
+        GroupPlan(_CONTEXTS, 24, preference="fast"),
     )
 
-    survivor = result.envelopes["fast"].sample
+    survivor = result.envelope.sample
     assert (survivor.ctx, survivor.n_cpu_moe) != (confirmed.ctx, confirmed.n_cpu_moe)
-    assert result.selection_inputs["fast"] == ()
+    assert result.selection_inputs == ()
+
+
+def test_confirmation_executes_abba_order_and_records_canonical_pairs() -> None:
+    """Counter process drift with A-B then B-A while keeping every median pair ordered A-B."""
+    first = sample(65536, 40, 100.0)
+    second = sample(65536, 38, 120.0)
+    order: list[int | None] = []
+
+    def sample_at(ctx: int, n_cpu_moe: int | None):
+        """Record execution order and return the matching finalist."""
+        del ctx
+        order.append(n_cpu_moe)
+        return first if n_cpu_moe == first.n_cpu_moe else second
+
+    winner, rounds = _confirm((first, second), sample_at)
+
+    assert order == [40, 38, 38, 40]
+    assert tuple(result.medians for result in rounds) == ((100.0, 120.0), (100.0, 120.0))
+    assert winner is first
 
 
 def test_an_envelope_that_stops_fitting_at_the_gate_falls_back_to_its_rival() -> None:
@@ -136,24 +189,26 @@ def test_an_envelope_that_stops_fitting_at_the_gate_falls_back_to_its_rival() ->
     gated: list[tuple[int, int | None]] = []
 
     def gate_at(ctx: int, n_cpu_moe: int | None) -> GateResult:
+        """Make the prudent point infeasible only when it reaches the gate."""
         gated.append((ctx, n_cpu_moe))
         if n_cpu_moe == 41:
             raise TrialInfeasibleError(f"({ctx}, {n_cpu_moe}) is no longer feasible")
         return GateResult(True, True, None)
 
     (result,) = run_group(
-        _provider(), (GateTarget(_mode("coding"), gate_at),), GroupPlan(_CONTEXTS, 24)
+        _provider(),
+        (GateTarget(_mode("coding"), gate_at),),
+        GroupPlan(_CONTEXTS, 24, preference="fast"),
     )
 
     assert any(n_cpu_moe == 41 for _ctx, n_cpu_moe in gated)
-    assert all(envelope.sample.n_cpu_moe != 41 for envelope in result.envelopes.values())
+    assert result.envelope.sample.n_cpu_moe != 41
 
 
 def test_reported_phase_caps_cover_every_trial_each_phase_can_start() -> None:
     """Never report a position above its own total: a cap that a real run exceeds is not a cap.
 
-    Confirmation pairs each preference separately, so counting one preference's rounds understated
-    the pairing total and a real run displayed `7/<=6` (D-067).
+    The one requested preference can run three ABBA rounds, so the cap remains six fresh processes.
     """
     counts = {"search": 0, "pairing": 0, "gate": 0}
 
@@ -172,4 +227,4 @@ def test_reported_phase_caps_cover_every_trial_each_phase_can_start() -> None:
     assert counts["search"] <= plan.trial_cap
     assert counts["pairing"] <= MAX_PAIRING_TRIALS
     assert counts["gate"] <= MAX_GATE_TRIALS
-    assert MAX_PAIRING_TRIALS >= 12
+    assert MAX_PAIRING_TRIALS == 6

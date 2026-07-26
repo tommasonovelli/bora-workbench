@@ -8,10 +8,10 @@ raises. Cleanup runs even when the workload failed, and its precedence is decide
 (D-058). Monitors use the calibration reserves (0.5/2.0/0.125 GiB) and the run-scoped GPU context
 population of D-046.
 
-The final gate (spec 3.5) is the workload of the last trial per envelope. It fails only on invalid
-responses; reserve and release violations are caught by the monitors that wrap it. Per-turn
-``prompt_n``/``cache_n`` are diagnostic, never pass/fail, because a hybrid model may legitimately
-reprocess context.
+The final gate (spec section 5.6) is the workload of the last trial per envelope. It fails only on
+invalid responses; reserve and release violations are caught by the monitors that wrap it.
+Per-turn ``prompt_n``/``cache_n`` are diagnostic, never pass/fail, because a hybrid model may
+legitimately reprocess context.
 """
 
 from __future__ import annotations
@@ -209,7 +209,10 @@ def _post(client: httpx.Client, base_url: str, payload: JsonObject) -> JsonObjec
         raise BenchmarkRetryableError(f"gate request failed: {error}") from error
     if response.status_code != 200:
         raise BenchmarkRetryableError(f"gate request returned HTTP {response.status_code}")
-    value = response.json()
+    try:
+        value = response.json()
+    except ValueError as error:
+        raise BenchmarkError("gate response must contain valid JSON") from error
     if not isinstance(value, dict):
         raise BenchmarkError("gate response must be a JSON object")
     return cast(JsonObject, value)
@@ -232,11 +235,12 @@ def _tokens_per_word(client: httpx.Client, base_url: str) -> float:
     A word is not a token: on this vocabulary each ``ctxNN`` word costs roughly three tokens, so
     treating the 80% target as a word count overshoots the window and the server rejects the
     request outright. The ratio is measured once, from the same deterministic vocabulary, and the
-    chat template overhead it also counts only makes the final prompt slightly smaller (spec 3.5).
+    chat template overhead it also counts only makes the final prompt slightly smaller
+    (spec section 5.6).
     """
     payload = _payload([{"role": "user", "content": _words(_RATIO_SAMPLE_WORDS)}], 1)
-    usage = cast(JsonObject, _post(client, base_url, payload)["usage"])
     try:
+        usage = cast(JsonObject, _post(client, base_url, payload)["usage"])
         prompt_tokens = int(cast(int, usage["prompt_tokens"]))
     except (KeyError, TypeError, ValueError) as error:
         raise BenchmarkError("gate response omitted the prompt token count") from error
@@ -256,38 +260,62 @@ def _smoke(client: httpx.Client, base_url: str, ctx: int) -> bool:
 
 
 def _multi_turn(client: httpx.Client, base_url: str) -> bool:
-    """Run four append-only turns and require every turn to finish validly (spec 3.5)."""
+    """Run four append-only turns and require every turn to finish validly (spec section 5.6)."""
     messages: list[JsonObject] = []
     for index in range(_MULTI_TURN_COUNT):
+        # D-065 preserves this measured input verbatim; translating it changes the workload.
         messages.append({"role": "user", "content": f"Turn {index}: continua la conversazione."})
         value = _post(client, base_url, _payload(messages, _TURN_TOKENS))
         if not _is_valid(value, _TURN_TOKENS):
             return False
-        content = cast(JsonObject, cast(list[JsonObject], value["choices"])[0]["message"])
-        messages.append({"role": "assistant", "content": str(content["content"])})
+        messages.append({"role": "assistant", "content": _assistant_content(value)})
     return True
+
+
+def _assistant_content(value: JsonObject) -> str:
+    """Read the assistant content needed by the next turn or reject malformed protocol data."""
+    try:
+        choice = cast(list[JsonObject], value["choices"])[0]
+        message = cast(JsonObject, choice["message"])
+        content = message["content"]
+    except (KeyError, IndexError, TypeError) as error:
+        raise BenchmarkError("gate response omitted the assistant message") from error
+    if not isinstance(content, str):
+        raise BenchmarkError("gate response assistant message must contain text")
+    return content
 
 
 def _vision(client: httpx.Client, base_url: str) -> bool:
     """Run the pinned red-image request and require its verified answer for vstudio."""
     try:
         run_vision_probe(base_url, client)
+    except BenchmarkRetryableError:
+        raise
     except BenchmarkError:
         return False
     return True
 
 
-def run_gate(base_url: str, mode: Mode, ctx: int, client: httpx.Client | None = None) -> GateResult:
+def run_gate(base_url: str, mode: Mode, ctx: int) -> GateResult:
     """Run smoke, multi-turn, and (for vision) the pinned image gate for one envelope."""
-    selected = httpx.Client() if client is None else client
+    client = httpx.Client()
+    result: GateResult | None = None
+    failure: BaseException | None = None
     try:
-        smoke = _smoke(selected, base_url, ctx)
-        multi_turn = _multi_turn(selected, base_url)
-        vision = _vision(selected, base_url) if mode.services.vision else None
-    finally:
-        if selected is not client:
-            selected.close()
-    return GateResult(smoke, multi_turn, vision)
+        smoke = _smoke(client, base_url, ctx)
+        multi_turn = _multi_turn(client, base_url)
+        vision = _vision(client, base_url) if mode.services.vision else None
+        result = GateResult(smoke, multi_turn, vision)
+    except BaseException as error:
+        failure = error
+    try:
+        client.close()
+    except BaseException as cleanup:
+        failure = _preferred(failure, cleanup)
+    if failure is not None:
+        raise failure
+    assert result is not None
+    return result
 
 
 @dataclass(slots=True)
@@ -345,11 +373,20 @@ class TrialRunner:
         except BaseException as caught:
             failure = caught
         resources = session.finish(root)
-        self.progress.finished()
+        progress_error: BaseException | None = None
+        try:
+            self.progress.finished()
+        except BaseException as caught:
+            progress_error = caught
         if resources.vram is not None:
             self.driver = resources.vram.driver_version
-        if resources.error is not None or failure is not None:
-            raise _preferred(failure, resources.error)
+        combined = failure
+        if resources.error is not None:
+            combined = _preferred(combined, resources.error)
+        if progress_error is not None:
+            combined = _preferred(combined, progress_error)
+        if combined is not None:
+            raise combined
         assert resources.ram is not None
         return result, resources.vram, resources.ram
 

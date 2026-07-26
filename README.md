@@ -60,15 +60,16 @@ If this is your first time opening the project, the simplest path is:
 > Do not use it for critical workloads without independent verification and backups of your local
 > data.
 
-Version **`0.2.0`** is prepared in this branch and **not published yet**: it renames the project to
-`bora-workbench`, whose command is `bora`. Everything up to `0.1.6` was released under the previous
-name, `qwen-launcher`, so an installation of that series is replaced rather than upgraded — its
-configuration, data, cache, and state directories are not read by `bora`.
+Version **`0.2.0`** renames the project to `bora-workbench`, whose command is `bora`. Everything up
+to `0.1.6` was released under the previous name, `qwen-launcher`, so an installation of that series
+is replaced rather than upgraded — its configuration, data, cache, and state directories are not
+read by `bora`.
 
 The calibration behavior is the one introduced in `0.1.6`: a single working protocol. The earlier
 laboratory and paired-search protocols, the `--protocol` option, and the older record formats are
 gone, and the search that remains is validated on hardware. A record written by an earlier version
-is diagnosed as superseded, so re-run `calibrate` after installing. PyPI remains unavailable.
+is diagnosed as superseded, so re-run `calibrate` after installing. The PyPI identity starts at
+`bora-workbench==0.2.0`; no 0.1 artifact is renamed or republished.
 
 ## Requirements
 
@@ -84,14 +85,35 @@ If `nvidia-smi` is unavailable or unreliable, the launcher falls back to CPU and
 
 ## Installation
 
-The release attaches the wheel, sdist, installers, and `SHA256SUMS` produced by the cross-platform
-test/build run. Use the wheel digest reported in the attached manifest.
+Install the explicit PyPI version with the release installer:
 
-### Ubuntu
+```bash
+base="https://github.com/tommasonovelli/bora-workbench/releases/download/v0.2.0"
+curl --fail --location "$base/install.sh" --output install.sh
+sh ./install.sh --pypi-version 0.2.0
+```
+
+On Windows, download `install.ps1` from the same release and run
+`.\install.ps1 -PypiVersion 0.2.0`.
+
+Verify the installation immediately:
+
+```bash
+bora --version
+bora validate
+bora doctor
+```
+
+### Historical public release 0.1.6
+
+The last public release belongs to the previous distribution and command. The repository URL was
+renamed, but its artifact identity remains `qwen-launcher` / `qwen_launcher` / `qwen-launcher`.
+
+#### Ubuntu
 
 ```bash
 base="https://github.com/tommasonovelli/bora-workbench/releases/download/v0.1.6"
-wheel="bora_workbench-0.1.6-py3-none-any.whl"
+wheel="qwen_launcher-0.1.6-py3-none-any.whl"
 curl --fail --location "$base/install.sh" --output install.sh
 curl --fail --location "$base/$wheel" --output "$wheel"
 curl --fail --location "$base/SHA256SUMS" --output SHA256SUMS
@@ -101,13 +123,13 @@ test "${#wheel_sha256}" -eq 64
 sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 ```
 
-### Windows
+#### Windows
 
 From PowerShell:
 
 ```powershell
 $base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v0.1.6"
-$wheel = "bora_workbench-0.1.6-py3-none-any.whl"
+$wheel = "qwen_launcher-0.1.6-py3-none-any.whl"
 Invoke-WebRequest "$base/install.ps1" -OutFile install.ps1
 Invoke-WebRequest "$base/$wheel" -OutFile $wheel
 Invoke-WebRequest "$base/SHA256SUMS" -OutFile SHA256SUMS
@@ -122,16 +144,17 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 `
   -Wheel ".\$wheel" -Sha256 $sha256
 ```
 
-The installers pin uv `0.11.28` and CPython `3.12.13`, require an explicit source, and never use
-administrative privileges. Details and alternatives are in
+Those historical installers create the `qwen-launcher` command, not `bora`. Current installers pin
+uv `0.11.28` and CPython `3.12.13`, require an explicit source, and never use administrative
+privileges. Details and Windows instructions for the current candidate are in
 [Installation and first run](docs/installation.md).
 
-Verify immediately:
+Verify a historical installation with its actual command:
 
 ```bash
-bora --version
-bora validate
-bora doctor
+qwen-launcher --version
+qwen-launcher validate
+qwen-launcher doctor
 ```
 
 ## Model
@@ -191,13 +214,16 @@ bora calibrate --mode all
 ```
 
 It measures `coding`, `studio`, and `vstudio`, finds how much context the hardware can actually
-serve, and compares the feasible configurations by latency, throughput, and memory margin. Each mode
-gets one private record holding three launch envelopes — `fast`, `balanced`, and `max-context` — of
-which one is active:
+serve, and compares feasible configurations using the requested optimization rule. Each mode gets
+one private calibrated cell. This applies `max-context` to all three:
 
 ```bash
 bora calibrate --mode all --preference max-context
 ```
+
+Run modes separately when they should retain different choices, for example `coding` with `fast`,
+`studio` with `balanced`, and `vstudio` with `max-context`. Recalibrating one mode replaces only
+that mode's cell.
 
 It does not change the model or the quality of the answers: it changes how much context you can
 hold, how the work is split between CPU and GPU, and the throughput you get from that split.
@@ -211,7 +237,7 @@ and asks for confirmation. Read [Local calibration](docs/calibration.md) before 
 - **Mode**: the service behavior (UI, vision, and sampling).
 - **Baseline**: the verified configuration used when no local calibration exists.
 - **Local record**: the private result of calibrating this machine, for one mode only.
-- **Envelope**: one measured set of launch parameters; a record holds three, one of them active.
+- **Calibrated cell**: the one measured preference and set of launch parameters stored for a mode.
 
 The launcher reuses a record only when the machine, model, engine, mode, and current memory are still
 compatible. Otherwise it explains why and falls back to the baseline.

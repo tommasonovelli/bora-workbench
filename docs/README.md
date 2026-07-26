@@ -12,7 +12,7 @@ The recommended reading order is linear:
    managed directories;
 4. [Architecture](architecture.md) — components, flows, contracts, lifecycle, and security
    boundaries;
-5. [Calibration](calibration.md) — the local search, the measured envelopes, records, reuse,
+5. [Calibration](calibration.md) — the local search, the measured preference cell, records, reuse,
    and shared evidence;
 6. [Operations and diagnostics](operations.md) — routine checks, errors, and recovery;
 7. [Development](development.md) — repository structure, content, tests, packaging, and
@@ -38,12 +38,12 @@ of the launcher.
 
 ## Current status
 
-The public release is `0.1.6`: calibration became a single protocol, repaired and validated on
-hardware, and the redundant protocols and record formats were removed. A record written by an
-earlier version is diagnosed as superseded; re-run `calibrate` after upgrading.
+The current branch prepares `bora-workbench 0.2.0`, package `bora_workbench`, and command `bora`.
+Its first PyPI version under that identity is `0.2.0`.
 
-PyPI remains unavailable. The verified artifacts are in the `v0.1.6` GitHub Release and must not be
-rebuilt or replaced.
+The last public release is historical `qwen-launcher 0.1.6`, now hosted under the renamed repository
+URL. Its package, command, wheel names, and verified artifacts remain unchanged and must not be
+rebuilt or relabelled.
 
 ## Current limits
 
@@ -53,6 +53,6 @@ rebuilt or replaced.
 - the default model and `llama.cpp` are pinned to exact identities;
 - weights and mmproj are neither redistributed nor downloaded automatically;
 - the empirical calibration evidence is still `GATE-PARTIAL` because it covers a single real machine;
-- no interface stability guarantee for the 0.1 series.
+- no interface stability guarantee for the 0.2 series.
 
 **Next:** [Installation and first run](installation.md)

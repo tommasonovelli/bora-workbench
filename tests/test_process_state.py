@@ -154,6 +154,15 @@ def test_live_start_lock_rejects_second_launch(tmp_path) -> None:
     assert not (tmp_path / "start.lock").exists()
 
 
+def test_status_and_stop_refuse_to_race_an_active_start_lock(tmp_path) -> None:
+    """Never clean or clear a stale snapshot while a new service is being registered."""
+    with acquire_start_lock(tmp_path):
+        with pytest.raises(lifecycle.ProcessError, match="another launch"):
+            status_services(tmp_path)
+        with pytest.raises(lifecycle.ProcessError, match="another launch"):
+            stop_services(tmp_path)
+
+
 def test_certainly_stale_start_lock_is_removed_and_retried_once(tmp_path) -> None:
     """Replace a dead owner record and release only the newly acquired identity."""
     tmp_path.mkdir(exist_ok=True)

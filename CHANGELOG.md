@@ -3,6 +3,30 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
+## [0.2.0] - 2026-07-26
+
+### Changed
+
+- Rename the distribution, package, command, managed roots, and repository identity from
+  `qwen-launcher` / `qwen_launcher` / `qwen-launcher` to
+  `bora-workbench` / `bora_workbench` / `bora`. Historical `0.1.0`–`0.1.6` artifacts keep their
+  original identity.
+- Prepare `bora-workbench==0.2.0` as the first PyPI publication. Publishing requires a confirmed
+  manual workflow dispatch and a protected OIDC environment; no persistent repository variable can
+  make later tags upload automatically.
+- Calibrate and store one requested `fast`, `balanced`, or `max-context` cell per selected mode.
+  `--mode all` applies one preference to all modes, while separate runs can retain different
+  preferences. The incompatible `calibration-record/v6` supersedes v5 without migration.
+
+### Fixed
+
+- Harden calibration boundaries, shared budgets, retry accounting, A-B-B-A execution, record
+  semantics, reuse identity, process cleanup, state locking, and expected CLI error rendering.
+- Refuse unsafe engine roots, cache roots, manifests, redirects, archives, staging cleanup, probes,
+  and unsupported OS versions before managed installation can trust or write them.
+- Validate `engine.lock` against a closed packaged schema and verify wheels offline with the exact
+  frozen runtime dependency set.
+
 ## [0.1.6] - 2026-07-25
 
 Calibration becomes a single protocol. `0.1.5` recorded that the three-envelope search did not work

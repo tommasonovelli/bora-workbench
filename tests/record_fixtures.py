@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 from bora_workbench._calibration_record import RecordContext, build_record
@@ -17,14 +18,14 @@ from tests.sample_fixtures import sample
 RUN_ID = "a" * 32
 DRIVER = "test-driver"
 
-# One envelope per preference. The recorded needs (4.0 GiB RAM, 6.0 GiB VRAM) plus the pinned
+# One possible cell per preference. The recorded needs (4.0 GiB RAM, 6.0 GiB VRAM) plus the pinned
 # reserves fit the fixture hardware and fall outside the reduced-headroom variants of the tests.
-_CUDA_ENVELOPES: dict[Preference, tuple[int, int | None]] = {
+_CUDA_CELLS: dict[Preference, tuple[int, int | None]] = {
     "fast": (32768, 41),
     "balanced": (131072, 38),
     "max_context": (131072, 37),
 }
-_CPU_ENVELOPES: dict[Preference, tuple[int, int | None]] = {
+_CPU_CELLS: dict[Preference, tuple[int, int | None]] = {
     "fast": (8192, None),
     "balanced": (8192, None),
     "max_context": (8192, None),
@@ -59,15 +60,16 @@ def record_target(
     )
 
 
-def mode_result(mode: Mode, envelopes: dict[Preference, tuple[int, int | None]]) -> ModeResult:
-    """Build one gated three-envelope result for the requested mode."""
-    gated = {
-        preference: EnvelopeResult(
-            preference, sample(ctx, n_cpu_moe, 100.0), GateResult(True, True, None)
-        )
-        for preference, (ctx, n_cpu_moe) in envelopes.items()
-    }
-    return ModeResult(mode, gated, (), {preference: () for preference in envelopes})
+def mode_result(mode: Mode, preference: Preference, cell: tuple[int, int | None]) -> ModeResult:
+    """Build one selected and gated result cell for the requested mode."""
+    ctx, n_cpu_moe = cell
+    measured = sample(ctx, n_cpu_moe, 100.0)
+    if n_cpu_moe is None:
+        measured = replace(measured, vram_needed_gib=None, vram_min_free_gib=None)
+    if mode.services.vision:
+        measured = replace(measured, speculative="disabled")
+    gate = GateResult(True, True, True if mode.services.vision else None)
+    return ModeResult(mode, EnvelopeResult(preference, measured, gate), (), ())
 
 
 def calibration_document(
@@ -76,7 +78,7 @@ def calibration_document(
     """Build one coherent synthetic record document for the given backend and mode."""
     mode = load_catalog().mode(mode_id)
     assert mode is not None
-    envelopes = _CPU_ENVELOPES if hardware.backend == "cpu" else _CUDA_ENVELOPES
+    cells = _CPU_CELLS if hardware.backend == "cpu" else _CUDA_CELLS
     driver = None if hardware.backend == "cpu" else DRIVER
-    context = RecordContext(record_target(hardware, (mode_id,)), RUN_ID, preference, driver)
-    return build_record(context, mode_result(mode, envelopes))
+    context = RecordContext(record_target(hardware, (mode_id,)), RUN_ID, driver)
+    return build_record(context, mode_result(mode, preference, cells[preference]))

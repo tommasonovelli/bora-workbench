@@ -83,7 +83,8 @@ The following are mandatory:
 - an explicit measured scope and portability limit;
 - SHA-256 of the final bytes and a verifiable manifest;
 - no local records, config, raw logs, or private data;
-- ordering-only seeds, never a remote envelope or nearest-match;
+- historical report fields never presented as current runtime inputs, remote envelopes, or
+  nearest-match data;
 - personal approval by the maintainer.
 
 The launcher creates no logins, uploads, commits, branches, issues, or PRs.

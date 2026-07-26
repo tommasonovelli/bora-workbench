@@ -95,7 +95,7 @@ def engine_install_command(
 @engine_app.command("status")
 def engine_status_command() -> None:
     """Show active managed-engine compatibility and differences from the lock."""
-    show_engine_status(_stdout)
+    show_engine_status(_stdout, _stderr)
 
 
 @app.command()
@@ -133,11 +133,11 @@ def calibrate(
         str | None,
         typer.Option(
             "--preference",
-            help="Launch envelope written to the record: fast, balanced (default), max-context.",
+            help="Optimization rule to measure: fast, balanced (default), max-context.",
         ),
     ] = None,
 ) -> None:
-    """Measure the launch envelopes of one packaged mode or of all of them."""
+    """Measure one launch cell for one packaged mode or for all of them."""
     try:
         options = parse_calibration_input(mode, preference, context.args)
     except CalibrationError as error:

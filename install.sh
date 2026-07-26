@@ -1,5 +1,5 @@
 #!/usr/bin/env sh
-# install.sh - explicit-source installer for bora-workbench 0.1 on Linux.
+# install.sh - explicit-source installer for bora-workbench 0.2 on Linux.
 #
 # IMPLEMENTATION_SPEC.md sections 5.10-5.12 require a small, idempotent installer that verifies
 # prerequisites, pins uv 0.11.28 through its official versioned installer, and installs the tool

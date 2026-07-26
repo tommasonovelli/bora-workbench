@@ -178,10 +178,20 @@ def request(tmp_path: Path, backend: str = "cpu", force: bool = False) -> Instal
 
 def patch_artifacts(monkeypatch) -> None:
     """Replace network and extraction while preserving promotion and manifest behavior."""
+
+    def selected_assets(lock, platform_key, backend):
+        """Return the exact synthetic role set for the requested Windows backend."""
+        del lock, platform_key
+        server = server_asset(backend)
+        if backend == "cpu":
+            return (server,)
+        runtime = replace(server, role="cuda-runtime", executable=None, filename="runtime.zip")
+        return server, runtime
+
     monkeypatch.setattr(
         installer,
         "select_assets",
-        lambda lock, platform_key, backend: (server_asset(backend),),
+        selected_assets,
     )
 
     def download(asset, root, progress):
@@ -193,6 +203,10 @@ def patch_artifacts(monkeypatch) -> None:
 
     def extract(request):
         """Materialize the synthetic server instead of opening a real archive."""
+        if request.asset.executable is None:
+            request.progress(TransferProgress(0, 6))
+            request.progress(TransferProgress(6, 6))
+            return
         path = request.destination / str(request.asset.executable)
         path.parent.mkdir(parents=True, exist_ok=True)
         request.progress(TransferProgress(0, 6))
@@ -289,6 +303,56 @@ def test_staging_failure_leaves_previous_activation_intact(tmp_path, monkeypatch
     assert manifest_bytes(tmp_path) == previous
     assert not list((tmp_path / "engine").glob(".staging-*"))
     assert len(list((tmp_path / "engine/installations").iterdir())) == 1
+
+
+def test_control_signal_cleans_staging_without_being_replaced(tmp_path, monkeypatch) -> None:
+    """Clean partial staging and preserve control-signal precedence."""
+    patch_artifacts(monkeypatch)
+
+    def interrupt(extraction):
+        """Interrupt after staging exists."""
+        del extraction
+        raise SystemExit(130)
+
+    monkeypatch.setattr(installer, "extract_asset", interrupt)
+
+    with pytest.raises(SystemExit) as interrupted:
+        installer.install_managed_engine(request(tmp_path))
+
+    assert interrupted.value.code == 130
+    assert not list((tmp_path / "engine").glob(".staging-*"))
+
+
+def test_install_refuses_symlinked_engine_root(tmp_path, monkeypatch) -> None:
+    """Never redirect installation writes through a symlinked managed root."""
+    patch_artifacts(monkeypatch)
+    external = tmp_path / "external"
+    external.mkdir()
+    engine_root = tmp_path / "engine"
+    engine_root.symlink_to(external, target_is_directory=True)
+    selected = replace(request(tmp_path), engine_root=engine_root)
+
+    with pytest.raises(EngineError, match=r"engine root.*symlink"):
+        installer.install_managed_engine(selected)
+
+    assert not any(external.iterdir())
+
+
+def test_cleanup_unlinks_staging_symlink_without_touching_target(tmp_path) -> None:
+    """Remove only the managed link when a staging path points outside the engine root."""
+    engine_root = tmp_path / "engine"
+    engine_root.mkdir()
+    external = tmp_path / "external"
+    external.mkdir()
+    marker = external / "keep.txt"
+    marker.write_text("keep", encoding="utf-8")
+    staging = engine_root / ".staging-deadbeef"
+    staging.symlink_to(external, target_is_directory=True)
+
+    installer._remove_staging(staging, engine_root)
+
+    assert not staging.exists()
+    assert marker.read_text(encoding="utf-8") == "keep"
 
 
 def test_activation_failure_keeps_old_manifest_and_promoted_install(tmp_path, monkeypatch) -> None:

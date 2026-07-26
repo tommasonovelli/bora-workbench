@@ -7,7 +7,7 @@ preserve and the activities not implemented yet. The behavior available today is
 
 ## 0. Actual status and tracker
 
-Updated on 24 July 2026.
+Updated on 26 July 2026.
 
 ### Completed baseline
 
@@ -59,25 +59,32 @@ Updated on 24 July 2026.
 - [x] Version `0.1.6`, tag `v0.1.6`, and the GitHub Release distribute D-067: one working
   calibration protocol, validated on hardware on Ubuntu, with the redundant protocols and record
   formats removed. PyPI remains excluded.
+- [x] On 26 July 2026 the maintainer selected the current repository/package refactor as the
+  `0.2.0` scope, postponed the earlier router/Open WebUI/benchmark roadmap, and closed the failed
+  `qwen-launcher==0.1.0` PyPI recovery (D-068). This is not a passed Gate and authorizes no remote
+  operation.
+- [x] Calibration stores one requested preference cell per mode in `calibration-record/v6`
+  (D-069). An individual mode can retain a different preference; `--mode all` applies one
+  preference to all selected modes. The historical v5 three-envelope records are superseded and
+  never migrated.
 
 ### Open work
 
-- [ ] Configure the PyPI Trusted Publisher and re-run only the failed `publish` job of
-  `29739366272`; do not rebuild the `0.1.0` artifacts.
 - [ ] Perform, as `0.1.2` post-release verification, the real upgrade from `0.1.1`, calibration
   without activation, and a complete uninstall on Ubuntu and Windows.
 - [ ] Validate the trial adapter on Windows: server startup, monitoring with the 0.5/2.0/0.125
   reserves, quick-bench, and gate. The logic is covered by offline tests on both platforms.
-- [ ] Stabilize the 0.1 series further before starting 0.2.
 - [~] Repeat `calibrate --no-activate` on materially different hardware; coverage remains
   `GATE-PARTIAL` and no envelope is transferred between hosts.
-- [ ] Step 7 — skills and deterministic router.
-- [ ] Step 8 — managed Open WebUI and sync.
-- [ ] Step 9 — standalone benchmark and final doctor.
-- [ ] Step 10A / Human Gate / 10B — release 0.2.
+- [ ] Complete the local `0.2.0` audit, cross-platform CI, artifact verification, and documented
+  manual limitations without calling them a Gate.
+- [ ] Configure the `bora-workbench` PyPI Trusted Publisher only for the first authorized `0.2.0`
+  publication; every upload requires a separately confirmed workflow dispatch.
+- [ ] Router, managed Open WebUI, sync, and standalone benchmark remain post-0.2 backlog.
 
-No local candidate is activated and no Step 7 is started without an explicit request. Pushes, tags,
-releases, uploads, and remote settings always require authorization in the current session.
+No local candidate is activated and no post-0.2 backlog item is started without an explicit
+request. Pushes, tags, releases, uploads, and remote settings always require authorization in the
+current session.
 
 ---
 
@@ -104,9 +111,14 @@ plugins, deleting the Hugging Face cache, and arbitrary user modes.
 
 ### 1.3 The 0.2 boundary
 
-0.2 adds only what Steps 7–9 authorize: declarative skills, a phrase-based router, a pinned Open
-WebUI, local sync, a standalone benchmark, and a completed doctor. It does not turn the project into
-an extensible code framework.
+`0.2.0` is the repository/package refactor from `qwen-launcher` to `bora-workbench`, including the
+`bora` command, new managed-root identity, consolidated modules, and the stabilization required by
+the refactor audit. It keeps the one calibration protocol and pinned engine/model behavior already
+distributed in `0.1.6`.
+
+The previously planned router, skills, managed Open WebUI, sync, and standalone benchmark are
+post-0.2 backlog. They are not silently included in `0.2.0` and create no dependency or compatibility
+claim for this release.
 
 ---
 
@@ -142,7 +154,7 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-001 | Python package `>=3.12,<3.13`; development and CI on CPython `3.12.13`. |
 | D-002 | uv `0.11.28`, `uv_build`, a committed `uv.lock`, and frozen commands. |
 | D-003 | Runtime: `typer`, `rich`, `psutil`, `httpx`, `jsonschema`; development: `pytest`, `ruff`. |
-| D-004 | `pyyaml` may enter only in Step 7, for frontmatter read with `safe_load`. |
+| D-004 | `pyyaml` may enter only with the future skills/router backlog, for frontmatter read with `safe_load`. |
 | D-006 | Modes = behavior; local records = performance; shared reports/profiles = seeds or evidence. |
 | D-008 | A single GPU; `CUDA_VISIBLE_DEVICES` exclusively in the child environment. |
 | D-010 | `coding` without UI; `studio` with UI; `vstudio` with UI and vision, always explicit. |
@@ -150,7 +162,7 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-015 | Every managed service listens on `127.0.0.1` only. |
 | D-017 | `engine.lock` contains machine semantics, not merely a list of flags. |
 | D-018 | Immutable installations; atomic activation through `current.json`. |
-| D-020 | The 0.2 release also uses local preparation, a human gate, and separate finalization. |
+| D-020 | Historical 0.2 process: local preparation, a human gate, and separate finalization. D-068 supersedes this process for `0.2.0` without claiming that the omitted Gate passed. |
 | D-022 | Open WebUI will use versioned environments and an atomic activation manifest. |
 | D-024 | Feasibility evidence is neither a calibrated profile nor a performance promise. |
 | D-030 | The `model` identity is separate from `model_path`; the default is resolved read-only at the pinned revision. |
@@ -171,7 +183,7 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-051 | Trials use `llama_port` when free, otherwise a loopback port assigned by the OS. |
 | D-052 | The total-RAM comparison tolerates at most 1 MiB; headroom and components stay strict. |
 | D-053 | `calibration/v4` keeps the v3 scale, search, and ABBA but uses a 0.3 GiB VRAM reserve and produces `calibration-record/v3`; v2 records stay valid with their own 0.5 GiB reserve. |
-| D-054 | The release workflow's PyPI job is opt-in through `PYPI_PUBLISH_ENABLED`; `v0.1.1` publishes on GitHub only, as authorized. |
+| D-054 | Historical 0.1 workflow: the PyPI job was opt-in through `PYPI_PUBLISH_ENABLED`; `v0.1.1` published on GitHub only, as authorized. D-068 replaces the persistent switch for future publication. |
 | D-055 | `calibration/v5` inserts `98304` and `49152` into the automatic scale, raises the cap to 14 probes, and produces `calibration-record/v4`; the v4 execution is retired but v2/v3 records stay readable. |
 | D-056 | `uninstall` removes the four roots and its own `uv tool` installation with a single confirmation; a helper on the base Python waits for the process to exit to avoid Windows locks. Installations not managed by uv stay explicitly unchanged, and uv itself is not removed. |
 | D-057 | `0.1.2` collects `calibration/v5` and the terminal, build, CI, and uninstall stabilization following `0.1.1`; the maintainer authorizes the commit, push, tag, and GitHub Release without a new manual Gate, keeps the candidates inactive, and excludes PyPI. |
@@ -183,11 +195,13 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-063 | The maintainer explicitly authorizes overriding the D-061 gate: `calibration/v6-lite` is implemented as an **opt-in** protocol (`--protocol v6`) before the GO verdict of the cross-context spike. `calibration/v5` remains the default; promoting v6 to the default remains conditional on a committed `GO`. No benchmark result and no `GO` verdict is invented: the search, selection, confirmation, gate, and record are tested offline with fakes. (This entry originally also claimed that the real trial adapter was validated on hardware; that claim was premature and is corrected by D-066.) |
 | D-064 | `0.1.4` distributes v6-lite: a hard `mode/v2` migration (the three modes emit `min-p`/`presence`/`repeat`/`reasoning` without changing the digest, v2-only loader), a production quick-bench, the `_calibration_v6_*` engine (shared `coding`+`studio` search, bisection of the VRAM side only, Pareto-free selection, ABBA confirmation with a conditional third round, final per-envelope gate), a lean `calibration-record/v5` record, the `--protocol v6 --preference` CLI, and v5 reuse/`doctor`. v6 reserves 0.5/2.0/0.125 GiB. `doctor` shows the `active_preference` envelope. |
 
-| D-065 | The repository is written in English end to end: documentation, this plan, the changelog, the pull request template, and the prose of the measured evidence. Measured values, digests, decision ids, constants, protocol names, and gate wording are preserved verbatim; the byte-pinned benchmark payloads (`benchmark-v1`, `benchmark-quick`, `calibration-v1`) and the mirroring prompt constant in `scripts/spike_ctx/quick.py` keep their original text, because they are measurement inputs and changing them would change what is measured. Translating the checksum-bound evidence changed its bytes, so the whole chain was regenerated: `gate.md`/`protocol.md` → the report's `source_references` → the report digest → the policy evidence digest → `SHA256SUMS`. `0.1.5` distributes the result and realigns the published artifacts with the branch; the artifacts of `0.1.0`–`0.1.4` embed the previous digests and are neither rebuilt nor replaced. No runtime behavior, contract, or `command_contract_sha256` changes. |
+| D-065 | The repository is written in English end to end: documentation, this plan, the changelog, the pull request template, and the prose of the measured evidence. Measured values, digests, decision ids, constants, protocol names, and gate wording are preserved verbatim; the byte-pinned benchmark payloads (`benchmark-v1`, `benchmark-quick`, `calibration-v1`), the multi-turn input in `_calibration_trial.py`, and the mirroring prompt constant in `scripts/spike_ctx/quick.py` keep their original text, because they are measurement inputs and changing them would change what is measured. Translating the checksum-bound evidence changed its bytes, so the whole chain was regenerated: `gate.md`/`protocol.md` → the report's `source_references` → the report digest → the policy evidence digest → `SHA256SUMS`. `0.1.5` distributes the result and realigns the published artifacts with the branch; the artifacts of `0.1.0`–`0.1.4` embed the previous digests and are neither rebuilt nor replaced. No runtime behavior, contract, or `command_contract_sha256` changes. |
 
 | D-066 | Correction of record, 25 July 2026: `calibration/v6-lite` **does not work**. The real trial adapter was never validated on hardware, so the corresponding claim in D-063, `CHANGELOG` `0.1.4`, `docs/calibration.md`, and `docs/releasing.md` was premature and is withdrawn. Only the search, selection, confirmation, gate, and record logic is exercised, by offline tests with fakes. `--protocol v6` stays shipped and opt-in, but the documentation must present it as non-functional; `calibration/v5` remains the only protocol for real calibration. The open tracker item for hardware validation was already correct and stands. Do not describe v6 as usable, benchmarked, or validated until a real run on Ubuntu and Windows is committed. |
 
 | D-067 | Calibration becomes a single protocol, 25 July 2026, and the trial adapter behind D-066 is repaired. Four defects made every run fail. (1) `wait_for_health` caught only `ConnectError` and `TimeoutException`, so the `ReadError` a dying server produces escaped `start_service` and bypassed its cleanup, leaving a live child and a registered service that made the next start refuse; every transport class is now read as "not ready yet". (2) `start_service` cleaned up only for a listed set of exception classes; it now cleans up whatever escapes. (3) Exhausted VRAM was unclassifiable: the driver rejects the allocation, so free VRAM never crosses the monitored reserve and the engine only reports it by dying during model load. (4) The final gate sized its smoke prompt in words instead of tokens, overshooting the window by roughly 2.3x, so the gate could never pass. D-059 stays class-based with one declared exception: `ServerStartupError` carries the process log, and only the VRAM side of `MEMORY_INFEASIBLE` is decided from that log, because no monitor class can observe a rejected allocation. A first full hardware run then exposed two failures no offline test could reach, both caused by a memory boundary that moves between measurements on a nearly full GPU. (5) A group that failed discarded the modes that had already completed, because records were persisted only after every group finished; each group now persists its own records and the run reports which groups produced nothing while still exiting operationally. (6) A finalist that stopped fitting the reserves during ABBA failed the whole mode; the comparison is now abandoned and the surviving finalist confirmed, and the same point reached at the gate counts as a gate it cannot pass. With the protocol working, the redundant ones are removed: the `calibration/v1` laboratory, `calibration/v5`, the `--protocol` option, the `calibration-record/v2`-`/v4` formats and their schemas, `validate --path`, the repository-only cross-context spike package, and the public ordering seeds the search no longer consumes. `calibrate` is one command with `--preference`, `--target-ctx`, `--activate`, and `--no-activate`; the surviving modules drop their version infix, and user-facing documentation stops naming protocol versions. The on-disk record format keeps its identifier as a data-format marker so a record written by an older launcher is diagnosed as superseded rather than misread. |
+| D-068 | On 26 July 2026 the maintainer explicitly selects the current refactor as `0.2.0`: distribution `bora-workbench`, package `bora_workbench`, command `bora`, and repository `tommasonovelli/bora-workbench`. The earlier Step 7–9 router/Open WebUI/benchmark roadmap is postponed beyond 0.2. The final version is authorized without describing the audit or manual run as a passed Gate. PyPI starts with `bora-workbench==0.2.0`; the failed historical `qwen-launcher==0.1.0` publication is closed and its artifacts are never relabelled, rebuilt, or uploaded under the new project. Local completion does not authorize a push, tag, GitHub Release, PyPI upload, remote setting, or candidate activation; each remains a separate current-session action. |
+| D-069 | On 26 July 2026 the maintainer replaces the v5 three-envelope record with one calibrated preference cell per mode. `--preference fast|balanced|max-context` selects the only cell searched, confirmed, gated, and stored; `--mode all` applies the same preference to all three modes, while separate mode runs may retain different preferences. Recalibration replaces only the selected modes' candidate/active lifecycle files. The incompatible format is `calibration-record/v6`; v2–v5 records are superseded and never migrated. Candidate activation promotes the cell exactly as measured and cannot relabel it. The maintainer also authorizes commit, push to `tommasonovelli/bora-workbench`, tag `v0.2.0`, GitHub Release, and the first `bora-workbench==0.2.0` PyPI publication after automated checks and CI succeed. Manual Ubuntu/Windows calibration and hardware runs are explicitly waived for this release, remain follow-up verification, and are not a passed Gate. |
 
 A new durable decision updates this table in the same step that authorizes it.
 
@@ -285,16 +299,18 @@ directories.
 Every document uses JSON Schema 2020-12, `additionalProperties: false`, and `^[a-z0-9-]+$`
 identifiers.
 
-Supported contracts: `mode/v1`, `profile/v1`, `calibration-policy/v1` and `/v2`,
-`calibration-report/v1` and `/v2`, `calibration-record/v2`, `/v3`, and `/v4`, `engine-lock/v1`.
+Packaged schemas: `engine-lock/v1`, `mode/v1` and `/v2`, `profile/v1`,
+`calibration-policy/v1` and `/v2`, `calibration-report/v1` and `/v2`, and
+`calibration-record/v6`.
 
-- A mode contains a description, `services.ui`, `services.vision`, and sampling.
+- Runtime modes use `mode/v2`: description, services, full sampling, and reasoning. The v1 schema
+  remains packaged only to diagnose declarative content precisely; the runtime loader requires v2.
 - A v1 profile is compatibility/evidence only; no production profile is distributed.
-- The v2 policy describes the historical v3 method, not envelopes; v4/v5 use it only as an ordering
-  seed.
-- The v2 report is privacy-safe and produces ordering seeds only.
-- v2/v3/v4 records are private, per mode, and bound to a full identity; v4 records the v5 method.
-  Records with the previous digest stay readable but are not reusable after D-060.
+- The v2 policy/report pair is privacy-safe reference evidence and never supplies another host's
+  launch envelope.
+- v6 records are private, contain one selected preference cell per mode, and are bound to full
+  model, engine, mode-policy, hardware, memory, and calibration identity. A v2–v5 record is
+  diagnosed as superseded; an unknown future schema is invalid. Neither is migrated.
 - Filenames, references, and SHA-256 digests are checked semantically.
 
 A new incompatible field requires a new schema version.
@@ -311,54 +327,46 @@ The CUDA child process receives `CUDA_VISIBLE_DEVICES`; the parent process is no
 
 ### 5.5 Plan, records, and baseline
 
-Only an active `calibration-record/v2`, `/v3`, or `/v4` can supply the envelope. The model/digest,
-engine/commit/contract, mode, OS, backend, hardware, driver, and headroom must all match. Total RAM
-tolerates at most 1 MiB of drift; available RAM and free VRAM remain separate comparisons.
+Only an active `calibration-record/v6` can supply a calibrated cell. The model/digest,
+engine/commit/contract, mode-policy digest, mode, OS, backend, hardware, driver, and headroom must
+all match. Total RAM tolerates at most 1 MiB of drift; available RAM and free VRAM remain separate
+comparisons.
 
 Reuse:
 
-- available RAM ≥ measured requirement + 2.0 GiB;
-- CUDA: free VRAM ≥ measured requirement + recorded reserve (0.5 GiB for v2, 0.3 GiB for v3/v4).
+- available RAM ≥ the record's measured requirement plus its 2.0 GiB reserve;
+- CUDA free VRAM ≥ the record's measured requirement plus its 0.5 GiB reserve.
 
 Fallback: `ctx=8192`; CUDA `n_cpu_moe=48`; CPU without `n_cpu_moe`. It is always non-optimized.
 `--force` bypasses only the default model's 28/22 GiB gate.
 
 ### 5.6 Calibration
 
-The default is `calibration/v5`. It is local, explicit, user-confirmed, and performs no uploads,
-commits, or config changes. It keeps the boundary search, finalists, and ABBA confirmation of v4;
-D-055 adds two steps to the scale and one position to the cap. The v3/v4 executions are retired,
-while their records and the public evidence stay readable.
+One local, explicit, user-confirmed protocol exists (D-067/D-069). It performs no upload, commit, or
+configuration change and writes only `calibration-record/v6`.
 
 Constants:
 
-- automatic scale `131072 → 98304 → 65536 → 49152 → 32768 → 16384 → 8192`;
-- the same steps are allowed as explicit targets;
-- CUDA domain `[0, block_count]`, expected `[0, 41]` on the current model;
+- context scale and explicit targets: `131072 → 98304 → 65536 → 49152 → 32768 → 16384 → 8192`;
+- CUDA domain `[0, block_count]`, exactly `[0, 41]` for the pinned model;
 - RAM/VRAM polling every 250 ms;
-- RAM reserve 2.0 GiB;
-- VRAM reserve 0.3 GiB;
-- release/drift tolerance 0.125 GiB;
-- at most 14 probes per mode;
-- two `A→B/B→A` rounds;
-- a full `benchmark/v1` on every confirmation startup.
+- reserves: 2.0 GiB RAM, 0.5 GiB VRAM, 0.125 GiB release tolerance;
+- shared probe budgets: 28 for `coding`+`studio`, 20 for `vstudio`, including retries;
+- finalists for the requested preference compared in `A→B→B→A` order, with the optional third
+  round only under its declared dispersion and margin rules;
+- one final smoke and multi-turn gate for the requested cell, plus the vision check for `vstudio`.
 
-Dominance requires the same winner in both rounds. Otherwise margin and caution decide. On CPU the
-baseline is confirmed; no CPU axis is invented.
+An infeasible context costs one prudent probe, so the ladder continues downward. On CPU the
+automatic run confirms the baseline, while an explicit approved target confirms that target;
+`n_cpu_moe` stays null and no CPU offload axis is invented. `--mode all` applies one preference to
+every selected mode; separate invocations may retain different preferences. Each completed group
+persists its own candidate records even if a later group produces none.
 
-Every trial uses the configured port when free, otherwise a temporary loopback port. Normal startups
-keep refusing a busy port.
-
-Records: `<mode>.candidate.json`, active `<mode>.json`, rollback `<mode>.previous.json`. By default:
-atomic promotion; `--no-activate` keeps the candidate; `--activate` promotes without new trials.
-
-One protocol exists (D-067). It measures three envelopes per mode and writes one record in the
-single supported format. It searches the seven-step context scale with the reserves 0.5 GiB VRAM,
-2.0 GiB RAM, and 0.125 GiB release tolerance, under shared probe budgets of 28 for the
-`coding`+`studio` group and 20 for `vstudio`. An infeasible context step costs one prudent probe, so
-the ladder degrades to the smaller contexts instead of failing. On CPU it confirms the baseline
-context and records a null `n_cpu_moe`: no CPU axis is invented. A record written by an older
-launcher is diagnosed as superseded and never migrated.
+Records are `<mode>.candidate.json`, active `<mode>.json`, and rollback
+`<mode>.previous.json`. Promotion is atomic; `--no-activate` keeps candidates and `--activate`
+promotes existing candidates without new trials or preference changes. Recalibration touches only
+the selected modes' lifecycle files. No calibration candidate is activated on the maintainer's
+behalf.
 
 ### 5.7 Engine command
 
@@ -368,9 +376,8 @@ The builder expands only the `command_contract` of `engine.lock`. Every option t
 The command explicitly represents the physical model, context, sampling, host/port, metrics,
 MTP/cache/mmap, UI, vision, and backend. `LaunchPlan.speculative` is `mtp2` or `disabled`, and
 vision requires `disabled`; `coding` and `studio` keep the previous argv, `vstudio` keeps `--mmproj`
-without MTP flags. The extended sampling and reasoning sections are present but `mode/v1` does not
-emit them. CPU receives no CUDA arguments. No flag originates from semantic hardcoding absent from
-the lock.
+without MTP flags. Runtime `mode/v2` emits the validated extended sampling and reasoning values.
+CPU receives no CUDA arguments. No flag originates from semantic hardcoding absent from the lock.
 
 ### 5.8 Engine and model
 
@@ -490,22 +497,17 @@ pushes and publication are not.
 
 ---
 
-## 7. Open 0.1 stabilization
+## 7. Historical 0.1 stabilization
 
-### 7.1 Completing PyPI for `0.1.0`
+### 7.1 PyPI recovery closed
 
-The maintainer configures the Trusted Publisher on PyPI:
+Run `29739366272` attempted to publish distribution `qwen-launcher==0.1.0` and failed before any
+PyPI project existed. On 26 July 2026 the maintainer closed that recovery rather than transferring
+the old bytes to the renamed project. Versions `0.1.0`–`0.1.6`, their package `qwen_launcher`, their
+command `qwen-launcher`, and their artifact names remain historical facts.
 
-```text
-project:      bora-workbench
-owner/repo:   tommasonovelli/bora-workbench
-workflow:     release.yml
-environment:  pypi
-```
-
-They then re-run only the failed `publish` job of run `29739366272`. After it succeeds they verify
-`bora-workbench==0.1.0` on Ubuntu and Windows and compare the digests with GitHub. The existing
-artifacts are not rebuilt.
+The first PyPI project for the renamed repository is `bora-workbench`, starting at `0.2.0`. No
+historical wheel or sdist is rebuilt, relabelled, or uploaded to it.
 
 ### 7.2 Release 0.1.1 completed
 
@@ -575,11 +577,12 @@ and does not retroactively turn the single current host into universal evidence.
 
 ---
 
-## 8. Milestone 0.2 — future work
+## 8. Post-0.2 backlog
 
-0.2 starts only after 0.1 stabilization and an explicit request. Every step is separate.
+D-068 postpones the former 0.2 roadmap. The items below are possible later milestones, not
+requirements or promises for `0.2.0`. Every item still requires an explicit future decision.
 
-### Step 7 — Skills and deterministic router
+### Backlog A — Skills and deterministic router
 
 **Objective:** routable content without regular expressions or contributed code.
 
@@ -612,20 +615,19 @@ Routing:
 
 Activities:
 
-1. version `0.2.0.dev0`;
-2. add `pyyaml` and update the lock;
-3. the schema, a safe parser, and the initial `epsilon-delta`, `math-solver`, `debug-systematic`,
+1. add `pyyaml` and update the lock;
+2. the schema, a safe parser, and the initial `epsilon-delta`, `math-solver`, `debug-systematic`,
    `linux-ops` skills;
-4. a pure router and tests integrated into `validate`;
-5. `mode/v2` with `prompt` and `skills` (`auto` or a list), keeping v1 readable;
-6. declarative migration of the modes in a PR separate from the core when needed;
-7. no regular expressions in the schema, parser, or documentation.
+3. a pure router and tests integrated into `validate`;
+4. a new mode schema with `prompt` and `skills` (`auto` or a list);
+5. declarative migration of the modes in a PR separate from the core when needed;
+6. no regular expressions in the schema, parser, or documentation.
 
 Tests: normalization, accents, case, punctuation, a phrase counted once, ties, threshold, top_k,
 co-activations, missing references, positives/negatives, hostile frontmatter, and v1/v2
 compatibility.
 
-### Step 8 — Managed Open WebUI and sync
+### Backlog B — Managed Open WebUI and sync
 
 **Precondition:** the maintainer approves a precise version after a real spike on Python, CPU-only
 dependencies, command, health, Functions, prompts, and environment variables. The spike produces
@@ -641,7 +643,7 @@ Installation:
 - a failure leaves the previous manifest and version intact;
 - cleanup of inactive managed environments only.
 
-0.2 configuration: `webui_port=8081` and `BORA_WEBUI_PORT`; port 1–65535 and different from
+Future configuration: `webui_port=8081` and `BORA_WEBUI_PORT`; port 1–65535 and different from
 `llama_port`.
 
 A minimal environment, only after the lock has been verified: a dedicated data dir, host
@@ -660,7 +662,7 @@ API writes in this step.
 Tests: valid/partial/failed installation, manifest, port configuration, environment, health,
 fallback, multi-service state, hostile content, and reproducible output.
 
-### Step 9 — Standalone benchmark and final doctor
+### Backlog C — Standalone benchmark and final doctor
 
 `benchmark --mode <id>` requires a live server and reads the mode, model, engine, record or
 fallback, context, and `n_cpu_moe` from the state. It reuses `benchmark/v1` exactly: warm-up
@@ -679,23 +681,12 @@ Also complete:
 Tests: missing/incompatible server, warm-up, five measurements, median, record present/absent,
 comparison, no content changes, no real network, and metadata from the state.
 
-### Step 10A — Local 0.2 preparation
+### Local 0.2.0 finalization
 
-Complete the documentation and changelog; verify the upgrade from 0.1 and a clean installation;
-version `0.2.0rc1`; suite, build, isolated installation, and artifact inspection. No tag, push, or
-upload.
-
-### Human Gate 0.2
-
-The maintainer tests on Ubuntu and Windows: clean installation and upgrade, the three modes,
-router/skills, Open WebUI and fallback, sync, benchmark, doctor, validate, data, licenses, and the
-Trusted Publisher. They decide `RELEASE` or `NO-RELEASE`.
-
-### Step 10B — Local 0.2 finalization
-
-Only after `RELEASE`: version `0.2.0`, the final changelog, documentation, suite, build, and local
-commit. Push, tag, GitHub Release, PyPI, and remote settings remain individually authorized
-operations.
+D-068 authorizes the final `0.2.0` version for the repository/package refactor without claiming a
+passed Human Gate. The local audit, suite, build, isolated wheel/uninstall checks, and feasible
+Ubuntu manual checks must be reported exactly. Push, tag, GitHub Release, PyPI, remote settings, and
+candidate activation remain individually authorized operations.
 
 ---
 
@@ -703,8 +694,9 @@ operations.
 
 ### 0.1 stabilization
 
-- [ ] PyPI contains the same already tested `0.1.0` artifacts.
-- [ ] Explicit installation from PyPI verified on Ubuntu and Windows.
+- [x] The maintainer closed the failed `qwen-launcher==0.1.0` PyPI recovery; historical artifacts
+  remain under their original identity and are not republished.
+- [x] PyPI verification for 0.1 is explicitly not pursued; `bora-workbench` starts at `0.2.0`.
 - [x] Post-release fixes distributed only with the newly authorized version `0.1.1`.
 - [x] `calibration/v4` really verified on Ubuntu and Windows before 0.1.1.
 - [x] The `RELEASE` decision for `0.1.2` is explicit and records that the manual Gate was not
@@ -716,17 +708,18 @@ operations.
 - [x] The repository is fully English and the regenerated evidence digest chain verifies from the
   checkout; the published `0.1.5` artifacts embed the new digests.
 - [~] Heterogeneous evidence added when available, without transferring envelopes between hosts.
-- [ ] The cross-context spike run by the maintainer and a `GO`/`NO-GO` verdict committed; no Gate is
-  implied by the mere presence of the runner.
+- [x] D-067 superseded the cross-context spike and removed its runner without inventing a
+  `GO`/`NO-GO` verdict or a passed Gate.
 
 ### Milestone 0.2
 
-- [ ] A deterministic router without regular expressions, and skills with positive/negative tests.
-- [ ] Open WebUI and its dependencies pinned, atomic installation, and a verified fallback.
-- [ ] Local sync treats content as data and does not execute it.
-- [ ] The standalone benchmark reuses `benchmark/v1` and creates no records.
-- [ ] Doctor provides consistent status and remedies.
-- [ ] Release 0.2 only after the Human Gate and explicit remote authorizations.
+- [x] Distribution/package/command/repository identity is `bora-workbench` / `bora_workbench` /
+  `bora` / `tommasonovelli/bora-workbench`.
+- [x] The maintainer selected the refactor as final `0.2.0` without claiming a passed Gate.
+- [x] Router, Open WebUI, sync, and standalone benchmark are explicitly postponed beyond 0.2.
+- [ ] Local audit, suite, build, isolated install/uninstall, and feasible Ubuntu checks complete.
+- [ ] Cross-platform CI confirms the tested release commit.
+- [ ] Any push, tag, GitHub Release, PyPI upload, or remote setting receives separate authorization.
 
 ---
 

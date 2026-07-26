@@ -33,6 +33,7 @@ _ALLOWED_PLACEHOLDERS = {
 }
 _HEX_40 = re.compile(r"^[0-9a-f]{40}$")
 _HEX_64 = re.compile(r"^[0-9a-f]{64}$")
+_WINDOWS_DEVICE = re.compile(r"^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$", re.I)
 _ASSET_ROLES = {"server", "cuda-runtime", "source"}
 _REQUIRED_ROLES = {
     ("ubuntu", "cpu"): {"server"},
@@ -52,11 +53,25 @@ def _is_safe_relative(value: str) -> bool:
     """Recognize a relative path under both supported platform syntaxes."""
     posix, windows = PurePosixPath(value), PureWindowsPath(value)
     return bool(posix.parts) and not (
-        posix.is_absolute()
+        "\\" in value
+        or posix.is_absolute()
         or windows.is_absolute()
         or windows.drive
         or ".." in posix.parts
         or ".." in windows.parts
+        or _has_unsafe_windows_component(posix.parts)
+    )
+
+
+def _has_unsafe_windows_component(parts: tuple[str, ...]) -> bool:
+    """Reject paths Windows aliases, redirects, or normalizes."""
+    forbidden = '<>:"|?*'
+    return any(
+        not part
+        or part.endswith((" ", "."))
+        or any(character in forbidden or ord(character) < 32 for character in part)
+        or _WINDOWS_DEVICE.fullmatch(part) is not None
+        for part in parts
     )
 
 

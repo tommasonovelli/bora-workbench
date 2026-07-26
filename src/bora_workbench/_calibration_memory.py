@@ -199,7 +199,7 @@ class VramMonitor:
     query: Callable[[int], GpuSnapshot] = query_gpu_snapshot
     _baseline: GpuSnapshot | None = field(default=None, init=False)
     _samples: list[GpuSnapshot] = field(default_factory=list, init=False)
-    _error: Exception | None = field(default=None, init=False)
+    _error: BaseException | None = field(default=None, init=False)
     _stop_event: threading.Event = field(default_factory=threading.Event, init=False)
     _thread: threading.Thread | None = field(default=None, init=False)
 
@@ -230,7 +230,7 @@ class VramMonitor:
             deadline += _POLL_INTERVAL_SECONDS
             try:
                 self._samples.append(self._query_snapshot())
-            except Exception as error:  # The owning thread re-raises with calibration context.
+            except BaseException as error:  # The owning thread preserves control-flow precedence.
                 self._error = error
                 return
             self._stop_event.wait(max(0.0, deadline - time.monotonic()))
@@ -256,6 +256,8 @@ class VramMonitor:
         if self._thread is not None:
             self._thread.join()
         if self._error is not None:
+            if not isinstance(self._error, Exception):
+                raise self._error
             if isinstance(self._error, VramEnvironmentError):
                 raise self._error
             raise VramEnvironmentError(f"GPU monitoring failed: {self._error}") from self._error
@@ -370,7 +372,7 @@ class RamMonitor:
     query: Callable[[], float] = query_ram_available_gib
     _baseline_gib: float | None = field(default=None, init=False)
     _samples: list[float] = field(default_factory=list, init=False)
-    _error: Exception | None = field(default=None, init=False)
+    _error: BaseException | None = field(default=None, init=False)
     _stop_event: threading.Event = field(default_factory=threading.Event, init=False)
     _thread: threading.Thread | None = field(default=None, init=False)
 
@@ -401,7 +403,7 @@ class RamMonitor:
             deadline += _POLL_INTERVAL_SECONDS
             try:
                 self._samples.append(self._sample())
-            except Exception as error:  # The owning thread re-raises with calibration context.
+            except BaseException as error:  # The owning thread preserves control-flow precedence.
                 self._error = error
                 return
             self._stop_event.wait(max(0.0, deadline - time.monotonic()))
@@ -412,6 +414,8 @@ class RamMonitor:
         if self._thread is not None:
             self._thread.join()
         if self._error is not None:
+            if not isinstance(self._error, Exception):
+                raise self._error
             if isinstance(self._error, RamError):
                 raise self._error
             raise RamError(f"RAM monitoring failed: {self._error}") from self._error

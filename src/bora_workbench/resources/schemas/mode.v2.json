@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://bora-workbench.dev/schemas/mode.v2.json",
   "title": "bora-workbench mode/v2",
-  "description": "Declarative behavior contract for one launcher mode, with extended sampling and reasoning migrated in calibration/v6-lite Phase 2 (IMPLEMENTATION_SPEC.md section 3.7).",
+  "description": "Declarative behavior contract for one launcher mode, including the sampling and reasoning fields required by IMPLEMENTATION_SPEC.md section 5.3.",
   "type": "object",
   "additionalProperties": false,
   "required": [

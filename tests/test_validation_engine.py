@@ -119,3 +119,18 @@ def test_engine_lock_rejects_duplicate_verified_flags(tmp_path) -> None:
     result = validate_resources(root)
 
     assert any("duplicates" in issue.message for issue in result.errors)
+
+
+def test_engine_lock_schema_rejects_missing_and_unknown_fields(tmp_path) -> None:
+    """Require the complete closed lock shape before semantic validation."""
+    root, path = _engine_path(tmp_path)
+    lock = read_json(path)
+    del lock["health_contract"]
+    lock["invented"] = True
+    write_json(path, lock)
+
+    result = validate_resources(root)
+    messages = {issue.message for issue in result.errors if issue.file == "engine.lock"}
+
+    assert any("'health_contract' is a required property" in message for message in messages)
+    assert any("Additional properties are not allowed" in message for message in messages)

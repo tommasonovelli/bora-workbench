@@ -17,25 +17,17 @@ CUDA on a machine with more than one GPU is detected, but startup is blocked: ph
 only been verified on single-GPU hosts. If `nvidia-smi` is missing, fails, or produces unreadable
 data, the launcher uses the CPU backend and shows why.
 
-## 2. Installing the public release
+## 2. Installing bora-workbench 0.2.0
 
-The public release is `0.1.6`. PyPI is still unavailable; use the artifacts of the
-[GitHub Release v0.1.6](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.1.6).
-The release attaches the wheel, sdist, installers, and `SHA256SUMS` produced by the cross-platform
-test/build run. A published release is never modified in place.
+The GitHub Release and PyPI distribution start at `0.2.0`. Install the explicit version; the
+installer pins uv and Python and never selects a floating package version.
 
 ### Ubuntu
 
 ```bash
-base="https://github.com/tommasonovelli/bora-workbench/releases/download/v0.1.6"
-wheel="bora_workbench-0.1.6-py3-none-any.whl"
+base="https://github.com/tommasonovelli/bora-workbench/releases/download/v0.2.0"
 curl --fail --location "$base/install.sh" --output install.sh
-curl --fail --location "$base/$wheel" --output "$wheel"
-curl --fail --location "$base/SHA256SUMS" --output SHA256SUMS
-sha256sum --check --ignore-missing SHA256SUMS
-wheel_sha256="$(awk -v wheel="$wheel" '$2 == wheel { print $1 }' SHA256SUMS)"
-test "${#wheel_sha256}" -eq 64
-sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
+sh ./install.sh --pypi-version 0.2.0
 ```
 
 ### Windows
@@ -43,24 +35,24 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 From PowerShell:
 
 ```powershell
-$base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v0.1.6"
-$wheel = "bora_workbench-0.1.6-py3-none-any.whl"
+$base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v0.2.0"
 Invoke-WebRequest "$base/install.ps1" -OutFile install.ps1
-Invoke-WebRequest "$base/$wheel" -OutFile $wheel
-Invoke-WebRequest "$base/SHA256SUMS" -OutFile SHA256SUMS
-$pattern = "^[0-9a-f]{64}\s+$([regex]::Escape($wheel))$"
-$entry = Select-String -Path .\SHA256SUMS -Pattern $pattern
-if ($null -eq $entry) { throw "Wheel digest missing from SHA256SUMS" }
-$sha256 = ($entry.Line -split "\s+")[0]
-if ((Get-FileHash $wheel -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sha256) {
-  throw "Wheel SHA-256 mismatch"
-}
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 `
-  -Wheel ".\$wheel" -Sha256 $sha256
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -PypiVersion 0.2.0
 ```
 
 `ExecutionPolicy Bypass` applies to that process only. The script does not change the system policy
 and does not require administrative privileges.
+
+The release also contains the wheel, source distribution, both installers, and `SHA256SUMS` for
+offline verification and installation.
+
+### Historical public release 0.1.6
+
+The last public release is
+[v0.1.6](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.1.6), published before
+the rename. Its immutable identity is distribution `qwen-launcher`, package `qwen_launcher`, command
+`qwen-launcher`, and wheel `qwen_launcher-0.1.6-py3-none-any.whl`. The renamed repository URL does
+not change those bytes or names.
 
 The installers always accept exactly one explicit source:
 
@@ -74,9 +66,20 @@ install.ps1 -GitCommit FULL_COMMIT
 install.ps1 -PypiVersion VERSION
 ```
 
-`--pypi-version` / `-PypiVersion` is unusable until a version is actually present on PyPI.
+The current installers target `bora-workbench`. The historical v0.1.6 installers target
+`qwen-launcher`; do not combine one release's installer with the other release's wheel.
+
+Verify a historical installation with:
+
+```bash
+qwen-launcher --version
+qwen-launcher validate
+qwen-launcher doctor
+```
 
 ## 3. Verifying the tool
+
+For `0.2.0`:
 
 ```bash
 bora --version

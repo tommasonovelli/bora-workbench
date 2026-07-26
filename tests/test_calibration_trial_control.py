@@ -5,6 +5,10 @@ from __future__ import annotations
 import socket
 from dataclasses import replace
 
+import pytest
+
+import bora_workbench._calibration_trial as trial_module
+from bora_workbench._calibration_memory import RamSummary
 from bora_workbench._calibration_trial import TrialRunner
 from bora_workbench._calibration_trial_control import ProgressEvent, TrialProgress
 from bora_workbench.config import Config
@@ -92,3 +96,41 @@ def test_a_run_without_presentation_still_counts_trials() -> None:
     progress.started()
     progress.finished()
     assert progress.completed == 1
+
+
+def test_progress_cleanup_failure_cannot_mask_workload_interrupt(tmp_path, monkeypatch) -> None:
+    """Keep Ctrl-C ahead of a renderer failure emitted after trial cleanup."""
+    target = record_target(cpu_hardware())
+
+    def callback(event: ProgressEvent) -> None:
+        """Fail only while announcing the completed trial."""
+        if not event.is_running:
+            raise RuntimeError("renderer failed")
+
+    class _Session:
+        """Provide completed monitor cleanup without starting host resources."""
+
+        def __init__(self) -> None:
+            """Expose the fields consumed by the trial runner."""
+            self.spawned = lambda pid: None
+            self.running = None
+
+        def start(self) -> None:
+            """Stand in for monitor startup."""
+
+        def finish(self, root):
+            """Return valid cleanup summaries after the workload fails."""
+            return trial_module._SessionResources(None, RamSummary(24.0, 20.0), None)
+
+    progress = TrialProgress(callback)
+    progress.enter("coding", "search", 1)
+    runner = TrialRunner(target, target.modes[0], tmp_path, progress=progress)
+    monkeypatch.setattr(trial_module, "_create_session", lambda *args: _Session())
+    monkeypatch.setattr(trial_module, "build_command", lambda *args: ("server",))
+    monkeypatch.setattr(trial_module, "start_service", lambda *args: object())
+
+    with pytest.raises(KeyboardInterrupt):
+        runner._run(
+            (8192, None),
+            lambda *args: (_ for _ in ()).throw(KeyboardInterrupt()),
+        )

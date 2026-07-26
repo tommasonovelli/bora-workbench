@@ -45,6 +45,7 @@ def copy_resource_root(tmp_path: Path) -> Path:
     root = tmp_path / "resources"
     paths = [
         "engine.lock",
+        "schemas/engine-lock.v1.json",
         "schemas/mode.v1.json",
         "schemas/mode.v2.json",
         "schemas/profile.v1.json",
@@ -52,7 +53,7 @@ def copy_resource_root(tmp_path: Path) -> Path:
         "schemas/calibration-policy.v2.json",
         "schemas/calibration-report.v1.json",
         "schemas/calibration-report.v2.json",
-        "schemas/calibration-record.v5.json",
+        "schemas/calibration-record.v6.json",
         "content/modes/coding.json",
         "content/modes/studio.json",
         "content/modes/vstudio.json",

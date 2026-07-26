@@ -15,8 +15,10 @@ from types import TracebackType
 
 import typer
 from rich.console import Console
+from rich.markup import escape
 from rich.progress import Progress, TaskID
 from rich.table import Table
+from rich.text import Text
 
 from bora_workbench._calibration_reuse import RecordEvaluation, ReuseQuery, evaluate_record
 from bora_workbench._cli_theme import (
@@ -227,19 +229,26 @@ class EngineInstallProgress:
         self._last_event = None
 
 
-def _print_status(status: EngineStatus, stdout: Console) -> None:
+def _print_status(status: EngineStatus, stdout: Console, stderr: Console) -> None:
     """Render one already inspected managed-engine status."""
     table = status_table("managed llama.cpp engine")
     table.add_column("Item")
     table.add_column("Value")
     table.add_row("Active", "yes" if status.is_active else "no")
-    table.add_row("Release", status.release or "none")
-    table.add_row("Backend", status.backend or "none")
-    table.add_row("Executable", str(status.executable) if status.executable else "none")
+    table.add_row("Release", Text(status.release or "none"))
+    table.add_row("Backend", Text(status.backend or "none"))
+    table.add_row(
+        "Executable",
+        Text(str(status.executable) if status.executable else "none"),
+    )
     table.add_row("Compatible", "yes" if status.is_compatible else "no")
     stdout.print(table)
+    is_blocking = not status.is_compatible and status.differences != ("not installed",)
     for difference in status.differences:
-        print_warning(stdout, f"Difference: {difference}")
+        if is_blocking:
+            print_error(stderr, "Engine status error", difference)
+        else:
+            print_warning(stdout, f"Difference: {difference}")
 
 
 def _install_with_progress(backend: Backend, force: bool, stdout: Console) -> InstallResult:
@@ -268,10 +277,14 @@ def run_engine_install(force: bool, stdout: Console, stderr: Console) -> None:
     print_note(stdout, "Executable", str(result.status.executable))
 
 
-def show_engine_status(stdout: Console) -> None:
+def show_engine_status(stdout: Console, stderr: Console) -> None:
     """Show the active manifest, compatibility, and exact differences from the lock."""
-    status = engine_status()
-    _print_status(status, stdout)
+    try:
+        status = engine_status()
+    except EngineError as error:
+        print_error(stderr, "Engine status error", str(error))
+        raise typer.Exit(code=1) from error
+    _print_status(status, stdout, stderr)
     is_absent = status.differences == ("not installed",)
     if not status.is_compatible and not is_absent:
         raise typer.Exit(code=1)
@@ -363,7 +376,7 @@ def _doctor_table(data: DoctorData) -> Table:
         ("State directory", str(state_path)),
     ]
     for label, value in rows:
-        table.add_row(label, value)
+        table.add_row(label, Text(value))
     return table
 
 
@@ -378,16 +391,20 @@ def _calibrated_parameters(ctx: int | None, n_cpu_moe: int | None) -> str:
 
 def _record_line(mode_id: str, evaluation: RecordEvaluation) -> str:
     """Describe active, candidate, superseded, invalid, and headroom record states."""
-    detail = evaluation.diagnostics[0] if evaluation.diagnostics else ""
+    detail = escape(evaluation.diagnostics[0]) if evaluation.diagnostics else ""
     suffix = ""
     if evaluation.candidate_status == "valid":
         suffix = " Pending candidate is valid and awaits `calibrate --activate`."
     elif evaluation.candidate_status in {"invalid", "superseded"}:
-        candidate_detail = evaluation.candidate_diagnostics[0]
+        candidate_detail = escape(evaluation.candidate_diagnostics[0])
         suffix = f" Pending candidate is {evaluation.candidate_status}: {candidate_detail}"
     if evaluation.status == "valid":
         parameters = _calibrated_parameters(evaluation.ctx, evaluation.n_cpu_moe)
-        return f"[green]Calibration[/green] {mode_id}: active record valid{parameters}.{suffix}"
+        preference = evaluation.preference or "unknown"
+        return (
+            f"[green]Calibration[/green] {mode_id}: active {preference} cell "
+            f"valid{parameters}.{suffix}"
+        )
     if evaluation.status == "missing":
         return (
             f"[yellow]Calibration[/yellow] {mode_id}: no active record; "
@@ -410,7 +427,7 @@ def _record_lines(config: Config, hardware: HardwareInfo) -> tuple[str, ...]:
     lock = load_engine_lock()
     lines = []
     for mode in load_catalog().modes:
-        evaluation = evaluate_record(ReuseQuery(config, mode.id, hardware, lock))
+        evaluation = evaluate_record(ReuseQuery(config, mode, hardware, lock))
         lines.append(_record_line(mode.id, evaluation))
     return tuple(lines)
 

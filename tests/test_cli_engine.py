@@ -9,7 +9,7 @@ from typer.testing import CliRunner
 
 import bora_workbench._cli_diagnostics as diagnostics_cli
 from bora_workbench.cli import app
-from bora_workbench.engine import EngineStatus, InstallProgressEvent, InstallResult
+from bora_workbench.engine import EngineError, EngineStatus, InstallProgressEvent, InstallResult
 
 runner = CliRunner()
 
@@ -59,4 +59,22 @@ def test_engine_status_returns_one_for_corrupt_manifest(monkeypatch) -> None:
     result = runner.invoke(app, ["engine", "status"])
 
     assert result.exit_code == 1
-    assert "manifest is invalid" in result.stdout
+    assert "manifest is invalid" in result.stderr
+    assert "manifest is invalid" not in result.stdout
+    assert "Traceback" not in result.stderr
+
+
+def test_engine_status_maps_inspection_error_without_traceback(monkeypatch) -> None:
+    """Map a lock or manifest read failure onto stderr and the operational exit code."""
+    error = EngineError("cannot read active manifest")
+    monkeypatch.setattr(
+        diagnostics_cli,
+        "engine_status",
+        lambda: (_ for _ in ()).throw(error),
+    )
+
+    result = runner.invoke(app, ["engine", "status"])
+
+    assert result.exit_code == 1
+    assert "cannot read active manifest" in result.stderr
+    assert "Traceback" not in result.stderr

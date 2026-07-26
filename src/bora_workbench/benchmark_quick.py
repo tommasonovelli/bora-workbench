@@ -181,7 +181,7 @@ def _measure(client: httpx.Client, url: str, workload: _Workload) -> QuickMetric
 
 
 def run_quick_bench(base_url: str, client: httpx.Client | None = None) -> QuickBenchResult:
-    """Run one excluded warm-up, three short requests, and one ~8K prefill request (spec 1.3)."""
+    """Run an excluded warm-up, three short requests, and one ~8K prefill (spec section 5.6)."""
     verify_protocol_resources()
     with _session(client) as session:
         url = f"{base_url}/v1/chat/completions"

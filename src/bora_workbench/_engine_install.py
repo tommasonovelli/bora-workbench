@@ -20,6 +20,7 @@ from collections.abc import Callable, Iterable
 from dataclasses import dataclass, replace
 from functools import partial
 from pathlib import Path
+from typing import NoReturn
 from uuid import uuid4
 
 from bora_workbench._engine_assets import (
@@ -226,26 +227,26 @@ def _report_transfer(
 
 def _remove_staging(path: Path, engine_root: Path) -> None:
     """Delete only a staging directory proven to be below the managed engine root."""
-    resolved, root = path.resolve(), engine_root.resolve()
-    if resolved.parent != root or not resolved.name.startswith(".staging-"):
-        raise EngineError(f"refusing to remove unmanaged staging path: {resolved}")
-    if resolved.exists():
-        try:
-            shutil.rmtree(resolved)
-        except OSError as error:
-            raise EngineError(
-                f"cannot clean managed staging directory {resolved}: {error}"
-            ) from error
+    absolute, root = path.absolute(), engine_root.absolute()
+    if absolute.parent != root or not absolute.name.startswith(".staging-"):
+        raise EngineError(f"refusing to remove unmanaged staging path: {absolute}")
+    try:
+        if path.is_symlink():
+            path.unlink()
+        elif path.exists():
+            shutil.rmtree(path)
+    except OSError as error:
+        raise EngineError(f"cannot clean managed staging path {absolute}: {error}") from error
 
 
-def _install_notices(request: InstallRequest, destination: Path) -> None:
+def _install_notices(assets: tuple[EngineAsset, ...], destination: Path) -> None:
     """Copy the third-party notices the target must carry, via Traversable bytes access.
 
-    Windows CUDA also redistributes the NVIDIA runtime, so it carries the CUDA EULA in addition to
-    the llama.cpp license.
+    An asset set that redistributes the NVIDIA runtime carries its EULA in addition to the
+    llama.cpp license.
     """
     relatives = ["notices/llama.cpp-LICENSE"]
-    if request.platform_key == "windows" and request.backend == "cuda":
+    if any(asset.role == "cuda-runtime" for asset in assets):
         relatives.append("notices/NVIDIA-CUDA-EULA.html")
     notices = destination / "THIRD_PARTY_NOTICES"
     notices.mkdir(parents=True, exist_ok=True)
@@ -275,7 +276,7 @@ def _prepare_staging(request: InstallRequest, staging: Path) -> Path:
         _report(request, extract_event)
         extract_progress = partial(_report_transfer, request, extract_event)
         extract_asset(ExtractionRequest(asset, archive, staging, extract_progress))
-    _install_notices(request, staging)
+    _install_notices(assets, staging)
     server_asset = _server_asset(assets)
     assert server_asset.executable is not None
     declared = staging / server_asset.executable
@@ -290,11 +291,12 @@ def _prepare_staging(request: InstallRequest, staging: Path) -> Path:
 def _verify_staged(executable: Path, request: InstallRequest) -> Path:
     """Require a regular compatible executable before immutable promotion.
 
-    Only the Ubuntu archives need the executable bit restored; the Windows targets ship it.
+    POSIX server assets need their executable bit restored; Windows targets carry an ``.exe``
+    suffix and ship their launch permissions.
     """
     if not executable.is_file() or executable.is_symlink():
         raise EngineError(f"staged engine executable is missing or unsafe: {executable}")
-    if request.platform_key == "ubuntu":
+    if executable.suffix.lower() != ".exe":
         executable.chmod(executable.stat().st_mode | 0o100)
     return verify_engine(executable, request.lock)
 
@@ -310,34 +312,57 @@ def _promote(staging: Path, request: InstallRequest, executable: Path) -> Path:
     return destination / relative
 
 
+def _install_staged(request: InstallRequest, staging: Path) -> InstallResult:
+    """Prepare, verify, promote, and activate one fresh immutable installation."""
+    request.engine_root.mkdir(parents=True, exist_ok=True)
+    staged = _prepare_staging(request, staging)
+    _report(request, InstallProgressEvent("verify"))
+    verified = _verify_staged(staged, request)
+    promoted = _promote(staging, request, verified)
+    activation = Activation(str(request.lock["release"]), request.backend, promoted)
+    _report(request, InstallProgressEvent("activate"))
+    activate(request.engine_root, activation)
+    installed = EngineStatus(
+        True,
+        activation.release,
+        activation.backend,
+        promoted.resolve(),
+        True,
+    )
+    return InstallResult(installed, True)
+
+
+def _raise_install_failure(
+    request: InstallRequest, staging: Path, error: BaseException
+) -> NoReturn:
+    """Clean partial staging while preserving the original failure's precedence."""
+    try:
+        if staging.exists() or staging.is_symlink():
+            _remove_staging(staging, request.engine_root)
+    except EngineError as cleanup_error:
+        if isinstance(error, OSError):
+            failure = EngineError(f"managed engine installation failed: {error}")
+            raise failure from cleanup_error
+        raise error from cleanup_error
+    if isinstance(error, OSError):
+        raise EngineError(f"managed engine installation failed: {error}") from error
+    raise error
+
+
 def install_managed_engine(request: InstallRequest) -> InstallResult:
     """Install the lock-selected target while leaving prior activation intact on every failure."""
+    if request.engine_root.is_symlink():
+        raise EngineError(f"managed engine root must not be a symlink: {request.engine_root}")
+    if request.cache_root.is_symlink():
+        raise EngineError(f"managed cache root must not be a symlink: {request.cache_root}")
     status = inspect_status(request.engine_root, request.lock)
-    same_release = status.release == request.lock.get("release")
-    same_target = same_release and status.backend == request.backend
-    if not request.force and status.is_compatible and same_target:
+    is_same_target = (
+        status.release == request.lock.get("release") and status.backend == request.backend
+    )
+    if not request.force and status.is_compatible and is_same_target:
         return InstallResult(status, False)
     staging = request.engine_root / f".staging-{uuid4().hex}"
     try:
-        request.engine_root.mkdir(parents=True, exist_ok=True)
-        staged = _prepare_staging(request, staging)
-        _report(request, InstallProgressEvent("verify"))
-        verified = _verify_staged(staged, request)
-        promoted = _promote(staging, request, verified)
-        activation = Activation(str(request.lock["release"]), request.backend, promoted)
-        _report(request, InstallProgressEvent("activate"))
-        activate(request.engine_root, activation)
-        installed = EngineStatus(
-            True,
-            activation.release,
-            activation.backend,
-            promoted.resolve(),
-            True,
-        )
-        return InstallResult(installed, True)
-    except (EngineError, OSError, KeyboardInterrupt) as error:
-        if staging.exists() or staging.is_symlink():
-            _remove_staging(staging, request.engine_root)
-        if isinstance(error, OSError):
-            raise EngineError(f"managed engine installation failed: {error}") from error
-        raise
+        return _install_staged(request, staging)
+    except BaseException as error:
+        _raise_install_failure(request, staging, error)

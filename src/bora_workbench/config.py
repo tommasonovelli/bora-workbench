@@ -1,4 +1,4 @@
-"""Strict TOML and environment configuration for bora-workbench 0.1.
+"""Strict TOML and environment configuration for bora-workbench 0.2.
 
 Strict means that an unknown key or a malformed value is an error, never a silent fallback: a typo
 must be reported instead of quietly launching the engine with a default the user never chose.
@@ -146,16 +146,19 @@ def _environment_overrides(environ: Mapping[str, str]) -> dict[str, Any]:
     for key, variable in _ENVIRONMENT_KEYS.items():
         if variable not in environ:
             continue
-        value = environ[variable]
-        if key == "model":
-            overrides[key] = _validate_model(value, source=f"environment variable {variable}")
-        elif key in ("model_path", "engine_path"):
-            overrides[key] = _environment_path_override(value)
-        elif key == "llama_port":
-            overrides[key] = _parse_environment_port(value, variable=variable)
-        else:
-            overrides[key] = _parse_environment_boolean(value, variable=variable)
+        overrides[key] = _environment_value(key, variable, environ[variable])
     return overrides
+
+
+def _environment_value(key: str, variable: str, value: str) -> Any:
+    """Validate one present environment value according to its configuration field."""
+    if key == "model":
+        return _validate_model(value, source=f"environment variable {variable}")
+    if key in ("model_path", "engine_path"):
+        return _environment_path_override(value)
+    if key == "llama_port":
+        return _parse_environment_port(value, variable=variable)
+    return _parse_environment_boolean(value, variable=variable)
 
 
 def _read_toml(path: Path) -> dict[str, Any]:

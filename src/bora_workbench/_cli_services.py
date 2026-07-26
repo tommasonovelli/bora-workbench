@@ -13,6 +13,7 @@ from typing import cast
 
 import typer
 from rich.console import Console
+from rich.text import Text
 
 from bora_workbench._cli_theme import (
     print_error,
@@ -209,12 +210,12 @@ def show_status(stdout: Console, stderr: Console) -> None:
         table.add_column(header)
     for service in report.services:
         table.add_row(
-            service.label,
+            Text(service.label),
             str(service.pid),
-            service.mode,
-            service.backend,
+            Text(service.mode),
+            Text(service.backend),
             str(service.port),
-            service.log_path,
+            Text(service.log_path),
         )
     stdout.print(table)
 
@@ -308,6 +309,7 @@ def run_uninstall(stdout: Console, stderr: Console) -> None:
         if not typer.confirm("Remove bora-workbench completely?", default=False):
             stdout.print("Uninstall cancelled; nothing was removed.")
             return
+        _require_services_stopped(stderr)
         report = _remove_everything(roots, installation)
     except (KeyboardInterrupt, typer.Abort) as error:
         print_warning(stderr, f"Uninstall cancelled: {error}")

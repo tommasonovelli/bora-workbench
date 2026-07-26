@@ -32,6 +32,21 @@ def test_third_round_does_not_trigger_when_clear_and_quiet() -> None:
     assert not needs_third_round(rounds)
 
 
+def test_third_round_thresholds_are_strict_at_exact_equality() -> None:
+    """Do not add a round at exactly 4.5% aggregate gap or exactly 10% dispersion."""
+    gap_boundary = (
+        RoundResult((100.0, 104.5), _QUIET),
+        RoundResult((100.0, 104.5), _QUIET),
+    )
+    dispersion_boundary = (
+        RoundResult((100.0, 120.0), (0.10, 0.02)),
+        RoundResult((100.0, 120.0), _QUIET),
+    )
+
+    assert not needs_third_round(gap_boundary)
+    assert not needs_third_round(dispersion_boundary)
+
+
 def test_resolve_uses_majority_then_material_equivalence() -> None:
     """Resolve by decisive-round majority, then by VRAM margin when the rounds tie."""
     first = sample(65536, 40, 100.0, vram_free=1.0)

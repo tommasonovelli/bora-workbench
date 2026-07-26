@@ -2,7 +2,7 @@
 
 Every constant here is universal, not machine-specific: its effect always passes through the local
 measurements of one run. The reserves (0.5/2.0/0.125 GiB) are written into each record so a record
-can be re-evaluated later against exactly the margins it was measured with (spec 1.2, 3.3-3.6).
+can be re-evaluated later against exactly the margins it was measured with (spec sections 5.5-5.6).
 
 The trial outcome taxonomy of D-059 lives here too, because its classes are part of the same
 vocabulary: the search, the confirmation and the trial provider all speak in them, and the rule
@@ -29,7 +29,7 @@ from bora_workbench._calibration_memory import (
 )
 from bora_workbench.benchmark import BenchmarkError, BenchmarkRetryableError
 from bora_workbench.benchmark_quick import QuickBenchResult
-from bora_workbench.process import ServerStartupError
+from bora_workbench.process import PortCollisionError, ServerStartupError
 
 CALIBRATION_PROTOCOL = "calibration"
 CONTEXT_SCALE = (131072, 98304, 65536, 49152, 32768, 16384, 8192)
@@ -56,7 +56,7 @@ def launcher_version() -> str:
     """Read installed package metadata with the source-checkout development fallback.
 
     The value is the provenance of every generated record, so it is read here rather than hardcoded
-    at the writer (spec 3.6).
+    at the writer (spec section 5.5).
     """
     try:
         return version("bora-workbench")
@@ -66,7 +66,7 @@ def launcher_version() -> str:
 
 @dataclass(frozen=True, slots=True)
 class Sample:
-    """Hold one measured feasible configuration and its quick-bench evidence (spec 1.2)."""
+    """Hold one measured feasible configuration and its quick-bench evidence (spec section 5.6)."""
 
     ctx: int
     n_cpu_moe: int | None
@@ -95,7 +95,7 @@ class Sample:
 
 @dataclass(frozen=True, slots=True)
 class GateResult:
-    """Hold final-gate pass/fail evidence for one selected envelope (spec 3.5)."""
+    """Hold final-gate pass/fail evidence for one selected envelope (spec section 5.6)."""
 
     smoke: bool
     multi_turn: bool
@@ -133,7 +133,7 @@ class TrialInfeasibleError(SearchError):
 
     The memory boundary can move between a light probe and the heavier quick-bench, so the search
     drops that single point instead of failing the mode; paired confirmation lets it propagate,
-    because dropping one finalist would silently change the comparison (spec 3.3-3.4).
+    because dropping one finalist would silently change the comparison (spec section 5.6).
     """
 
 
@@ -166,9 +166,9 @@ def _startup_outcome(error: ServerStartupError) -> ClassifiedOutcome:
     """
     paths = () if error.log_path is None else (error.log_path,)
     resource = oom_resource(read_logs(paths))
-    if resource is None:
-        return ClassifiedOutcome(TrialOutcome.RETRYABLE)
-    return ClassifiedOutcome(TrialOutcome.MEMORY_INFEASIBLE, resource)
+    if resource == "vram":
+        return ClassifiedOutcome(TrialOutcome.MEMORY_INFEASIBLE, resource)
+    return ClassifiedOutcome(TrialOutcome.RETRYABLE)
 
 
 def classify(error: BaseException | None) -> ClassifiedOutcome:
@@ -183,7 +183,12 @@ def classify(error: BaseException | None) -> ClassifiedOutcome:
         return ClassifiedOutcome(TrialOutcome.MEMORY_INFEASIBLE, "vram")
     if isinstance(error, RamReserveError):
         return ClassifiedOutcome(TrialOutcome.MEMORY_INFEASIBLE, "ram")
-    retryable = (VramReleaseError, BenchmarkRetryableError, httpx.TransportError)
+    retryable = (
+        VramReleaseError,
+        BenchmarkRetryableError,
+        PortCollisionError,
+        httpx.TransportError,
+    )
     if isinstance(error, retryable):
         return ClassifiedOutcome(TrialOutcome.RETRYABLE)
     if isinstance(error, BenchmarkError):

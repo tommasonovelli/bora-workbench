@@ -99,7 +99,8 @@ def test_contribution_guide_keeps_publication_manual_and_checklisted() -> None:
         "performs no logins, uploads, commits, remote branches, issues, or pull requests",
     ):
         assert required in normalized
-    assert "Ordering-only seed" in template
+    assert "Schema authorized for the measured method" in template
+    assert "calibration-report/v2" not in template
 
 
 def test_shareable_public_files_pass_privacy_scan(tmp_path) -> None:

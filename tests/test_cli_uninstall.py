@@ -150,6 +150,22 @@ def test_uninstall_refuses_to_orphan_a_running_service(tmp_path, monkeypatch) ->
     assert all(path.exists() for path in roots.values())
 
 
+def test_uninstall_rechecks_services_after_confirmation(tmp_path, monkeypatch) -> None:
+    """Refuse deletion when a service starts while the confirmation prompt is open."""
+    roots = patch_managed_roots(tmp_path, monkeypatch)
+    populate(roots)
+    empty = SimpleNamespace(services=(), warnings=())
+    running = SimpleNamespace(services=(SimpleNamespace(label="llama-server"),), warnings=())
+    inspections = iter((empty, running))
+    monkeypatch.setattr(service_cli, "status_services", lambda: next(inspections))
+
+    result = runner.invoke(app, ["uninstall"], input="y\n")
+
+    assert result.exit_code == 1
+    assert "bora stop" in result.stderr
+    assert all(path.exists() for path in roots.values())
+
+
 def test_uninstall_maps_removal_failure_to_exit_1(tmp_path, monkeypatch) -> None:
     """An actionable removal failure exits with code 1 and prints to stderr without a traceback."""
     roots = patch_managed_roots(tmp_path, monkeypatch)

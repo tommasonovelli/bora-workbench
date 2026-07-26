@@ -44,16 +44,17 @@ def test_mode_schema_error_classes_are_reported(tmp_path, case, expected_path) -
     root = copy_resource_root(tmp_path)
     path = root / "content/modes/coding.json"
     mode = read_json(path)
-    if case == "missing":
-        del mode["description"]
-    elif case == "unknown":
-        mode["unexpected"] = True
-    elif case == "wrong-type":
-        mode["services"]["ui"] = "false"  # type: ignore[index]
-    elif case == "boundary":
-        mode["sampling"]["top_p"] = 0  # type: ignore[index]
-    else:
-        mode["schema"] = "mode/v99"
+    match case:
+        case "missing":
+            del mode["description"]
+        case "unknown":
+            mode["unexpected"] = True
+        case "wrong-type":
+            mode["services"]["ui"] = "false"  # type: ignore[index]
+        case "boundary":
+            mode["sampling"]["top_p"] = 0  # type: ignore[index]
+        case _:
+            mode["schema"] = "mode/v99"
     write_json(path, mode)
 
     result = validate_resources(root)

@@ -17,7 +17,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import cast
+from typing import NoReturn, cast
+from uuid import uuid4
 
 import httpx
 import psutil
@@ -43,6 +44,10 @@ _LOAD_TIMEOUT_SECONDS = 15 * 60.0
 
 class ProcessError(RuntimeError):
     """Report an expected lifecycle failure with an actionable remedy."""
+
+
+class PortCollisionError(ProcessError):
+    """Report a loopback port collision that a calibration retry can avoid."""
 
 
 class ServerStartupError(ProcessError):
@@ -83,6 +88,15 @@ class RunningService:
     process: subprocess.Popen[str]
     state: ServiceState
     warnings: tuple[str, ...] = ()
+
+
+@dataclass(slots=True)
+class _StartAttempt:
+    """Retain partial startup ownership so every escaping failure can clean it."""
+
+    process: subprocess.Popen[str] | None = None
+    service: ServiceState | None = None
+    log_path: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -172,10 +186,21 @@ def abandon_start(
     root: Path, process: subprocess.Popen[str] | None, service: ServiceState | None
 ) -> None:
     """Stop a spawned child and drop its record so a failed start leaves nothing behind."""
+    failure: BaseException | None = None
     if process is not None:
-        terminate_popen(process)
+        try:
+            terminate_popen(process)
+        except BaseException as error:
+            failure = error
     if service is not None:
-        remove_service(root, service)
+        try:
+            with acquire_start_lock(root):
+                remove_service(root, service)
+        except BaseException as error:
+            if failure is None:
+                failure = error
+    if failure is not None:
+        raise failure
 
 
 def _child_environment(plan: LaunchPlan) -> dict[str, str]:
@@ -198,7 +223,7 @@ def _log_path(root: Path) -> Path:
     directory = root / "logs"
     directory.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
-    return directory / f"llama-server-{stamp}.log"
+    return directory / f"llama-server-{stamp}-{uuid4().hex}.log"
 
 
 def _service_state(
@@ -230,54 +255,69 @@ def _service_state(
     )
 
 
+def _spawn_service(request: StartRequest, root: Path, attempt: _StartAttempt) -> RunningService:
+    """Spawn and register one child while holding the lifecycle serialization lock."""
+    with acquire_start_lock(root):
+        snapshot = clean_state(root)
+        if snapshot.services:
+            raise ProcessError("a managed service is already running; run bora stop")
+        if not port_is_available(request.plan.port):
+            raise PortCollisionError(f"port {request.plan.port} is already occupied")
+        attempt.log_path = _log_path(root)
+        with attempt.log_path.open("x", encoding="utf-8") as log:
+            attempt.process = subprocess.Popen(
+                request.command,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                env=_child_environment(request.plan),
+                text=True,
+                encoding="utf-8",
+                creationflags=_creation_flags(),
+            )
+        if request.on_spawn is not None:
+            request.on_spawn(attempt.process.pid)
+        attempt.service = _service_state(attempt.process, request, attempt.log_path)
+        write_state(root, (attempt.service,))
+    return RunningService(attempt.process, attempt.service, snapshot.warnings)
+
+
+def _raise_start_failure(root: Path, attempt: _StartAttempt, error: BaseException) -> NoReturn:
+    """Clean every partial start and map only declared operational failures."""
+    try:
+        abandon_start(root, attempt.process, attempt.service)
+    except BaseException as cleanup:
+        if not isinstance(error, Exception):
+            raise error from cleanup
+        raise ProcessError(f"failed start cleanup: {cleanup}") from cleanup
+    if not isinstance(error, EXPECTED_START_FAILURES):
+        raise error
+    if attempt.process is None:
+        raise ProcessError(str(error)) from error
+    raise ServerStartupError(str(error), attempt.log_path) from error
+
+
 def start_service(request: StartRequest, root: Path | None = None) -> RunningService:
     """Serialize preflight, spawn shell-free, persist identity, and wait for exact readiness."""
     selected_root = state_dir() if root is None else root
-    process: subprocess.Popen[str] | None = None
-    service: ServiceState | None = None
-    log_path: Path | None = None
+    attempt = _StartAttempt()
     try:
-        with acquire_start_lock(selected_root):
-            snapshot = clean_state(selected_root)
-            if snapshot.services:
-                raise ProcessError("a managed service is already running; run bora stop")
-            if not port_is_available(request.plan.port):
-                raise ProcessError(f"port {request.plan.port} is already occupied")
-            log_path = _log_path(selected_root)
-            with log_path.open("x", encoding="utf-8") as log:
-                process = subprocess.Popen(
-                    request.command,
-                    stdout=log,
-                    stderr=subprocess.STDOUT,
-                    env=_child_environment(request.plan),
-                    text=True,
-                    encoding="utf-8",
-                    creationflags=_creation_flags(),
-                )
-            if request.on_spawn is not None:
-                request.on_spawn(process.pid)
-            service = _service_state(process, request, log_path)
-            write_state(selected_root, (service,))
-        running = RunningService(process, service, snapshot.warnings)
-        wait_for_health(process, request, log_path)
+        running = _spawn_service(request, selected_root, attempt)
+        assert attempt.process is not None and attempt.log_path is not None
+        wait_for_health(attempt.process, request, attempt.log_path)
         return running
     except BaseException as error:
-        # Cleanup must not depend on the failure class. An unexpected exception that skipped it
-        # would leave both a live child and a registered service, and the next start would refuse
-        # to run against that phantom state (spec 5.9).
-        abandon_start(selected_root, process, service)
-        if not isinstance(error, EXPECTED_START_FAILURES):
-            raise
-        if process is None:
-            raise ProcessError(str(error)) from error
-        raise ServerStartupError(str(error), log_path) from error
+        _raise_start_failure(selected_root, attempt, error)
 
 
 def status_services(root: Path | None = None) -> ServiceReport:
     """Return verified live services, cleaning dead and PID-reused records idempotently."""
+    selected_root = state_dir() if root is None else root
+    if not selected_root.exists():
+        return ServiceReport(())
     try:
-        snapshot = clean_state(state_dir() if root is None else root)
-    except StateError as error:
+        with acquire_start_lock(selected_root):
+            snapshot = clean_state(selected_root)
+    except (StartLockError, StateError) as error:
         raise ProcessError(str(error)) from error
     return ServiceReport(snapshot.services, snapshot.warnings)
 
@@ -306,23 +346,40 @@ def _terminate_service(service: ServiceState) -> bool:
     return True
 
 
-def stop_services(root: Path | None = None) -> ServiceReport:
-    """Stop every verified managed service and atomically clear their state."""
-    selected_root = state_dir() if root is None else root
-    report = status_services(selected_root)
+def _stop_locked(root: Path) -> ServiceReport:
+    """Stop and clear the verified snapshot while holding the lifecycle lock."""
     stopped: list[str] = []
-    warnings = list(report.warnings)
-    try:
-        for service in report.services:
+    with acquire_start_lock(root):
+        snapshot = clean_state(root)
+        warnings = list(snapshot.warnings)
+        for service in snapshot.services:
             if _terminate_service(service):
                 stopped.append(service.label)
             else:
                 warnings.append(f"Skipped stale process identity for PID {service.pid}.")
-        if report.services:
-            write_state(selected_root, ())
-    except (psutil.Error, OSError, StateError) as error:
-        raise ProcessError(f"cannot stop managed service: {error}") from error
+        if snapshot.services:
+            write_state(root, ())
     return ServiceReport((), tuple(warnings), tuple(stopped))
+
+
+def stop_services(root: Path | None = None) -> ServiceReport:
+    """Stop every verified managed service and atomically clear their state."""
+    selected_root = state_dir() if root is None else root
+    if not selected_root.exists():
+        return ServiceReport(())
+    try:
+        return _stop_locked(selected_root)
+    except (psutil.Error, OSError, StartLockError, StateError) as error:
+        raise ProcessError(f"cannot stop managed service: {error}") from error
+
+
+def _remove_foreground_service(root: Path, service: ServiceState) -> None:
+    """Leave cleanup to the concurrent lifecycle operation that owns the lock."""
+    try:
+        with acquire_start_lock(root):
+            remove_service(root, service)
+    except StartLockError:
+        return
 
 
 def wait_foreground(running: RunningService, root: Path | None = None) -> None:
@@ -332,9 +389,9 @@ def wait_foreground(running: RunningService, root: Path | None = None) -> None:
         return_code = running.process.wait()
     except KeyboardInterrupt:
         terminate_popen(running.process)
-        remove_service(selected_root, running.state)
+        _remove_foreground_service(selected_root, running.state)
         raise
-    remove_service(selected_root, running.state)
+    _remove_foreground_service(selected_root, running.state)
     if return_code != 0:
         raise ProcessError(
             f"llama-server exited with code {return_code}; inspect {running.state.log_path}"

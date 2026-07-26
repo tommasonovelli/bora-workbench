@@ -1,10 +1,30 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://bora-workbench.dev/schemas/calibration-record.v5.json",
-  "title": "bora-workbench calibration-record/v5",
-  "description": "Lean opt-in calibration/v6-lite record: identity, three preference envelopes, and the inputs that reconstruct the selection (IMPLEMENTATION_SPEC.md 3.6).",
+  "$id": "https://bora-workbench.dev/schemas/calibration-record.v6.json",
+  "title": "bora-workbench calibration-record/v6",
+  "description": "Current local calibration record: identity, one selected and gated preference cell, and the inputs that reconstruct its selection (D-069).",
   "type": "object",
   "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "properties": { "backend": { "const": "cpu" } },
+        "required": ["backend"]
+      },
+      "then": {
+        "properties": {
+          "hardware": { "$ref": "#/$defs/cpu_hardware" },
+          "envelope": { "$ref": "#/$defs/cpu_envelope" }
+        }
+      },
+      "else": {
+        "properties": {
+          "hardware": { "$ref": "#/$defs/cuda_hardware" },
+          "envelope": { "$ref": "#/$defs/cuda_envelope" }
+        }
+      }
+    }
+  ],
   "required": [
     "schema",
     "mode",
@@ -21,15 +41,15 @@
     "backend",
     "hardware",
     "evidence_run_id",
-    "active_preference",
+    "preference",
     "thresholds",
     "reserves",
-    "envelopes",
-    "selection_inputs"
+    "envelope",
+    "selection_input"
   ],
   "properties": {
-    "schema": { "const": "calibration-record/v5" },
-    "mode": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+    "schema": { "const": "calibration-record/v6" },
+    "mode": { "enum": ["coding", "studio", "vstudio"] },
     "created_at": { "type": "string", "format": "date-time" },
     "launcher_version": { "type": "string", "minLength": 1 },
     "calibration_protocol": { "const": "calibration" },
@@ -63,8 +83,8 @@
         "vram_total_gib": { "type": ["number", "null"] }
       }
     },
-    "evidence_run_id": { "type": "string", "minLength": 1 },
-    "active_preference": { "enum": ["fast", "balanced", "max_context"] },
+    "evidence_run_id": { "type": "string", "pattern": "^[0-9a-f]{32}$" },
+    "preference": { "enum": ["fast", "balanced", "max_context"] },
     "thresholds": {
       "type": "object",
       "additionalProperties": false,
@@ -85,26 +105,8 @@
         "release_tolerance_gib": { "type": "number", "minimum": 0 }
       }
     },
-    "envelopes": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["fast", "balanced", "max_context"],
-      "properties": {
-        "fast": { "$ref": "#/$defs/envelope" },
-        "balanced": { "$ref": "#/$defs/envelope" },
-        "max_context": { "$ref": "#/$defs/envelope" }
-      }
-    },
-    "selection_inputs": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["fast", "balanced", "max_context"],
-      "properties": {
-        "fast": { "$ref": "#/$defs/selection_input" },
-        "balanced": { "$ref": "#/$defs/selection_input" },
-        "max_context": { "$ref": "#/$defs/selection_input" }
-      }
-    }
+    "envelope": { "$ref": "#/$defs/envelope" },
+    "selection_input": { "$ref": "#/$defs/selection_input" }
   },
   "$defs": {
     "envelope": {
@@ -121,8 +123,8 @@
         "minima"
       ],
       "properties": {
-        "ctx": { "type": "integer", "minimum": 1 },
-        "n_cpu_moe": { "type": ["integer", "null"], "minimum": 0 },
+        "ctx": { "enum": [131072, 98304, 65536, 49152, 32768, 16384, 8192] },
+        "n_cpu_moe": { "type": ["integer", "null"], "minimum": 0, "maximum": 41 },
         "speculative": { "enum": ["mtp2", "disabled"] },
         "quick": {
           "type": "object",
@@ -139,8 +141,8 @@
           "additionalProperties": false,
           "required": ["smoke", "multi_turn", "vision"],
           "properties": {
-            "smoke": { "type": "boolean" },
-            "multi_turn": { "type": "boolean" },
+            "smoke": { "const": true },
+            "multi_turn": { "const": true },
             "vision": { "type": ["boolean", "null"] }
           }
         },
@@ -156,6 +158,54 @@
           }
         }
       }
+    },
+    "cpu_hardware": {
+      "properties": {
+        "gpu_count": { "const": 0 },
+        "gpu_name": { "type": "null" },
+        "gpu_driver": { "type": "null" },
+        "vram_total_gib": { "type": "null" }
+      }
+    },
+    "cuda_hardware": {
+      "properties": {
+        "gpu_count": { "type": "integer", "minimum": 1 },
+        "gpu_name": { "type": "string", "minLength": 1 },
+        "gpu_driver": { "type": "string", "minLength": 1 },
+        "vram_total_gib": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "cpu_envelope": {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "properties": {
+            "n_cpu_moe": { "type": "null" },
+            "vram_needed_gib": { "type": "null" },
+            "minima": {
+              "properties": {
+                "minimum_vram_free_gib": { "type": "null" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "cuda_envelope": {
+      "allOf": [
+        { "$ref": "#/$defs/envelope" },
+        {
+          "properties": {
+            "n_cpu_moe": { "type": "integer", "minimum": 0, "maximum": 41 },
+            "vram_needed_gib": { "type": "number", "minimum": 0 },
+            "minima": {
+              "properties": {
+                "minimum_vram_free_gib": { "type": "number", "minimum": 0 }
+              }
+            }
+          }
+        }
+      ]
     },
     "selection_input": {
       "type": "object",

@@ -116,21 +116,30 @@ Modes are JSON under:
 src/bora_workbench/resources/content/modes/
 ```
 
-`mode/v1` contains only:
+Runtime modes use `mode/v2`:
 
 ```json
 {
-  "schema": "mode/v1",
+  "schema": "mode/v2",
   "id": "coding",
   "description": "...",
   "services": {"ui": false, "vision": false},
-  "sampling": {"temp": 0.6, "top_p": 0.95, "top_k": 20}
+  "sampling": {
+    "temp": 0.6,
+    "top_p": 0.95,
+    "top_k": 20,
+    "min_p": 0.0,
+    "presence_penalty": 0.0,
+    "repeat_penalty": 1.0,
+    "reasoning": "on"
+  }
 }
 ```
 
 The id must match the filename. Performance, memory, engine flags, and hardware do not belong to a
 mode. A new incompatible field requires a new schema authorized by the plan; it must not be added to
-`mode/v1` out of convenience.
+`mode/v2` out of convenience. The packaged `mode/v1` schema remains only for precise validation of
+older declarative content; the runtime loader requires v2.
 
 After the change, run at least `validate`, the tests, the build, and the wheel verification.
 
@@ -175,15 +184,17 @@ Follow the [Contributing new evidence](calibration.md#contributing-new-evidence)
 an evidence PR:
 
 - uses the current calibration protocol and the pinned model and engine;
-- contains a privacy-safe `calibration-report/v2` report;
+- first establishes a schema authorized for the measured method;
+- contains a privacy-safe report governed by that schema;
 - declares the actually measured scope and the portability limit;
 - updates the policy and the SHA-256 of the exact bytes;
 - keeps the reviewed sources in `evidence/calibration/<id>/`;
 - includes no private records, config, or logs;
 - contains no core changes.
 
-A shared report can change only the order of the full search. It does not become a plan, promises no
-tok/s, and authorizes no nearest-match.
+The packaged `calibration-report/v2` remains immutable historical reference evidence. Its legacy
+seed fields do not enter the current runtime, become a plan, promise tok/s, or authorize
+nearest-match.
 
 ## Measured evidence
 

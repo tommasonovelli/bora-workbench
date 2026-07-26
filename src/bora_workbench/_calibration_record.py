@@ -4,10 +4,10 @@ One record format is supported. ``RECORD_SCHEMA`` identifies it inside the file 
 by an older launcher is diagnosed as superseded instead of being misread; it is a data-format marker
 and never a choice the operator has to make.
 
-The record is lean (spec 3.6): probes, pruned candidates and logs are not duplicated in it, because
-they live in the evidence tree keyed by ``evidence_run_id``; only the envelopes and the per-round
-medians that reconstruct the selection are retained. Evidence promotion and the privacy rules belong
-here for the same reason: they decide what those two artifacts may contain and keep.
+The record is lean (spec section 5.5): probes, pruned candidates and logs are not duplicated in it,
+because they live in the evidence tree keyed by ``evidence_run_id``; only the selected cell and the
+per-round medians that reconstruct its selection are retained. Evidence promotion and the privacy
+rules belong here for the same reason: they decide what those two artifacts may contain and keep.
 """
 
 from __future__ import annotations
@@ -33,12 +33,10 @@ from bora_workbench._calibration_types import (
     CALIBRATION_PROTOCOL,
     DEADBAND_PCT,
     MIN_CTX_FAST,
-    PREFERENCES,
     RAM_RESERVE_GIB,
     RELEASE_TOLERANCE_GIB,
     VRAM_RESERVE_GIB,
     EnvelopeResult,
-    Preference,
     launcher_version,
 )
 from bora_workbench.calibration import CalibrationTarget
@@ -47,8 +45,8 @@ from bora_workbench.profiles import Mode
 from bora_workbench.resources import read_json
 
 JsonObject = dict[str, object]
-RECORD_SCHEMA = "calibration-record/v5"
-_RECORD_SCHEMA_FILE = "schemas/calibration-record.v5.json"
+RECORD_SCHEMA = "calibration-record/v6"
+_RECORD_SCHEMA_FILE = "schemas/calibration-record.v6.json"
 _RUN_ID = re.compile(r"^[0-9a-f]{32}$")
 _GENERIC_PRIVATE_PATTERNS = (
     re.compile(r"(?<![\w:])/(?:home|Users)/[^/\s\"']+"),
@@ -97,7 +95,7 @@ def command_contract_sha256(lock: JsonObject) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def _mode_policy_sha256(mode: Mode) -> str:
+def mode_policy_sha256(mode: Mode) -> str:
     """Digest the canonical mode/v2 behavior so record identity tracks the used policy."""
     sampling = mode.sampling
     canonical = {
@@ -123,7 +121,6 @@ class RecordContext:
 
     target: CalibrationTarget
     evidence_run_id: str
-    active_preference: Preference
     gpu_driver: str | None
 
 
@@ -167,14 +164,9 @@ def _hardware(target: CalibrationTarget, gpu_driver: str | None) -> JsonObject:
     }
 
 
-def _selection_inputs(result: ModeResult) -> JsonObject:
-    """Serialize the per-round finalist medians that reconstruct each confirmation."""
-    return {
-        preference: {
-            "round_medians": [list(pair) for pair in result.selection_inputs.get(preference, ())]
-        }
-        for preference in PREFERENCES
-    }
+def _selection_input(result: ModeResult) -> JsonObject:
+    """Serialize the finalist medians that reconstruct the selected cell's confirmation."""
+    return {"round_medians": [list(pair) for pair in result.selection_inputs]}
 
 
 def build_record(context: RecordContext, result: ModeResult) -> JsonObject:
@@ -192,12 +184,12 @@ def build_record(context: RecordContext, result: ModeResult) -> JsonObject:
         "engine_release": target.lock["release"],
         "engine_source_commit": target.lock["source_commit"],
         "command_contract_sha256": command_contract_sha256(target.lock),
-        "mode_policy_sha256": _mode_policy_sha256(result.mode),
+        "mode_policy_sha256": mode_policy_sha256(result.mode),
         "os_name": target.hardware.os_name,
         "backend": target.hardware.backend,
         "hardware": _hardware(target, context.gpu_driver),
         "evidence_run_id": context.evidence_run_id,
-        "active_preference": context.active_preference,
+        "preference": result.envelope.preference,
         "thresholds": {
             "deadband_pct": DEADBAND_PCT,
             "balanced_ceiling": BALANCED_CEILING,
@@ -208,8 +200,8 @@ def build_record(context: RecordContext, result: ModeResult) -> JsonObject:
             "ram_gib": RAM_RESERVE_GIB,
             "release_tolerance_gib": RELEASE_TOLERANCE_GIB,
         },
-        "envelopes": {pref: _envelope_entry(result.envelopes[pref]) for pref in PREFERENCES},
-        "selection_inputs": _selection_inputs(result),
+        "envelope": _envelope_entry(result.envelope),
+        "selection_input": _selection_input(result),
     }
 
 
@@ -227,8 +219,8 @@ def _mode_from_path(path: Path) -> str:
     return path.stem
 
 
-def _verify_record(document: JsonObject, path: Path) -> None:
-    """Cross-check the fields JSON Schema cannot: reserves and the active envelope."""
+def _verify_reserves(document: JsonObject, path: Path) -> None:
+    """Require the exact constants that governed the recorded measurements."""
     reserves = cast(JsonObject, document["reserves"])
     expected = {
         "vram_gib": VRAM_RESERVE_GIB,
@@ -237,19 +229,35 @@ def _verify_record(document: JsonObject, path: Path) -> None:
     }
     if reserves != expected:
         raise _invalid_record(path, "record reserves do not match the pinned calibration constants")
-    envelopes = cast(JsonObject, document["envelopes"])
-    if document["active_preference"] not in envelopes:
-        raise _invalid_record(path, "active preference must name one recorded envelope")
+
+
+def _verify_mode_contract(document: JsonObject, path: Path) -> None:
+    """Require the selected cell to match the current mode's Gate and speculative contract."""
+    is_vision = document["mode"] == "vstudio"
+    expected_speculative = "disabled" if is_vision else "mtp2"
+    expected_vision = True if is_vision else None
+    envelope = cast(JsonObject, document["envelope"])
+    gate = cast(JsonObject, envelope["gate"])
+    if envelope["speculative"] != expected_speculative:
+        raise _invalid_record(path, "selected cell speculative policy contradicts the mode")
+    if gate["vision"] is not expected_vision:
+        raise _invalid_record(path, "selected cell vision Gate contradicts the mode")
+
+
+def _verify_record(document: JsonObject, path: Path) -> None:
+    """Cross-check semantic constants and relationships beyond JSON Schema."""
+    _verify_reserves(document, path)
+    _verify_mode_contract(document, path)
 
 
 def _validate_record(document: JsonObject, path: Path) -> None:
     """Validate one decoded record's file identity, schema, and semantics."""
-    if document.get("mode") != _mode_from_path(path):
-        raise _invalid_record(path, "mode must match file name")
     if document.get("schema") != RECORD_SCHEMA:
         raise RecordError(
             f"local calibration record {path} has unsupported schema {document.get('schema')!r}"
         )
+    if document.get("mode") != _mode_from_path(path):
+        raise _invalid_record(path, "mode must match file name")
     schema = cast(JsonObject, read_json(_RECORD_SCHEMA_FILE))
     validator = Draft202012Validator(schema, format_checker=FormatChecker())
     errors = sorted(validator.iter_errors(document), key=lambda error: list(error.absolute_path))
@@ -295,7 +303,12 @@ def load_record(path: Path) -> JsonObject:
     """Load one current record, diagnosing any record an older launcher wrote as superseded."""
     document = _decode_record(path)
     schema = document.get("schema")
-    if isinstance(schema, str) and schema != RECORD_SCHEMA and schema.startswith("calibration-"):
+    if schema in {
+        "calibration-record/v2",
+        "calibration-record/v3",
+        "calibration-record/v4",
+        "calibration-record/v5",
+    }:
         raise RecordSupersededError(
             f"local calibration record {path} uses superseded schema {schema}; "
             "rerun `bora calibrate`"
@@ -317,8 +330,11 @@ def _preserve_previous(active: Path, previous: Path) -> None:
         temporary.unlink(missing_ok=True)
 
 
-def promote_candidate(mode_id: str, selected_root: Path | None = None) -> Path:
-    """Atomically replace active with a validated candidate while retaining one rollback slot."""
+def promote_candidate(
+    mode_id: str,
+    selected_root: Path | None = None,
+) -> Path:
+    """Promote one candidate exactly as measured while retaining the prior active record."""
     candidate = candidate_record_path(mode_id, selected_root)
     active = record_path(mode_id, selected_root)
     previous = previous_record_path(mode_id, selected_root)

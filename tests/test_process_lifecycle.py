@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import socket
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import Mock
 
@@ -239,6 +240,24 @@ def test_ctrl_c_uses_stop_cleanup_and_preserves_exit_signal(tmp_path) -> None:
     process.terminate.assert_called_once()
 
 
+def test_external_stop_lock_does_not_escape_foreground_as_a_traceback(
+    tmp_path, monkeypatch
+) -> None:
+    """Let the serialized stop own cleanup while mapping the terminated child operationally."""
+    state = _cleanup_state(request(8080), tmp_path)
+    process = Mock()
+    process.wait.return_value = -15
+    running = lifecycle.RunningService(process, state)
+    monkeypatch.setattr(
+        lifecycle,
+        "acquire_start_lock",
+        lambda root: (_ for _ in ()).throw(lifecycle.StartLockError("stop owns lock")),
+    )
+
+    with pytest.raises(lifecycle.ProcessError, match="exited with code -15"):
+        lifecycle.wait_foreground(running, tmp_path)
+
+
 def test_a_transport_reset_is_read_as_not_ready_not_leaked(tmp_path, monkeypatch) -> None:
     """Treat the connection reset a dying server produces as "not ready", never as an escape.
 
@@ -289,3 +308,70 @@ def test_a_startup_failure_reports_the_log_for_later_classification(tmp_path, mo
 
     assert captured.value.log_path is not None
     assert captured.value.log_path.is_file()
+
+
+def _cleanup_state(current: lifecycle.StartRequest, root: Path) -> ServiceState:
+    """Build the persisted identity used by the interrupted-cleanup regression."""
+    return ServiceState(
+        "llama-server",
+        123,
+        1.0,
+        current.command[0],
+        current.plan.port,
+        "2026-07-26T00:00:00Z",
+        str(root / "server.log"),
+        "coding",
+        current.plan.model,
+        "b10011",
+        None,
+        8192,
+        None,
+        "cpu",
+        None,
+    )
+
+
+def test_failed_start_cleanup_preserves_interrupt_and_attempts_state_removal(
+    tmp_path, monkeypatch
+) -> None:
+    """Try every cleanup action without allowing its failure to replace Ctrl-C."""
+    fake_process = Mock(pid=123)
+    fake_process.poll.return_value = None
+    current = request(free_port())
+    state = _cleanup_state(current, tmp_path)
+    removed: list[ServiceState] = []
+    monkeypatch.setattr(lifecycle.subprocess, "Popen", lambda *args, **kwargs: fake_process)
+    monkeypatch.setattr(lifecycle, "_service_state", lambda *args: state)
+    monkeypatch.setattr(
+        lifecycle,
+        "wait_for_health",
+        lambda *args: (_ for _ in ()).throw(KeyboardInterrupt()),
+    )
+    monkeypatch.setattr(
+        lifecycle,
+        "terminate_popen",
+        lambda process: (_ for _ in ()).throw(RuntimeError("terminate failed")),
+    )
+    monkeypatch.setattr(lifecycle, "remove_service", lambda root, service: removed.append(service))
+
+    with pytest.raises(KeyboardInterrupt):
+        lifecycle.start_service(current, tmp_path)
+
+    assert removed == [state]
+
+
+def test_log_paths_are_unique_even_at_the_same_timestamp(tmp_path, monkeypatch) -> None:
+    """Prevent a fast retry from colliding with the preceding trial's server log."""
+
+    class _FixedDateTime:
+        """Return one instant for every log-path request."""
+
+        @classmethod
+        def now(cls, zone):
+            """Return the fixed aware timestamp."""
+            assert zone is UTC
+            return datetime(2026, 7, 26, tzinfo=UTC)
+
+    monkeypatch.setattr(lifecycle, "datetime", _FixedDateTime)
+
+    assert lifecycle._log_path(tmp_path) != lifecycle._log_path(tmp_path)

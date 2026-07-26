@@ -197,7 +197,7 @@ def _envelope(value: object) -> Envelope:
 
 
 def _sampling(sampling: JsonObject) -> Sampling:
-    """Build the full mode/v2 sampling contract, including reasoning (spec 3.7)."""
+    """Build the full mode/v2 sampling contract, including reasoning (spec section 5.3)."""
     return Sampling(
         float(sampling["temp"]),
         float(sampling["top_p"]),
@@ -212,8 +212,8 @@ def _sampling(sampling: JsonObject) -> Sampling:
 def _mode(file: Traversable) -> Mode:
     """Construct a runtime mode from one validated mode/v2 resource.
 
-    calibration/v6-lite Phase 2 migrated the three modes to mode/v2, so the loader accepts only
-    that schema and reads the extended sampling and reasoning fields (spec 3.7).
+    D-064 migrated the three modes to mode/v2, so the loader accepts only that schema and reads the
+    extended sampling and reasoning fields (spec section 5.3).
     """
     raw = _read_object(file)
     if raw.get("schema") != "mode/v2":
@@ -366,7 +366,9 @@ def _fallback(request: LaunchRequest, hardware: HardwareInfo) -> tuple[Envelope,
     return Envelope(_FALLBACK_CTX, n_cpu_moe, None), (warning,)
 
 
-def _record_evaluation(request: LaunchRequest, hardware: HardwareInfo) -> RecordEvaluation:
+def _record_evaluation(
+    request: LaunchRequest, mode: Mode, hardware: HardwareInfo
+) -> RecordEvaluation:
     """Evaluate the mode's local record against the current lock identity (section 5.5).
 
     Both imports stay local: `engine` reads `LaunchPlan` from this module, and the calibration
@@ -375,7 +377,7 @@ def _record_evaluation(request: LaunchRequest, hardware: HardwareInfo) -> Record
     from bora_workbench._calibration_reuse import ReuseQuery, evaluate_record
     from bora_workbench.engine import load_engine_lock
 
-    query = ReuseQuery(request.config, request.mode_id, hardware, load_engine_lock())
+    query = ReuseQuery(request.config, mode, hardware, load_engine_lock())
     return evaluate_record(query)
 
 
@@ -388,7 +390,9 @@ def _resolve_envelope(
     calibrated; only a supported active local calibration record may steer the plan, so a matched
     seed only contributes a warning.
     """
-    evaluation = _record_evaluation(request, hardware)
+    mode = catalog.mode(request.mode_id)
+    assert mode is not None
+    evaluation = _record_evaluation(request, mode, hardware)
     seed, warnings = _select_seed_profile(request, catalog, hardware)
     if evaluation.status == "valid":
         envelope = Envelope(cast(int, evaluation.ctx), evaluation.n_cpu_moe, None)

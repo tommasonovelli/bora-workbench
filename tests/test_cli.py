@@ -103,6 +103,19 @@ def test_doctor_is_read_only_and_reports_hardware(tmp_path, monkeypatch) -> None
     assert not any(tmp_path.iterdir())
 
 
+def test_doctor_prints_markup_like_configuration_literally(tmp_path, monkeypatch) -> None:
+    """Treat brackets in valid user configuration as data and never raise a Rich traceback."""
+    patch_directories(tmp_path, monkeypatch)
+    monkeypatch.setattr(diagnostics_cli, "detect_hardware", fake_hardware)
+    monkeypatch.setenv("BORA_MODEL", "[/red]")
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert result.exit_code == 0
+    assert "[/red]" in result.stdout
+    assert "Traceback" not in result.stderr
+
+
 def test_doctor_maps_invalid_configuration_to_exit_2(tmp_path, monkeypatch) -> None:
     """Keep malformed user configuration in the CLI-input error category."""
     directories = patch_directories(tmp_path, monkeypatch)

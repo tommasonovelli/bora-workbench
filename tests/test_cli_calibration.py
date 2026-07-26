@@ -13,7 +13,6 @@ from bora_workbench._calibration_run import RunResult
 from bora_workbench._calibration_runner import ModeResult
 from bora_workbench._calibration_types import (
     CONTEXT_SCALE,
-    PREFERENCES,
     EnvelopeResult,
     GateResult,
     SearchError,
@@ -65,9 +64,28 @@ def test_validation_rejects_conflicts_and_unapproved_context() -> None:
         _validate(CalibrationCliInput("coding", activate=True, no_activate=True))
     with pytest.raises(CalibrationError):
         _validate(CalibrationCliInput("coding", activate=True, target_ctx=65536))
+    with pytest.raises(CalibrationError, match="cannot relabel"):
+        _validate(CalibrationCliInput("coding", activate=True, preference="fast"))
     with pytest.raises(CalibrationError):
         _validate(CalibrationCliInput("coding", target_ctx=12345))
     _validate(CalibrationCliInput("coding", target_ctx=65536))
+
+
+def test_activate_promotes_the_candidate_without_relabeling_it(monkeypatch) -> None:
+    """Promote the candidate exactly as measured because it contains only one cell."""
+    promoted: list[str] = []
+    monkeypatch.setattr(
+        calibration_cli,
+        "promote_candidate",
+        lambda mode_id: promoted.append(mode_id) or Path("record.json"),
+    )
+
+    calibration_cli._run(
+        CalibrationCliInput("coding", activate=True),
+        Console(quiet=True),
+    )
+
+    assert promoted == ["coding"]
 
 
 @pytest.mark.parametrize("target_ctx", CONTEXT_SCALE)
@@ -76,29 +94,24 @@ def test_every_scale_step_is_an_approved_expert_target(target_ctx: int) -> None:
     _validate(CalibrationCliInput("coding", target_ctx=target_ctx))
 
 
-def test_outcome_shows_all_three_envelopes_and_marks_the_active_one() -> None:
-    """Explain what was measured, because the record launches with only one of the envelopes."""
+def test_outcome_shows_only_the_selected_preference_cell() -> None:
+    """Explain the one result measured and stored for this mode."""
     mode = load_catalog().mode("coding")
     assert mode is not None
-    envelopes = {
-        preference: EnvelopeResult(
-            preference, sample(65536, 37, 100.0), GateResult(True, True, None)
-        )
-        for preference in PREFERENCES
-    }
+    envelope = EnvelopeResult("max_context", sample(65536, 37, 100.0), GateResult(True, True, None))
     record_path = Path("/records/coding.json")
     evidence_path = Path("/evidence/run")
     result = RunResult(
         "a" * 32,
         (record_path,),
-        (ModeResult(mode, envelopes, (sample(65536, 37, 100.0),), {}),),
+        (ModeResult(mode, envelope, (sample(65536, 37, 100.0),), ()),),
         evidence_path,
     )
     console = Console(record=True, width=200)
-    show_outcome(result, "max_context", console)
+    show_outcome(result, console)
     text = console.export_text()
-    assert "fast" in text and "balanced" in text
-    assert "max_context (active)" in text
+    assert "fast" not in text and "balanced" not in text
+    assert "max_context" in text
     assert "n_cpu_moe=37" in text
     # Compare rendered paths, not POSIX literals: the separator differs per platform.
     assert str(evidence_path) in text
@@ -118,6 +131,8 @@ def test_a_failed_search_exits_operationally_without_a_traceback(monkeypatch, er
     monkeypatch.setattr(calibration_cli.typer, "confirm", lambda *args, **kwargs: True)
 
     def failing(target, run_options):
+        """Raise the parameterized operational calibration failure."""
+        del target, run_options
         raise error
 
     monkeypatch.setattr(calibration_cli, "run_calibration", failing)
@@ -144,17 +159,12 @@ def test_a_partial_run_prints_its_records_and_still_exits_operationally(monkeypa
     """Report what was measured, then refuse to call an incomplete run a success (D-067)."""
     mode = load_catalog().mode("coding")
     assert mode is not None
-    envelopes = {
-        preference: EnvelopeResult(
-            preference, sample(65536, 37, 100.0), GateResult(True, True, None)
-        )
-        for preference in PREFERENCES
-    }
+    envelope = EnvelopeResult("balanced", sample(65536, 37, 100.0), GateResult(True, True, None))
     record_path = Path("/records/coding.json")
     result = RunResult(
         "a" * 32,
         (record_path,),
-        (ModeResult(mode, envelopes, (sample(65536, 37, 100.0),), {}),),
+        (ModeResult(mode, envelope, (sample(65536, 37, 100.0),), ()),),
         Path("/evidence/run"),
         ("vstudio: (65536, 36) is no longer feasible",),
     )

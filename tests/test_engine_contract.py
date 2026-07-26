@@ -71,7 +71,7 @@ def _backend_tail() -> tuple[str, ...]:
 def test_text_mode_argv_matches_mode_v2_contract(
     tmp_path, mode_id, temp, top_p, presence, reasoning, ui
 ) -> None:
-    """Pin the complete coding and studio argv after the mode/v2 migration (spec 3.7)."""
+    """Pin the complete coding and studio argv after the mode/v2 migration (spec section 5.3)."""
     selected = plan(tmp_path, "cuda", mode_id)
     executable = tmp_path / "llama-server"
     expected = (

@@ -92,6 +92,8 @@ def test_failed_nvidia_query_uses_cpu(monkeypatch, failure) -> None:
         "0, GPU, invalid, 7000\n",
         "0, GPU, 8192\n",
         "0, GPU, 8192, 9000\n",
+        "0, GPU, inf, 7000\n",
+        "0, GPU, 8192, inf\n",
         "0, GPU A, 8192, 7000\n0, GPU B, 8192, 6000\n",
     ],
 )
@@ -178,6 +180,31 @@ def test_optional_telemetry_is_parsed_without_becoming_a_threshold(monkeypatch) 
     assert snapshot.telemetry.utilization_percent == 75
     assert snapshot.telemetry.sm_clock_mhz == 1500
     assert snapshot.telemetry.throttle_reasons == ("Power Brake",)
+
+
+def test_nonfinite_mandatory_memory_is_rejected_and_optional_telemetry_is_ignored(
+    monkeypatch,
+) -> None:
+    """Reject infinite VRAM decisions while degrading non-finite evidence fields to null."""
+    invalid = Mock(
+        return_value=SimpleNamespace(stdout="inf,7000,610.47,WDDM,inf,67,1500,125,None\n")
+    )
+    monkeypatch.setattr(hardware.subprocess, "run", invalid)
+    with pytest.raises(hardware.HardwareError, match="invalid calibration memory"):
+        hardware.query_gpu_snapshot(0)
+
+    run = Mock(
+        side_effect=[
+            SimpleNamespace(stdout="8192,7000,610.47,WDDM,inf,67,1500,125,None\n"),
+            SimpleNamespace(stdout="\n"),
+        ]
+    )
+    monkeypatch.setattr(hardware.subprocess, "run", run)
+
+    snapshot = hardware.query_gpu_snapshot(0)
+
+    assert snapshot.telemetry is not None
+    assert snapshot.telemetry.utilization_percent is None
 
 
 def test_unsupported_telemetry_falls_back_to_mandatory_memory(monkeypatch) -> None:

@@ -12,10 +12,13 @@ from bora_workbench._calibration_record import (
     candidate_record_path,
     command_contract_sha256,
     load_record,
+    mode_policy_sha256,
     record_path,
 )
+from bora_workbench._calibration_types import Preference
 from bora_workbench.config import Config
 from bora_workbench.hardware import HardwareError, HardwareInfo, query_gpu_snapshot
+from bora_workbench.profiles import Mode
 
 _RAM_IDENTITY_TOLERANCE_GIB = 1 / 1024
 
@@ -36,7 +39,7 @@ class ReuseQuery:
     """Group current identities a record must match before reuse."""
 
     config: Config
-    mode_id: str
+    mode: Mode
     hardware: HardwareInfo
     lock: JsonObject
 
@@ -51,6 +54,7 @@ class RecordEvaluation:
     diagnostics: tuple[str, ...]
     candidate_status: CandidateStatus = "missing"
     candidate_diagnostics: tuple[str, ...] = ()
+    preference: Preference | None = None
 
 
 def _ram_identity_mismatch(recorded: object, current: float) -> str | None:
@@ -76,6 +80,7 @@ def _identity_mismatches(record: JsonObject, query: ReuseQuery) -> list[str]:
             record["command_contract_sha256"],
             command_contract_sha256(query.lock),
         ),
+        ("mode policy", record["mode_policy_sha256"], mode_policy_sha256(query.mode)),
         ("operating system", record["os_name"], current.os_name),
         ("backend", record["backend"], current.backend),
         ("CPU", hardware["cpu_name"], current.cpu_name),
@@ -114,15 +119,14 @@ def _cuda_state(record: JsonObject, query: ReuseQuery) -> tuple[list[str], float
     return [message], None
 
 
-def _active_envelope(record: JsonObject) -> JsonObject:
-    """Return the one envelope of the three that this record was activated with."""
-    preference = cast(str, record["active_preference"])
-    return cast(JsonObject, cast(JsonObject, record["envelopes"])[preference])
+def _recorded_envelope(record: JsonObject) -> JsonObject:
+    """Return the one measured preference cell stored for this mode."""
+    return cast(JsonObject, record["envelope"])
 
 
 def _headroom_for(record: JsonObject, vram_free_gib: float | None, ram_gib: float) -> list[str]:
-    """Require the active envelope's measured needs plus the record's own reserves."""
-    envelope = _active_envelope(record)
+    """Require the calibrated cell's measured needs plus the record's own reserves."""
+    envelope = _recorded_envelope(record)
     reserves = cast(JsonObject, record["reserves"])
     ram_reserve_gib = float(cast(float, reserves["ram_gib"]))
     vram_reserve_gib = float(cast(float, reserves["vram_gib"]))
@@ -184,34 +188,41 @@ def _missing_evaluation(mode_id: str) -> RecordEvaluation:
 
 def evaluate_record(query: ReuseQuery) -> RecordEvaluation:
     """Evaluate one mode's active record and expose pending candidate state separately."""
-    path = record_path(query.mode_id)
+    mode_id = query.mode.id
+    path = record_path(mode_id)
     if not path.is_file():
-        return _missing_evaluation(query.mode_id)
+        return _missing_evaluation(mode_id)
     try:
         record = load_record(path)
     except RecordSupersededError as error:
-        return _with_candidate(
-            RecordEvaluation("superseded", None, None, (str(error),)), query.mode_id
-        )
+        return _with_candidate(RecordEvaluation("superseded", None, None, (str(error),)), mode_id)
     except RecordError as error:
-        return _with_candidate(
-            RecordEvaluation("invalid", None, None, (str(error),)), query.mode_id
-        )
+        return _with_candidate(RecordEvaluation("invalid", None, None, (str(error),)), mode_id)
     mismatches = _identity_mismatches(record, query)
     driver_issues, vram_free_gib = _cuda_state(record, query)
     mismatches.extend(driver_issues)
-    envelope = _active_envelope(record)
+    envelope = _recorded_envelope(record)
+    preference = cast(Preference, record["preference"])
     ctx = cast(int, envelope["ctx"])
     n_cpu_moe = cast(int | None, envelope["n_cpu_moe"])
     if mismatches:
         diagnostics = tuple(f"local calibration record ignored: {issue}" for issue in mismatches)
         return _with_candidate(
-            RecordEvaluation("incompatible", ctx, n_cpu_moe, diagnostics), query.mode_id
+            RecordEvaluation("incompatible", ctx, n_cpu_moe, diagnostics, preference=preference),
+            mode_id,
         )
     headroom = _headroom_for(record, vram_free_gib, query.hardware.ram_available_gib)
     if headroom:
         diagnostics = tuple(f"local calibration record not usable now: {item}" for item in headroom)
         return _with_candidate(
-            RecordEvaluation("insufficient-headroom", ctx, n_cpu_moe, diagnostics), query.mode_id
+            RecordEvaluation(
+                "insufficient-headroom",
+                ctx,
+                n_cpu_moe,
+                diagnostics,
+                preference=preference,
+            ),
+            mode_id,
         )
-    return _with_candidate(RecordEvaluation("valid", ctx, n_cpu_moe, ()), query.mode_id)
+    valid = RecordEvaluation("valid", ctx, n_cpu_moe, (), preference=preference)
+    return _with_candidate(valid, mode_id)

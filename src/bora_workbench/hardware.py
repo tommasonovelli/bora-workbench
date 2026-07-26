@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+import math
 import os
 import platform
 import subprocess
@@ -145,7 +146,8 @@ def _parse_gpu_row(row: list[str]) -> _GpuInfo:
     index = int(index_text)
     total_mib = float(total_text)
     free_mib = float(free_text)
-    if index < 0 or not name or total_mib <= 0 or not 0 <= free_mib <= total_mib:
+    finite = math.isfinite(total_mib) and math.isfinite(free_mib)
+    if index < 0 or not name or not finite or total_mib <= 0 or not 0 <= free_mib <= total_mib:
         raise ValueError("GPU values are outside their valid ranges")
     return _GpuInfo(index, name, mib_to_gib(total_mib), mib_to_gib(free_mib))
 
@@ -331,7 +333,7 @@ def _optional_float(value: str) -> float | None:
         parsed = float(value)
     except ValueError:
         return None
-    return parsed if parsed >= 0 else None
+    return parsed if math.isfinite(parsed) and parsed >= 0 else None
 
 
 def _throttle_reasons(value: str) -> tuple[str, ...] | None:
@@ -370,7 +372,14 @@ def _gpu_memory(index: int) -> tuple[float, float, str, bool, GpuTelemetry | Non
     except ValueError as error:
         raise HardwareError("nvidia-smi returned non-numeric calibration memory data") from error
     driver, driver_model = values[2], values[3]
-    if total_mib <= 0 or not 0 <= free_mib <= total_mib or not driver or not driver_model:
+    finite = math.isfinite(total_mib) and math.isfinite(free_mib)
+    if (
+        not finite
+        or total_mib <= 0
+        or not 0 <= free_mib <= total_mib
+        or not driver
+        or not driver_model
+    ):
         raise HardwareError("nvidia-smi returned invalid calibration memory values")
     return (
         mib_to_gib(total_mib),

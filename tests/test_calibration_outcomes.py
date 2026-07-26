@@ -22,7 +22,7 @@ from bora_workbench._calibration_types import (
     classify,
 )
 from bora_workbench.benchmark import BenchmarkError, BenchmarkHttpError
-from bora_workbench.process import ProcessError, ServerStartupError
+from bora_workbench.process import PortCollisionError, ProcessError, ServerStartupError
 
 
 @pytest.mark.parametrize(
@@ -44,6 +44,7 @@ from bora_workbench.process import ProcessError, ServerStartupError
             ClassifiedOutcome(TrialOutcome.RETRYABLE),
         ),
         (BenchmarkError("finish_reason"), ClassifiedOutcome(TrialOutcome.PROTOCOL_INVALID)),
+        (PortCollisionError("occupied"), ClassifiedOutcome(TrialOutcome.RETRYABLE)),
     ],
 )
 def test_classify_maps_supported_error_classes(error, expected) -> None:
@@ -79,6 +80,15 @@ def test_classify_treats_a_startup_failure_without_oom_evidence_as_retryable(
     log.write_text("srv init: health timeout\n", encoding="utf-8")
     assert classify(ServerStartupError("health timeout", log)).outcome is TrialOutcome.RETRYABLE
     assert classify(ServerStartupError("no log", None)).outcome is TrialOutcome.RETRYABLE
+
+
+def test_classify_does_not_infer_ram_infeasibility_from_startup_logs(tmp_path: Path) -> None:
+    """Use startup logs only for rejected CUDA allocation, leaving host OOM retryable."""
+    log = tmp_path / "llama-server.log"
+    log.write_text("failed to allocate host buffer: out of memory\n", encoding="utf-8")
+
+    outcome = classify(ServerStartupError("llama-server exited", log))
+    assert outcome.outcome is TrialOutcome.RETRYABLE
 
 
 def test_classify_still_rejects_a_preflight_process_error() -> None:

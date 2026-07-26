@@ -285,7 +285,7 @@ def _probe(executable: Path, contract: JsonObject) -> str:
             encoding="utf-8",
             timeout=_PROBE_TIMEOUT_SECONDS,
         )
-    except (OSError, subprocess.TimeoutExpired) as error:
+    except (OSError, subprocess.TimeoutExpired, UnicodeError) as error:
         raise EngineError(f"cannot probe engine {executable}: {error}") from error
     output = result.stdout + result.stderr
     if result.returncode != contract["exit_code"]:
@@ -321,7 +321,11 @@ def verify_engine(executable: Path, lock: JsonObject) -> Path:
 
 def _read_manifest(engine_root: Path) -> JsonObject | None:
     """Decode the current manifest without creating its parent directory."""
+    if engine_root.is_symlink():
+        raise EngineError(f"managed engine root must not be a symlink: {engine_root}")
     path = engine_root / "current.json"
+    if path.is_symlink():
+        raise EngineError(f"managed engine manifest must not be a symlink: {path}")
     if not path.is_file():
         return None
     try:
@@ -350,6 +354,14 @@ def _resolve_executable(engine_root: Path, manifest: JsonObject) -> Path:
     )
     if is_unsafe:
         raise EngineError("managed engine executable must be a safe relative path")
+    release, backend = manifest.get("release"), manifest.get("backend")
+    if not isinstance(release, str) or backend not in {"cpu", "cuda"}:
+        raise EngineError("managed engine release or backend is invalid")
+    expected = re.compile(rf"^{re.escape(release)}-{backend}-[0-9a-f]{{32}}$")
+    if len(posix.parts) < 3 or posix.parts[0] != "installations":
+        raise EngineError("managed engine executable must identify an immutable installation")
+    if expected.fullmatch(posix.parts[1]) is None:
+        raise EngineError("managed engine directory does not match release and backend")
     executable = engine_root.joinpath(*posix.parts).resolve()
     installations = (engine_root / "installations").resolve()
     if not executable.is_relative_to(installations):
@@ -413,17 +425,23 @@ def _manifest_bytes(engine_root: Path, activation: Activation) -> bytes:
     executable = activation.executable.resolve()
     if not executable.is_relative_to(installations):
         raise EngineError("cannot activate an executable outside managed installations")
+    relative = executable.relative_to(engine_root.resolve())
+    expected = re.compile(rf"^{re.escape(activation.release)}-{activation.backend}-[0-9a-f]{{32}}$")
+    if len(relative.parts) < 3 or expected.fullmatch(relative.parts[1]) is None:
+        raise EngineError("cannot activate an installation with mismatched release or backend")
     value = {
         "schema": _MANAGED_SCHEMA,
         "release": activation.release,
         "backend": activation.backend,
-        "executable": executable.relative_to(engine_root.resolve()).as_posix(),
+        "executable": relative.as_posix(),
     }
     return (json.dumps(value, indent=2, sort_keys=True) + "\n").encode()
 
 
 def activate(engine_root: Path, activation: Activation) -> None:
     """Flush and atomically replace ``current.json`` without touching the old installation."""
+    if engine_root.is_symlink():
+        raise EngineError(f"managed engine root must not be a symlink: {engine_root}")
     engine_root.mkdir(parents=True, exist_ok=True)
     target = engine_root / "current.json"
     temporary = engine_root / f".current-{uuid4().hex}.tmp"
@@ -469,16 +487,30 @@ def _platform_key() -> PlatformKey:
         raise EngineError(f"managed engine installation requires x86-64, found {machine!r}")
     system = platform.system().lower()
     if system == "windows":
+        version = _numeric_version(platform.version())
+        if version < (10, 0, 22000):
+            raise EngineError("managed engine installation requires Windows 11 build 22000+")
         return "windows"
     if system != "linux":
         raise EngineError(f"managed engine installation is unsupported on {platform.system()}")
     try:
-        distribution = platform.freedesktop_os_release().get("ID", "").lower()
+        release = platform.freedesktop_os_release()
     except OSError as error:
         raise EngineError(f"cannot identify the Linux distribution: {error}") from error
+    distribution = release.get("ID", "").lower()
     if distribution != "ubuntu":
         raise EngineError(f"managed engine installation requires Ubuntu, found {distribution!r}")
+    if _numeric_version(release.get("VERSION_ID", "")) < (22, 4):
+        raise EngineError("managed engine installation requires Ubuntu 22.04+")
     return "ubuntu"
+
+
+def _numeric_version(value: str) -> tuple[int, ...]:
+    """Parse dotted operating-system versions without accepting ambiguous text."""
+    match = re.fullmatch(r"\d+(?:\.\d+)*", value)
+    if match is None:
+        return ()
+    return tuple(int(part) for part in value.split("."))
 
 
 def install_engine(

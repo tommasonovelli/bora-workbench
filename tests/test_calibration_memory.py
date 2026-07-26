@@ -66,6 +66,10 @@ NO_COMPUTE_CONTEXTS = GpuContextBaseline(False, ())
 MANAGED_SERVER = GpuProcessIdentity(42, 42.0, None)
 
 
+class _MonitorAbort(BaseException):
+    """Represent a control-flow failure raised inside a polling thread."""
+
+
 def context_snapshot(free: float, *items: GpuProcessIdentity) -> GpuSnapshot:
     """Build one WDDM sample with aligned PID and opaque identity evidence."""
     pids = tuple(item.pid for item in items)
@@ -197,6 +201,28 @@ def test_monitor_query_failure_invalidates_the_run() -> None:
 
     with pytest.raises(VramEnvironmentError, match="GPU monitoring failed"):
         monitor.start()
+
+
+def test_vram_poller_preserves_base_exception_for_the_owner_thread() -> None:
+    """Never lose a control-flow exception merely because the query ran in a worker thread."""
+    observed = threading.Event()
+    owner_calls = 0
+
+    def query(index: int) -> GpuSnapshot:
+        """Return baseline/release on the owner and abort on the polling thread."""
+        nonlocal owner_calls
+        if threading.current_thread().name == "qwen-calibration-vram":
+            observed.set()
+            raise _MonitorAbort("poll aborted")
+        owner_calls += 1
+        return snapshot(7)
+
+    monitor = monitor_for(query)
+    monitor.start()
+    assert observed.wait(timeout=1)
+
+    with pytest.raises(_MonitorAbort, match="poll aborted"):
+        monitor.finish(None)
 
 
 def test_driver_change_during_trial_invalidates_the_run() -> None:
@@ -419,6 +445,25 @@ def test_ram_query_failure_invalidates_the_run() -> None:
     assert observed.wait(timeout=1)
 
     with pytest.raises(RamError, match="RAM monitoring failed"):
+        monitor.finish()
+
+
+def test_ram_poller_preserves_base_exception_for_the_owner_thread() -> None:
+    """Surface a worker control-flow exception instead of silently accepting partial samples."""
+    observed = threading.Event()
+
+    def query() -> float:
+        """Return the baseline on the owner and abort on the polling thread."""
+        if threading.current_thread().name == "qwen-calibration-ram":
+            observed.set()
+            raise _MonitorAbort("poll aborted")
+        return 24.0
+
+    monitor = RamMonitor(RAM_RESERVE_GIB, query)
+    monitor.start()
+    assert observed.wait(timeout=1)
+
+    with pytest.raises(_MonitorAbort, match="poll aborted"):
         monitor.finish()
 
 

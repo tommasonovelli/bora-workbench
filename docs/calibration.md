@@ -17,15 +17,15 @@ The command:
 1. checks the model, the engine, memory, and concurrent processes;
 2. prints exactly what it will run and asks for confirmation;
 3. starts many short-lived servers, so it takes from tens of minutes to hours;
-4. measures `coding`, `studio`, and `vstudio`;
+4. measures the requested preference for `coding`, `studio`, and `vstudio`;
 5. writes a private record per completed mode;
 6. activates those records by default, so the next launch uses them.
 
 It uploads nothing, never edits `config.toml`, and publishes no result.
 
-## What you get: three envelopes per mode
+## What you get: one calibrated cell per selected mode
 
-A single run measures **three** launch envelopes for each mode and stores all of them in the record:
+`--preference` chooses which one of these optimization rules is measured:
 
 | Envelope | What it optimizes |
 | --- | --- |
@@ -33,23 +33,23 @@ A single run measures **three** launch envelopes for each mode and stores all of
 | `balanced` | the largest context whose short-prompt latency stays within `1.10×` that of `fast` |
 | `max-context` | the largest feasible context, ordered by throughput, then memory margin, then caution |
 
-Only one of the three drives a launch: the **active preference**, chosen with `--preference`
-(default `balanced`). The other two stay in the record, so switching later costs one command
-instead of a new measurement run.
+Only the requested preference is selected, confirmed, gated, and stored (default `balanced`).
+`--mode all` applies it to all three modes. Run modes separately to retain different preferences;
+recalibrating one mode replaces only that mode's cell.
 
 ## Essential terms
 
 - **Baseline**: a verified but non-optimized configuration (`ctx=8192`; on CUDA `n_cpu_moe=48`). It
   makes the launcher usable before any calibration.
-- **Envelope**: the launch parameters chosen for one mode, mainly `ctx` and, on CUDA, `n_cpu_moe`.
+- **Calibrated cell**: the requested preference and launch parameters chosen for one mode, mainly
+  `ctx` and, on CUDA, `n_cpu_moe`.
 - **`ctx`**: the server's context window limit, in tokens.
 - **`n_cpu_moe`**: how many MoE blocks stay on the CPU. Lower values use more VRAM; higher values
   move weights and work toward RAM and CPU. Throughput is not assumed to be monotonic in it.
 - **Probe**: a short feasibility trial. It answers one question — does this configuration start and
   serve at all — and nothing about speed.
 - **Sample**: a feasible configuration measured with the quick-bench, so it can be compared.
-- **Local record**: a private JSON holding the measurements, the machine identity, and the three
-  envelopes.
+- **Local record**: a private JSON holding one calibrated cell and its machine identity.
 - **Candidate**: a valid record that launches do not use yet.
 - **Active record**: the only record that can enter a launch plan.
 - **Headroom**: memory still free beyond the measured requirement.
@@ -99,11 +99,19 @@ Calibrate a single mode:
 bora calibrate --mode coding
 ```
 
-Pick which envelope the records will launch with:
+Pick which optimization rule will be measured and stored:
 
 ```bash
 bora calibrate --mode all --preference fast
 bora calibrate --mode all --preference max-context
+```
+
+The same preference applies to every mode selected by one command. To keep different cells:
+
+```bash
+bora calibrate --mode coding --preference fast
+bora calibrate --mode studio --preference balanced
+bora calibrate --mode vstudio --preference max-context
 ```
 
 On an interactive terminal the CLI shows a bar, the elapsed time, the running trial, and a remaining
@@ -183,19 +191,18 @@ bora calibrate --mode coding --target-ctx 98304
 ```
 
 Allowed values: `131072`, `98304`, `65536`, `49152`, `32768`, `16384`, `8192` — every step of the
-ladder. At a fixed context the three envelopes are still measured and differ only in `n_cpu_moe`, so
-`fast` and `max-context` often coincide there; they still optimize different metrics (end-to-end
-latency versus decode throughput).
+ladder. At a fixed context only the requested preference is measured. Different preferences can
+legitimately resolve to the same `n_cpu_moe`, but they still optimize different metrics.
 
 `131072` is the ceiling this protocol searches, not a claim about what the model supports.
 
 ## Worked examples
 
 ```bash
-# Everything, activated, with the default balanced envelope
+# Everything, activated, with one balanced cell per mode
 bora calibrate --mode all
 
-# Coding only, recording `fast` as the envelope launches will use
+# Coding only, measuring and recording its `fast` cell
 bora calibrate --mode coding --preference fast
 
 # Measure everything but leave the active records untouched
@@ -211,8 +218,10 @@ bora calibrate --mode coding --target-ctx 65536 --preference fast
 bora calibrate --mode coding --target-ctx 65536 --preference max-context
 ```
 
-Constraints: `--activate` does not combine with `--target-ctx`, and `--activate` and `--no-activate`
-are mutually exclusive. Both are reported as input errors before any process starts.
+Constraints: `--activate` does not combine with `--target-ctx` or an explicit `--preference`, and
+`--activate` and `--no-activate` are mutually exclusive. A pending candidate already contains its
+only measured preference and cannot be relabelled. Conflicts are input errors before any process
+starts.
 
 ## How the search works
 
@@ -240,19 +249,19 @@ available and, on CUDA, **0.5 GiB** of VRAM free, and must release VRAM within *
 baseline after stopping. These reserves are written into the record, so a record is always
 re-evaluated against exactly the margins it was measured with.
 
-The three envelopes are then selected from the samples, confirmed with two paired `A→B`/`B→A`
-rounds — a third round only when the first two disagree or disperse — and each one finally passes a
-gate in a fresh process: a smoke request at about 80% of the context **measured in tokens**, a
-four-turn conversation, and, for `vstudio`, the pinned image request.
+The requested preference is selected from the samples, confirmed with two paired `A→B`/`B→A`
+rounds when it has a near-tied rival — a third round only when the first two disagree or disperse —
+and finally passes one gate in a fresh process: a smoke request at about 80% of the context
+**measured in tokens**, a four-turn conversation, and, for `vstudio`, the pinned image request.
 
 A context the hardware cannot afford is rejected after a single probe, so a small card spends most
-of the run on the steps it can actually serve. As a measured reference, on an RTX 2060 SUPER (8 GiB)
-with 32 GiB of RAM, `--mode all` costs roughly **100 fresh processes and a little over two hours**,
-split about evenly between the shared text group and `vstudio`. Your hardware will differ: a card
-that can hold more contexts spends more trials measuring them and fewer rejecting them.
+of the run on the steps it can actually serve. Runtime depends on the feasible contexts, preference,
+backend, and whether a near-tied rival needs confirmation. Historical three-envelope timings do not
+predict this one-cell protocol.
 
-On CPU there is no offload axis to search: the baseline context is confirmed, `n_cpu_moe` is
-recorded as null, and the same envelope is written for all three preferences.
+On CPU there is no offload axis to search: an automatic run confirms the baseline context, while
+`--target-ctx` confirms that explicit approved context. In both cases `n_cpu_moe` is recorded as
+null in the one requested cell.
 
 ### The quick-bench
 
@@ -271,7 +280,7 @@ quality score and not a promise about another machine.
 
 An active record is revalidated on every launch. All of this must match:
 
-- the record schema and its internal consistency (reserves, active envelope);
+- the record schema and its internal consistency (preference, cell, and reserves);
 - the model, filename, and digest;
 - the engine release, commit, and command-contract digest;
 - the mode and the backend;

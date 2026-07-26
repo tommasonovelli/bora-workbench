@@ -14,12 +14,12 @@ import re
 import stat
 import tarfile
 import zipfile
-from collections.abc import Callable
-from contextlib import suppress
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import BinaryIO, Literal, cast
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 from uuid import uuid4
 
 import httpx
@@ -30,8 +30,10 @@ ArchiveKind = Literal["zip", "tar.gz"]
 Role = Literal["server", "cuda-runtime", "source"]
 
 _CHUNK_SIZE = 1024 * 1024
+_MAX_REDIRECTS = 10
 _ALLOWED_ROLES = {"server", "cuda-runtime", "source"}
 _HEX_64 = re.compile(r"^[0-9a-f]{64}$")
+_WINDOWS_DEVICE = re.compile(r"^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\..*)?$", re.I)
 # Ubuntu CUDA is the only pair compiled instead of downloaded: the pinned release publishes no
 # Linux CUDA prebuilt, so the lock pins the commit archive as its source asset (specification
 # section 5.10). Windows CUDA needs two roles because upstream ships the server and the
@@ -85,11 +87,25 @@ def _is_safe_relative(value: str) -> bool:
     posix = PurePosixPath(value)
     windows = PureWindowsPath(value)
     return bool(posix.parts) and not (
-        posix.is_absolute()
+        "\\" in value
+        or posix.is_absolute()
         or windows.is_absolute()
         or windows.drive
         or ".." in posix.parts
         or ".." in windows.parts
+        or _has_unsafe_windows_component(posix.parts)
+    )
+
+
+def _has_unsafe_windows_component(parts: tuple[str, ...]) -> bool:
+    """Reject names Windows redirects, aliases, or normalizes to another path."""
+    forbidden = '<>:"|?*'
+    return any(
+        not part
+        or part.endswith((" ", "."))
+        or any(character in forbidden or ord(character) < 32 for character in part)
+        or _WINDOWS_DEVICE.fullmatch(part) is not None
+        for part in parts
     )
 
 
@@ -190,31 +206,67 @@ def _content_length(response: httpx.Response) -> int | None:
     return total if total is not None and total >= 0 else None
 
 
+def _redirect_target(response: httpx.Response) -> str | None:
+    """Return a validated HTTPS redirect target or identify a final HTTPS response."""
+    response_url = str(response.url)
+    if urlparse(response_url).scheme != "https":
+        raise EngineError(f"download redirected away from HTTPS: {response_url}")
+    if not response.is_redirect:
+        return None
+    location = response.headers.get("Location")
+    if location is None:
+        raise EngineError(f"download redirect has no location: {response_url}")
+    return urljoin(response_url, location)
+
+
+@contextmanager
+def _https_stream(url: str, timeout: httpx.Timeout) -> Iterator[httpx.Response]:
+    """Open one response while refusing every non-HTTPS redirect before following it."""
+    current = url
+    for _ in range(_MAX_REDIRECTS + 1):
+        if urlparse(current).scheme != "https":
+            raise EngineError(f"download redirected away from HTTPS: {current}")
+        with httpx.stream("GET", current, follow_redirects=False, timeout=timeout) as response:
+            target = _redirect_target(response)
+            if target is not None:
+                current = target
+                continue
+            response.raise_for_status()
+            yield response
+            return
+    raise EngineError(f"download exceeded {_MAX_REDIRECTS} redirects: {url}")
+
+
+def _write_response(
+    response: httpx.Response, partial: Path, progress: TransferProgressCallback | None
+) -> tuple[str, int | None, int]:
+    """Write one final response to a new partial file and return its measured identity."""
+    digest = hashlib.sha256()
+    total, completed = _content_length(response), 0
+    if progress is not None:
+        progress(TransferProgress(0, total))
+    with partial.open("xb") as output:
+        for chunk in response.iter_bytes(_CHUNK_SIZE):
+            output.write(chunk)
+            digest.update(chunk)
+            completed += len(chunk)
+            if progress is not None:
+                progress(TransferProgress(completed, total))
+        output.flush()
+        os.fsync(output.fileno())
+    return digest.hexdigest(), total, completed
+
+
 def _stream_to_file(
     asset: EngineAsset, partial: Path, progress: TransferProgressCallback | None
 ) -> str:
     """Stream one HTTPS response into a partial file and report measured transfer bytes."""
-    digest = hashlib.sha256()
     timeout = httpx.Timeout(60.0, connect=10.0)
-    with httpx.stream("GET", asset.url, follow_redirects=True, timeout=timeout) as response:
-        response.raise_for_status()
-        if urlparse(str(response.url)).scheme != "https":
-            raise EngineError(f"download redirected away from HTTPS: {response.url}")
-        total, completed = _content_length(response), 0
-        if progress is not None:
-            progress(TransferProgress(0, total))
-        with partial.open("xb") as output:
-            for chunk in response.iter_bytes(_CHUNK_SIZE):
-                output.write(chunk)
-                digest.update(chunk)
-                completed += len(chunk)
-                if progress is not None:
-                    progress(TransferProgress(completed, total))
-            output.flush()
-            os.fsync(output.fileno())
+    with _https_stream(asset.url, timeout) as response:
+        digest, total, completed = _write_response(response, partial, progress)
     if progress is not None and total is None:
         progress(TransferProgress(completed, completed))
-    return digest.hexdigest()
+    return digest
 
 
 def download_asset(
@@ -225,6 +277,8 @@ def download_asset(
     """Return a verified cached archive, reporting bytes for download progress and ETA."""
     partial = cache_root / f".{asset.filename}-{uuid4().hex}.part"
     try:
+        if cache_root.is_symlink():
+            raise EngineError(f"managed cache root must not be a symlink: {cache_root}")
         cache_root.mkdir(parents=True, exist_ok=True)
         target = cache_root / asset.filename
         if target.is_symlink():
@@ -245,12 +299,14 @@ def download_asset(
             )
         partial.replace(target)
         return target
-    except (EngineError, OSError, httpx.HTTPError) as error:
+    except BaseException as error:
         with suppress(FileNotFoundError):
             partial.unlink()
         if isinstance(error, EngineError):
             raise
-        raise EngineError(f"download failed for {asset.url}: {error}") from error
+        if isinstance(error, (OSError, httpx.HTTPError)):
+            raise EngineError(f"download failed for {asset.url}: {error}") from error
+        raise
 
 
 @dataclass(slots=True)
@@ -287,6 +343,7 @@ def _member_parts(name: str) -> tuple[str, ...]:
         or windows.drive
         or ".." in posix.parts
         or ".." in windows.parts
+        or _has_unsafe_windows_component(posix.parts)
     ):
         raise EngineError(f"unsafe archive member path: {name!r}")
     parts = tuple(part for part in posix.parts if part not in {"", "."})
@@ -362,6 +419,46 @@ def _create_tar_symlink(
     target.symlink_to(member.linkname)
 
 
+@dataclass(slots=True)
+class _TarExtraction:
+    """Hold one archive's validated member index, progress, and deferred links."""
+
+    request: ExtractionRequest
+    archive: tarfile.TarFile
+    indexed: dict[str, tarfile.TarInfo]
+    tracker: _ByteTracker
+    symlinks: list[tarfile.TarInfo]
+
+    def extract_member(self, member: tarfile.TarInfo) -> None:
+        """Extract or defer one validated member without nesting the archive traversal."""
+        target = _target_path(self.request.destination, member.name)
+        if member.isdir():
+            target.mkdir(parents=True, exist_ok=True)
+            return
+        if member.issym():
+            _safe_symlink_target(self.request.destination, member, self.indexed)
+            self.symlinks.append(member)
+            return
+        if not member.isfile():
+            raise EngineError(f"non-regular archive member: {member.name!r}")
+        self._extract_file(member, target)
+
+    def _extract_file(self, member: tarfile.TarInfo, target: Path) -> None:
+        """Copy one regular member and restore only its declared permission bits."""
+        source = self.archive.extractfile(member)
+        if source is None:
+            raise EngineError(f"cannot read archive member: {member.name!r}")
+        _prepare_file(target, member.name)
+        with source, target.open("xb") as output:
+            self.tracker.copy(source, output)
+        target.chmod(member.mode & 0o777)
+
+    def create_symlinks(self) -> None:
+        """Create already validated internal links after every regular file exists."""
+        for member in self.symlinks:
+            _create_tar_symlink(self.request.destination, member, self.indexed)
+
+
 def _extract_tar(request: ExtractionRequest) -> None:
     """Extract safe tar members while reporting their total regular-file bytes."""
     with tarfile.open(request.archive_path, mode="r:gz") as archive:
@@ -370,26 +467,10 @@ def _extract_tar(request: ExtractionRequest) -> None:
         total_bytes = sum(member.size for member in members if member.isfile())
         tracker = _ByteTracker(total_bytes, request.progress)
         tracker.start()
-        symlinks: list[tarfile.TarInfo] = []
+        extraction = _TarExtraction(request, archive, indexed, tracker, [])
         for member in members:
-            target = _target_path(request.destination, member.name)
-            if member.isdir():
-                target.mkdir(parents=True, exist_ok=True)
-            elif member.issym():
-                _safe_symlink_target(request.destination, member, indexed)
-                symlinks.append(member)
-            elif member.isfile():
-                source = archive.extractfile(member)
-                if source is None:
-                    raise EngineError(f"cannot read archive member: {member.name!r}")
-                _prepare_file(target, member.name)
-                with source, target.open("xb") as output:
-                    tracker.copy(source, output)
-                target.chmod(member.mode & 0o777)
-            else:
-                raise EngineError(f"non-regular archive member: {member.name!r}")
-        for member in symlinks:
-            _create_tar_symlink(request.destination, member, indexed)
+            extraction.extract_member(member)
+        extraction.create_symlinks()
 
 
 def extract_asset(request: ExtractionRequest) -> None:

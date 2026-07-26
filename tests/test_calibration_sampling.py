@@ -33,11 +33,13 @@ def _cuda_provider(feasible_from: int, boundary: int) -> tuple[SearchProvider, l
     probed: list[int] = []
 
     def probe_at(ctx: int, n_cpu_moe: int | None) -> ClassifiedOutcome:
+        """Record and classify a point against the synthetic CUDA boundary."""
         probed.append(ctx)
         assert n_cpu_moe is not None
         return _SUCCESS if ctx <= feasible_from and n_cpu_moe >= boundary else _VRAM
 
     def sample_at(ctx: int, n_cpu_moe: int | None) -> Sample:
+        """Measure one feasible synthetic CUDA point."""
         assert n_cpu_moe is not None
         return sample(ctx, n_cpu_moe, float(ctx))
 
@@ -58,12 +60,14 @@ def test_the_reported_cap_covers_every_trial_the_search_can_start() -> None:
     started = 0
 
     def probe_at(ctx: int, n_cpu_moe: int | None) -> ClassifiedOutcome:
+        """Count one probe and classify it against the fixed boundary."""
         nonlocal started
         started += 1
         assert n_cpu_moe is not None
         return _SUCCESS if n_cpu_moe >= 30 else _VRAM
 
     def sample_at(ctx: int, n_cpu_moe: int | None) -> Sample:
+        """Count and return one synthetic measurement."""
         nonlocal started
         started += 1
         assert n_cpu_moe is not None
@@ -77,15 +81,17 @@ def test_the_reported_cap_covers_every_trial_the_search_can_start() -> None:
 
 
 def test_a_point_that_turns_infeasible_is_dropped_not_fatal() -> None:
-    """Drop a single moved boundary point instead of failing the whole mode (spec 3.3)."""
+    """Drop a single moved boundary point instead of failing the whole mode (spec section 5.6)."""
     probe_calls: list[int] = []
 
     def probe_at(ctx: int, n_cpu_moe: int | None) -> ClassifiedOutcome:
+        """Record one successful boundary probe."""
         probe_calls.append(ctx)
         assert n_cpu_moe is not None
         return _SUCCESS if n_cpu_moe >= 30 else _VRAM
 
     def sample_at(ctx: int, n_cpu_moe: int | None) -> Sample:
+        """Make the exact boundary infeasible during measurement."""
         assert n_cpu_moe is not None
         if n_cpu_moe == 30:
             raise TrialInfeasibleError("boundary moved")
@@ -100,9 +106,13 @@ def test_every_point_turning_infeasible_reports_no_usable_sample() -> None:
     """Report an actionable search failure when nothing measurable survives."""
 
     def probe_at(ctx: int, n_cpu_moe: int | None) -> ClassifiedOutcome:
+        """Classify every point as feasible before measurement."""
+        del ctx, n_cpu_moe
         return _SUCCESS
 
     def sample_at(ctx: int, n_cpu_moe: int | None) -> Sample:
+        """Make every previously feasible point fail measurement."""
+        del ctx, n_cpu_moe
         raise TrialInfeasibleError("boundary moved")
 
     with pytest.raises(SearchError, match="no feasible context step"):
@@ -114,10 +124,13 @@ def test_cpu_confirms_the_baseline_without_probing_an_offload_axis() -> None:
     offloads: list[int | None] = []
 
     def probe_at(ctx: int, n_cpu_moe: int | None) -> ClassifiedOutcome:
+        """Record the absent CPU offload coordinate during feasibility."""
+        del ctx
         offloads.append(n_cpu_moe)
         return _SUCCESS
 
     def sample_at(ctx: int, n_cpu_moe: int | None) -> Sample:
+        """Record and measure the null CPU offload coordinate."""
         offloads.append(n_cpu_moe)
         return Sample(ctx, n_cpu_moe, "mtp2", sample(ctx, 0, 10.0).quick, 4.0, None, 9.0, None)
 
@@ -128,13 +141,64 @@ def test_cpu_confirms_the_baseline_without_probing_an_offload_axis() -> None:
     assert [item.n_cpu_moe for item in samples] == [None]
 
 
+def test_cpu_baseline_uses_the_same_single_retry_taxonomy() -> None:
+    """Retry one transient CPU probe and count both attempts against the shared budget."""
+    outcomes = [
+        ClassifiedOutcome(TrialOutcome.RETRYABLE),
+        ClassifiedOutcome(TrialOutcome.SUCCESS),
+    ]
+    calls: list[str] = []
+
+    def probe_at(ctx: int, n_cpu_moe: int | None) -> ClassifiedOutcome:
+        """Return the next CPU retry-taxonomy outcome."""
+        del ctx, n_cpu_moe
+        calls.append("probe")
+        return outcomes.pop(0)
+
+    def sample_at(ctx: int, n_cpu_moe: int | None) -> Sample:
+        """Measure the CPU baseline after its successful retry."""
+        del n_cpu_moe
+        calls.append("sample")
+        return Sample(ctx, None, "mtp2", sample(ctx, 0, 10.0).quick, 4.0, None, 9.0, None)
+
+    samples = search_samples(
+        SearchProvider(probe_at, sample_at), GroupPlan((8192,), 2, has_offload_axis=False)
+    )
+
+    assert calls == ["probe", "probe", "sample"]
+    assert len(samples) == 1
+
+
+def test_cpu_protocol_invalid_probe_stops_the_mode() -> None:
+    """Apply the CUDA protocol-invalid rule to the CPU baseline probe too."""
+
+    def probe_at(ctx: int, n_cpu_moe: int | None) -> ClassifiedOutcome:
+        """Return protocol-invalid evidence for the CPU baseline."""
+        del ctx, n_cpu_moe
+        return ClassifiedOutcome(TrialOutcome.PROTOCOL_INVALID)
+
+    def sample_at(ctx: int, n_cpu_moe: int | None) -> Sample:
+        """Fail if invalid evidence ever reaches measurement."""
+        del ctx, n_cpu_moe
+        raise AssertionError("protocol-invalid evidence must never be measured")
+
+    with pytest.raises(SearchError, match="protocol-invalid"):
+        search_samples(
+            SearchProvider(probe_at, sample_at), GroupPlan((8192,), 2, has_offload_axis=False)
+        )
+
+
 def test_an_infeasible_cpu_baseline_reports_no_usable_sample() -> None:
     """Fail the CPU run explicitly rather than recording an unmeasured baseline."""
 
     def probe_at(ctx: int, n_cpu_moe: int | None) -> ClassifiedOutcome:
+        """Classify the CPU baseline as RAM-infeasible."""
+        del ctx, n_cpu_moe
         return ClassifiedOutcome(TrialOutcome.MEMORY_INFEASIBLE, "ram")
 
     def sample_at(ctx: int, n_cpu_moe: int | None) -> Sample:
+        """Fail if an infeasible CPU baseline reaches measurement."""
+        del ctx, n_cpu_moe
         raise AssertionError("an infeasible baseline must never be measured")
 
     with pytest.raises(SearchError, match="no feasible context step"):

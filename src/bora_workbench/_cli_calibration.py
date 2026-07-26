@@ -132,6 +132,8 @@ def _validate(options: CalibrationCliInput) -> None:
     """Reject conflicting activation and unapproved target contexts before any process starts."""
     if options.no_activate and options.activate:
         raise CalibrationError("--no-activate and --activate are mutually exclusive")
+    if options.activate and options.preference is not None:
+        raise CalibrationError("--preference cannot relabel an already measured candidate")
     if options.activate and options.target_ctx is not None:
         raise CalibrationError("--target-ctx cannot be used while activating a pending candidate")
     if options.target_ctx is not None and options.target_ctx not in _APPROVED_CTX:
@@ -176,7 +178,10 @@ def show_preflight(
 ) -> None:
     """Show the objective, reserves, workload, and record lifecycle before confirmation."""
     print_heading(console, "Calibration preflight")
-    console.print("Local three-envelope search; no technical input is needed and nothing is sent.")
+    preference = _preference(options.preference).replace("_", "-")
+    console.print(
+        f"Local {preference} cell search; no technical input is needed and nothing is sent."
+    )
     console.print(f"Modes: {', '.join(mode.id for mode in target.modes)}")
     console.print(f"Backend: {target.hardware.backend}; engine: {target.lock['release']}")
     _print_hardware(target, console)
@@ -186,7 +191,7 @@ def show_preflight(
         f"release tolerance {RELEASE_TOLERANCE_GIB} GiB, {_budget_text(target)}."
     )
     lifecycle = "candidate only" if options.no_activate else "candidate then atomic activation"
-    console.print(f"Records: {records_directory()} ({lifecycle}); three envelopes per mode.")
+    console.print(f"Records: {records_directory()} ({lifecycle}); one cell per selected mode.")
     console.print("Latest-run logs and evidence are retained in one rotated private slot.")
     console.print(
         "Duration: potentially hours; trial crashes are isolated and memory is monitored."
@@ -364,32 +369,30 @@ def _memory(envelope: EnvelopeResult) -> str:
     return ", ".join(values)
 
 
-def _envelope_line(preference: Preference, envelope: EnvelopeResult, is_active: bool) -> str:
-    """Summarize one measured envelope and mark the one this record will launch with."""
+def _envelope_line(envelope: EnvelopeResult) -> str:
+    """Summarize the one measured preference cell this mode will launch with."""
     sample = envelope.sample
-    marker = " (active)" if is_active else ""
     return (
-        f"  {preference}{marker}: ctx={sample.ctx}, n_cpu_moe={_offload(envelope)}; "
+        f"  {envelope.preference}: ctx={sample.ctx}, n_cpu_moe={_offload(envelope)}; "
         f"{sample.e2e_ms:.0f} ms short e2e, {sample.decode_tps:.2f} tok/s decode, "
         f"{sample.prefill_tps:.2f} tok/s prefill; {_memory(envelope)}"
     )
 
 
-def _mode_lines(result: ModeResult, active: Preference) -> list[str]:
-    """Build the per-mode header and one line per measured preference envelope."""
-    lines = [f"{result.mode.id}: {len(result.samples)} measured sample(s)"]
-    for preference in PREFERENCES:
-        envelope = result.envelopes[preference]
-        lines.append(_envelope_line(preference, envelope, preference == active))
-    return lines
+def _mode_lines(result: ModeResult) -> list[str]:
+    """Build the per-mode header and its one selected preference cell."""
+    return [
+        f"{result.mode.id}: {len(result.samples)} measured sample(s)",
+        _envelope_line(result.envelope),
+    ]
 
 
-def show_outcome(result: RunResult, active: Preference, console: Console) -> None:
-    """Print the three measured envelopes per mode, then the record and evidence locations."""
+def show_outcome(result: RunResult, console: Console) -> None:
+    """Print one measured cell per mode, then the record and evidence locations."""
     state = "completed for every selected mode" if not result.failures else "completed partially"
     print_success(console, f"Local calibration {state}.")
     for mode_result in result.mode_results:
-        for line in _mode_lines(mode_result, active):
+        for line in _mode_lines(mode_result):
             console.print(line)
     for path in result.record_paths:
         print_note(console, "Record", str(path))
@@ -421,12 +424,12 @@ def _measure(target: CalibrationTarget, run_options: RunOptions) -> RunResult:
 
 
 def _run(options: CalibrationCliInput, stdout: Console) -> None:
-    """Activate pending candidates or measure the three envelopes of the selected modes."""
+    """Activate pending candidates or measure one preference cell per selected mode."""
     _validate(options)
-    preference = _preference(options.preference)
     if options.activate:
         _activate(options.mode, stdout)
         return
+    preference = _preference(options.preference)
     target = prepare_target(options.mode)
     show_preflight(target, options, stdout)
     if not typer.confirm("Start calibration?", default=False):
@@ -439,7 +442,7 @@ def _run(options: CalibrationCliInput, stdout: Console) -> None:
             progress=progress,
         )
         result = _measure(target, run_options)
-    show_outcome(result, preference, stdout)
+    show_outcome(result, stdout)
     if result.failures:
         # The records that were written stay valid and activated; the run is still incomplete, so
         # the exit code must not claim success for modes that produced nothing (spec 5.11).
