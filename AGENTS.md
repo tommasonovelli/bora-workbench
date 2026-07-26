@@ -28,6 +28,9 @@ apply here.
   regenerated digest chain; the artifacts of `0.1.0`–`0.1.4` embed the previous digests. Version
   0.1.6 (D-067) makes calibration a single working protocol and removes the redundant ones; a record
   written by an earlier version is diagnosed as superseded, never migrated.
+- **Current distribution is GitHub Releases only** (D-070). Do not add a PyPI publication job,
+  Trusted Publisher instructions, registry installer source, or registry availability claim unless
+  the maintainer makes a new explicit decision.
 - **There is exactly one calibration protocol** (D-067/D-069): `bora calibrate` measures one
   requested preference cell per selected mode. The earlier laboratory and paired-search protocols,
   their `--protocol` option, and the older record formats were removed, so never reintroduce a

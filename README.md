@@ -1,7 +1,7 @@
 # bora-workbench
 
 [![CI](https://github.com/tommasonovelli/bora-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/tommasonovelli/bora-workbench/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/tommasonovelli/bora-workbench.svg)](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.2.0)
+[![Release](https://img.shields.io/github/v/release/tommasonovelli/bora-workbench.svg)](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.2.1)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-31213/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -60,9 +60,10 @@ If this is your first time opening the project, the simplest path is:
 > Do not use it for critical workloads without independent verification and backups of your local
 > data.
 
-Version **`0.2.0`** is the first release named `bora-workbench`, whose command is `bora`. An
-installation of the previous `qwen-launcher` series is replaced rather than upgraded: its
-configuration, data, cache, and state directories are not read by `bora`.
+Version **`0.2.1`** is distributed exclusively through GitHub Releases. Its distribution is
+`bora-workbench` and its command is `bora`. An installation of the previous `qwen-launcher` series
+is replaced rather than upgraded: its configuration, data, cache, and state directories are not
+read by `bora`.
 
 Calibration uses one working protocol. The removed protocol switch and record formats are not
 supported, and a record written by the previous launcher is diagnosed as superseded. Re-run
@@ -82,26 +83,30 @@ If `nvidia-smi` is unavailable or unreliable, the launcher falls back to CPU and
 
 ## Installation
 
-Install the exact `v0.2.0` wheel from the GitHub Release. The commands below download the installer
-and wheel, verify both SHA-256 digests, and then install the tool with pinned uv `0.11.28` and
-CPython `3.12.13`. You do not need to install uv or Python first, and no administrator privileges
-are used.
+Install the exact `v0.2.1` wheel from the GitHub Release. The commands below download the release
+manifest, verify the installer and wheel against it, and install the tool with pinned uv `0.11.28`
+and CPython `3.12.13`. You do not need to install uv or Python first, and no administrator
+privileges are used.
 
 ### Ubuntu
 
 Open a terminal in a new directory, copy the entire block, and press Enter:
 
 ```bash
-version="0.2.0"
+version="0.2.1"
 base="https://github.com/tommasonovelli/bora-workbench/releases/download/v${version}"
 wheel="bora_workbench-${version}-py3-none-any.whl"
-installer_sha256="102be4606a3b71dfd088a333ed3fe2fed0e2faa61b9c60febe4aa05603ea1ba6"
-wheel_sha256="9a3fc0d3c7f6887ddd87cceed45bc588e36a61b71ba246a471e9e172430b7f27"
 
 curl --fail --location --proto '=https' --tlsv1.2 \
   "$base/install.sh" --output install.sh
 curl --fail --location --proto '=https' --tlsv1.2 \
   "$base/$wheel" --output "$wheel"
+curl --fail --location --proto '=https' --tlsv1.2 \
+  "$base/SHA256SUMS" --output SHA256SUMS
+installer_sha256="$(awk '$2 == "install.sh" { print $1 }' SHA256SUMS)"
+wheel_sha256="$(awk -v wheel="$wheel" '$2 == wheel { print $1 }' SHA256SUMS)"
+test "${#installer_sha256}" -eq 64
+test "${#wheel_sha256}" -eq 64
 printf '%s  %s\n' "$installer_sha256" install.sh | sha256sum --check -
 printf '%s  %s\n' "$wheel_sha256" "$wheel" | sha256sum --check -
 sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
@@ -112,20 +117,30 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 Open PowerShell in a new directory, copy the entire block, and press Enter:
 
 ```powershell
-$Version = "0.2.0"
+$Version = "0.2.1"
 $Base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v$Version"
 $Wheel = "bora_workbench-$Version-py3-none-any.whl"
-$InstallerSha256 = "ad9adaa7c4ed1bcf94e64f199dc5e02695f1eb62a6dcaadcd4b2ce0bfacba128"
-$WheelSha256 = "9a3fc0d3c7f6887ddd87cceed45bc588e36a61b71ba246a471e9e172430b7f27"
 
 Invoke-WebRequest -Uri "$Base/install.ps1" -OutFile install.ps1
 Invoke-WebRequest -Uri "$Base/$Wheel" -OutFile $Wheel
-if ((Get-FileHash .\install.ps1 -Algorithm SHA256).Hash.ToLowerInvariant() -ne $InstallerSha256) {
-    throw "install.ps1 SHA-256 mismatch"
+Invoke-WebRequest -Uri "$Base/SHA256SUMS" -OutFile SHA256SUMS
+
+$Expected = @{}
+Get-Content .\SHA256SUMS | ForEach-Object {
+    if ($_ -match '^([0-9a-f]{64})\s+(.+)$') {
+        $Expected[$Matches[2]] = $Matches[1]
+    }
 }
-if ((Get-FileHash ".\$Wheel" -Algorithm SHA256).Hash.ToLowerInvariant() -ne $WheelSha256) {
-    throw "$Wheel SHA-256 mismatch"
+foreach ($File in @("install.ps1", $Wheel)) {
+    if (-not $Expected.ContainsKey($File)) {
+        throw "$File is missing from SHA256SUMS"
+    }
+    $Actual = (Get-FileHash ".\$File" -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($Actual -ne $Expected[$File]) {
+        throw "$File SHA-256 mismatch"
+    }
 }
+$WheelSha256 = $Expected[$Wheel]
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 `
   -Wheel ".\$Wheel" -Sha256 $WheelSha256
 ```

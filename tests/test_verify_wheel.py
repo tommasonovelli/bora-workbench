@@ -19,7 +19,7 @@ def test_install_prefetches_locked_dependencies_before_offline_verification(
 
     monkeypatch.setattr(verify_wheel.subprocess, "run", run)
     python = tmp_path / "python"
-    wheel = Path("dist/bora_workbench-0.2.0-py3-none-any.whl")
+    wheel = Path("dist/bora_workbench-0.2.1-py3-none-any.whl")
     requirements = "httpx==0.28.1 --hash=sha256:deadbeef\n"
 
     verify_wheel._install_locked_wheel("uv", python, wheel)

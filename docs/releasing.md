@@ -1,28 +1,25 @@
 # Releasing and publication
 
-This page describes the current process. Publishing means creating or modifying remote resources: an
-explicit human authorization is always required for pushes, tags, GitHub Releases, and PyPI.
+This page describes the current GitHub-only process. Creating or modifying remote resources always
+requires explicit human authorization for the push, tag, and GitHub Release.
 
 ## Public status
 
-- current branch: local `bora-workbench 0.2.0` candidate, not published;
-- current public version: historical `qwen-launcher 0.1.6`;
-- remote tags: `v0.1.0`, `v0.1.1`, `v0.1.2`, `v0.1.3`, `v0.1.4`, `v0.1.5`, and `v0.1.6`;
-- GitHub Release `v0.1.6`: published with the installers, wheel, sdist, and `SHA256SUMS`;
-- the `0.1.6` digests are the ones in the manifest attached to the release and come from the green
-  build job;
-- PyPI: neither historical `qwen-launcher` nor current `bora-workbench` is published; the first
-  planned project/version is `bora-workbench==0.2.0`;
-- public release `v0.1.6`: calibration becomes a single working protocol, validated on hardware on
-  Ubuntu; the redundant protocols, the `--protocol` option, and the older record formats are
-  removed.
+- release described by this branch: `bora-workbench 0.2.1`;
+- preceding public version: `bora-workbench 0.2.0` on GitHub Releases;
+- historical versions `0.1.0` through `0.1.6` remain immutable under their original
+  `qwen-launcher` artifact identity;
+- every published bundle comes from its green Ubuntu/Windows release workflow and contains the
+  wheel, sdist, both installers, and `SHA256SUMS`;
+- D-070 limits current and future publication to GitHub Releases until the maintainer makes a new
+  explicit decision;
+- calibration coverage remains `GATE-PARTIAL`; no local candidate is activated and no omitted
+  platform or hardware run is described as a passed Gate.
 
-The sections below describe what each published release contained. They name the protocol versions
-that existed at the time on purpose: they are the history of the artifacts, not a description of the
-current CLI, which offers one calibration protocol and no `--protocol` option.
-
-Published artifacts are immutable. Do not rebuild, replace, or re-upload files under the same
-version to include later fixes: that requires a new version.
+Historical sections below name protocol versions and registry decisions that applied to those
+artifacts. They preserve the record; they do not describe the current CLI or publication path.
+Published artifacts are immutable and are never rebuilt, replaced, or re-uploaded under the same
+version.
 
 To install the release, see [Installation](installation.md).
 
@@ -59,6 +56,24 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.2.1
+
+`0.2.1` records D-070 and makes distribution exclusively GitHub-based. The registry publication
+job, manual publication dispatch, OIDC permission, and registry installer options are removed. The
+README and installation guide use copy-ready Ubuntu and Windows commands that verify the release
+wheel and installer against `SHA256SUMS`.
+
+This release does not change the engine, model, calibration search, record format, or candidate
+state. Manual Ubuntu/Windows hardware runs are waived by the maintainer; the automated release
+matrix remains required and the waiver is not a passed Gate.
+
+### Release 0.2.0
+
+`0.2.0` is the repository, distribution, package, command, and managed-root rename from
+`qwen-launcher` to `bora-workbench`. It also replaces the three stored calibration envelopes with
+one selected preference cell per mode. The public GitHub artifacts remain immutable; `0.2.1`
+contains the later distribution-policy and installation-documentation changes.
 
 ### Release 0.1.6
 
@@ -153,9 +168,9 @@ added to the public evidence.
 
 Limits and checks that were not run must be explicit. `0.1.3` was authorized for commit, push, tag,
 and GitHub Release before the real spike; this does not amount to a Gate, and PyPI remains excluded.
-For `0.2.0`, D-069 explicitly waives additional manual Ubuntu/Windows and hardware calibration runs
-before publication. The automated release matrix remains required; the waiver is not a passed Gate,
-and the maintainer will perform platform checks after release.
+For `0.2.1`, D-070 carries forward the explicit waiver of additional manual Ubuntu/Windows and
+hardware calibration runs before publication. The automated release matrix remains required; the
+waiver is not a passed Gate, and the maintainer will perform platform checks after release.
 
 ## Version, tag, and commit
 
@@ -174,42 +189,29 @@ git diff --staged
 
 ## GitHub workflow
 
-Pushing a `v*` tag or manually dispatching that tag runs `.github/workflows/release.yml`:
+Pushing a `v*` tag runs `.github/workflows/release.yml`:
 
 1. a test matrix on Ubuntu and Windows;
 2. verification that the tag and metadata match;
 3. a single build after the tests;
 4. isolated verification of the wheel, sdist, and complete self-uninstall;
-5. a `bora-workbench-release-bundle` containing wheel, sdist, both installers, and `SHA256SUMS`;
-6. a separate `python-package-distributions` artifact containing only the tested wheel and sdist;
-7. PyPI publication of that distribution artifact only on a manual dispatch whose required input
-   is exactly `publish-bora-workbench`.
+5. a `bora-workbench-release-bundle` containing wheel, sdist, both installers, and `SHA256SUMS`.
 
-The actions are pinned to full SHAs. Global permissions are `contents: read`; only the `publish`
-job, protected by the `pypi` environment, receives `id-token: write`. There is no PyPI token in the
-repository. A normal tag push builds and verifies but cannot publish.
+Every action is pinned to a full commit SHA and the workflow has only `contents: read`. It has no
+manual dispatch, OIDC permission, registry environment, or publication job. The GitHub Release is
+created from the exact bundle produced by this green workflow.
 
-## PyPI Trusted Publishing
+## Distribution boundary
 
-The failed `0.1.0` publication belongs to distribution `qwen-launcher`; the maintainer closed that
-recovery on 26 July 2026. Do not rerun it, rebuild it, or point it at the renamed project.
+D-070 supersedes the active registry-publication clauses in D-068 and D-069. `bora-workbench` is
+published only through GitHub Releases until a future explicit maintainer decision changes that
+boundary. The installers accept either a release wheel with its SHA-256 or a full Git commit; they
+have no package-registry source.
 
-For the first authorized `bora-workbench==0.2.0` upload, configure this pending Trusted Publisher:
-
-```text
-project:      bora-workbench
-owner/repo:   tommasonovelli/bora-workbench
-workflow:     release.yml
-environment:  pypi
-```
-
-The GitHub `pypi` environment must require a reviewer and restrict deployments to release tags. A
-pending publisher does not reserve the project name until its first successful upload. Creating the
-publisher, changing environment protection, dispatching publication, and the upload itself remain
-remote actions requiring explicit authorization in that session.
-
-Until PyPI actually contains a version, the installers must not use `--pypi-version` /
-`-PypiVersion` for that version.
+Historical failed or pending publisher configuration is not used by this repository. Registry URLs
+in `uv.lock` remain dependency sources for the frozen environment and do not publish
+`bora-workbench`. A future registry release would require a new normative decision, implementation,
+review, and current-session authorization.
 
 ## GitHub Release
 
@@ -229,7 +231,7 @@ upload a local build different from the one that went through the release matrix
 
 On clean Ubuntu and Windows machines:
 
-1. compare the digests from GitHub and, when available, PyPI;
+1. compare every downloaded artifact with the GitHub Release `SHA256SUMS`;
 2. install the published source;
 3. verify the version, validation, doctor, and engine;
 4. run at least one mode and a clean stop;

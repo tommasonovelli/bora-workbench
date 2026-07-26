@@ -17,69 +17,91 @@ CUDA on a machine with more than one GPU is detected, but startup is blocked: ph
 only been verified on single-GPU hosts. If `nvidia-smi` is missing, fails, or produces unreadable
 data, the launcher uses the CPU backend and shows why.
 
-## 2. Installing bora-workbench 0.2.0
+## 2. Installing bora-workbench 0.2.1
 
-The GitHub Release and PyPI distribution start at `0.2.0`. Install the explicit version; the
-installer pins uv and Python and never selects a floating package version.
+`bora-workbench` is distributed through GitHub Releases. These commands download the `v0.2.1`
+manifest, verify the installer and wheel, and install with pinned uv `0.11.28` and CPython
+`3.12.13`. They require no administrator privileges.
 
 ### Ubuntu
 
+Open a terminal in a new directory and copy the complete block:
+
 ```bash
-base="https://github.com/tommasonovelli/bora-workbench/releases/download/v0.2.0"
-curl --fail --location "$base/install.sh" --output install.sh
-sh ./install.sh --pypi-version 0.2.0
+version="0.2.1"
+base="https://github.com/tommasonovelli/bora-workbench/releases/download/v${version}"
+wheel="bora_workbench-${version}-py3-none-any.whl"
+
+curl --fail --location --proto '=https' --tlsv1.2 \
+  "$base/install.sh" --output install.sh
+curl --fail --location --proto '=https' --tlsv1.2 \
+  "$base/$wheel" --output "$wheel"
+curl --fail --location --proto '=https' --tlsv1.2 \
+  "$base/SHA256SUMS" --output SHA256SUMS
+installer_sha256="$(awk '$2 == "install.sh" { print $1 }' SHA256SUMS)"
+wheel_sha256="$(awk -v wheel="$wheel" '$2 == wheel { print $1 }' SHA256SUMS)"
+test "${#installer_sha256}" -eq 64
+test "${#wheel_sha256}" -eq 64
+printf '%s  %s\n' "$installer_sha256" install.sh | sha256sum --check -
+printf '%s  %s\n' "$wheel_sha256" "$wheel" | sha256sum --check -
+sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 ```
 
 ### Windows
 
-From PowerShell:
+Open PowerShell in a new directory and copy the complete block:
 
 ```powershell
-$base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v0.2.0"
-Invoke-WebRequest "$base/install.ps1" -OutFile install.ps1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 -PypiVersion 0.2.0
+$Version = "0.2.1"
+$Base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v$Version"
+$Wheel = "bora_workbench-$Version-py3-none-any.whl"
+
+Invoke-WebRequest -Uri "$Base/install.ps1" -OutFile install.ps1
+Invoke-WebRequest -Uri "$Base/$Wheel" -OutFile $Wheel
+Invoke-WebRequest -Uri "$Base/SHA256SUMS" -OutFile SHA256SUMS
+
+$Expected = @{}
+Get-Content .\SHA256SUMS | ForEach-Object {
+    if ($_ -match '^([0-9a-f]{64})\s+(.+)$') {
+        $Expected[$Matches[2]] = $Matches[1]
+    }
+}
+foreach ($File in @("install.ps1", $Wheel)) {
+    if (-not $Expected.ContainsKey($File)) {
+        throw "$File is missing from SHA256SUMS"
+    }
+    $Actual = (Get-FileHash ".\$File" -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($Actual -ne $Expected[$File]) {
+        throw "$File SHA-256 mismatch"
+    }
+}
+$WheelSha256 = $Expected[$Wheel]
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 `
+  -Wheel ".\$Wheel" -Sha256 $WheelSha256
 ```
 
 `ExecutionPolicy Bypass` applies to that process only. The script does not change the system policy
 and does not require administrative privileges.
 
-The release also contains the wheel, source distribution, both installers, and `SHA256SUMS` for
-offline verification and installation.
-
-### Historical public release 0.1.6
-
-The last public release is
-[v0.1.6](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.1.6), published before
-the rename. Its immutable identity is distribution `qwen-launcher`, package `qwen_launcher`, command
-`qwen-launcher`, and wheel `qwen_launcher-0.1.6-py3-none-any.whl`. The renamed repository URL does
-not change those bytes or names.
+The release also contains the source distribution, both installers, and `SHA256SUMS` for offline
+verification and installation.
 
 The installers always accept exactly one explicit source:
 
 ```text
 install.sh  --wheel PATH --sha256 HEX
 install.sh  --git-commit FULL_COMMIT
-install.sh  --pypi-version VERSION
 
 install.ps1 -Wheel PATH -Sha256 HEX
 install.ps1 -GitCommit FULL_COMMIT
-install.ps1 -PypiVersion VERSION
 ```
 
-The current installers target `bora-workbench`. The historical v0.1.6 installers target
-`qwen-launcher`; do not combine one release's installer with the other release's wheel.
-
-Verify a historical installation with:
-
-```bash
-qwen-launcher --version
-qwen-launcher validate
-qwen-launcher doctor
-```
+Use the wheel and manifest for a release installation. The full 40-character commit option is for
+testing an exact repository revision and never follows a branch or tag implicitly.
 
 ## 3. Verifying the tool
 
-For `0.2.0`:
+For `0.2.1`:
 
 ```bash
 bora --version

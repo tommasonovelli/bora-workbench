@@ -6,13 +6,14 @@ prerequisites, pins uv 0.11.28 through its official versioned installer, and ins
 CPython 3.12.13. Exactly one source remains mandatory so an install never changes version or trust
 boundary because of an implicit default.
 #>
-[CmdletBinding()]
+[CmdletBinding(PositionalBinding = $false)]
 param(
     [string]$Wheel,
     [string]$Sha256,
     [string]$GitCommit,
-    [string]$PypiVersion,
-    [switch]$Help
+    [switch]$Help,
+    [Parameter(ValueFromRemainingArguments = $true)]
+    [string[]]$UnexpectedArguments
 )
 
 Set-StrictMode -Version Latest
@@ -33,14 +34,18 @@ function Stop-WithError {
 
 function Show-Usage {
     [Console]::Error.WriteLine(@"
-Usage: install.ps1 (-Wheel PATH -Sha256 HEX | -GitCommit HEX | -PypiVersion VERSION)
+Usage: install.ps1 (-Wheel PATH -Sha256 HEX | -GitCommit HEX)
 
 Exactly one explicit source is required; no version is selected implicitly.
 
   -Wheel PATH -Sha256 HEX   install a local wheel after verifying its 64-hex SHA-256
   -GitCommit HEX            install from a 40-hex commit of $RepoUrl
-  -PypiVersion VERSION      install an explicit version that exists on PyPI
 "@)
+}
+
+if ($UnexpectedArguments) {
+    Show-Usage
+    Stop-WithError "unknown argument: $($UnexpectedArguments[0])" 2
 }
 
 if ($Help) {
@@ -53,12 +58,10 @@ function Test-Hex {
     return $Value -match "^[0-9a-fA-F]{$Length}$"
 }
 
-# Require exactly one explicit source. A missing source is an input error, never a silent PyPI
-# default, so rerunning the installer cannot unexpectedly select a newer release.
+# Require exactly one explicit source so rerunning cannot select a different release.
 $sources = 0
 if ($Wheel) { $sources++ }
 if ($GitCommit) { $sources++ }
-if ($PypiVersion) { $sources++ }
 if ($sources -ne 1) {
     Show-Usage
     Stop-WithError "select exactly one explicit install source (got $sources)" 2
@@ -155,8 +158,7 @@ else {
 
 # Build the single explicit install target and install the tool with the pinned Python.
 if ($Wheel) { $target = $Wheel }
-elseif ($GitCommit) { $target = "bora-workbench @ git+$RepoUrl@$GitCommit" }
-else { $target = "bora-workbench==$PypiVersion" }
+else { $target = "bora-workbench @ git+$RepoUrl@$GitCommit" }
 
 & $uvBin @('tool', 'install', '--force', '--python', $PythonVersion, $target)
 if ($LASTEXITCODE -ne 0) {

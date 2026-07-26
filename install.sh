@@ -21,25 +21,23 @@ die() {
 
 usage() {
     cat >&2 <<EOF
-Usage: install.sh (--wheel PATH --sha256 HEX | --git-commit HEX | --pypi-version VERSION)
+Usage: install.sh (--wheel PATH --sha256 HEX | --git-commit HEX)
 
 Exactly one explicit source is required; no version is selected implicitly.
 
   --wheel PATH --sha256 HEX   install a local wheel after verifying its 64-hex SHA-256
   --git-commit HEX            install from a 40-hex commit of ${REPO_URL}
-  --pypi-version VERSION      install an explicit version that exists on PyPI
 EOF
 }
 
 wheel=""
 sha256=""
 git_commit=""
-pypi_version=""
 
 while [ "$#" -gt 0 ]; do
     key="$1"
     case "$key" in
-        --wheel | --sha256 | --git-commit | --pypi-version)
+        --wheel | --sha256 | --git-commit)
             [ "$#" -ge 2 ] || die "missing value for $key" 2
             value="$2"
             shift 2
@@ -57,16 +55,13 @@ while [ "$#" -gt 0 ]; do
         --wheel) wheel="$value" ;;
         --sha256) sha256="$value" ;;
         --git-commit) git_commit="$value" ;;
-        --pypi-version) pypi_version="$value" ;;
     esac
 done
 
-# Require exactly one explicit source. A missing source is an input error, never a silent PyPI
-# default, so rerunning the installer cannot unexpectedly select a newer release.
+# Require exactly one explicit source so rerunning cannot select a different release.
 source_count=0
 if [ -n "$wheel" ]; then source_count=$((source_count + 1)); fi
 if [ -n "$git_commit" ]; then source_count=$((source_count + 1)); fi
-if [ -n "$pypi_version" ]; then source_count=$((source_count + 1)); fi
 if [ "$source_count" -ne 1 ]; then
     usage
     die "select exactly one explicit install source (got $source_count)" 2
@@ -147,10 +142,8 @@ fi
 # Build the single explicit install target and install the tool with the pinned Python.
 if [ -n "$wheel" ]; then
     target="$wheel"
-elif [ -n "$git_commit" ]; then
-    target="bora-workbench @ git+${REPO_URL}@${git_commit}"
 else
-    target="bora-workbench==${pypi_version}"
+    target="bora-workbench @ git+${REPO_URL}@${git_commit}"
 fi
 
 "$uv_bin" tool install --force --python "$PYTHON_VERSION" "$target" ||

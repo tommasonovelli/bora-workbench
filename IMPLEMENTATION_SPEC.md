@@ -67,6 +67,10 @@ Updated on 26 July 2026.
   (D-069). An individual mode can retain a different preference; `--mode all` applies one
   preference to all selected modes. The historical v5 three-envelope records are superseded and
   never migrated.
+- [x] Version `0.2.0`, tag `v0.2.0`, and its GitHub Release are public from the green release
+  workflow; later documentation changes do not alter those immutable artifacts.
+- [x] D-070 selects GitHub Releases as the only current distribution channel and prepares `0.2.1`
+  to remove the registry workflow, installer options, and current publication instructions.
 
 ### Open work
 
@@ -76,10 +80,8 @@ Updated on 26 July 2026.
   reserves, quick-bench, and gate. The logic is covered by offline tests on both platforms.
 - [~] Repeat `calibrate --no-activate` on materially different hardware; coverage remains
   `GATE-PARTIAL` and no envelope is transferred between hosts.
-- [ ] Complete the local `0.2.0` audit, cross-platform CI, artifact verification, and documented
-  manual limitations without calling them a Gate.
-- [ ] Configure the `bora-workbench` PyPI Trusted Publisher only for the first authorized `0.2.0`
-  publication; every upload requires a separately confirmed workflow dispatch.
+- [ ] Complete the `0.2.1` automated suite, cross-platform release CI, exact artifact verification,
+  and documented manual limitations without calling them a Gate.
 - [ ] Router, managed Open WebUI, sync, and standalone benchmark remain post-0.2 backlog.
 
 No local candidate is activated and no post-0.2 backlog item is started without an explicit
@@ -115,6 +117,10 @@ plugins, deleting the Hugging Face cache, and arbitrary user modes.
 `bora` command, new managed-root identity, consolidated modules, and the stabilization required by
 the refactor audit. It keeps the one calibration protocol and pinned engine/model behavior already
 distributed in `0.1.6`.
+
+`0.2.1` changes only the distribution boundary and its installation/release documentation: current
+artifacts are published through GitHub Releases only (D-070). It does not change engine, model,
+calibration, record, or candidate behavior.
 
 The previously planned router, skills, managed Open WebUI, sync, and standalone benchmark are
 post-0.2 backlog. They are not silently included in `0.2.0` and create no dependency or compatibility
@@ -202,6 +208,7 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-067 | Calibration becomes a single protocol, 25 July 2026, and the trial adapter behind D-066 is repaired. Four defects made every run fail. (1) `wait_for_health` caught only `ConnectError` and `TimeoutException`, so the `ReadError` a dying server produces escaped `start_service` and bypassed its cleanup, leaving a live child and a registered service that made the next start refuse; every transport class is now read as "not ready yet". (2) `start_service` cleaned up only for a listed set of exception classes; it now cleans up whatever escapes. (3) Exhausted VRAM was unclassifiable: the driver rejects the allocation, so free VRAM never crosses the monitored reserve and the engine only reports it by dying during model load. (4) The final gate sized its smoke prompt in words instead of tokens, overshooting the window by roughly 2.3x, so the gate could never pass. D-059 stays class-based with one declared exception: `ServerStartupError` carries the process log, and only the VRAM side of `MEMORY_INFEASIBLE` is decided from that log, because no monitor class can observe a rejected allocation. A first full hardware run then exposed two failures no offline test could reach, both caused by a memory boundary that moves between measurements on a nearly full GPU. (5) A group that failed discarded the modes that had already completed, because records were persisted only after every group finished; each group now persists its own records and the run reports which groups produced nothing while still exiting operationally. (6) A finalist that stopped fitting the reserves during ABBA failed the whole mode; the comparison is now abandoned and the surviving finalist confirmed, and the same point reached at the gate counts as a gate it cannot pass. With the protocol working, the redundant ones are removed: the `calibration/v1` laboratory, `calibration/v5`, the `--protocol` option, the `calibration-record/v2`-`/v4` formats and their schemas, `validate --path`, the repository-only cross-context spike package, and the public ordering seeds the search no longer consumes. `calibrate` is one command with `--preference`, `--target-ctx`, `--activate`, and `--no-activate`; the surviving modules drop their version infix, and user-facing documentation stops naming protocol versions. The on-disk record format keeps its identifier as a data-format marker so a record written by an older launcher is diagnosed as superseded rather than misread. |
 | D-068 | On 26 July 2026 the maintainer explicitly selects the current refactor as `0.2.0`: distribution `bora-workbench`, package `bora_workbench`, command `bora`, and repository `tommasonovelli/bora-workbench`. The earlier Step 7–9 router/Open WebUI/benchmark roadmap is postponed beyond 0.2. The final version is authorized without describing the audit or manual run as a passed Gate. PyPI starts with `bora-workbench==0.2.0`; the failed historical `qwen-launcher==0.1.0` publication is closed and its artifacts are never relabelled, rebuilt, or uploaded under the new project. Local completion does not authorize a push, tag, GitHub Release, PyPI upload, remote setting, or candidate activation; each remains a separate current-session action. |
 | D-069 | On 26 July 2026 the maintainer replaces the v5 three-envelope record with one calibrated preference cell per mode. `--preference fast|balanced|max-context` selects the only cell searched, confirmed, gated, and stored; `--mode all` applies the same preference to all three modes, while separate mode runs may retain different preferences. Recalibration replaces only the selected modes' candidate/active lifecycle files. The incompatible format is `calibration-record/v6`; v2–v5 records are superseded and never migrated. Candidate activation promotes the cell exactly as measured and cannot relabel it. The maintainer also authorizes commit, push to `tommasonovelli/bora-workbench`, tag `v0.2.0`, GitHub Release, and the first `bora-workbench==0.2.0` PyPI publication after automated checks and CI succeed. Manual Ubuntu/Windows calibration and hardware runs are explicitly waived for this release, remain follow-up verification, and are not a passed Gate. |
+| D-070 | On 26 July 2026 the maintainer withdraws the active PyPI publication clauses of D-068/D-069 and selects GitHub Releases as the only distribution channel until a future explicit decision. Version `0.2.1` removes the registry publication job, manual dispatch, OIDC permission, separate distribution artifact, registry installer options, and current registry instructions; dependency registry URLs in `uv.lock` remain frozen input sources, not a publication path. Historical decisions and artifacts stay unchanged. The maintainer authorizes the `0.2.1` commit, push to `tommasonovelli/bora-workbench`, tag after local checks, and the GitHub Release after the tag's release CI succeeds; they explicitly waive manual Ubuntu/Windows and hardware runs, and do not authorize a registry upload, remote-setting change, candidate activation, or Gate claim. |
 
 A new durable decision updates this table in the same step that authorizes it.
 
@@ -499,15 +506,15 @@ pushes and publication are not.
 
 ## 7. Historical 0.1 stabilization
 
-### 7.1 PyPI recovery closed
+### 7.1 Historical registry recovery closed
 
 Run `29739366272` attempted to publish distribution `qwen-launcher==0.1.0` and failed before any
 PyPI project existed. On 26 July 2026 the maintainer closed that recovery rather than transferring
 the old bytes to the renamed project. Versions `0.1.0`–`0.1.6`, their package `qwen_launcher`, their
 command `qwen-launcher`, and their artifact names remain historical facts.
 
-The first PyPI project for the renamed repository is `bora-workbench`, starting at `0.2.0`. No
-historical wheel or sdist is rebuilt, relabelled, or uploaded to it.
+D-070 also closes the later `bora-workbench` registry path before any upload. Current distribution
+is GitHub Releases only; no historical wheel or sdist is rebuilt, relabelled, or republished.
 
 ### 7.2 Release 0.1.1 completed
 
@@ -688,6 +695,13 @@ passed Human Gate. The local audit, suite, build, isolated wheel/uninstall check
 Ubuntu manual checks must be reported exactly. Push, tag, GitHub Release, PyPI, remote settings, and
 candidate activation remain individually authorized operations.
 
+### Local 0.2.1 finalization
+
+D-070 authorizes the `0.2.1` commit, push, and tag after the local suite succeeds, and the GitHub
+Release only after the tag's release CI succeeds. The release uses the exact checksum-manifested
+bundle produced by CI. Manual platform and hardware runs are waived and remain explicit limitations, not a passed Gate. Registry upload,
+remote-setting changes, and candidate activation are not authorized.
+
 ---
 
 ## 9. Open acceptance criteria
@@ -696,7 +710,8 @@ candidate activation remain individually authorized operations.
 
 - [x] The maintainer closed the failed `qwen-launcher==0.1.0` PyPI recovery; historical artifacts
   remain under their original identity and are not republished.
-- [x] PyPI verification for 0.1 is explicitly not pursued; `bora-workbench` starts at `0.2.0`.
+- [x] Registry verification for 0.1 is explicitly not pursued; D-070 keeps current distribution on
+  GitHub Releases only.
 - [x] Post-release fixes distributed only with the newly authorized version `0.1.1`.
 - [x] `calibration/v4` really verified on Ubuntu and Windows before 0.1.1.
 - [x] The `RELEASE` decision for `0.1.2` is explicit and records that the manual Gate was not
@@ -717,9 +732,12 @@ candidate activation remain individually authorized operations.
   `bora` / `tommasonovelli/bora-workbench`.
 - [x] The maintainer selected the refactor as final `0.2.0` without claiming a passed Gate.
 - [x] Router, Open WebUI, sync, and standalone benchmark are explicitly postponed beyond 0.2.
-- [ ] Local audit, suite, build, isolated install/uninstall, and feasible Ubuntu checks complete.
-- [ ] Cross-platform CI confirms the tested release commit.
-- [ ] Any push, tag, GitHub Release, PyPI upload, or remote setting receives separate authorization.
+- [x] Local `0.2.1` suite, build, and isolated install/uninstall checks are complete; manual
+  platform and hardware runs are waived and are not a passed Gate.
+- [ ] Cross-platform CI confirms the tested `0.2.1` release commit and produces the exact bundle.
+- [x] D-070 authorizes the `0.2.1` commit, push, tag, and GitHub Release in this session while
+  excluding registry upload, remote-setting changes, candidate activation, and a Gate claim.
+- [x] The release workflow and installers expose no package-registry publication or install path.
 
 ---
 
@@ -731,7 +749,6 @@ candidate activation remain individually authorized operations.
 - uv 0.11.28: <https://github.com/astral-sh/uv/releases/tag/0.11.28>
 - uv build backend: <https://docs.astral.sh/uv/concepts/build-backend/>
 - GitHub Actions security: <https://docs.github.com/en/actions/reference/security/secure-use>
-- PyPI Trusted Publishing: <https://docs.pypi.org/trusted-publishers/>
 - Open WebUI environment: <https://docs.openwebui.com/reference/env-configuration/>
 
 For `llama.cpp`, the lock and evidence of the pinned release prevail, not moving links to the

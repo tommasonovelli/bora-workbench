@@ -38,12 +38,12 @@ of the launcher.
 
 ## Current status
 
-The current branch prepares `bora-workbench 0.2.0`, package `bora_workbench`, and command `bora`.
-Its first PyPI version under that identity is `0.2.0`.
+This branch defines the `bora-workbench 0.2.1` release, package `bora_workbench`, and command
+`bora`, distributed exclusively through GitHub Releases.
 
-The last public release is historical `qwen-launcher 0.1.6`, now hosted under the renamed repository
-URL. Its package, command, wheel names, and verified artifacts remain unchanged and must not be
-rebuilt or relabelled.
+The preceding public release is `bora-workbench 0.2.0`. Historical `qwen-launcher 0.1.6` is now
+hosted under the renamed repository URL; its package, command, wheel names, and verified artifacts
+remain unchanged and must not be rebuilt or relabelled.
 
 ## Current limits
 

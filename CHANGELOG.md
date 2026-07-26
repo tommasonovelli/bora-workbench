@@ -3,6 +3,21 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
+## [0.2.1] - 2026-07-26
+
+### Changed
+
+- Distribute `bora-workbench` exclusively through immutable, checksum-manifested GitHub Release
+  bundles until the maintainer makes a new explicit distribution decision.
+- Document copy-ready Ubuntu and Windows installation from the `v0.2.1` wheel and `SHA256SUMS`.
+
+### Removed
+
+- Remove the manual registry dispatch, publication job, OIDC permission, protected-environment
+  dependency, and separate distributions artifact from the release workflow.
+- Remove the registry-version source from both installers; they now accept only a verified local
+  wheel or a full Git commit.
+
 ## [0.2.0] - 2026-07-26
 
 ### Changed
@@ -11,9 +26,9 @@ live in `IMPLEMENTATION_SPEC.md`.
   `qwen-launcher` / `qwen_launcher` / `qwen-launcher` to
   `bora-workbench` / `bora_workbench` / `bora`. Historical `0.1.0`–`0.1.6` artifacts keep their
   original identity.
-- Prepare `bora-workbench==0.2.0` as the first PyPI publication. Publishing requires a confirmed
-  manual workflow dispatch and a protected OIDC environment; no persistent repository variable can
-  make later tags upload automatically.
+- Prepare `bora-workbench==0.2.0` as the first PyPI publication. Publishing required a confirmed
+  manual workflow dispatch and a protected OIDC environment; no upload occurred. D-070 and `0.2.1`
+  subsequently remove this publication path.
 - Calibrate and store one requested `fast`, `balanced`, or `max-context` cell per selected mode.
   `--mode all` applies one preference to all modes, while separate runs can retain different
   preferences. The incompatible `calibration-record/v6` supersedes v5 without migration.

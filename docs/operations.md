@@ -26,9 +26,9 @@ Expected errors show no traceback. In general:
 
 ### The installer asks for a source
 
-That is intentional: there is no implicit default. For the local `0.2.0` candidate use the newly
-built wheel and its digest as described in [Installation](installation.md). The PyPI source becomes
-valid only after `bora-workbench==0.2.0` is published.
+That is intentional: there is no implicit default. For `0.2.1`, use the wheel from the GitHub
+Release and its manifest digest as described in [Installation](installation.md). A full commit hash
+is also accepted for testing an exact repository revision.
 
 Historical `0.1.6` artifacts install `qwen-launcher`; they are not `bora-workbench` wheels despite
 the repository's renamed URL.

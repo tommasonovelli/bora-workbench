@@ -37,13 +37,11 @@ _WIN_FLAGS = {
     "wheel": "-Wheel",
     "sha256": "-Sha256",
     "git_commit": "-GitCommit",
-    "pypi_version": "-PypiVersion",
 }
 _POSIX_FLAGS = {
     "wheel": "--wheel",
     "sha256": "--sha256",
     "git_commit": "--git-commit",
-    "pypi_version": "--pypi-version",
 }
 
 
@@ -109,7 +107,7 @@ def _run(tmp_path: Path, args: list[str]) -> Run:
 
 def _make_wheel(tmp_path: Path) -> tuple[Path, str]:
     """Write a dummy wheel file and return its path and real SHA-256 digest."""
-    wheel = tmp_path / "bora_workbench-0.2.0-py3-none-any.whl"
+    wheel = tmp_path / "bora_workbench-0.2.1-py3-none-any.whl"
     payload = b"not a real wheel; the installer verifies only the digest"
     wheel.write_bytes(payload)
     return wheel, hashlib.sha256(payload).hexdigest()
@@ -159,7 +157,11 @@ def test_no_source_is_input_error_without_implicit_version(tmp_path: Path) -> No
 
 def test_multiple_sources_rejected(tmp_path: Path) -> None:
     """Two competing sources are invalid input and do not reach uv."""
-    result = _run(tmp_path, _installer_args(git_commit="a" * 40, pypi_version="0.2.0"))
+    wheel, digest = _make_wheel(tmp_path)
+    result = _run(
+        tmp_path,
+        _installer_args(wheel=str(wheel), sha256=digest, git_commit="a" * 40),
+    )
     assert result.returncode == 2
     assert result.log == ""
 
@@ -178,11 +180,14 @@ def test_git_commit_must_be_full_hash(tmp_path: Path) -> None:
     assert result.returncode == 2
 
 
-def test_pypi_version_source_pins_exact_version(tmp_path: Path) -> None:
-    """An explicit PyPI version is pinned exactly in the uv install target."""
-    result = _run(tmp_path, _installer_args(pypi_version="0.2.0"))
-    assert result.returncode == 0, result.stderr
-    assert "bora-workbench==0.2.0" in result.log
+def test_removed_registry_source_is_rejected(tmp_path: Path) -> None:
+    """The removed registry option is invalid input and never reaches uv."""
+    option = "-PypiVersion" if IS_WINDOWS else "--pypi-version"
+    result = _run(tmp_path, [option, "0.2.1"])
+    assert result.returncode == 2
+    assert "unknown argument" in result.stderr
+    assert "ParameterBindingException" not in result.stderr
+    assert result.log == ""
 
 
 def test_windows_checksum_does_not_require_get_file_hash() -> None:
@@ -203,13 +208,19 @@ def test_windows_uv_installer_uses_random_temporary_path_and_finally_cleanup() -
     assert '"uv-$UvVersion-install.ps1"' not in script
 
 
-def test_current_and_historical_install_guides_use_their_actual_commands() -> None:
-    """Keep the README current while preserving history in the detailed guide."""
+def test_current_install_guides_use_the_current_command_and_distribution() -> None:
+    """Keep both installation guides on the current GitHub-only distribution."""
     readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     installation = (REPO_ROOT / "docs/installation.md").read_text(encoding="utf-8")
 
-    assert "bora --version" in readme
+    for guide in (readme, installation):
+        assert "bora --version" in guide
+        assert "qwen-launcher --version" not in guide
+        assert "pypi" not in guide.casefold()
+        assert 'installer_sha256="$(awk' in guide
+        assert 'test "${#installer_sha256}" -eq 64' in guide
+        assert "printf '%s  %s\\n' \"$installer_sha256\" install.sh" in guide
+        assert 'test "${#wheel_sha256}" -eq 64' in guide
+        assert 'printf \'%s  %s\\n\' "$wheel_sha256" "$wheel"' in guide
+
     assert "0.1.6" not in readme
-    assert "qwen-launcher --version" not in readme
-    assert "bora --version" in installation
-    assert "qwen-launcher --version" in installation
