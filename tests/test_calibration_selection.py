@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from bora_workbench._calibration_selection import near_tied_rival, select_envelopes
+from bora_workbench._calibration_runner import near_tied_rival, select_envelopes
 from tests.sample_fixtures import sample
 
 

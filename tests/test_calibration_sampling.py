@@ -4,13 +4,18 @@ from __future__ import annotations
 
 import pytest
 
-from bora_workbench._calibration_outcomes import ClassifiedOutcome, TrialOutcome
-from bora_workbench._calibration_sampling import GroupPlan, SearchProvider, search_samples
+from bora_workbench._calibration_search import (
+    GroupPlan,
+    SearchProvider,
+    search_samples,
+)
 from bora_workbench._calibration_types import (
     CONTEXT_SCALE,
+    ClassifiedOutcome,
     Sample,
     SearchError,
     TrialInfeasibleError,
+    TrialOutcome,
 )
 from tests.sample_fixtures import sample
 

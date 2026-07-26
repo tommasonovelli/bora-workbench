@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from bora_workbench._calibration_errors import CalibrationError, CalibrationRunError
+from bora_workbench._calibration_types import CalibrationError, CalibrationRunError
 from bora_workbench.config import DEFAULT_MODEL, Config, load_config
 from bora_workbench.engine import JsonObject, load_engine_lock, locate, resolve_model
 from bora_workbench.hardware import HardwareInfo, detect_hardware, ensure_launch_supported

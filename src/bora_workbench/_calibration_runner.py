@@ -1,26 +1,34 @@
-"""Orchestrate one calibration mode group over injectable trial providers (spec 1.2).
+"""Decide the three envelopes of one calibration mode group (spec 1.2, 3.4-3.5).
 
-Trial execution is injected so the orchestration is tested fake-first; the real provider lives in
-``_calibration_trial`` and the feasible-region search in ``_calibration_sampling``. Text modes
-(coding+studio) share one hardware search and set of samples and differ only by their per-mode gate
-and recorded policy; vstudio runs its own group.
+One decision runs in three stages over the samples a group measured: selection picks a winner per
+preference with pure rules, ABBA confirmation re-measures only the pairs selection could not
+separate, and the final gate accepts an envelope or falls back once to its near-tied rival. The
+three stages share the same near-tie definition, so they belong to one module: a rival the
+selection considers material is exactly the rival confirmation re-measures and the gate retries.
+
+Every selection and confirmation rule is a pure function of the measured samples, so the recorded
+choice can be reconstructed from the record. Trial execution is injected, which keeps this
+orchestration fake-tested; the real provider lives in ``_calibration_trial`` and the feasible-region
+search in ``_calibration_search``. Text modes (coding+studio) share one hardware search and set of
+samples and differ only by their per-mode gate and recorded policy; vstudio runs its own group.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from statistics import median
 
-from bora_workbench._calibration_confirm import RoundResult, needs_third_round, resolve
-from bora_workbench._calibration_sampling import (
+from bora_workbench._calibration_search import (
     GroupPlan,
     SampleAt,
     SearchProvider,
     search_samples,
 )
-from bora_workbench._calibration_selection import near_tied_rival, select_envelopes
 from bora_workbench._calibration_types import (
+    BALANCED_CEILING,
+    DEADBAND_PCT,
+    MIN_CTX_FAST,
     PREFERENCES,
     EnvelopeResult,
     GateResult,
@@ -33,14 +41,18 @@ from bora_workbench.profiles import Mode
 
 GateAt = Callable[[int, int | None], GateResult]
 
-# Both phase totals are caps, not schedules. Confirmation pairs every preference that can have a
-# near-tied rival, and each of those runs two or three ABBA rounds of two trials; max_context never
-# pairs, so it contributes nothing. Each envelope's gate may additionally gate one rival.
+# max_context is decided by the largest feasible context, which re-measurement cannot change, so it
+# is the one preference that never pairs. Both phase totals are caps, not schedules: each paired
+# preference runs two or three ABBA rounds of two trials, and each envelope's gate may additionally
+# gate one rival.
 _PAIRED_PREFERENCES = tuple(name for name in PREFERENCES if name != "max_context")
 _MAX_ABBA_ROUNDS = 3
 _TRIALS_PER_ROUND = 2
 MAX_PAIRING_TRIALS = len(_PAIRED_PREFERENCES) * _MAX_ABBA_ROUNDS * _TRIALS_PER_ROUND
 MAX_GATE_TRIALS = len(PREFERENCES) * 2
+
+_DISPERSION_LIMIT = 0.10
+_THIRD_ROUND_FACTOR = 1.5
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,6 +71,154 @@ class ModeResult:
     envelopes: dict[Preference, EnvelopeResult]
     samples: tuple[Sample, ...]
     selection_inputs: dict[Preference, tuple[tuple[float, float], ...]]
+
+
+def _free_vram(sample: Sample) -> float:
+    """Return comparable minimum free VRAM, treating an absent value as the least margin."""
+    return -1.0 if sample.vram_min_free_gib is None else sample.vram_min_free_gib
+
+
+def _prudence(sample: Sample) -> int:
+    """Return the offload prudence tie-break, which is constant on a backend without that axis."""
+    return 0 if sample.n_cpu_moe is None else sample.n_cpu_moe
+
+
+def _within_deadband(value: float, best: float) -> bool:
+    """Return whether one smaller-is-better value stays inside the material-improvement band."""
+    return value <= best * (1 + DEADBAND_PCT / 100)
+
+
+def _throughput_key(sample: Sample) -> tuple[float, float, int]:
+    """Order samples by throughput, then VRAM margin, then prudence."""
+    return (sample.decode_tps, _free_vram(sample), _prudence(sample))
+
+
+def _fast_key(sample: Sample) -> tuple[float, float, int]:
+    """Break a fast deadband tie by prefill, then VRAM margin, then prudence."""
+    return (sample.prefill_tps, _free_vram(sample), _prudence(sample))
+
+
+def _select_fast(samples: tuple[Sample, ...]) -> Sample:
+    """Return the minimum median short end-to-end sample at or above the fast context floor."""
+    eligible = tuple(sample for sample in samples if sample.ctx >= MIN_CTX_FAST) or samples
+    best_e2e = min(sample.e2e_ms for sample in eligible)
+    contenders = tuple(sample for sample in eligible if _within_deadband(sample.e2e_ms, best_e2e))
+    return max(contenders, key=_fast_key)
+
+
+def _select_balanced(samples: tuple[Sample, ...], fast: Sample) -> Sample:
+    """Return the largest context whose short end-to-end stays within the balanced ceiling."""
+    ceiling = fast.e2e_ms * BALANCED_CEILING
+    eligible = tuple(sample for sample in samples if sample.e2e_ms <= ceiling) or (fast,)
+    max_ctx = max(sample.ctx for sample in eligible)
+    return max((s for s in eligible if s.ctx == max_ctx), key=_throughput_key)
+
+
+def _select_max_context(samples: tuple[Sample, ...]) -> Sample:
+    """Return the maximum feasible context, ordered by those throughput semantics within it."""
+    max_ctx = max(sample.ctx for sample in samples)
+    return max((s for s in samples if s.ctx == max_ctx), key=_throughput_key)
+
+
+def select_envelopes(samples: tuple[Sample, ...]) -> dict[Preference, Sample]:
+    """Select all three preference envelopes from one shared set of feasible samples (spec 3.4)."""
+    fast = _select_fast(samples)
+    return {
+        "fast": fast,
+        "balanced": _select_balanced(samples, fast),
+        "max_context": _select_max_context(samples),
+    }
+
+
+def _fast_rivals(samples: tuple[Sample, ...], winner: Sample) -> tuple[Sample, ...]:
+    """Return fast contenders whose short end-to-end stays within the winner's deadband."""
+    pool = tuple(sample for sample in samples if sample.ctx >= MIN_CTX_FAST) or samples
+    return tuple(sample for sample in pool if _within_deadband(sample.e2e_ms, winner.e2e_ms))
+
+
+def _throughput_rivals(samples: tuple[Sample, ...], winner: Sample) -> tuple[Sample, ...]:
+    """Return same-context contenders whose decode throughput ties the winner within deadband."""
+    floor = winner.decode_tps * (1 - DEADBAND_PCT / 100)
+    return tuple(s for s in samples if s.ctx == winner.ctx and s.decode_tps >= floor)
+
+
+def near_tied_rival(
+    samples: tuple[Sample, ...], winner: Sample, preference: Preference
+) -> Sample | None:
+    """Return the strongest distinct contender ABBA must disambiguate, or None when clear."""
+    rivals = (
+        _fast_rivals(samples, winner)
+        if preference == "fast"
+        else _throughput_rivals(samples, winner)
+    )
+    key = _fast_key if preference == "fast" else _throughput_key
+    others = tuple(
+        sample
+        for sample in rivals
+        if (sample.ctx, sample.n_cpu_moe) != (winner.ctx, winner.n_cpu_moe)
+    )
+    return max(others, key=key) if others else None
+
+
+@dataclass(frozen=True, slots=True)
+class RoundResult:
+    """Hold one ABBA round's per-finalist median metric and intra-round dispersion fraction."""
+
+    medians: tuple[float, float]
+    dispersions: tuple[float, float]
+
+
+def _round_winner(medians: tuple[float, float]) -> int | None:
+    """Return the better finalist, or None when the round stays inside the deadband."""
+    first, second = medians
+    if abs(first - second) <= DEADBAND_PCT / 100 * min(first, second):
+        return None
+    return 0 if first < second else 1
+
+
+def _aggregate(rounds: tuple[RoundResult, ...]) -> tuple[float, float]:
+    """Return each finalist's median metric across the completed rounds."""
+    return (
+        median(round_result.medians[0] for round_result in rounds),
+        median(round_result.medians[1] for round_result in rounds),
+    )
+
+
+def needs_third_round(rounds: tuple[RoundResult, RoundResult]) -> bool:
+    """Trigger a third round on discordant winners, a sub-1.5x gap, or a noisy round (spec 3.4)."""
+    winners = {value for value in (_round_winner(r.medians) for r in rounds) if value is not None}
+    if len(winners) > 1:
+        return True
+    first, second = _aggregate(rounds)
+    if abs(first - second) < _THIRD_ROUND_FACTOR * DEADBAND_PCT / 100 * min(first, second):
+        return True
+    return any(value > _DISPERSION_LIMIT for r in rounds for value in r.dispersions)
+
+
+def _equivalence_index(finalists: tuple[Sample, Sample]) -> int:
+    """Break an equivalent confirmation by VRAM margin, then prudence.
+
+    A backend without an offload axis records no ``n_cpu_moe``; both finalists then compare equal
+    and the first one wins, keeping the rule total instead of comparing two absent values. That
+    absent axis sorts below every real offload here, which is why this tie-break does not reuse
+    ``_prudence``: the two rules only ever agree on the samples one group can actually produce.
+    """
+    first, second = finalists
+    first_free, second_free = _free_vram(first), _free_vram(second)
+    if first_free != second_free:
+        return 0 if first_free > second_free else 1
+    first_offload = -1 if first.n_cpu_moe is None else first.n_cpu_moe
+    second_offload = -1 if second.n_cpu_moe is None else second.n_cpu_moe
+    return 0 if first_offload >= second_offload else 1
+
+
+def resolve(rounds: tuple[RoundResult, ...], finalists: tuple[Sample, Sample]) -> int:
+    """Resolve the confirmed winner by decisive-round majority, then material equivalence."""
+    winners = [value for value in (_round_winner(r.medians) for r in rounds) if value is not None]
+    zeros, ones = winners.count(0), winners.count(1)
+    if zeros != ones:
+        return 0 if zeros > ones else 1
+    return _equivalence_index(finalists)
 
 
 def _dispersion(sample: Sample) -> float:
@@ -92,19 +252,25 @@ def _abba_round(finalists: tuple[Sample, Sample], sample_at: SampleAt) -> RoundR
     return RoundResult((first.e2e_ms, second.e2e_ms), (_dispersion(first), _dispersion(second)))
 
 
+def _finalists(
+    samples: tuple[Sample, ...], winner: Sample, preference: Preference
+) -> tuple[Sample, Sample] | None:
+    """Pair the winner with the rival ABBA has to separate, or None when the choice is clear."""
+    if preference not in _PAIRED_PREFERENCES:
+        return None
+    rival = near_tied_rival(samples, winner, preference)
+    return None if rival is None else (winner, rival)
+
+
 def _confirm(
-    samples: tuple[Sample, ...], preference: Preference, winner: Sample, sample_at: SampleAt
+    finalists: tuple[Sample, Sample], sample_at: SampleAt
 ) -> tuple[Sample, tuple[RoundResult, ...]]:
-    """Disambiguate a near-tied fast or balanced winner with ABBA and the third-round rule.
+    """Disambiguate two near-tied finalists with ABBA and the third-round rule (spec 3.4).
 
     A finalist that stops fitting the reserves between the search and confirmation cannot become a
     launch envelope, so the surviving finalist is confirmed with no recorded rounds instead of
     failing the mode: the comparison is abandoned, never silently continued with one side missing.
     """
-    rival = None if preference == "max_context" else near_tied_rival(samples, winner, preference)
-    if rival is None:
-        return winner, ()
-    finalists = (winner, rival)
     try:
         rounds = [_abba_round(finalists, sample_at), _abba_round(finalists, sample_at)]
         if needs_third_round((rounds[0], rounds[1])):
@@ -114,61 +280,75 @@ def _confirm(
     return finalists[resolve(tuple(rounds), finalists)], tuple(rounds)
 
 
-def _gate(target: GateTarget, sample: Sample) -> GateResult | None:
-    """Gate one envelope, reading a point that turned infeasible as a gate it cannot pass."""
-    try:
-        return target.gate_at(sample.ctx, sample.n_cpu_moe)
-    except TrialInfeasibleError:
-        return None
-
-
-def _gate_envelope(
-    target: GateTarget, preference: Preference, sample: Sample, samples: tuple[Sample, ...]
-) -> EnvelopeResult:
-    """Gate the confirmed envelope, retrying the next candidate once before failing the mode."""
-    result = _gate(target, sample)
-    if result is not None and result.passed:
-        return EnvelopeResult(preference, sample, result)
-    rival = near_tied_rival(samples, sample, preference)
-    if rival is not None and (retry := _gate(target, rival)) is not None and retry.passed:
-        return EnvelopeResult(preference, rival, retry)
-    raise SearchError(f"{preference} envelope failed the final gate for mode {target.mode.id}")
-
-
-def _group_label(targets: tuple[GateTarget, ...]) -> str:
-    """Name the modes that share one hardware search, because their trials are shared too."""
-    return "+".join(target.mode.id for target in targets)
-
-
 def _confirm_all(
-    provider: SearchProvider, samples: tuple[Sample, ...]
+    samples: tuple[Sample, ...], sample_at: SampleAt
 ) -> tuple[dict[Preference, Sample], dict[Preference, tuple[tuple[float, float], ...]]]:
     """Confirm every preference envelope from the shared samples of one group."""
-    winners = select_envelopes(samples)
     confirmed: dict[Preference, Sample] = {}
     inputs: dict[Preference, tuple[tuple[float, float], ...]] = {}
-    for preference, winner in winners.items():
-        sample, rounds = _confirm(samples, preference, winner, provider.sample_at)
+    for preference, winner in select_envelopes(samples).items():
+        pair = _finalists(samples, winner, preference)
+        sample, rounds = (winner, ()) if pair is None else _confirm(pair, sample_at)
         confirmed[preference] = sample
         inputs[preference] = tuple(round_result.medians for round_result in rounds)
     return confirmed, inputs
+
+
+def _gate_candidates(
+    samples: tuple[Sample, ...], winner: Sample, preference: Preference
+) -> Iterator[Sample]:
+    """Yield the confirmed envelope, then the one rival that earns a second gate.
+
+    The rival is looked up lazily, so a winner that passes its gate never runs the search for one.
+    """
+    yield winner
+    rival = near_tied_rival(samples, winner, preference)
+    if rival is not None:
+        yield rival
+
+
+def _gate_envelope(
+    target: GateTarget, preference: Preference, candidates: Iterator[Sample]
+) -> EnvelopeResult:
+    """Return the first candidate that passes the mode's final gate (spec 3.5).
+
+    A point that turned infeasible since it was confirmed cannot become a launch envelope, so it
+    counts as a gate it did not pass rather than as a failure of the whole run.
+    """
+    for candidate in candidates:
+        try:
+            result = target.gate_at(candidate.ctx, candidate.n_cpu_moe)
+        except TrialInfeasibleError:
+            continue
+        if result.passed:
+            return EnvelopeResult(preference, candidate, result)
+    raise SearchError(f"{preference} envelope failed the final gate for mode {target.mode.id}")
+
+
+def _gate_mode(
+    target: GateTarget, confirmed: dict[Preference, Sample], samples: tuple[Sample, ...]
+) -> dict[Preference, EnvelopeResult]:
+    """Gate one mode's confirmed envelopes, allowing its near-tied rival one second chance."""
+    envelopes: dict[Preference, EnvelopeResult] = {}
+    for preference, sample in confirmed.items():
+        candidates = _gate_candidates(samples, sample, preference)
+        envelopes[preference] = _gate_envelope(target, preference, candidates)
+    return envelopes
 
 
 def run_group(
     provider: SearchProvider, targets: tuple[GateTarget, ...], plan: GroupPlan
 ) -> tuple[ModeResult, ...]:
     """Run one shared search, then confirm and gate each mode's envelopes from those samples."""
-    label = _group_label(targets)
+    # The label names every mode of the group, because one search serves all of their trials.
+    label = "+".join(target.mode.id for target in targets)
     plan.progress.enter(label, "search", plan.trial_cap)
     samples = search_samples(provider, plan)
     plan.progress.enter(label, "pairing", MAX_PAIRING_TRIALS)
-    confirmed, inputs = _confirm_all(provider, samples)
+    confirmed, inputs = _confirm_all(samples, provider.sample_at)
     results = []
     for target in targets:
         plan.progress.enter(target.mode.id, "gate", MAX_GATE_TRIALS)
-        envelopes = {
-            preference: _gate_envelope(target, preference, sample, samples)
-            for preference, sample in confirmed.items()
-        }
+        envelopes = _gate_mode(target, confirmed, samples)
         results.append(ModeResult(target.mode, envelopes, samples, inputs))
     return tuple(results)

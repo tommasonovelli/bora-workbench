@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from bora_workbench._calibration_confirm import RoundResult, needs_third_round, resolve
+from bora_workbench._calibration_runner import RoundResult, needs_third_round, resolve
 from tests.sample_fixtures import sample
 
 _QUIET = (0.02, 0.02)

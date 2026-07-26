@@ -26,7 +26,7 @@ from bora_workbench._calibration_record import (
 from bora_workbench._calibration_record_build import RecordContext, build_record
 from bora_workbench._calibration_run_types import RunOptions, RunResult
 from bora_workbench._calibration_runner import GateTarget, ModeResult, run_group
-from bora_workbench._calibration_sampling import GroupPlan, SearchProvider
+from bora_workbench._calibration_search import GroupPlan, SearchProvider
 from bora_workbench._calibration_trial import TrialRunner
 from bora_workbench._calibration_trial_control import TrialProgress
 from bora_workbench._calibration_types import (
