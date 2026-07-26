@@ -7,7 +7,7 @@ import socket
 
 import pytest
 
-from bora_workbench._calibration_privacy import has_private_path_pattern, privacy_findings
+from bora_workbench._calibration_record import has_private_path_pattern, privacy_findings
 
 
 @pytest.mark.parametrize(

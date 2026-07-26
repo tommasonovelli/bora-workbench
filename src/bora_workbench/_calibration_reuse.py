@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import cast
+from dataclasses import dataclass, replace
+from typing import Literal, cast
 
 from bora_workbench._calibration_record import (
     JsonObject,
@@ -13,14 +14,43 @@ from bora_workbench._calibration_record import (
     load_record,
     record_path,
 )
-from bora_workbench._calibration_reuse_types import (
-    CandidateStatus,
-    RecordEvaluation,
-    ReuseQuery,
-)
-from bora_workbench.hardware import HardwareError, query_gpu_snapshot
+from bora_workbench.config import Config
+from bora_workbench.hardware import HardwareError, HardwareInfo, query_gpu_snapshot
 
 _RAM_IDENTITY_TOLERANCE_GIB = 1 / 1024
+
+RecordStatus = Literal[
+    "valid",
+    "missing",
+    "candidate",
+    "superseded",
+    "invalid",
+    "incompatible",
+    "insufficient-headroom",
+]
+CandidateStatus = Literal["missing", "valid", "superseded", "invalid"]
+
+
+@dataclass(frozen=True, slots=True)
+class ReuseQuery:
+    """Group current identities a record must match before reuse."""
+
+    config: Config
+    mode_id: str
+    hardware: HardwareInfo
+    lock: JsonObject
+
+
+@dataclass(frozen=True, slots=True)
+class RecordEvaluation:
+    """Report active reuse and pending-candidate state with actionable diagnostics."""
+
+    status: RecordStatus
+    ctx: int | None
+    n_cpu_moe: int | None
+    diagnostics: tuple[str, ...]
+    candidate_status: CandidateStatus = "missing"
+    candidate_diagnostics: tuple[str, ...] = ()
 
 
 def _ram_identity_mismatch(recorded: object, current: float) -> str | None:
@@ -131,19 +161,12 @@ def _candidate_state(mode_id: str) -> tuple[CandidateStatus, tuple[str, ...]]:
 def _with_candidate(evaluation: RecordEvaluation, mode_id: str) -> RecordEvaluation:
     """Attach pending-candidate diagnostics to an already determined active state."""
     status, diagnostics = _candidate_state(mode_id)
-    return RecordEvaluation(
-        evaluation.status,
-        evaluation.ctx,
-        evaluation.n_cpu_moe,
-        evaluation.diagnostics,
-        status,
-        diagnostics,
-    )
+    return replace(evaluation, candidate_status=status, candidate_diagnostics=diagnostics)
 
 
-def _missing_evaluation(query: ReuseQuery) -> RecordEvaluation:
+def _missing_evaluation(mode_id: str) -> RecordEvaluation:
     """Distinguish no active record from a valid pending candidate."""
-    candidate_status, candidate_diagnostics = _candidate_state(query.mode_id)
+    candidate_status, candidate_diagnostics = _candidate_state(mode_id)
     if candidate_status == "valid":
         message = "pending calibration candidate is not active; use `calibrate --activate`"
         return RecordEvaluation(
@@ -163,7 +186,7 @@ def evaluate_record(query: ReuseQuery) -> RecordEvaluation:
     """Evaluate one mode's active record and expose pending candidate state separately."""
     path = record_path(query.mode_id)
     if not path.is_file():
-        return _missing_evaluation(query)
+        return _missing_evaluation(query.mode_id)
     try:
         record = load_record(path)
     except RecordSupersededError as error:

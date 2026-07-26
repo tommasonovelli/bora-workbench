@@ -7,8 +7,7 @@ from pathlib import Path
 import pytest
 
 import bora_workbench._calibration_run as run_module
-from bora_workbench._calibration_run import _contexts, _groups, _measure, _RunSpec
-from bora_workbench._calibration_run_types import RunOptions
+from bora_workbench._calibration_run import RunOptions, _contexts, _groups, _measure, _RunSpec
 from bora_workbench._calibration_runner import ModeResult
 from bora_workbench._calibration_trial_control import TrialProgress
 from bora_workbench._calibration_types import BASELINE_CTX, CONTEXT_SCALE, SearchError

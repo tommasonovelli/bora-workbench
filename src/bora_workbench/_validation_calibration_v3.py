@@ -14,7 +14,7 @@ import hashlib
 from datetime import UTC, datetime
 from typing import cast
 
-from bora_workbench._calibration_privacy import has_private_path_pattern
+from bora_workbench._calibration_record import has_private_path_pattern
 from bora_workbench.validation import Document, JsonObject, ValidationIssue
 
 _EXPECTED_BLOCK_COUNT = 41

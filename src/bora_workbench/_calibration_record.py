@@ -1,28 +1,61 @@
-"""Build, validate, and atomically manage private calibration records.
+"""Own what one calibration run leaves on disk: its record, its evidence, and their privacy.
 
 One record format is supported. ``RECORD_SCHEMA`` identifies it inside the file so a record written
 by an older launcher is diagnosed as superseded instead of being misread; it is a data-format marker
 and never a choice the operator has to make.
+
+The record is lean (spec 3.6): probes, pruned candidates and logs are not duplicated in it, because
+they live in the evidence tree keyed by ``evidence_run_id``; only the envelopes and the per-round
+medians that reconstruct the selection are retained. Evidence promotion and the privacy rules belong
+here for the same reason: they decide what those two artifacts may contain and keep.
 """
 
 from __future__ import annotations
 
+import getpass
 import hashlib
 import json
 import os
+import re
 import shutil
+import socket
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import cast
 from uuid import uuid4
 
 from jsonschema import Draft202012Validator, FormatChecker
 
+from bora_workbench._calibration_metadata import launcher_version
+from bora_workbench._calibration_runner import ModeResult
+from bora_workbench._calibration_types import (
+    BALANCED_CEILING,
+    CALIBRATION_PROTOCOL,
+    DEADBAND_PCT,
+    MIN_CTX_FAST,
+    PREFERENCES,
+    RAM_RESERVE_GIB,
+    RELEASE_TOLERANCE_GIB,
+    VRAM_RESERVE_GIB,
+    EnvelopeResult,
+    Preference,
+)
+from bora_workbench.calibration import CalibrationTarget
 from bora_workbench.paths import data_dir
+from bora_workbench.profiles import Mode
 from bora_workbench.resources import read_json
 
 JsonObject = dict[str, object]
 RECORD_SCHEMA = "calibration-record/v5"
 _RECORD_SCHEMA_FILE = "schemas/calibration-record.v5.json"
+_RUN_ID = re.compile(r"^[0-9a-f]{32}$")
+_GENERIC_PRIVATE_PATTERNS = (
+    re.compile(r"(?<![\w:])/(?:home|Users)/[^/\s\"']+"),
+    re.compile(r"(?<![\w:])/(?:root|tmp|var|opt|mnt|media|srv|run|etc)(?:/[^\s\"']+)+"),
+    re.compile(r"(?i)(?<![a-z0-9])[a-z]:[\\/][^\s\"']+"),
+    re.compile(r"\\\\[^\\/\s]+[\\/][^\\/\s]+"),
+)
 
 
 class RecordError(RuntimeError):
@@ -64,6 +97,127 @@ def command_contract_sha256(lock: JsonObject) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def _mode_policy_sha256(mode: Mode) -> str:
+    """Digest the canonical mode/v2 behavior so record identity tracks the used policy."""
+    sampling = mode.sampling
+    canonical = {
+        "id": mode.id,
+        "services": {"ui": mode.services.ui, "vision": mode.services.vision},
+        "sampling": {
+            "temp": sampling.temp,
+            "top_p": sampling.top_p,
+            "top_k": sampling.top_k,
+            "min_p": sampling.min_p,
+            "presence_penalty": sampling.presence_penalty,
+            "repeat_penalty": sampling.repeat_penalty,
+            "reasoning": sampling.reasoning,
+        },
+    }
+    payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+@dataclass(frozen=True, slots=True)
+class RecordContext:
+    """Group per-run identity the builder cannot read from the measured samples."""
+
+    target: CalibrationTarget
+    evidence_run_id: str
+    active_preference: Preference
+    gpu_driver: str | None
+
+
+def _envelope_entry(result: EnvelopeResult) -> JsonObject:
+    """Serialize one gated envelope's identity, quick summary, needs, and minima."""
+    sample = result.sample
+    return {
+        "ctx": sample.ctx,
+        "n_cpu_moe": sample.n_cpu_moe,
+        "speculative": sample.speculative,
+        "quick": {
+            "e2e_ms": sample.e2e_ms,
+            "prefill_tps": sample.prefill_tps,
+            "decode_tps": sample.decode_tps,
+        },
+        "gate": {
+            "smoke": result.gate.smoke,
+            "multi_turn": result.gate.multi_turn,
+            "vision": result.gate.vision,
+        },
+        "ram_needed_gib": sample.ram_needed_gib,
+        "vram_needed_gib": sample.vram_needed_gib,
+        "minima": {
+            "minimum_ram_available_gib": sample.ram_min_available_gib,
+            "minimum_vram_free_gib": sample.vram_min_free_gib,
+        },
+    }
+
+
+def _hardware(target: CalibrationTarget, gpu_driver: str | None) -> JsonObject:
+    """Build the stable hardware identity required for local reuse."""
+    hardware = target.hardware
+    return {
+        "cpu_name": hardware.cpu_name,
+        "cpu_cores": hardware.cpu_cores,
+        "ram_total_gib": hardware.ram_total_gib,
+        "gpu_count": hardware.gpu_count,
+        "gpu_name": hardware.gpu_name,
+        "gpu_driver": gpu_driver,
+        "vram_total_gib": hardware.vram_total_gib,
+    }
+
+
+def _selection_inputs(result: ModeResult) -> JsonObject:
+    """Serialize the per-round finalist medians that reconstruct each confirmation."""
+    return {
+        preference: {
+            "round_medians": [list(pair) for pair in result.selection_inputs.get(preference, ())]
+        }
+        for preference in PREFERENCES
+    }
+
+
+def build_record(context: RecordContext, result: ModeResult) -> JsonObject:
+    """Build one complete candidate record document for one measured mode."""
+    target = context.target
+    artifact = cast(JsonObject, target.lock["default_model_artifact"])
+    return {
+        "schema": RECORD_SCHEMA,
+        "mode": result.mode.id,
+        "created_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+        "launcher_version": launcher_version(),
+        "calibration_protocol": CALIBRATION_PROTOCOL,
+        "model": target.config.model,
+        "model_sha256": artifact["sha256"],
+        "engine_release": target.lock["release"],
+        "engine_source_commit": target.lock["source_commit"],
+        "command_contract_sha256": command_contract_sha256(target.lock),
+        "mode_policy_sha256": _mode_policy_sha256(result.mode),
+        "os_name": target.hardware.os_name,
+        "backend": target.hardware.backend,
+        "hardware": _hardware(target, context.gpu_driver),
+        "evidence_run_id": context.evidence_run_id,
+        "active_preference": context.active_preference,
+        "thresholds": {
+            "deadband_pct": DEADBAND_PCT,
+            "balanced_ceiling": BALANCED_CEILING,
+            "min_ctx_fast": MIN_CTX_FAST,
+        },
+        "reserves": {
+            "vram_gib": VRAM_RESERVE_GIB,
+            "ram_gib": RAM_RESERVE_GIB,
+            "release_tolerance_gib": RELEASE_TOLERANCE_GIB,
+        },
+        "envelopes": {pref: _envelope_entry(result.envelopes[pref]) for pref in PREFERENCES},
+        "selection_inputs": _selection_inputs(result),
+    }
+
+
+def _invalid_record(path: Path, message: str) -> RecordError:
+    """Build one actionable semantic record rejection tied to its file."""
+    return RecordError(f"local calibration record {path} is invalid: {message}")
+
+
 def _mode_from_path(path: Path) -> str:
     """Derive mode identity from active, candidate, or previous lifecycle names."""
     name = path.name
@@ -73,12 +227,25 @@ def _mode_from_path(path: Path) -> str:
     return path.stem
 
 
+def _verify_record(document: JsonObject, path: Path) -> None:
+    """Cross-check the fields JSON Schema cannot: reserves and the active envelope."""
+    reserves = cast(JsonObject, document["reserves"])
+    expected = {
+        "vram_gib": VRAM_RESERVE_GIB,
+        "ram_gib": RAM_RESERVE_GIB,
+        "release_tolerance_gib": RELEASE_TOLERANCE_GIB,
+    }
+    if reserves != expected:
+        raise _invalid_record(path, "record reserves do not match the pinned calibration constants")
+    envelopes = cast(JsonObject, document["envelopes"])
+    if document["active_preference"] not in envelopes:
+        raise _invalid_record(path, "active preference must name one recorded envelope")
+
+
 def _validate_record(document: JsonObject, path: Path) -> None:
     """Validate one decoded record's file identity, schema, and semantics."""
-    from bora_workbench._calibration_record_build import verify_record
-
     if document.get("mode") != _mode_from_path(path):
-        raise RecordError(f"local calibration record {path} is invalid: mode must match file name")
+        raise _invalid_record(path, "mode must match file name")
     if document.get("schema") != RECORD_SCHEMA:
         raise RecordError(
             f"local calibration record {path} has unsupported schema {document.get('schema')!r}"
@@ -87,8 +254,8 @@ def _validate_record(document: JsonObject, path: Path) -> None:
     validator = Draft202012Validator(schema, format_checker=FormatChecker())
     errors = sorted(validator.iter_errors(document), key=lambda error: list(error.absolute_path))
     if errors:
-        raise RecordError(f"local calibration record {path} is invalid: {errors[0].message}")
-    verify_record(document, path)
+        raise _invalid_record(path, errors[0].message)
+    _verify_record(document, path)
 
 
 def write_record(document: JsonObject, path: Path) -> Path:
@@ -166,3 +333,57 @@ def promote_candidate(mode_id: str, selected_root: Path | None = None) -> Path:
     except OSError as error:
         raise RecordError(f"cannot activate calibration candidate {candidate}: {error}") from error
     return active
+
+
+def _rotate(destination: Path) -> None:
+    """Delete only older UUID-named managed evidence after the new run is in place."""
+    for child in destination.parent.iterdir():
+        if child == destination or not child.is_dir() or not _RUN_ID.fullmatch(child.name):
+            continue
+        shutil.rmtree(child)
+
+
+def preserve_evidence(calibration_root: Path, runtime_root: Path, run_id: str) -> Path:
+    """Promote runtime logs to the latest evidence slot before removing the prior slot."""
+    if not _RUN_ID.fullmatch(run_id):
+        raise ValueError("calibration evidence run id must be 32 lowercase hexadecimal characters")
+    directory = calibration_root / "evidence"
+    directory.mkdir(parents=True, exist_ok=True)
+    destination = directory / run_id
+    if destination.exists():
+        raise FileExistsError(f"calibration evidence destination already exists: {destination}")
+    runtime_root.replace(destination)
+    _rotate(destination)
+    return destination
+
+
+def has_private_path_pattern(text: str) -> bool:
+    """Return whether text contains a generic POSIX, Windows, or UNC private path."""
+    return any(pattern.search(text) for pattern in _GENERIC_PRIVATE_PATTERNS)
+
+
+def _local_markers(root: Path) -> tuple[str, ...]:
+    """Return local identity and path values that must not occur in a shared bundle."""
+    values = {
+        getpass.getuser(),
+        socket.gethostname(),
+        str(Path.home()),
+        str(root.resolve()),
+    }
+    expanded = values | {value.replace("\\", "/") for value in values}
+    return tuple(sorted((value for value in expanded if value), key=len, reverse=True))
+
+
+def privacy_findings(root: Path) -> tuple[tuple[str, str], ...]:
+    """Find local identity values and generic absolute paths in every shareable file."""
+    markers = _local_markers(root)
+    findings: list[tuple[str, str]] = []
+    for path in sorted(item for item in root.rglob("*") if item.is_file()):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        relative = path.relative_to(root).as_posix()
+        if any(marker in text for marker in markers):
+            findings.append((relative, "contains local username, hostname, or absolute path"))
+            continue
+        if has_private_path_pattern(text):
+            findings.append((relative, "contains a private absolute path pattern"))
+    return tuple(findings)

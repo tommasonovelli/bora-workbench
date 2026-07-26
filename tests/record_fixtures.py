@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from bora_workbench._calibration_record_build import RecordContext, build_record
+from bora_workbench._calibration_record import RecordContext, build_record
 from bora_workbench._calibration_runner import ModeResult
 from bora_workbench._calibration_types import EnvelopeResult, GateResult, Preference
 from bora_workbench.calibration import CalibrationTarget

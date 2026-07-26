@@ -10,8 +10,7 @@ from rich.console import Console
 
 from bora_workbench._calibration_outcomes import UnclassifiableTrialError
 from bora_workbench._calibration_record import RecordError, promote_candidate
-from bora_workbench._calibration_run import run_calibration
-from bora_workbench._calibration_run_types import RunOptions, RunResult
+from bora_workbench._calibration_run import RunOptions, RunResult, run_calibration
 from bora_workbench._calibration_types import (
     CONTEXT_SCALE,
     DEFAULT_PREFERENCE,
