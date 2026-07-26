@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from rich.console import Console
 
-from bora_workbench._calibration_run_types import RunResult
+from bora_workbench._calibration_run import RunResult
 from bora_workbench._calibration_runner import ModeResult
 from bora_workbench._calibration_types import PREFERENCES, EnvelopeResult, Preference
 from bora_workbench._cli_theme import print_note, print_success, print_warning

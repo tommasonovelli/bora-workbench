@@ -12,33 +12,60 @@ from dataclasses import dataclass
 from pathlib import Path
 from uuid import uuid4
 
-from bora_workbench._calibration_evidence import preserve_evidence
 from bora_workbench._calibration_memory import (
     GpuContextBaseline,
     VramEnvironmentError,
     capture_gpu_context_baseline,
 )
 from bora_workbench._calibration_record import (
+    RecordContext,
+    build_record,
     candidate_record_path,
+    preserve_evidence,
     promote_candidate,
     write_record,
 )
-from bora_workbench._calibration_record_build import RecordContext, build_record
-from bora_workbench._calibration_run_types import RunOptions, RunResult
 from bora_workbench._calibration_runner import GateTarget, ModeResult, run_group
 from bora_workbench._calibration_search import GroupPlan, SearchProvider
 from bora_workbench._calibration_trial import TrialRunner
-from bora_workbench._calibration_trial_control import TrialProgress
+from bora_workbench._calibration_trial_control import ProgressCallback, TrialProgress
 from bora_workbench._calibration_types import (
     BASELINE_CTX,
     CONTEXT_SCALE,
+    DEFAULT_PREFERENCE,
     TEXT_SEARCH_BUDGET,
     VSTUDIO_SEARCH_BUDGET,
+    Preference,
     SearchError,
 )
 from bora_workbench.calibration import CalibrationRunError, CalibrationTarget
 from bora_workbench.paths import data_dir
 from bora_workbench.profiles import Mode
+
+
+@dataclass(frozen=True, slots=True)
+class RunOptions:
+    """Group the optional controls without burdening the zero-input default path."""
+
+    preference: Preference = DEFAULT_PREFERENCE
+    target_ctx: int | None = None
+    is_activate: bool = True
+    progress: ProgressCallback | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RunResult:
+    """Identify the evidence run, the written record paths, and any group that did not finish.
+
+    ``failures`` is non-empty only for a partial run: the modes it names produced no record, while
+    every mode in ``mode_results`` was measured and gated completely.
+    """
+
+    evidence_run_id: str
+    record_paths: tuple[Path, ...]
+    mode_results: tuple[ModeResult, ...]
+    evidence_path: Path
+    failures: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

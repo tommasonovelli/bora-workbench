@@ -6,7 +6,7 @@ import hashlib
 import shutil
 from pathlib import Path
 
-from bora_workbench._calibration_privacy import privacy_findings
+from bora_workbench._calibration_record import privacy_findings
 from bora_workbench.profiles import load_catalog
 from bora_workbench.resources import read_json, resource
 from bora_workbench.validation import validate_resources

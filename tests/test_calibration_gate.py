@@ -6,7 +6,7 @@ import json
 
 import httpx
 
-from bora_workbench._calibration_gate import run_gate
+from bora_workbench._calibration_trial import run_gate
 from bora_workbench.profiles import load_catalog
 
 
