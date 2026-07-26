@@ -1,4 +1,4 @@
-"""Tests for deterministic, offline wheel verification."""
+"""Tests for deterministic wheel verification with an offline installation phase."""
 
 from pathlib import Path
 from types import SimpleNamespace
@@ -6,8 +6,10 @@ from types import SimpleNamespace
 from scripts import verify_wheel
 
 
-def test_install_uses_frozen_locked_dependencies_offline(tmp_path, monkeypatch) -> None:
-    """Install exact lock exports before the wheel without resolving newer dependencies."""
+def test_install_prefetches_locked_dependencies_before_offline_verification(
+    tmp_path, monkeypatch
+) -> None:
+    """Populate a fresh CI cache, then install exact dependencies and the wheel offline."""
     calls: list[tuple[list[str], dict[str, object]]] = []
 
     def run(command, **kwargs):
@@ -18,28 +20,15 @@ def test_install_uses_frozen_locked_dependencies_offline(tmp_path, monkeypatch) 
     monkeypatch.setattr(verify_wheel.subprocess, "run", run)
     python = tmp_path / "python"
     wheel = Path("dist/bora_workbench-0.2.0-py3-none-any.whl")
+    requirements = "httpx==0.28.1 --hash=sha256:deadbeef\n"
 
     verify_wheel._install_locked_wheel("uv", python, wheel)
 
-    assert calls[0][0] == [
-        "uv",
-        "export",
-        "--frozen",
-        "--no-dev",
-        "--no-emit-project",
-        "--format",
-        "requirements-txt",
-    ]
-    assert calls[1][0] == [
-        "uv",
-        "pip",
-        "install",
-        "--offline",
-        "--python",
-        str(python),
-        "--require-hashes",
-        "--requirements",
-        "-",
-    ]
-    assert calls[1][1]["input"] == "httpx==0.28.1 --hash=sha256:deadbeef\n"
-    assert calls[2][0][3:5] == ["--offline", "--no-deps"]
+    assert calls[0][0][:3] == ["uv", "export", "--frozen"]
+    assert calls[0][0][3:] == ["--no-dev", "--no-emit-project", "--format", "requirements-txt"]
+    assert calls[1][0][:4] == ["uv", "pip", "install", "--target"]
+    assert calls[1][1]["input"] == requirements
+    assert calls[2][0][:6] == ["uv", "pip", "install", "--offline", "--python", str(python)]
+    assert calls[2][0][6:] == ["--require-hashes", "--requirements", "-"]
+    assert calls[2][1]["input"] == requirements
+    assert calls[3][0][3:5] == ["--offline", "--no-deps"]

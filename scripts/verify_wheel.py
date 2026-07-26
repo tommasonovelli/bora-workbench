@@ -85,9 +85,9 @@ def _isolated_environment(root: Path) -> dict[str, str]:
     return environment
 
 
-def _install_locked_wheel(uv: str, python: Path, wheel: Path) -> None:
-    """Install frozen runtime dependencies offline, then add the wheel without resolving."""
-    export = subprocess.run(
+def _export_locked_dependencies(uv: str) -> str:
+    """Export exact runtime requirements so verification cannot resolve newer versions."""
+    result = subprocess.run(
         [
             uv,
             "export",
@@ -101,6 +101,33 @@ def _install_locked_wheel(uv: str, python: Path, wheel: Path) -> None:
         capture_output=True,
         text=True,
     )
+    return result.stdout
+
+
+def _prefetch_locked_dependencies(uv: str, requirements: str) -> None:
+    """Populate uv's cache before requiring the isolated installation to work offline."""
+    with tempfile.TemporaryDirectory(prefix="bora-workbench-dependencies-") as directory:
+        subprocess.run(
+            [
+                uv,
+                "pip",
+                "install",
+                "--target",
+                directory,
+                "--require-hashes",
+                "--requirements",
+                "-",
+            ],
+            check=True,
+            input=requirements,
+            text=True,
+        )
+
+
+def _install_locked_wheel(uv: str, python: Path, wheel: Path) -> None:
+    """Prefetch exact dependencies, then install dependencies and the wheel offline."""
+    requirements = _export_locked_dependencies(uv)
+    _prefetch_locked_dependencies(uv, requirements)
     subprocess.run(
         [
             uv,
@@ -114,7 +141,7 @@ def _install_locked_wheel(uv: str, python: Path, wheel: Path) -> None:
             "-",
         ],
         check=True,
-        input=export.stdout,
+        input=requirements,
         text=True,
     )
     subprocess.run(
