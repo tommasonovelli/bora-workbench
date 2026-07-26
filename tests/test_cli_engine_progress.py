@@ -7,7 +7,7 @@ from io import StringIO
 import pytest
 from rich.console import Console
 
-from bora_workbench._cli_engine_progress import EngineInstallProgress
+from bora_workbench._cli_diagnostics import EngineInstallProgress
 from bora_workbench.engine import InstallProgressEvent
 
 

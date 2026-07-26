@@ -5,12 +5,9 @@ from types import SimpleNamespace
 from typer.testing import CliRunner
 
 import bora_workbench._calibration_record as record_module
-import bora_workbench._cli_control as control_cli
-import bora_workbench._cli_doctor as doctor_cli
+import bora_workbench._cli_diagnostics as diagnostics_cli
 import bora_workbench._cli_services as service_cli
-import bora_workbench._cli_validation as validation_cli
 import bora_workbench.config as config_module
-import bora_workbench.engine as engine_module
 import bora_workbench.paths as paths_module
 from bora_workbench.cli import app
 from bora_workbench.hardware import HardwareError, HardwareInfo
@@ -30,6 +27,8 @@ def patch_directories(tmp_path, monkeypatch):
     monkeypatch.setattr(config_module, "config_dir", lambda: directories["config_dir"])
     for name, path in directories.items():
         monkeypatch.setattr(paths_module, name, lambda path=path: path)
+        # Doctor binds the four path helpers at import time, so its lookups are patched directly.
+        monkeypatch.setattr(diagnostics_cli, name, lambda path=path: path)
     # The record module binds data_dir at import time, so its lookup is patched directly.
     monkeypatch.setattr(record_module, "data_dir", lambda: directories["data_dir"])
     absent_engine = SimpleNamespace(
@@ -40,7 +39,7 @@ def patch_directories(tmp_path, monkeypatch):
         is_compatible=False,
         differences=("not installed",),
     )
-    monkeypatch.setattr(engine_module, "engine_status", lambda: absent_engine)
+    monkeypatch.setattr(diagnostics_cli, "engine_status", lambda: absent_engine)
     return directories
 
 
@@ -81,7 +80,7 @@ def test_validate_passes_with_complete_engine_assets() -> None:
 def test_validate_maps_errors_to_exit_1(monkeypatch) -> None:
     """Print validation errors to stderr and return the contractual failure code."""
     invalid = ValidationResult((ValidationIssue("error", "mode.json", "$.id", "bad id"),))
-    monkeypatch.setattr(validation_cli, "validate_resources", lambda: invalid)
+    monkeypatch.setattr(diagnostics_cli, "validate_resources", lambda: invalid)
 
     result = runner.invoke(app, ["validate"])
 
@@ -92,7 +91,7 @@ def test_validate_maps_errors_to_exit_1(monkeypatch) -> None:
 def test_doctor_is_read_only_and_reports_hardware(tmp_path, monkeypatch) -> None:
     """Describe hardware and empty profiles without creating directories."""
     patch_directories(tmp_path, monkeypatch)
-    monkeypatch.setattr(doctor_cli, "detect_hardware", fake_hardware)
+    monkeypatch.setattr(diagnostics_cli, "detect_hardware", fake_hardware)
 
     result = runner.invoke(app, ["doctor"])
 
@@ -121,7 +120,7 @@ def test_doctor_maps_hardware_failure_to_exit_1(tmp_path, monkeypatch) -> None:
     """Map missing required hardware facts to an actionable operational error."""
     patch_directories(tmp_path, monkeypatch)
     failure = HardwareError("cannot determine logical CPU cores")
-    monkeypatch.setattr(doctor_cli, "detect_hardware", lambda: (_ for _ in ()).throw(failure))
+    monkeypatch.setattr(diagnostics_cli, "detect_hardware", lambda: (_ for _ in ()).throw(failure))
 
     result = runner.invoke(app, ["doctor"])
 
@@ -169,8 +168,8 @@ def test_coding_ctrl_c_maps_to_exit_130(monkeypatch) -> None:
 def test_status_and_stop_commands_are_idempotent(monkeypatch) -> None:
     """Expose successful empty-state status and stop behavior through the CLI."""
     empty = SimpleNamespace(services=(), warnings=(), stopped=())
-    monkeypatch.setattr(control_cli, "status_services", lambda: empty)
-    monkeypatch.setattr(control_cli, "stop_services", lambda: empty)
+    monkeypatch.setattr(service_cli, "status_services", lambda: empty)
+    monkeypatch.setattr(service_cli, "stop_services", lambda: empty)
 
     status_result = runner.invoke(app, ["status"])
     stop_result = runner.invoke(app, ["stop"])

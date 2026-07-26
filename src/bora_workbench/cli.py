@@ -7,19 +7,22 @@ from typing import Annotated
 
 import typer
 
-from bora_workbench._cli_calibration import (
-    CalibrationCliInput,
-    CalibrationCliOutput,
-    run_calibrate,
+from bora_workbench._cli_calibration import parse_calibration_input, run_calibrate
+from bora_workbench._cli_diagnostics import (
+    run_doctor,
+    run_engine_install,
+    run_validate,
+    show_engine_status,
 )
-from bora_workbench._cli_calibration_options import parse_calibration_options
-from bora_workbench._cli_control import run_stop, show_status
-from bora_workbench._cli_doctor import run_doctor
-from bora_workbench._cli_engine import run_engine_install, show_engine_status
-from bora_workbench._cli_services import run_coding, run_studio, run_vstudio
+from bora_workbench._cli_services import (
+    run_coding,
+    run_stop,
+    run_studio,
+    run_uninstall,
+    run_vstudio,
+    show_status,
+)
 from bora_workbench._cli_theme import create_console, print_error
-from bora_workbench._cli_uninstall import run_uninstall
-from bora_workbench._cli_validation import run_validate
 from bora_workbench.calibration import CalibrationError
 
 app = typer.Typer(
@@ -136,18 +139,11 @@ def calibrate(
 ) -> None:
     """Measure the launch envelopes of one packaged mode or of all of them."""
     try:
-        parsed = parse_calibration_options(context.args)
+        options = parse_calibration_input(mode, preference, context.args)
     except CalibrationError as error:
         print_error(_stderr, "Calibration input error", str(error))
         raise typer.Exit(code=2) from error
-    options = CalibrationCliInput(
-        mode,
-        parsed.no_activate,
-        parsed.activate,
-        parsed.target_ctx,
-        preference,
-    )
-    run_calibrate(options, CalibrationCliOutput(_stdout, _stderr))
+    run_calibrate(options, _stdout, _stderr)
 
 
 @app.command()
