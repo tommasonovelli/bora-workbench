@@ -3,6 +3,42 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
+## [0.2.2] - 2026-07-26
+
+### Fixed
+
+- Stop a redirected calibration from dying on its own progress line. The line carried `≤` and `≈`,
+  which a legacy Windows code page cannot encode, and the resulting `UnicodeEncodeError` reached
+  the trial and ended the whole run. Progress is now ASCII and, more importantly, a console that
+  cannot accept an event stops receiving them instead of raising, which is what the module already
+  promised.
+- Classify a non-success HTTP status by what it means. Every status was retryable, so the permanent
+  `400` a too-small context returns was retried once and then reported as
+  `remained retryable after one retry`; only server-side and wait-and-retry statuses are retryable
+  now, matching the rule already applied to health responses.
+- Search only the context steps the pinned quick-bench long request fits in. That request measures
+  23180 prompt tokens, so `16384` and `8192` could never produce a sample and CPU calibration,
+  which used the `8192` baseline, could never succeed at all. The ladder and the CPU confirmation
+  now stop at `32768`, and an explicit `--target-ctx` below it is refused as input before any
+  process starts. The byte-pinned payload is unchanged.
+- Let calibration run on a Windows desktop. The GPU compute-context population was required to be
+  immutable per run, which no WDDM host can offer: one unreadable PID refused the run before its
+  first trial, and ordinary desktop churn discarded hours of completed work. The exclusive-GPU rule
+  is kept off WDDM, where a foreign context is visible and attributable, and becomes counted
+  evidence on WDDM, where the aggregate reserve and release checks already carry the verdict.
+- Make `status` and `stop` reach a server left behind by a calibration that was killed. Trial
+  servers register outside the state root, so an orphan held VRAM invisibly while `start` advised
+  running `bora stop`, which could not see it. Both commands now sweep the trial roots of an
+  unfinished run.
+- Treat a recorded PID this account cannot open as absent rather than as an error. On Windows,
+  where PIDs are recycled quickly, a stale record could otherwise wedge `calibrate`, `status`, and
+  `stop` alike with no way to clear it.
+
+### Removed
+
+- Remove the executable-file identity of GPU compute processes, which only the withdrawn WDDM
+  immutability rule consumed. No launcher hashes another process's binary.
+
 ## [0.2.1] - 2026-07-26
 
 ### Changed

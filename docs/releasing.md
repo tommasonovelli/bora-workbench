@@ -5,8 +5,8 @@ requires explicit human authorization for the push, tag, and GitHub Release.
 
 ## Public status
 
-- release described by this branch: `bora-workbench 0.2.1`;
-- preceding public version: `bora-workbench 0.2.0` on GitHub Releases;
+- release described by this branch: `bora-workbench 0.2.2`;
+- preceding public version: `bora-workbench 0.2.1` on GitHub Releases;
 - historical versions `0.1.0` through `0.1.6` remain immutable under their original
   `qwen-launcher` artifact identity;
 - every published bundle comes from its green Ubuntu/Windows release workflow and contains the
@@ -56,6 +56,22 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.2.2
+
+`0.2.2` exists because calibration could not finish on Windows (D-071). A real CUDA run on an
+RTX 2060 SUPER 8 GiB hit three defects in a row, none of them a measurement: a redirected progress
+line that a legacy code page could not encode and that ended the run, a permanent HTTP `400`
+classified as retryable, and a pinned quick-bench long request of 23180 prompt tokens that the two
+lowest context steps can never hold. Two further rules made a Windows desktop hostile to the
+protocol: an immutable GPU compute-context population that no WDDM host can offer, and trial
+servers registered where `status` and `stop` could not see them. After the fixes the same host
+completed a `coding` run and wrote a valid candidate at `ctx=32768`, `n_cpu_moe=33`.
+
+The engine, model, command contract, `command_contract_sha256`, record format, reserves, and the
+packaged policy and schemas are unchanged, so existing `calibration-record/v6` records stay valid.
+The VRAM reserve deliberately stays at `0.5` GiB (D-072). Automatic runs and `--target-ctx` no
+longer accept `16384` or `8192`; CPU calibration confirms `32768` instead of `8192`.
 
 ### Release 0.2.1
 
@@ -168,7 +184,7 @@ added to the public evidence.
 
 Limits and checks that were not run must be explicit. `0.1.3` was authorized for commit, push, tag,
 and GitHub Release before the real spike; this does not amount to a Gate, and PyPI remains excluded.
-For `0.2.1`, D-070 carries forward the explicit waiver of additional manual Ubuntu/Windows and
+For `0.2.2`, D-072 carries forward the explicit waiver of additional manual Ubuntu/Windows and
 hardware calibration runs before publication. The automated release matrix remains required; the
 waiver is not a passed Gate, and the maintainer will perform platform checks after release.
 
