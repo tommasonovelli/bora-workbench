@@ -208,7 +208,7 @@ A new durable decision updates this table in the same step that authorizes it.
 | `calibration.py` / `_calibration_*` | local search, records, bundles, and evidence |
 | `engine.py` / `_engine_*` | lock, model, assets, command, installation, and activation |
 | `process.py` / `_process_*` | process, health, state, lock, status, and stop |
-| `_uninstall.py` / `_tool_uninstall*` | confined removal of the roots and handoff to the current uv installation |
+| `uninstall.py` / `_tool_uninstall_helper.py` | confined removal of the roots and handoff to the current uv installation |
 | `validation.py` / `_validation_*` | schemas and semantic checks |
 | `resources/__init__.py` | `importlib.resources` access |
 | `routing.py` (future) | pure skill normalization and scoring |

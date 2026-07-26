@@ -41,11 +41,12 @@ different models, releases, flags, ports, or assets.
 |---|---|
 | `cli.py`, `_cli_*` | Typer input, Rich presentation, confirmations, and exit codes |
 | `paths.py` | computing the four per-OS roots, without creating them |
-| `config.py`, `_config_paths.py` | TOML, environment, precedence, and types |
-| `hardware.py`, `_hardware_monitoring.py` | CPU/RAM, NVIDIA, GPU processes, and telemetry |
-| `profiles.py`, `_profile_*` | runtime modes, gates, and `LaunchPlan` |
+| `config.py` | TOML, environment, precedence, and types |
+| `hardware.py` | CPU/RAM, NVIDIA, GPU processes, and telemetry |
+| `profiles.py` | runtime modes, gates, and `LaunchPlan` |
 | `engine.py`, `_engine_*` | lock, model, assets, download/build, installation, and command |
 | `process.py`, `_process_*` | port, startup lock, process, health, state, status, and stop |
+| `uninstall.py`, `_tool_uninstall_helper.py` | confined removal of the managed roots and handoff to the current uv installation |
 | `calibration.py`, `_calibration_*` | target preparation, search, records, evidence, and reuse |
 | `benchmark.py`, `benchmark_quick.py` | the immutable feasibility probe and the quick-bench |
 | `validation.py`, `_validation_*` | JSON Schema and cross-cutting semantic invariants |
