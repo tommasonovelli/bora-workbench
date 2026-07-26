@@ -21,21 +21,20 @@ from bora_workbench._calibration_types import (
 )
 from bora_workbench._cli_calibration import (
     CalibrationCliInput,
-    CalibrationCliOutput,
     _preference,
     _validate,
+    parse_calibration_input,
     run_calibrate,
+    show_outcome,
 )
-from bora_workbench._cli_calibration_options import parse_calibration_options
-from bora_workbench._cli_calibration_summary import show_outcome
 from bora_workbench.calibration import CalibrationError
 from bora_workbench.profiles import load_catalog
 from tests.sample_fixtures import sample
 
 
-def _output() -> CalibrationCliOutput:
+def _output() -> tuple[Console, Console]:
     """Return quiet CLI streams for exit-code assertions."""
-    return CalibrationCliOutput(Console(quiet=True), Console(quiet=True))
+    return Console(quiet=True), Console(quiet=True)
 
 
 def test_preference_normalization_and_rejection() -> None:
@@ -48,16 +47,16 @@ def test_preference_normalization_and_rejection() -> None:
 
 def test_extras_parse_activation_and_target_context() -> None:
     """Accept exactly the documented extras and reject anything else before hardware work."""
-    parsed = parse_calibration_options(["--no-activate", "--target-ctx", "65536"])
+    parsed = parse_calibration_input("coding", None, ["--no-activate", "--target-ctx", "65536"])
 
     assert (parsed.no_activate, parsed.activate, parsed.target_ctx) == (True, False, 65536)
-    assert parse_calibration_options(["--activate"]).activate is True
+    assert parse_calibration_input("coding", None, ["--activate"]).activate is True
     with pytest.raises(CalibrationError):
-        parse_calibration_options(["--candidate", "safe:8192"])
+        parse_calibration_input("coding", None, ["--candidate", "safe:8192"])
     with pytest.raises(CalibrationError):
-        parse_calibration_options(["--target-ctx"])
+        parse_calibration_input("coding", None, ["--target-ctx"])
     with pytest.raises(CalibrationError):
-        parse_calibration_options(["--target-ctx", "65536", "--target-ctx", "32768"])
+        parse_calibration_input("coding", None, ["--target-ctx", "65536", "--target-ctx", "32768"])
 
 
 def test_validation_rejects_conflicts_and_unapproved_context() -> None:
@@ -124,7 +123,7 @@ def test_a_failed_search_exits_operationally_without_a_traceback(monkeypatch, er
     monkeypatch.setattr(calibration_cli, "run_calibration", failing)
 
     with pytest.raises(typer.Exit) as exit_info:
-        run_calibrate(CalibrationCliInput("coding"), _output())
+        run_calibrate(CalibrationCliInput("coding"), *_output())
 
     assert exit_info.value.exit_code == 1
 
@@ -136,7 +135,7 @@ def test_declining_the_confirmation_cancels_with_the_contractual_code(monkeypatc
     monkeypatch.setattr(calibration_cli.typer, "confirm", lambda *args, **kwargs: False)
 
     with pytest.raises(typer.Exit) as exit_info:
-        run_calibrate(CalibrationCliInput("coding"), _output())
+        run_calibrate(CalibrationCliInput("coding"), *_output())
 
     assert exit_info.value.exit_code == 130
 
@@ -166,9 +165,7 @@ def test_a_partial_run_prints_its_records_and_still_exits_operationally(monkeypa
     console = Console(record=True, width=200)
 
     with pytest.raises(typer.Exit) as exit_info:
-        run_calibrate(
-            CalibrationCliInput("all"), CalibrationCliOutput(console, Console(quiet=True))
-        )
+        run_calibrate(CalibrationCliInput("all"), console, Console(quiet=True))
 
     text = console.export_text()
     assert exit_info.value.exit_code == 1

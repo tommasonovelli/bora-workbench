@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 from typer.testing import CliRunner
 
-import bora_workbench._cli_uninstall as uninstall_cli
+import bora_workbench._cli_services as service_cli
 import bora_workbench.uninstall as uninstall_module
 from bora_workbench.cli import app
 
@@ -17,13 +17,13 @@ runner = CliRunner()
 def patch_uninstall_dependencies(tmp_path, monkeypatch) -> list[object]:
     """Isolate service inspection and uv self-removal from the host installation."""
     empty = SimpleNamespace(services=(), warnings=())
-    installation = uninstall_cli.ToolInstallation(
+    installation = service_cli.ToolInstallation(
         tmp_path / "uv-tools" / "bora-workbench", tmp_path / "bin" / "uv"
     )
     scheduled: list[object] = []
-    monkeypatch.setattr(uninstall_cli, "status_services", lambda: empty)
-    monkeypatch.setattr(uninstall_cli, "inspect_tool_installation", lambda: installation)
-    monkeypatch.setattr(uninstall_cli, "schedule_tool_removal", scheduled.append)
+    monkeypatch.setattr(service_cli, "status_services", lambda: empty)
+    monkeypatch.setattr(service_cli, "inspect_tool_installation", lambda: installation)
+    monkeypatch.setattr(service_cli, "schedule_tool_removal", scheduled.append)
     return scheduled
 
 
@@ -141,7 +141,7 @@ def test_uninstall_refuses_to_orphan_a_running_service(tmp_path, monkeypatch) ->
     roots = patch_managed_roots(tmp_path, monkeypatch)
     populate(roots)
     running = SimpleNamespace(services=(SimpleNamespace(label="llama-server"),), warnings=())
-    monkeypatch.setattr(uninstall_cli, "status_services", lambda: running)
+    monkeypatch.setattr(service_cli, "status_services", lambda: running)
 
     result = runner.invoke(app, ["uninstall"])
 
@@ -159,7 +159,7 @@ def test_uninstall_maps_removal_failure_to_exit_1(tmp_path, monkeypatch) -> None
         """Simulate an expected locked-directory removal failure."""
         raise uninstall_module.UninstallError("could not remove locked directory")
 
-    monkeypatch.setattr(uninstall_cli, "remove_managed_roots", fail)
+    monkeypatch.setattr(service_cli, "remove_managed_roots", fail)
 
     result = runner.invoke(app, ["uninstall"], input="y\n")
 
@@ -173,8 +173,8 @@ def test_uninstall_leaves_a_non_uv_installation_explicit(tmp_path, monkeypatch) 
     """Do not guess how to remove a package installed outside the supported uv tool flow."""
     roots = patch_managed_roots(tmp_path, monkeypatch)
     roots["cache_dir"].mkdir(parents=True)
-    unmanaged = uninstall_cli.ToolInstallation(tmp_path / "python-environment", None)
-    monkeypatch.setattr(uninstall_cli, "inspect_tool_installation", lambda: unmanaged)
+    unmanaged = service_cli.ToolInstallation(tmp_path / "python-environment", None)
+    monkeypatch.setattr(service_cli, "inspect_tool_installation", lambda: unmanaged)
 
     result = runner.invoke(app, ["uninstall"], input="y\n")
 

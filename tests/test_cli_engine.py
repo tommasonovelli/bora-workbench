@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 from typer.testing import CliRunner
 
-import bora_workbench._cli_engine as engine_cli
+import bora_workbench._cli_diagnostics as diagnostics_cli
 from bora_workbench.cli import app
 from bora_workbench.engine import EngineStatus, InstallProgressEvent, InstallResult
 
@@ -17,7 +17,7 @@ runner = CliRunner()
 def test_engine_install_uses_detected_backend_and_reports_activation(monkeypatch) -> None:
     """Select the detected backend and present the promoted executable."""
     monkeypatch.setattr(
-        engine_cli,
+        diagnostics_cli,
         "detect_hardware",
         lambda: SimpleNamespace(backend="cuda", warnings=()),
     )
@@ -29,7 +29,7 @@ def test_engine_install_uses_detected_backend_and_reports_activation(monkeypatch
         progress(InstallProgressEvent("compile"))
         return InstallResult(status, True)
 
-    monkeypatch.setattr(engine_cli, "install_engine", install)
+    monkeypatch.setattr(diagnostics_cli, "install_engine", install)
 
     result = runner.invoke(app, ["engine", "install"])
 
@@ -43,7 +43,7 @@ def test_engine_install_uses_detected_backend_and_reports_activation(monkeypatch
 def test_engine_status_is_zero_when_absent(monkeypatch) -> None:
     """Treat an absent managed installation as readable status rather than an operation failure."""
     absent = EngineStatus(False, None, None, None, False, ("not installed",))
-    monkeypatch.setattr(engine_cli, "engine_status", lambda: absent)
+    monkeypatch.setattr(diagnostics_cli, "engine_status", lambda: absent)
 
     result = runner.invoke(app, ["engine", "status"])
 
@@ -54,7 +54,7 @@ def test_engine_status_is_zero_when_absent(monkeypatch) -> None:
 def test_engine_status_returns_one_for_corrupt_manifest(monkeypatch) -> None:
     """Expose manifest corruption and use the expected operational failure exit code."""
     corrupt = EngineStatus(False, None, None, None, False, ("manifest is invalid",))
-    monkeypatch.setattr(engine_cli, "engine_status", lambda: corrupt)
+    monkeypatch.setattr(diagnostics_cli, "engine_status", lambda: corrupt)
 
     result = runner.invoke(app, ["engine", "status"])
 

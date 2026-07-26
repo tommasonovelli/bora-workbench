@@ -8,7 +8,7 @@ import pytest
 from rich.console import Console
 
 from bora_workbench._calibration_trial_control import ProgressEvent
-from bora_workbench._cli_calibration_progress import CalibrationProgress
+from bora_workbench._cli_calibration import CalibrationProgress
 
 
 def test_redirected_progress_prints_only_completed_trials() -> None:
