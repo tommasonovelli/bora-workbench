@@ -26,7 +26,7 @@ Expected errors show no traceback. In general:
 
 ### The installer asks for a source
 
-That is intentional: there is no implicit default. For `0.2.1`, use the wheel from the GitHub
+That is intentional: there is no implicit default. For `0.2.2`, use the wheel from the GitHub
 Release and its manifest digest as described in [Installation](installation.md). A full commit hash
 is also accepted for testing an exact repository revision.
 
@@ -132,9 +132,13 @@ starting the launcher, taking on the external management of the environment your
 
 ### Calibration is invalidated by a GPU process
 
-Close compute workloads and graphics-intensive applications. On WDDM the initial desktop contexts
-are allowed within the captured population; a new executable, an unreadable identity, or more
-instances than expected still invalidate the run.
+This can only happen where the card is exclusive — Linux, or a Windows card in TCC mode — and there
+any foreign compute context invalidates the run: close compute workloads and graphics-intensive
+applications before calibrating.
+
+On WDDM it does not happen. The desktop itself owns compute contexts and recreates them constantly,
+so they are counted as evidence and the aggregate reserve and release checks decide feasibility
+instead. Closing heavy applications still gives cleaner timings and more usable VRAM.
 
 ## Engine
 
@@ -242,6 +246,10 @@ the threshold. A run without a valid envelope must not be completed or promoted 
 
 The processes are stopped; the available logs are preserved as the last private evidence. A
 candidate record is written only after the mode's whole result has been built and validated.
+
+If the launcher itself was killed rather than interrupted, its trial server can survive and keep
+holding VRAM. `bora status` lists it and `bora stop` ends it; both cover the trial roots of an
+unfinished run, so no manual process hunting is needed.
 
 ## Uninstalling
 

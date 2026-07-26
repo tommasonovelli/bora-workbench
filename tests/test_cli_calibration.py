@@ -13,6 +13,7 @@ from bora_workbench._calibration_run import RunResult
 from bora_workbench._calibration_runner import ModeResult
 from bora_workbench._calibration_types import (
     CONTEXT_SCALE,
+    MEASURABLE_CONTEXT_SCALE,
     EnvelopeResult,
     GateResult,
     SearchError,
@@ -88,10 +89,17 @@ def test_activate_promotes_the_candidate_without_relabeling_it(monkeypatch) -> N
     assert promoted == ["coding"]
 
 
-@pytest.mark.parametrize("target_ctx", CONTEXT_SCALE)
-def test_every_scale_step_is_an_approved_expert_target(target_ctx: int) -> None:
-    """Accept each searched context as an explicit target, including the small ones."""
+@pytest.mark.parametrize("target_ctx", MEASURABLE_CONTEXT_SCALE)
+def test_every_measurable_scale_step_is_an_approved_expert_target(target_ctx: int) -> None:
+    """Accept each searched context as an explicit target."""
     _validate(CalibrationCliInput("coding", target_ctx=target_ctx))
+
+
+@pytest.mark.parametrize("target_ctx", sorted(set(CONTEXT_SCALE) - set(MEASURABLE_CONTEXT_SCALE)))
+def test_an_unmeasurable_target_is_refused_before_any_process_starts(target_ctx: int) -> None:
+    """Explain that the pinned quick-bench request cannot fit, instead of failing after a trial."""
+    with pytest.raises(CalibrationError, match="cannot be measured"):
+        _validate(CalibrationCliInput("coding", target_ctx=target_ctx))
 
 
 def test_outcome_shows_only_the_selected_preference_cell() -> None:

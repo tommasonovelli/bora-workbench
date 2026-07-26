@@ -38,7 +38,7 @@ _MEMORY_GATE_HELP = "Bypass only the default-model total and available RAM gate.
 _CALIBRATION_EPILOG = (
     "Extras: --no-activate keeps the measured candidates without replacing the active records; "
     "--activate promotes candidates measured earlier without measuring again; --target-ctx N "
-    "searches only one of 131072, 98304, 65536, 49152, 32768, 16384, 8192. "
+    "searches only one of 131072, 98304, 65536, 49152, 32768. "
     "Extras are parsed strictly after Typer's common options."
 )
 
@@ -48,7 +48,7 @@ def package_version() -> str:
     try:
         return version("bora-workbench")
     except PackageNotFoundError:
-        return "0.2.1"
+        return "0.2.2"
 
 
 def _version_callback(value: bool) -> None:

@@ -147,9 +147,12 @@ bora status
 ```
 
 Shows the service, PID, mode, backend, port, and log. It first verifies each entry through
-`pid + create_time`; dead entries or reused PIDs are removed with a warning. Malformed JSON state is
-quarantined as `services.corrupt-<timestamp>.json`. No services at all is a success with exit code
-0.
+`pid + create_time`; dead entries, reused PIDs, and PIDs this account can no longer open are
+removed with a warning. Malformed JSON state is quarantined as `services.corrupt-<timestamp>.json`.
+No services at all is a success with exit code 0.
+
+It also inspects the trial roots of a calibration run that never finished, so a server left behind
+by an interrupted `calibrate` is visible here instead of only in the task manager.
 
 ## `stop`
 
@@ -160,6 +163,10 @@ bora stop
 Stops only processes whose identity matches the state. It waits up to 10 seconds after `terminate`,
 then uses `kill` and waits up to 5 seconds. It is idempotent: no services returns 0. Do not delete
 `services.json` by hand while the process is alive.
+
+Like `status`, it covers the trial roots of an unfinished calibration, so it is the command that
+ends a server an interrupted run left holding VRAM. Running it while a calibration is in progress
+therefore stops that calibration's current trial.
 
 ## `calibrate`
 
@@ -187,8 +194,10 @@ bora calibrate --mode all --activate
 bora calibrate --mode coding --target-ctx 98304
 ```
 
-Allowed targets: `131072`, `98304`, `65536`, `49152`, `32768`, `16384`, `8192` — the same steps the
-automatic ladder descends. `--activate` cannot be combined with `--target-ctx`, and `--activate` and
+Allowed targets: `131072`, `98304`, `65536`, `49152`, `32768` — the same steps the automatic ladder
+descends. The approved scale also names `16384` and `8192`, but the pinned quick-bench long request
+does not fit in them, so asking for one is refused before any process starts.
+`--activate` cannot be combined with `--target-ctx`, and `--activate` and
 `--no-activate` are mutually exclusive. `--activate` cannot relabel a candidate with
 `--preference`; each conflict is an input error reported before any process starts.
 
@@ -203,7 +212,7 @@ Trial reserves, written into every record: 0.5 GiB VRAM, 2.0 GiB RAM, 0.125 GiB 
 
 On an interactive terminal the run shows a live bar with the phase, the trial, the elapsed time, and
 an estimate learned from the current phase; redirected output stays line-oriented, one line per
-completed trial. Every phase total is a cap (`≤N`), not a schedule or a promise. The final summary
+completed trial. Every phase total is a cap (`<=N`), not a schedule or a promise. The final summary
 prints the one measured cell per completed mode and reports its observed RAM and VRAM minima.
 
 Calibration uploads nothing, does not modify `config.toml`, and installs neither the model nor the

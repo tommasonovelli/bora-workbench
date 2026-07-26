@@ -57,16 +57,20 @@ class StateSnapshot:
 
 
 def find_verified_process(pid: int, create_time: float) -> psutil.Process | None:
-    """Return the live process only when pid and create_time both match, or None when gone.
+    """Return the live process only when pid and create_time both match, or None otherwise.
 
     The pid/create_time pair is the mandatory process identity from specification section 5.9.
-    Access failures propagate unmapped so each caller raises its own boundary error.
+    A process this account cannot open is never a service this launcher started, because the
+    launcher and its children share one account: on Windows, where PIDs are recycled quickly, that
+    is the recorded PID having been reused by a stranger. Reporting it as absent keeps the record
+    clearable, while the callers that act on a service still send no signal to anything they could
+    not verify (D-071).
     """
     try:
         process = psutil.Process(pid)
         if process.is_running() and process.create_time() == create_time:
             return process
-    except psutil.NoSuchProcess:
+    except (psutil.AccessDenied, psutil.NoSuchProcess):
         return None
     return None
 

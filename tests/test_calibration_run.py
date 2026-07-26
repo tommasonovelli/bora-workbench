@@ -7,9 +7,17 @@ from pathlib import Path
 import pytest
 
 import bora_workbench._calibration_run as run_module
+import bora_workbench.calibration as calibration_module
 from bora_workbench._calibration_run import RunOptions, _contexts, _groups, _measure, _RunSpec
 from bora_workbench._calibration_trial_control import TrialProgress
-from bora_workbench._calibration_types import BASELINE_CTX, CONTEXT_SCALE, Preference, SearchError
+from bora_workbench._calibration_types import (
+    BASELINE_CTX,
+    CONTEXT_SCALE,
+    MEASURABLE_CONTEXT_SCALE,
+    MIN_CTX_QUICK_BENCH,
+    Preference,
+    SearchError,
+)
 from tests.record_fixtures import cpu_hardware, cuda_hardware, mode_result, record_target
 
 _ALL = ("coding", "studio", "vstudio")
@@ -154,11 +162,39 @@ def test_evidence_cleanup_failure_cannot_mask_keyboard_interrupt(tmp_path, monke
 
 
 def test_searched_contexts_follow_the_backend_and_the_expert_target() -> None:
-    """Search the full ladder on CUDA, one baseline on CPU, and exactly one pinned target."""
+    """Search the measurable ladder on CUDA, one context on CPU, and exactly one pinned target."""
     cuda = record_target(cuda_hardware())
     cpu = record_target(cpu_hardware())
 
-    assert _contexts(cuda, RunOptions()) == CONTEXT_SCALE
-    assert _contexts(cpu, RunOptions()) == (BASELINE_CTX,)
+    assert _contexts(cuda, RunOptions()) == MEASURABLE_CONTEXT_SCALE
+    assert _contexts(cpu, RunOptions()) == (MIN_CTX_QUICK_BENCH,)
     assert _contexts(cuda, RunOptions(target_ctx=65536)) == (65536,)
     assert _contexts(cpu, RunOptions(target_ctx=65536)) == (65536,)
+
+
+def test_the_ladder_omits_steps_the_quick_bench_cannot_fit_in() -> None:
+    """Never walk a step whose every trial must fail on the pinned long request (D-071)."""
+    assert MEASURABLE_CONTEXT_SCALE == (131072, 98304, 65536, 49152, 32768)
+    assert 16384 in CONTEXT_SCALE and 16384 not in MEASURABLE_CONTEXT_SCALE
+    assert BASELINE_CTX in CONTEXT_SCALE and BASELINE_CTX not in MEASURABLE_CONTEXT_SCALE
+
+
+def test_service_roots_expose_an_unrotated_trial_server(tmp_path, monkeypatch) -> None:
+    """Let status and stop reach a trial server a killed run left outside the state root."""
+    monkeypatch.setattr(calibration_module, "data_dir", lambda: tmp_path / "data")
+    monkeypatch.setattr(calibration_module, "state_dir", lambda: tmp_path / "state")
+    trial = tmp_path / "data" / "calibration" / ".runtime-abc" / "coding" / "c32768-n33"
+    trial.mkdir(parents=True)
+    (trial / "services.json").write_text('{"version": 1, "services": []}', encoding="utf-8")
+
+    assert calibration_module.service_roots() == (tmp_path / "state", trial)
+
+
+def test_service_roots_are_just_the_state_root_without_a_calibration_tree(
+    tmp_path, monkeypatch
+) -> None:
+    """Keep status and stop working on a host that has never calibrated."""
+    monkeypatch.setattr(calibration_module, "data_dir", lambda: tmp_path / "data")
+    monkeypatch.setattr(calibration_module, "state_dir", lambda: tmp_path / "state")
+
+    assert calibration_module.service_roots() == (tmp_path / "state",)

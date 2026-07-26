@@ -116,7 +116,7 @@ bora calibrate --mode vstudio --preference max-context
 
 On an interactive terminal the CLI shows a bar, the elapsed time, the running trial, and a remaining
 time learned from the current phase alone. Every phase total is a **cap**, not a schedule: the count
-reads `≤N` and the search usually finishes below it. When output is redirected, one stable line per
+reads `<=N` and the search usually finishes below it. When output is redirected, one stable line per
 completed trial is written instead.
 
 A trial crash is isolated from any production service; its reason and logs are kept.
@@ -181,16 +181,20 @@ records.
 The search descends this ladder:
 
 ```text
-131072 → 98304 → 65536 → 49152 → 32768 → 16384 → 8192
+131072 → 98304 → 65536 → 49152 → 32768
 ```
 
-You can collapse it onto a single approved step:
+It stops at `32768` because the pinned quick-bench long request measures 23180 prompt tokens: a
+smaller window makes the engine refuse it, so `16384` and `8192` cannot be measured at all and the
+run never spends trials there.
+
+You can collapse the ladder onto a single approved step:
 
 ```bash
 bora calibrate --mode coding --target-ctx 98304
 ```
 
-Allowed values: `131072`, `98304`, `65536`, `49152`, `32768`, `16384`, `8192` — every step of the
+Allowed values: `131072`, `98304`, `65536`, `49152`, `32768` — every measurable step of the
 ladder. At a fixed context only the requested preference is measured. Different preferences can
 legitimately resolve to the same `n_cpu_moe`, but they still optimize different metrics.
 
@@ -249,6 +253,14 @@ available and, on CUDA, **0.5 GiB** of VRAM free, and must release VRAM within *
 baseline after stopping. These reserves are written into the record, so a record is always
 re-evaluated against exactly the margins it was measured with.
 
+The GPU's compute processes are also observed. Where the card can be exclusive — Linux, or a
+Windows card in TCC mode — any foreign compute context invalidates the run. Under WDDM it cannot:
+the compositor, the shell, and the browser hold compute contexts permanently and recreate them
+constantly, and NVIDIA reports no per-process memory there. On a WDDM host those processes are
+therefore counted as evidence about how busy the machine was, never as a verdict; the aggregate
+reserve and release checks above are what decide whether a candidate is feasible. Calibrating on a
+quiet desktop still gives cleaner timings.
+
 The requested preference is selected from the samples, confirmed with two paired `A→B`/`B→A`
 rounds when it has a near-tied rival — a third round only when the first two disagree or disperse —
 and finally passes one gate in a fresh process: a smoke request at about 80% of the context
@@ -259,9 +271,9 @@ of the run on the steps it can actually serve. Runtime depends on the feasible c
 backend, and whether a near-tied rival needs confirmation. Historical three-envelope timings do not
 predict this one-cell protocol.
 
-On CPU there is no offload axis to search: an automatic run confirms the baseline context, while
-`--target-ctx` confirms that explicit approved context. In both cases `n_cpu_moe` is recorded as
-null in the one requested cell.
+On CPU there is no offload axis to search: an automatic run confirms the smallest measurable
+context, `32768`, while `--target-ctx` confirms that explicit approved context. In both cases
+`n_cpu_moe` is recorded as null in the one requested cell.
 
 ### The quick-bench
 
@@ -269,7 +281,8 @@ Each sample runs, against a fresh server:
 
 1. one warm-up request, excluded from the results;
 2. three short non-cached requests (128 completion tokens each);
-3. one request of about 8K prompt tokens (64 completion tokens).
+3. one long request of 23180 prompt tokens (64 completion tokens), which is what sets the `32768`
+   floor of the ladder above.
 
 Every metric comes from the response `timings` and the wall clock — no log parsing. The request
 payloads are byte-pinned in the wheel and checksummed, because changing them would change what is

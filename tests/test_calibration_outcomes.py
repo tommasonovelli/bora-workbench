@@ -21,7 +21,7 @@ from bora_workbench._calibration_types import (
     UnclassifiableTrialError,
     classify,
 )
-from bora_workbench.benchmark import BenchmarkError, BenchmarkHttpError
+from bora_workbench.benchmark import BenchmarkError, http_status_error
 from bora_workbench.process import PortCollisionError, ProcessError, ServerStartupError
 
 
@@ -38,7 +38,10 @@ from bora_workbench.process import PortCollisionError, ProcessError, ServerStart
             ClassifiedOutcome(TrialOutcome.MEMORY_INFEASIBLE, "ram"),
         ),
         (VramReleaseError("release"), ClassifiedOutcome(TrialOutcome.RETRYABLE)),
-        (BenchmarkHttpError(503), ClassifiedOutcome(TrialOutcome.RETRYABLE)),
+        (http_status_error(503), ClassifiedOutcome(TrialOutcome.RETRYABLE)),
+        (http_status_error(429), ClassifiedOutcome(TrialOutcome.RETRYABLE)),
+        (http_status_error(400), ClassifiedOutcome(TrialOutcome.PROTOCOL_INVALID)),
+        (http_status_error(404), ClassifiedOutcome(TrialOutcome.PROTOCOL_INVALID)),
         (
             httpx.ConnectError("offline", request=httpx.Request("POST", "http://127.0.0.1")),
             ClassifiedOutcome(TrialOutcome.RETRYABLE),

@@ -8,7 +8,9 @@ state of a service that is still running (specification sections 5.10-5.11).
 from __future__ import annotations
 
 import webbrowser
+from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import cast
 
 import typer
@@ -23,6 +25,7 @@ from bora_workbench._cli_theme import (
     print_warning,
     status_table,
 )
+from bora_workbench.calibration import service_roots
 from bora_workbench.config import ConfigError, load_config
 from bora_workbench.engine import (
     EngineError,
@@ -36,6 +39,8 @@ from bora_workbench.hardware import HardwareError, detect_hardware, ensure_launc
 from bora_workbench.process import (
     ProcessError,
     RunningService,
+    ServiceReport,
+    ServiceState,
     StartRequest,
     start_service,
     status_services,
@@ -194,10 +199,27 @@ def _print_warnings(warnings: tuple[str, ...], stdout: Console) -> None:
         print_warning(stdout, warning)
 
 
+def _across_roots(operation: Callable[[Path], ServiceReport]) -> ServiceReport:
+    """Apply one process-layer operation to every service root and merge its reports.
+
+    Composing the roots here keeps the calibration tree layout inside the calibration module and
+    the lifecycle rules inside the process module, as specification section 4.1 requires.
+    """
+    services: list[ServiceState] = []
+    warnings: list[str] = []
+    stopped: list[str] = []
+    for root in service_roots():
+        report = operation(root)
+        services.extend(report.services)
+        warnings.extend(report.warnings)
+        stopped.extend(report.stopped)
+    return ServiceReport(tuple(services), tuple(warnings), tuple(stopped))
+
+
 def show_status(stdout: Console, stderr: Console) -> None:
     """Present live managed services and preserve status idempotence."""
     try:
-        report = status_services()
+        report = _across_roots(status_services)
     except ProcessError as error:
         print_error(stderr, "Status error", str(error))
         raise typer.Exit(code=1) from error
@@ -223,7 +245,7 @@ def show_status(stdout: Console, stderr: Console) -> None:
 def run_stop(stdout: Console, stderr: Console) -> None:
     """Present identity-safe stop results and preserve empty-state idempotence."""
     try:
-        report = stop_services()
+        report = _across_roots(stop_services)
     except ProcessError as error:
         print_error(stderr, "Stop error", str(error))
         raise typer.Exit(code=1) from error
@@ -263,7 +285,7 @@ def _show_report(report: RemovalReport, installation: ToolInstallation, stdout: 
 def _require_services_stopped(stderr: Console) -> None:
     """Refuse to orphan a live managed process by deleting its state (section 5.10)."""
     try:
-        report = status_services()
+        report = _across_roots(status_services)
     except ProcessError as error:
         print_error(stderr, "Uninstall error", f"cannot inspect managed services: {error}")
         raise typer.Exit(code=1) from error

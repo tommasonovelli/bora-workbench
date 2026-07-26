@@ -14,9 +14,7 @@ degrading silently there would turn missing evidence into a measurement.
 from __future__ import annotations
 
 import csv
-import hashlib
 import math
-import os
 import platform
 import subprocess
 from dataclasses import dataclass
@@ -87,16 +85,10 @@ class HardwareInfo:
 
 @dataclass(frozen=True, slots=True)
 class GpuProcessIdentity:
-    """Identify one process instance and its executable file without exposing a path."""
+    """Identify one GPU compute process instance without exposing a path or a command line."""
 
     pid: int
     create_time: float | None
-    executable_id: str | None
-
-    @property
-    def is_complete(self) -> bool:
-        """Return whether lifecycle and executable identity were both measured."""
-        return self.create_time is not None and self.executable_id is not None
 
     @property
     def instance(self) -> tuple[int, float | None]:
@@ -258,33 +250,19 @@ def detect_hardware() -> HardwareInfo:
     )
 
 
-def _file_identifier(path: str) -> str | None:
-    """Hash the local volume/file identity so aliases and private paths are not retained."""
-    try:
-        status = os.stat(path)
-    except OSError:
-        return None
-    if status.st_ino <= 0:
-        return None
-    value = f"{status.st_dev}:{status.st_ino}".encode()
-    return hashlib.sha256(value).hexdigest()
-
-
 def identify_gpu_process(pid: int) -> GpuProcessIdentity:
-    """Resolve one PID fail-closed while retaining any trustworthy lifecycle identity."""
+    """Resolve one compute PID to its lifecycle identity, tolerating a process it cannot open.
+
+    A GPU compute context frequently belongs to a service account or exits between the
+    ``nvidia-smi`` query and this lookup, so an unresolved lifecycle is recorded as absent rather
+    than raised: calibration compares process instances, and an instance it cannot pin down simply
+    never matches one it already knows (D-071).
+    """
     try:
-        process = psutil.Process(pid)
-        create_time = process.create_time()
+        create_time = psutil.Process(pid).create_time()
     except (psutil.AccessDenied, psutil.NoSuchProcess, psutil.ZombieProcess, OSError):
-        return GpuProcessIdentity(pid, None, None)
-    if create_time <= 0:
-        return GpuProcessIdentity(pid, None, None)
-    try:
-        executable = process.exe()
-    except (psutil.AccessDenied, psutil.NoSuchProcess, psutil.ZombieProcess, OSError):
-        return GpuProcessIdentity(pid, create_time, None)
-    executable_id = _file_identifier(executable) if executable else None
-    return GpuProcessIdentity(pid, create_time, executable_id)
+        return GpuProcessIdentity(pid, None)
+    return GpuProcessIdentity(pid, create_time if create_time > 0 else None)
 
 
 def _run_monitoring_query(arguments: list[str]) -> str:

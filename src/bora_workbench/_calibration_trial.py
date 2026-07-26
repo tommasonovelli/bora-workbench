@@ -98,10 +98,10 @@ def _managed_gpu_identity(
     """Return the exact managed process instance even after normal cleanup."""
     if running is not None:
         service = running.state
-        return GpuProcessIdentity(service.pid, service.create_time, None)
+        return GpuProcessIdentity(service.pid, service.create_time)
     if spawned.pid is None:
         return None
-    return GpuProcessIdentity(spawned.pid, spawned.create_time, None)
+    return GpuProcessIdentity(spawned.pid, spawned.create_time)
 
 
 @dataclass(frozen=True, slots=True)

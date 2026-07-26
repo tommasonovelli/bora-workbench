@@ -19,7 +19,7 @@ from typing import cast
 
 import httpx
 
-from bora_workbench.benchmark import BenchmarkError, BenchmarkHttpError, BenchmarkRetryableError
+from bora_workbench.benchmark import BenchmarkError, BenchmarkRetryableError, http_status_error
 from bora_workbench.resources import resource
 
 _REQUEST_TIMEOUT_SECONDS = 15 * 60.0
@@ -58,7 +58,7 @@ class QuickMetric:
 
 @dataclass(frozen=True, slots=True)
 class QuickBenchResult:
-    """Group the three measured short requests and the one long ~8K-prefill request."""
+    """Group the three measured short requests and the one long-prefill request."""
 
     short: tuple[QuickMetric, QuickMetric, QuickMetric]
     long: QuickMetric
@@ -75,7 +75,11 @@ class QuickBenchResult:
 
     @property
     def prefill_8k_tps(self) -> float:
-        """Return the ~8K prefill throughput used as the deadband prefill tie-break."""
+        """Return the long-request prefill throughput used as the deadband prefill tie-break.
+
+        The pinned long request measures 23180 prompt tokens on this model, which is why a trial
+        below `MIN_CTX_QUICK_BENCH` cannot produce this metric at all (D-071).
+        """
         return self.long.prompt_per_second
 
 
@@ -124,7 +128,7 @@ def _post(client: httpx.Client, url: str, request: JsonObject) -> tuple[JsonObje
         raise BenchmarkRetryableError(f"quick-bench request failed: {error}") from error
     elapsed_ms = (time.perf_counter() - started) * 1000
     if response.status_code != 200:
-        raise BenchmarkHttpError(response.status_code)
+        raise http_status_error(response.status_code)
     try:
         value = response.json()
     except ValueError as error:
@@ -181,7 +185,7 @@ def _measure(client: httpx.Client, url: str, workload: _Workload) -> QuickMetric
 
 
 def run_quick_bench(base_url: str, client: httpx.Client | None = None) -> QuickBenchResult:
-    """Run an excluded warm-up, three short requests, and one ~8K prefill (spec section 5.6)."""
+    """Run an excluded warm-up, three short requests, and one long prefill (spec section 5.6)."""
     verify_protocol_resources()
     with _session(client) as session:
         url = f"{base_url}/v1/chat/completions"

@@ -225,22 +225,24 @@ def test_unsupported_telemetry_falls_back_to_mandatory_memory(monkeypatch) -> No
     assert snapshot.vram_free_gib == 7000 / 1024
 
 
-def test_same_executable_file_keeps_identity_across_process_instances(monkeypatch) -> None:
-    """Match respawns by file identity while retaining distinct pid/create-time instances."""
+def test_two_process_instances_stay_distinct(monkeypatch) -> None:
+    """Keep pid and create time together, because a recycled PID is not the same process."""
     monkeypatch.setattr(hardware.psutil, "Process", _Process)
-    monkeypatch.setattr(hardware.os, "stat", lambda path: SimpleNamespace(st_dev=7, st_ino=11))
 
     first = identify_gpu_process(100)
     replacement = identify_gpu_process(200)
 
-    assert first.executable_id == replacement.executable_id
     assert first.instance != replacement.instance
-    assert first.is_complete and replacement.is_complete
+    assert first.create_time is not None and replacement.create_time is not None
 
 
-@pytest.mark.parametrize("failure", ["process", "stat", "create-time"])
-def test_identity_resolution_fails_closed(monkeypatch, failure: str) -> None:
-    """Return an incomplete identity for inaccessible, vanished, or malformed process facts."""
+@pytest.mark.parametrize("failure", ["process", "create-time"])
+def test_identity_resolution_reports_an_unresolved_lifecycle(monkeypatch, failure: str) -> None:
+    """Record an absent create time for a process this account cannot open or that vanished.
+
+    A Windows compute context often belongs to a service account, so refusing to resolve it must
+    stay a fact the caller can act on rather than a failure that ends a run (D-071).
+    """
     if failure == "process":
         monkeypatch.setattr(
             hardware.psutil,
@@ -249,14 +251,10 @@ def test_identity_resolution_fails_closed(monkeypatch, failure: str) -> None:
         )
     else:
         process = _Process(100)
-        if failure == "create-time":
-            monkeypatch.setattr(process, "create_time", lambda: 0.0)
+        monkeypatch.setattr(process, "create_time", lambda: 0.0)
         monkeypatch.setattr(hardware.psutil, "Process", lambda pid: process)
-        if failure == "stat":
-            monkeypatch.setattr(
-                hardware.os,
-                "stat",
-                lambda path: (_ for _ in ()).throw(OSError("blocked")),
-            )
 
-    assert not identify_gpu_process(100).is_complete
+    identity = identify_gpu_process(100)
+
+    assert identity.pid == 100
+    assert identity.create_time is None

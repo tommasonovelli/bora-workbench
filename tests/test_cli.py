@@ -1,5 +1,6 @@
 """CLI tests for presentation, read-only behavior, and exit-code mapping."""
 
+from pathlib import Path
 from types import SimpleNamespace
 
 from typer.testing import CliRunner
@@ -66,7 +67,7 @@ def test_version() -> None:
     """Expose the package version through the eager global option."""
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert result.stdout.strip() == "0.2.1"
+    assert result.stdout.strip() == "0.2.2"
 
 
 def test_validate_passes_with_complete_engine_assets() -> None:
@@ -181,8 +182,9 @@ def test_coding_ctrl_c_maps_to_exit_130(monkeypatch) -> None:
 def test_status_and_stop_commands_are_idempotent(monkeypatch) -> None:
     """Expose successful empty-state status and stop behavior through the CLI."""
     empty = SimpleNamespace(services=(), warnings=(), stopped=())
-    monkeypatch.setattr(service_cli, "status_services", lambda: empty)
-    monkeypatch.setattr(service_cli, "stop_services", lambda: empty)
+    monkeypatch.setattr(service_cli, "service_roots", lambda: (Path("state"),))
+    monkeypatch.setattr(service_cli, "status_services", lambda root: empty)
+    monkeypatch.setattr(service_cli, "stop_services", lambda root: empty)
 
     status_result = runner.invoke(app, ["status"])
     stop_result = runner.invoke(app, ["stop"])

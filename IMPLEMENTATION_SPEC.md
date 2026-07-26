@@ -71,6 +71,9 @@ Updated on 26 July 2026.
   workflow; later documentation changes do not alter those immutable artifacts.
 - [x] D-070 selects GitHub Releases as the only current distribution channel and prepares `0.2.1`
   to remove the registry workflow, installer options, and current publication instructions.
+- [x] A real Windows CUDA run on 26 July 2026 exposed the defects of D-071 and, after them, wrote a
+  valid `coding` candidate at `ctx=32768`, `n_cpu_moe=33`, with 0.589 GiB of VRAM free at its
+  minimum. `0.2.2` distributes those fixes; the candidate was not activated.
 
 ### Open work
 
@@ -181,7 +184,7 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-043 | Record lifecycle candidate → active → single previous; activation by default, `--no-activate` separates the Gate. |
 | D-044 | GPU telemetry is best-effort and evidence-only, never a decision threshold. |
 | D-045 | Monotonicity only between feasible probes; interpolation only to order an interior point. |
-| D-046 | On WDDM the population of executable identities is immutable per run and serializes no paths. |
+| D-046 | The run-scoped GPU compute-context population serializes no paths. It is a hard exclusivity rule off WDDM; D-071 reduces it to counted evidence on WDDM, where the desktop itself owns compute contexts. |
 | D-047 | The local Gate is sufficient for the method; coverage stays `GATE-PARTIAL` while different hardware is missing. |
 | D-048 | Public v2 policy/report; the loader projects only `n_cpu_moe` as probe ordering. |
 | D-049 | Default-model gate: 28 GiB total RAM and 22 GiB available. |
@@ -209,6 +212,10 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-068 | On 26 July 2026 the maintainer explicitly selects the current refactor as `0.2.0`: distribution `bora-workbench`, package `bora_workbench`, command `bora`, and repository `tommasonovelli/bora-workbench`. The earlier Step 7–9 router/Open WebUI/benchmark roadmap is postponed beyond 0.2. The final version is authorized without describing the audit or manual run as a passed Gate. PyPI starts with `bora-workbench==0.2.0`; the failed historical `qwen-launcher==0.1.0` publication is closed and its artifacts are never relabelled, rebuilt, or uploaded under the new project. Local completion does not authorize a push, tag, GitHub Release, PyPI upload, remote setting, or candidate activation; each remains a separate current-session action. |
 | D-069 | On 26 July 2026 the maintainer replaces the v5 three-envelope record with one calibrated preference cell per mode. `--preference fast|balanced|max-context` selects the only cell searched, confirmed, gated, and stored; `--mode all` applies the same preference to all three modes, while separate mode runs may retain different preferences. Recalibration replaces only the selected modes' candidate/active lifecycle files. The incompatible format is `calibration-record/v6`; v2–v5 records are superseded and never migrated. Candidate activation promotes the cell exactly as measured and cannot relabel it. The maintainer also authorizes commit, push to `tommasonovelli/bora-workbench`, tag `v0.2.0`, GitHub Release, and the first `bora-workbench==0.2.0` PyPI publication after automated checks and CI succeed. Manual Ubuntu/Windows calibration and hardware runs are explicitly waived for this release, remain follow-up verification, and are not a passed Gate. |
 | D-070 | On 26 July 2026 the maintainer withdraws the active PyPI publication clauses of D-068/D-069 and selects GitHub Releases as the only distribution channel until a future explicit decision. Version `0.2.1` removes the registry publication job, manual dispatch, OIDC permission, separate distribution artifact, registry installer options, and current registry instructions; dependency registry URLs in `uv.lock` remain frozen input sources, not a publication path. Historical decisions and artifacts stay unchanged. The maintainer authorizes the `0.2.1` commit, push to `tommasonovelli/bora-workbench`, tag after local checks, and the GitHub Release after the tag's release CI succeeds; they explicitly waive manual Ubuntu/Windows and hardware runs, and do not authorize a registry upload, remote-setting change, candidate activation, or Gate claim. |
+
+| D-071 | On 26 July 2026 a real Windows CUDA run showed that three defects, none of them a measurement, ended `bora calibrate` before it could write a record. (1) The redirected progress line carried `≤` and `≈`, which a legacy Windows code page cannot encode; the resulting `UnicodeEncodeError` reached the trial through `TrialProgress` and `classify` turned it into an unclassifiable run failure. Progress now stops reporting instead of raising, which is what the module already promised, and the line is ASCII. (2) Every non-success HTTP status was retryable, so the permanent `400` a too-small context returns was retried once and then reported as `remained retryable after one retry`. Only server-side and wait-and-retry statuses are retryable now, matching the health rule of section 5.9. (3) The pinned quick-bench long request measures 23180 prompt tokens and asks for 64 more, so the `16384` and `8192` steps of the approved scale can never produce a sample and CPU calibration, which used the `8192` baseline, could never succeed at all. The scale keeps its approved steps, the ladder and the CPU confirmation use only the measurable ones, and an explicit `--target-ctx` below `32768` is refused as input before any process starts. The byte-pinned payload is a measurement input and is not resized. (4) D-046 required an immutable WDDM compute-context population, which no Windows desktop can offer: the compositor, the shell, and the browser hold contexts permanently and recreate them constantly, NVIDIA reports no per-process memory under WDDM, and a context whose owner `psutil` could not open refused the run before its first trial. The exclusive-GPU rule is kept exactly where it holds — off WDDM, where a foreign context is visible and attributable — and under WDDM the population becomes a counted diagnostic, with the aggregate reserve and release checks carrying the contamination verdict. The executable-file identity that only that rule consumed is removed, so no launcher hashes another process's binary. (5) A trial registers its server under the run's own runtime tree, so `status` and `stop` never saw a server an abruptly killed run left holding VRAM, while `start` told the operator to run `bora stop`, which could not reach it; both commands now sweep the state root and every unrotated trial root. `find_verified_process` also treated an unopenable PID as an error rather than as absent, which on Windows — where PIDs are recycled quickly and the launcher shares one account with its children — meant a recycled PID could wedge `calibrate`, `status`, and `stop` alike with no way to clear the record. |
+
+| D-072 | On 26 July 2026 the maintainer authorizes `0.2.2` as the release that distributes D-071, and authorizes the commit, the push to `tommasonovelli/bora-workbench`, the tag `v0.2.2`, and the GitHub Release. The maintainer also decides that the VRAM reserve stays at `0.5` GiB: the `0.3` GiB value of the retired `calibration/v4` and `/v5` is not restored, so record reserves, the packaged policy, and the schema constants are unchanged and existing `calibration-record/v6` records stay valid. Distribution remains GitHub Releases only (D-070). No registry upload, candidate activation, or Gate claim is authorized, and the manual Ubuntu run for this version is waived rather than performed. |
 
 A new durable decision updates this table in the same step that authorizes it.
 
@@ -354,7 +361,9 @@ configuration change and writes only `calibration-record/v6`.
 
 Constants:
 
-- context scale and explicit targets: `131072 → 98304 → 65536 → 49152 → 32768 → 16384 → 8192`;
+- approved context scale: `131072 → 98304 → 65536 → 49152 → 32768 → 16384 → 8192`, of which only
+  the steps at or above `32768` are measurable and therefore searched or accepted as an explicit
+  target (D-071);
 - CUDA domain `[0, block_count]`, exactly `[0, 41]` for the pinned model;
 - RAM/VRAM polling every 250 ms;
 - reserves: 2.0 GiB RAM, 0.5 GiB VRAM, 0.125 GiB release tolerance;
@@ -364,8 +373,8 @@ Constants:
 - one final smoke and multi-turn gate for the requested cell, plus the vision check for `vstudio`.
 
 An infeasible context costs one prudent probe, so the ladder continues downward. On CPU the
-automatic run confirms the baseline, while an explicit approved target confirms that target;
-`n_cpu_moe` stays null and no CPU offload axis is invented. `--mode all` applies one preference to
+automatic run confirms the smallest measurable context, while an explicit approved target confirms
+that target; `n_cpu_moe` stays null and no CPU offload axis is invented. `--mode all` applies one preference to
 every selected mode; separate invocations may retain different preferences. Each completed group
 persists its own candidate records even if a later group produces none.
 
@@ -400,8 +409,10 @@ probes complete. Ubuntu CUDA uses the pinned source until the lock verifies a pr
 
 ### 5.9 Processes, state, health, and logs
 
-- state at `state_dir()/services.json`, version 1;
-- process identity `pid + create_time`;
+- state at `state_dir()/services.json`, version 1, plus the trial state of an unrotated calibration
+  run, which `status` and `stop` sweep as well (D-071);
+- process identity `pid + create_time`; a recorded PID this account cannot open is absent, never an
+  error, because the launcher and its children share one account (D-071);
 - atomic writes with a temporary file in the same directory, flush, and `replace`;
 - corrupt state renamed to `services.corrupt-<timestamp>.json`;
 - exclusive startup lock with a `pid + create_time` owner;

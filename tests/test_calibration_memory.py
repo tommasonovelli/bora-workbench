@@ -27,7 +27,6 @@ from bora_workbench._calibration_memory import (
     VramReserveError,
     VramThresholds,
     capture_gpu_context_baseline,
-    count_context_replacements,
     oom_resource,
     read_logs,
     validate_gpu_contexts,
@@ -35,14 +34,14 @@ from bora_workbench._calibration_memory import (
 from bora_workbench.hardware import GpuProcessIdentity, GpuSnapshot
 
 
-def context(pid: int, created: float, executable: str) -> GpuProcessIdentity:
-    """Build one complete opaque compute-process identity."""
-    return GpuProcessIdentity(pid, created, executable)
+def context(pid: int, created: float) -> GpuProcessIdentity:
+    """Build one resolved compute-process instance identity."""
+    return GpuProcessIdentity(pid, created)
 
 
 def identities(pids: tuple[int, ...]) -> tuple[GpuProcessIdentity, ...]:
-    """Give every PID the stable create-time and executable this suite reports for it."""
-    return tuple(context(pid, float(pid), f"executable-{pid}") for pid in pids)
+    """Give every PID the stable create time this suite reports for it."""
+    return tuple(context(pid, float(pid)) for pid in pids)
 
 
 def snapshot(
@@ -63,7 +62,7 @@ NO_COMPUTE_CONTEXTS = GpuContextBaseline(False, ())
 
 # Calibration hands `finish` the exact pid/create-time instance it spawned, which is how the monitor
 # tells its own server apart from a foreign process that reused the same PID.
-MANAGED_SERVER = GpuProcessIdentity(42, 42.0, None)
+MANAGED_SERVER = GpuProcessIdentity(42, 42.0)
 
 
 class _MonitorAbort(BaseException):
@@ -181,8 +180,8 @@ def test_stable_wddm_desktop_contexts_are_part_of_the_aggregate_baseline() -> No
     assert monitor.finish(MANAGED_SERVER).release_used_gib == 1
 
 
-def test_new_wddm_context_invalidates_the_run() -> None:
-    """Reject a WDDM context that appears after the measured desktop baseline."""
+def test_new_wddm_context_is_counted_and_the_run_survives() -> None:
+    """Record a WDDM context that appears after the desktop baseline without ending the run."""
     baseline = snapshot(7, (100,), is_wddm=True)
     workload = snapshot(2, (42, 100, 999), is_wddm=True)
     release = snapshot(7, (100,), is_wddm=True)
@@ -191,8 +190,8 @@ def test_new_wddm_context_invalidates_the_run() -> None:
 
     monitor.start()
     assert observed.wait(timeout=1)
-    with pytest.raises(VramEnvironmentError, match="concurrent"):
-        monitor.finish(MANAGED_SERVER)
+
+    assert monitor.finish(MANAGED_SERVER).new_context_count == 1
 
 
 def test_monitor_query_failure_invalidates_the_run() -> None:
@@ -270,11 +269,16 @@ def test_hardware_snapshot_query_reads_memory_driver_and_compute_pids(monkeypatc
         assert "shell" not in call.kwargs
 
 
-def test_monitor_admits_and_records_same_file_process_replacement() -> None:
-    """Keep a clean trial when a baseline executable respawns without extra multiplicity."""
-    original = context(100, 1.0, "desktop")
-    replacement = context(200, 2.0, "desktop")
-    managed = context(42, 3.0, "server")
+def exclusive_snapshot(free: float, *items: GpuProcessIdentity) -> GpuSnapshot:
+    """Build one non-WDDM sample, where the GPU can genuinely be exclusive."""
+    return GpuSnapshot(8.0, free, "610.47", tuple(item.pid for item in items), False, None, items)
+
+
+def test_monitor_counts_desktop_turnover_instead_of_ending_the_run() -> None:
+    """Keep a WDDM trial valid while the desktop replaces one of its own compute processes."""
+    original = context(100, 1.0)
+    replacement = context(200, 2.0)
+    managed = context(42, 3.0)
     query, observed = query_sequence(
         context_snapshot(2.0, replacement, managed),
         (context_snapshot(7.0, replacement),),
@@ -288,13 +292,17 @@ def test_monitor_admits_and_records_same_file_process_replacement() -> None:
     assert observed.wait(timeout=1)
     summary = monitor.finish(managed)
 
-    assert summary.context_replacement_count == 1
+    assert summary.new_context_count == 1
 
 
-def test_monitor_still_invalidates_a_new_executable_file() -> None:
-    """Reject a genuinely new WDDM executable while preserving the strict run boundary."""
-    original = context(100, 1.0, "desktop")
-    intruder = context(200, 2.0, "other")
+def test_monitor_keeps_a_wddm_trial_when_another_program_opens_a_context() -> None:
+    """Count a newcomer on a Windows desktop, because that population is never exclusive.
+
+    A run costs hours and a desktop opens compute contexts on its own, so the aggregate reserve
+    and release checks carry the contamination verdict instead (D-071).
+    """
+    original = context(100, 1.0)
+    intruder = context(200, 2.0)
     query, observed = query_sequence(
         context_snapshot(2.0, intruder),
         (context_snapshot(7.0, original),),
@@ -306,81 +314,81 @@ def test_monitor_still_invalidates_a_new_executable_file() -> None:
 
     monitor.start()
     assert observed.wait(timeout=1)
-    with pytest.raises(VramEnvironmentError, match="contaminated"):
-        monitor.finish(None)
+    summary = monitor.finish(None)
 
-
-def test_same_file_replacement_is_evidence_not_contamination() -> None:
-    """Admit one baseline executable replacement and count its new process instance."""
-    original = context(100, 1.0, "file-a")
-    replacement = context(200, 2.0, "file-a")
-    baseline = GpuContextBaseline(True, (original,))
-
-    observed = validate_gpu_contexts(context_snapshot(7.0, replacement), baseline, None)
-
-    assert observed == {(200, 2.0)}
-    assert count_context_replacements([context_snapshot(7.0, replacement)], baseline, None) == 1
+    assert summary.new_context_count == 1
 
 
 @pytest.mark.parametrize(
     "current",
     [
-        (context(200, 2.0, "file-b"),),
-        (context(100, 1.0, "file-a"), context(200, 2.0, "file-a")),
-        (GpuProcessIdentity(200, None, None),),
+        (context(200, 2.0),),
+        (context(100, 1.0), context(200, 2.0)),
+        (GpuProcessIdentity(200, None),),
     ],
 )
-def test_new_file_extra_multiplicity_and_unknown_identity_fail_closed(current) -> None:
-    """Reject every population that is not a complete sub-multiset of the run baseline."""
-    baseline = GpuContextBaseline(True, (context(100, 1.0, "file-a"),))
+def test_wddm_population_changes_are_counted_never_fatal(current) -> None:
+    """Admit a newcomer, an extra instance, and an identity psutil could not resolve."""
+    baseline = GpuContextBaseline(True, (context(100, 1.0),))
 
-    with pytest.raises(VramEnvironmentError):
-        validate_gpu_contexts(context_snapshot(7.0, *current), baseline, None)
+    observed = validate_gpu_contexts(context_snapshot(7.0, *current), baseline, None)
+
+    assert observed == {item.instance for item in current if item.instance != (100, 1.0)}
 
 
-def test_pid_reuse_cannot_impersonate_baseline_or_managed_server() -> None:
-    """Require executable identity for baseline and pid/create-time for the managed process."""
-    baseline_process = context(100, 1.0, "file-a")
+@pytest.mark.parametrize(
+    "current",
+    [(context(200, 2.0),), (GpuProcessIdentity(200, None),)],
+)
+def test_foreign_compute_still_invalidates_a_run_off_wddm(current) -> None:
+    """Keep the exclusive-GPU rule where a foreign context is visible and attributable."""
+    baseline = GpuContextBaseline(False, ())
+
+    with pytest.raises(VramEnvironmentError, match="concurrent GPU compute workload"):
+        validate_gpu_contexts(exclusive_snapshot(7.0, *current), baseline, None)
+
+
+def test_the_managed_server_is_excluded_by_pid_and_create_time() -> None:
+    """Never count this run's own server, and never let a recycled PID impersonate it."""
+    baseline_process = context(100, 1.0)
     baseline = GpuContextBaseline(True, (baseline_process,))
-    recycled_baseline_pid = context(100, 2.0, "file-b")
-    managed = GpuProcessIdentity(42, 3.0, None)
-    recycled_managed_pid = context(42, 4.0, "file-b")
+    managed = GpuProcessIdentity(42, 3.0)
+    recycled_managed_pid = context(42, 4.0)
 
     admitted = validate_gpu_contexts(
         context_snapshot(7.0, baseline_process, managed), baseline, managed
     )
 
     assert admitted == set()
-    with pytest.raises(VramEnvironmentError):
-        validate_gpu_contexts(context_snapshot(7.0, recycled_baseline_pid), baseline, None)
-    with pytest.raises(VramEnvironmentError):
-        validate_gpu_contexts(
-            context_snapshot(7.0, baseline_process, recycled_managed_pid), baseline, managed
-        )
+    assert validate_gpu_contexts(
+        context_snapshot(7.0, baseline_process, recycled_managed_pid), baseline, managed
+    ) == {(42, 4.0)}
 
 
-def test_baseline_capture_is_complete_and_immutable_across_trials(monkeypatch) -> None:
-    """Capture once, admit later same-file turnover, and reject a persistent new file."""
-    original = context(100, 1.0, "file-a")
+def test_baseline_capture_refuses_only_exclusive_concurrent_compute(monkeypatch) -> None:
+    """Accept a busy Windows desktop, and refuse a foreign context where the GPU is exclusive."""
+    original = context(100, 1.0)
     monkeypatch.setattr(
         memory_module, "query_gpu_snapshot", lambda index: context_snapshot(7.0, original)
     )
-    baseline = capture_gpu_context_baseline(0)
 
-    assert validate_gpu_contexts(context_snapshot(7.0, context(200, 2.0, "file-a")), baseline, None)
-    with pytest.raises(VramEnvironmentError):
-        validate_gpu_contexts(context_snapshot(7.0, context(300, 3.0, "file-b")), baseline, None)
+    assert capture_gpu_context_baseline(0) == GpuContextBaseline(True, (original,))
+
+    monkeypatch.setattr(
+        memory_module, "query_gpu_snapshot", lambda index: exclusive_snapshot(7.0, original)
+    )
+    with pytest.raises(VramEnvironmentError, match="concurrent GPU compute workload"):
+        capture_gpu_context_baseline(0)
 
 
-def test_unreadable_initial_context_fails_before_process_work(monkeypatch) -> None:
-    """Reject an incomplete run baseline instead of burning model probes predictably."""
-    unknown = GpuProcessIdentity(100, None, None)
+def test_an_unreadable_wddm_context_no_longer_blocks_the_run(monkeypatch) -> None:
+    """Start on a host whose compute PIDs psutil cannot open, which is the Windows norm."""
+    unknown = GpuProcessIdentity(100, None)
     monkeypatch.setattr(
         memory_module, "query_gpu_snapshot", lambda index: context_snapshot(7.0, unknown)
     )
 
-    with pytest.raises(VramEnvironmentError, match="cannot identify"):
-        capture_gpu_context_baseline(0)
+    assert capture_gpu_context_baseline(0) == GpuContextBaseline(True, (unknown,))
 
 
 # Every trial runs the RAM monitor with the protocol reserve, so the tests state one explicitly

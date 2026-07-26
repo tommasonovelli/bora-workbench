@@ -62,6 +62,7 @@ class TrialProgress:
     completed: int = 0
     _elapsed: float = 0.0
     _started_at: float | None = None
+    _is_reporting: bool = True
 
     def enter(self, mode_id: str, phase: str, total: int) -> None:
         """Begin one phase of one mode, resetting the per-phase trial count and timing."""
@@ -92,19 +93,27 @@ class TrialProgress:
         return (self._elapsed / self.completed) * (self.total - self.completed)
 
     def _emit(self, is_running: bool) -> None:
-        """Send one event, tolerating a run that was started without any presentation."""
-        if self.callback is None:
+        """Send one event, tolerating a run started without presentation or with a failing one.
+
+        A console that cannot encode, render, or accept an event must not end a measurement that
+        costs hours, so reporting stops here instead of reaching the trial. The failure is not
+        announced through that same console, which is the one that just proved unusable.
+        Control-flow exceptions keep the precedence `prefer_cleanup_error` gives them.
+        """
+        if self.callback is None or not self._is_reporting:
             return
-        self.callback(
-            ProgressEvent(
-                self.mode_id,
-                self.phase,
-                self.completed,
-                self.total,
-                self._remaining_seconds(),
-                is_running,
-            )
+        event = ProgressEvent(
+            self.mode_id,
+            self.phase,
+            self.completed,
+            self.total,
+            self._remaining_seconds(),
+            is_running,
         )
+        try:
+            self.callback(event)
+        except Exception:
+            self._is_reporting = False
 
 
 def prefer_cleanup_error(current: BaseException | None, new: BaseException) -> BaseException:

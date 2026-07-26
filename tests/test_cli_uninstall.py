@@ -16,12 +16,13 @@ runner = CliRunner()
 @pytest.fixture(autouse=True)
 def patch_uninstall_dependencies(tmp_path, monkeypatch) -> list[object]:
     """Isolate service inspection and uv self-removal from the host installation."""
-    empty = SimpleNamespace(services=(), warnings=())
+    empty = SimpleNamespace(services=(), warnings=(), stopped=())
     installation = service_cli.ToolInstallation(
         tmp_path / "uv-tools" / "bora-workbench", tmp_path / "bin" / "uv"
     )
     scheduled: list[object] = []
-    monkeypatch.setattr(service_cli, "status_services", lambda: empty)
+    monkeypatch.setattr(service_cli, "service_roots", lambda: (tmp_path / "state",))
+    monkeypatch.setattr(service_cli, "status_services", lambda root: empty)
     monkeypatch.setattr(service_cli, "inspect_tool_installation", lambda: installation)
     monkeypatch.setattr(service_cli, "schedule_tool_removal", scheduled.append)
     return scheduled
@@ -140,8 +141,10 @@ def test_uninstall_refuses_to_orphan_a_running_service(tmp_path, monkeypatch) ->
     """A live managed service must be stopped before its state can be deleted."""
     roots = patch_managed_roots(tmp_path, monkeypatch)
     populate(roots)
-    running = SimpleNamespace(services=(SimpleNamespace(label="llama-server"),), warnings=())
-    monkeypatch.setattr(service_cli, "status_services", lambda: running)
+    running = SimpleNamespace(
+        services=(SimpleNamespace(label="llama-server"),), warnings=(), stopped=()
+    )
+    monkeypatch.setattr(service_cli, "status_services", lambda root: running)
 
     result = runner.invoke(app, ["uninstall"])
 
@@ -154,10 +157,12 @@ def test_uninstall_rechecks_services_after_confirmation(tmp_path, monkeypatch) -
     """Refuse deletion when a service starts while the confirmation prompt is open."""
     roots = patch_managed_roots(tmp_path, monkeypatch)
     populate(roots)
-    empty = SimpleNamespace(services=(), warnings=())
-    running = SimpleNamespace(services=(SimpleNamespace(label="llama-server"),), warnings=())
+    empty = SimpleNamespace(services=(), warnings=(), stopped=())
+    running = SimpleNamespace(
+        services=(SimpleNamespace(label="llama-server"),), warnings=(), stopped=()
+    )
     inspections = iter((empty, running))
-    monkeypatch.setattr(service_cli, "status_services", lambda: next(inspections))
+    monkeypatch.setattr(service_cli, "status_services", lambda root: next(inspections))
 
     result = runner.invoke(app, ["uninstall"], input="y\n")
 

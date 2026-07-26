@@ -24,9 +24,10 @@ from bora_workbench._calibration_run import RunOptions, RunResult, run_calibrati
 from bora_workbench._calibration_runner import ModeResult
 from bora_workbench._calibration_trial_control import ProgressEvent
 from bora_workbench._calibration_types import (
-    BASELINE_CTX,
     CONTEXT_SCALE,
     DEFAULT_PREFERENCE,
+    MEASURABLE_CONTEXT_SCALE,
+    MIN_CTX_QUICK_BENCH,
     PREFERENCES,
     RAM_RESERVE_GIB,
     RELEASE_TOLERANCE_GIB,
@@ -62,6 +63,7 @@ from bora_workbench.process import ProcessError
 from bora_workbench.profiles import ContentError, PlanError
 
 _APPROVED_CTX = set(CONTEXT_SCALE)
+_MEASURABLE_CTX = set(MEASURABLE_CONTEXT_SCALE)
 
 
 class CalibrationCancelled(RuntimeError):
@@ -128,17 +130,28 @@ def _preference(value: str | None) -> Preference:
     return cast(Preference, normalized)
 
 
+def _validate_target_ctx(target_ctx: int) -> None:
+    """Reject an unapproved step, and an approved one the pinned quick-bench cannot fit in."""
+    if target_ctx not in _APPROVED_CTX:
+        allowed = ", ".join(str(value) for value in sorted(_APPROVED_CTX, reverse=True))
+        raise CalibrationError(f"--target-ctx must be one of: {allowed}")
+    if target_ctx not in _MEASURABLE_CTX:
+        raise CalibrationError(
+            f"--target-ctx {target_ctx} cannot be measured: the pinned quick-bench long request "
+            f"needs a context of at least {MIN_CTX_QUICK_BENCH}"
+        )
+
+
 def _validate(options: CalibrationCliInput) -> None:
-    """Reject conflicting activation and unapproved target contexts before any process starts."""
+    """Reject conflicting activation and unmeasurable target contexts before any process starts."""
     if options.no_activate and options.activate:
         raise CalibrationError("--no-activate and --activate are mutually exclusive")
     if options.activate and options.preference is not None:
         raise CalibrationError("--preference cannot relabel an already measured candidate")
     if options.activate and options.target_ctx is not None:
         raise CalibrationError("--target-ctx cannot be used while activating a pending candidate")
-    if options.target_ctx is not None and options.target_ctx not in _APPROVED_CTX:
-        allowed = ", ".join(str(value) for value in sorted(_APPROVED_CTX, reverse=True))
-        raise CalibrationError(f"--target-ctx must be one of: {allowed}")
+    if options.target_ctx is not None:
+        _validate_target_ctx(options.target_ctx)
 
 
 def _scale_text(target: CalibrationTarget, target_ctx: int | None) -> str:
@@ -146,8 +159,8 @@ def _scale_text(target: CalibrationTarget, target_ctx: int | None) -> str:
     if target_ctx is not None:
         return str(target_ctx)
     if target.hardware.backend == "cpu":
-        return f"{BASELINE_CTX} (CPU confirms one baseline; it has no offload axis)"
-    return " -> ".join(str(value) for value in CONTEXT_SCALE)
+        return f"{MIN_CTX_QUICK_BENCH} (CPU confirms one context; it has no offload axis)"
+    return " -> ".join(str(value) for value in MEASURABLE_CONTEXT_SCALE)
 
 
 def _budget_text(target: CalibrationTarget) -> str:
@@ -216,8 +229,12 @@ _CAPPED_PHASES = frozenset({"screening", "search", "pairing", "gate"})
 
 
 def _count_text(event: ProgressEvent) -> str:
-    """Distinguish a budget cap from an exact phase total."""
-    separator = "/≤" if event.phase in _CAPPED_PHASES else "/"
+    """Distinguish a budget cap from an exact phase total.
+
+    The cap marker stays ASCII because a redirected run writes these lines through the console
+    encoding, which on Windows is a legacy code page that cannot represent U+2264.
+    """
+    separator = "/<=" if event.phase in _CAPPED_PHASES else "/"
     return f"{event.completed}{separator}{event.total}"
 
 
@@ -227,8 +244,8 @@ def _remaining_text(event: ProgressEvent) -> str:
         return "learning duration…"
     duration = _format_duration(event.estimated_remaining_seconds)
     if event.phase in _CAPPED_PHASES:
-        return f"cap projection ≈ {duration}"
-    return f"ETA ≈ {duration}"
+        return f"cap projection ~ {duration}"
+    return f"ETA ~ {duration}"
 
 
 def _plain_line(event: ProgressEvent) -> str:

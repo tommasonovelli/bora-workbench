@@ -30,9 +30,9 @@ from bora_workbench._calibration_search import GroupPlan, SearchProvider
 from bora_workbench._calibration_trial import TrialRunner
 from bora_workbench._calibration_trial_control import ProgressCallback, TrialProgress
 from bora_workbench._calibration_types import (
-    BASELINE_CTX,
-    CONTEXT_SCALE,
     DEFAULT_PREFERENCE,
+    MEASURABLE_CONTEXT_SCALE,
+    MIN_CTX_QUICK_BENCH,
     TEXT_SEARCH_BUDGET,
     VSTUDIO_SEARCH_BUDGET,
     Preference,
@@ -94,16 +94,18 @@ def _capture_context_baseline(target: CalibrationTarget) -> GpuContextBaseline |
 
 
 def _contexts(target: CalibrationTarget, options: RunOptions) -> tuple[int, ...]:
-    """Choose the searched contexts: an explicit target, the full scale, or the CPU baseline.
+    """Choose the searched contexts: an explicit target, the measurable scale, or one CPU context.
 
-    CPU confirms one baseline context instead of scanning the scale, because that backend has no
-    offload axis and the spec forbids inventing one (spec 5.6).
+    The ladder stops at the smallest step the pinned quick-bench request fits in, because a step
+    below it can only spend trials on a request the engine must refuse (D-071). CPU confirms that
+    same single step instead of scanning, because that backend has no offload axis and the spec
+    forbids inventing one (spec 5.6).
     """
     if options.target_ctx is not None:
         return (options.target_ctx,)
     if target.hardware.backend == "cpu":
-        return (BASELINE_CTX,)
-    return CONTEXT_SCALE
+        return (MIN_CTX_QUICK_BENCH,)
+    return MEASURABLE_CONTEXT_SCALE
 
 
 def _run_group_for(

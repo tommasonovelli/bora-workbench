@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from io import StringIO
+from io import BytesIO, StringIO, TextIOWrapper
 
 import pytest
 from rich.console import Console
@@ -22,7 +22,26 @@ def test_redirected_progress_prints_only_completed_trials() -> None:
         progress(started)
         progress(completed)
 
-    assert stream.getvalue() == "coding screening: 1/≤14; cap projection ≈ 1m 50s\n"
+    assert stream.getvalue() == "coding screening: 1/<=14; cap projection ~ 1m 50s\n"
+
+
+def test_redirected_progress_writes_on_a_legacy_windows_code_page() -> None:
+    """Keep redirected lines writable when stdout is not UTF-8.
+
+    A run of several hours is normally redirected to a log, and on Windows that stream uses the
+    legacy code page, which cannot represent the mathematical glyphs this line once carried.
+    """
+    raw = BytesIO()
+    stream = TextIOWrapper(raw, encoding="cp1252", newline="")
+    console = Console(file=stream, force_terminal=False, color_system=None, width=120)
+
+    with CalibrationProgress(console) as progress:
+        progress(ProgressEvent("coding", "screening", 1, 14, 110.0))
+    stream.flush()
+
+    assert raw.getvalue().decode("cp1252") == (
+        "coding screening: 1/<=14; cap projection ~ 1m 50s\n"
+    )
 
 
 def test_terminal_progress_retains_a_phase_summary() -> None:
@@ -42,7 +61,7 @@ def test_terminal_progress_retains_a_phase_summary() -> None:
 
     rendered = stream.getvalue()
     assert "coding screening complete: 1 trial(s) in 2m 00s." in rendered
-    assert "coding screening: 1/≤14" not in rendered
+    assert "coding screening: 1/<=14" not in rendered
 
 
 def test_terminal_progress_marks_an_interrupted_phase() -> None:

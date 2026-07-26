@@ -40,13 +40,30 @@ class BenchmarkRetryableError(BenchmarkError):
     """Report a transient transport or HTTP response failure."""
 
 
-class BenchmarkHttpError(BenchmarkRetryableError):
+class BenchmarkHttpError(BenchmarkError):
     """Retain a non-success HTTP status for class-based trial classification."""
 
     def __init__(self, status_code: int) -> None:
         """Attach the returned status without parsing an exception message."""
         super().__init__(f"benchmark request returned HTTP {status_code}")
         self.status_code = status_code
+
+
+class BenchmarkHttpRetryableError(BenchmarkHttpError, BenchmarkRetryableError):
+    """Report a non-success status whose cause a repeated request can plausibly clear."""
+
+
+# A 4xx answer is the server's verdict on the request that was sent, so repeating that exact
+# request cannot change it; only server-side failures and the wait-and-retry statuses earn a
+# retry. `process.py` applies the same rule to health responses (spec section 5.6, D-059).
+_RETRYABLE_STATUSES = frozenset({408, 425, 429})
+
+
+def http_status_error(status_code: int) -> BenchmarkHttpError:
+    """Build the error class one non-success status maps to, keeping D-059 class-based."""
+    if status_code >= 500 or status_code in _RETRYABLE_STATUSES:
+        return BenchmarkHttpRetryableError(status_code)
+    return BenchmarkHttpError(status_code)
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,7 +124,7 @@ def _post(client: httpx.Client, url: str, request: JsonObject) -> JsonObject:
     except httpx.HTTPError as error:
         raise BenchmarkRetryableError(f"benchmark request failed: {error}") from error
     if response.status_code != 200:
-        raise BenchmarkHttpError(response.status_code)
+        raise http_status_error(response.status_code)
     try:
         value = response.json()
     except ValueError as error:

@@ -33,6 +33,11 @@ from bora_workbench.process import PortCollisionError, ServerStartupError
 
 CALIBRATION_PROTOCOL = "calibration"
 CONTEXT_SCALE = (131072, 98304, 65536, 49152, 32768, 16384, 8192)
+# The pinned quick-bench long request measures 23180 prompt tokens on this model and asks for 64
+# more. A smaller window makes the engine reject it outright, so the two lowest approved steps
+# cannot produce a sample at all and the run must never spend trials there (D-071).
+MIN_CTX_QUICK_BENCH = 32768
+MEASURABLE_CONTEXT_SCALE = tuple(ctx for ctx in CONTEXT_SCALE if ctx >= MIN_CTX_QUICK_BENCH)
 DEADBAND_PCT = 3.0
 BALANCED_CEILING = 1.10
 MIN_CTX_FAST = 16384
@@ -61,7 +66,7 @@ def launcher_version() -> str:
     try:
         return version("bora-workbench")
     except PackageNotFoundError:
-        return "0.2.1"
+        return "0.2.2"
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,7 +89,7 @@ class Sample:
 
     @property
     def prefill_tps(self) -> float:
-        """Return the ~8K prefill throughput used as the deadband prefill tie-break."""
+        """Return the long-request prefill throughput used as the deadband prefill tie-break."""
         return self.quick.prefill_8k_tps
 
     @property

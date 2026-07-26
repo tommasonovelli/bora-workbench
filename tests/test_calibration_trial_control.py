@@ -98,6 +98,28 @@ def test_a_run_without_presentation_still_counts_trials() -> None:
     assert progress.completed == 1
 
 
+def test_a_failing_renderer_cannot_end_a_measurement_run() -> None:
+    """Keep measuring when the console rejects an event, and stop retrying that console.
+
+    Progress is presentation only, so a redirected stream that cannot encode a line must not
+    discard the trials a run has already paid for.
+    """
+    attempts: list[ProgressEvent] = []
+
+    def callback(event: ProgressEvent) -> None:
+        """Fail the way a console on an unusable stream fails."""
+        attempts.append(event)
+        raise RuntimeError("console is unusable")
+
+    progress = TrialProgress(callback)
+    progress.enter("coding", "search", 28)
+    progress.started()
+    progress.finished()
+
+    assert progress.completed == 1
+    assert len(attempts) == 1
+
+
 def test_progress_cleanup_failure_cannot_mask_workload_interrupt(tmp_path, monkeypatch) -> None:
     """Keep Ctrl-C ahead of a renderer failure emitted after trial cleanup."""
     target = record_target(cpu_hardware())

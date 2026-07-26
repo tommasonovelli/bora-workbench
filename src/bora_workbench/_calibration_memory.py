@@ -1,8 +1,9 @@
 """Measure the memory one calibration trial needs and diagnose what refused it (spec 5.6).
 
 The module owns every memory observation of one trial: the aggregate VRAM monitor with the
-run-scoped WDDM compute-context population of D-046, the available-RAM monitor that CPU and CUDA
-alike must run (D-038/D-042), and the log-based out-of-memory diagnosis. Both monitors sample on
+run-scoped compute-context population of D-046, which D-071 keeps exclusive off WDDM and reduces
+to counted evidence on it, the available-RAM monitor that CPU and CUDA alike must run
+(D-038/D-042), and the log-based out-of-memory diagnosis. Both monitors sample on
 the same 250 ms protocol interval, so their two evidence streams stay comparable, and both receive
 their reserves from the caller instead of reading a constant, so a record can be re-evaluated
 later against exactly the margins it was measured with.
@@ -19,7 +20,6 @@ import math
 import re
 import threading
 import time
-from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -61,7 +61,7 @@ class VramSummary:
     release_duration_seconds: float = 0.0
     initial_compute_context_count: int = 0
     telemetry: GpuTelemetrySummary | None = None
-    context_replacement_count: int = 0
+    new_context_count: int = 0
 
 
 class VramError(RuntimeError):
@@ -106,56 +106,41 @@ def _aligned_contexts(snapshot: GpuSnapshot) -> tuple[GpuProcessIdentity, ...]:
     return contexts
 
 
-def _require_complete(
-    contexts: tuple[GpuProcessIdentity, ...],
-) -> tuple[GpuProcessIdentity, ...]:
-    """Reject every non-managed context whose executable identity is unavailable."""
-    unknown = [item.pid for item in contexts if not item.is_complete]
-    if unknown:
-        pids = ", ".join(str(pid) for pid in unknown)
-        raise VramEnvironmentError(f"cannot identify GPU compute context PIDs {pids}")
-    return contexts
+def _require_exclusive_gpu(contexts: tuple[GpuProcessIdentity, ...], is_wddm: bool) -> None:
+    """Refuse concurrent compute only where the selected GPU can actually be exclusive.
+
+    Off WDDM a foreign compute context is both visible and attributable, so it invalidates the
+    run. Under WDDM the compositor, the shell, and the browser hold compute contexts at all times
+    and recreate them constantly, and NVIDIA reports no per-process memory there, so an immutable
+    population is not something a Windows host can offer: requiring one refused every desktop and
+    turned ordinary churn into a lost multi-hour run. Contamination that actually moves a
+    measurement still shows up in the aggregate reserve and release checks, which are the ones the
+    candidate decision reads (D-071 relaxes D-046 on WDDM only).
+    """
+    if is_wddm or not contexts:
+        return
+    pids = ", ".join(str(item.pid) for item in contexts)
+    raise VramEnvironmentError(
+        f"concurrent GPU compute workload on the selected GPU (PIDs {pids}); stop it"
+    )
 
 
 def capture_gpu_context_baseline(index: int) -> GpuContextBaseline:
-    """Capture one immutable pre-run context baseline and reject unreadable identities early."""
+    """Capture one pre-run context population and refuse concurrent exclusive compute early."""
     snapshot = query_gpu_snapshot(index)
-    contexts = _require_complete(_aligned_contexts(snapshot))
-    if contexts and not snapshot.is_wddm:
-        pids = ", ".join(str(item.pid) for item in contexts)
-        raise VramEnvironmentError(
-            f"concurrent GPU compute workload detected before calibration (PIDs {pids}); stop it"
-        )
+    contexts = _aligned_contexts(snapshot)
+    _require_exclusive_gpu(contexts, snapshot.is_wddm)
     return GpuContextBaseline(snapshot.is_wddm, contexts)
 
 
 def _visible_contexts(
     snapshot: GpuSnapshot, managed: GpuProcessIdentity | None
 ) -> tuple[GpuProcessIdentity, ...]:
-    """Remove the exact managed instance before requiring complete foreign identities."""
+    """Remove the exact managed instance so only foreign compute contexts remain."""
     contexts = _aligned_contexts(snapshot)
     if managed is not None and managed.create_time is not None:
         contexts = tuple(item for item in contexts if item.instance != managed.instance)
-    return _require_complete(contexts)
-
-
-def _identity_counts(contexts: tuple[GpuProcessIdentity, ...]) -> Counter[str]:
-    """Count complete executable identities without serializing their opaque values."""
-    return Counter(item.executable_id for item in contexts if item.executable_id is not None)
-
-
-def _reject_excess(current: tuple[GpuProcessIdentity, ...], baseline: GpuContextBaseline) -> None:
-    """Reject new executable files or multiplicity above the immutable run baseline."""
-    allowed = _identity_counts(baseline.contexts)
-    observed = _identity_counts(current)
-    excess = observed - allowed
-    if not excess:
-        return
-    pids = [item.pid for item in current if item.executable_id in excess]
-    values = ", ".join(str(pid) for pid in sorted(pids))
-    raise VramEnvironmentError(
-        f"concurrent GPU compute workload contaminated calibration (PIDs {values}); stop it"
-    )
+    return contexts
 
 
 def validate_gpu_contexts(
@@ -163,30 +148,30 @@ def validate_gpu_contexts(
     baseline: GpuContextBaseline,
     managed: GpuProcessIdentity | None,
 ) -> set[tuple[int, float | None]]:
-    """Validate one sample and return admitted baseline-executable replacement instances."""
+    """Validate one sample and return the compute instances absent from the run baseline."""
     if snapshot.is_wddm != baseline.is_wddm:
         raise VramEnvironmentError("GPU driver model changed during calibration")
     current = _visible_contexts(snapshot, managed)
-    if current and not baseline.is_wddm:
-        pids = ", ".join(str(item.pid) for item in current)
-        raise VramEnvironmentError(
-            f"concurrent GPU compute workload contaminated calibration (PIDs {pids}); stop it"
-        )
-    _reject_excess(current, baseline)
+    _require_exclusive_gpu(current, baseline.is_wddm)
     original = {item.instance for item in baseline.contexts}
     return {item.instance for item in current if item.instance not in original}
 
 
-def count_context_replacements(
+def count_new_contexts(
     snapshots: list[GpuSnapshot],
     baseline: GpuContextBaseline,
     managed: GpuProcessIdentity | None,
 ) -> int:
-    """Validate every trial sample and count unique admitted process replacements."""
-    replacements: set[tuple[int, float | None]] = set()
+    """Validate every trial sample and count the distinct compute instances the run did not start.
+
+    The count is evidence about how busy the host was, never a pass or fail threshold: under WDDM
+    a desktop legitimately produces some, and a decision that read it would be a decision about
+    the operating system rather than about the candidate.
+    """
+    observed: set[tuple[int, float | None]] = set()
     for snapshot in snapshots:
-        replacements |= validate_gpu_contexts(snapshot, baseline, managed)
-    return len(replacements)
+        observed |= validate_gpu_contexts(snapshot, baseline, managed)
+    return len(observed)
 
 
 @dataclass(slots=True)
@@ -244,11 +229,11 @@ class VramMonitor:
         release, release_duration = self._wait_for_release(baseline, managed)
         summary = self._summary(baseline, release, release_duration)
         try:
-            replacements = self._validate_samples(managed, baseline, release)
+            observed = self._validate_samples(managed, baseline, release)
         except VramError as error:
             # Preserve the class so environment failures stay run-invalidating.
             raise type(error)(str(error), summary) from error
-        return replace(summary, context_replacement_count=replacements)
+        return replace(summary, new_context_count=observed)
 
     def _stop_polling(self) -> None:
         """Join the polling thread and surface its first query failure."""
@@ -316,7 +301,7 @@ class VramMonitor:
         self, managed: GpuProcessIdentity | None, baseline: GpuSnapshot, release: GpuSnapshot
     ) -> int:
         """Reject context, reserve, capacity, driver, and retained-memory violations."""
-        replacements = count_context_replacements(self._samples, self.context_baseline, managed)
+        observed = count_new_contexts(self._samples, self.context_baseline, managed)
         if any(sample.vram_total_gib != baseline.vram_total_gib for sample in self._samples):
             raise VramEnvironmentError("reported total VRAM changed during calibration")
         if any(sample.driver_version != baseline.driver_version for sample in self._samples):
@@ -330,7 +315,7 @@ class VramMonitor:
             raise VramReleaseError(
                 "GPU memory did not stabilize within release tolerance after stop"
             )
-        return replacements
+        return observed
 
 
 class RamError(RuntimeError):

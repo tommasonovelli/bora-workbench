@@ -207,7 +207,7 @@ class EngineInstallProgress:
         if total is None:
             return metrics, ""
         remaining = max(0, total - completed) / rate
-        return metrics, f"ETA ≈ {_format_duration(remaining)}"
+        return metrics, f"ETA ~ {_format_duration(remaining)}"
 
     def _finish_phase(self, is_success: bool) -> None:
         """Clear the transient task and retain summaries for measured work."""

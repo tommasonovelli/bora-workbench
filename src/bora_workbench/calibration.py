@@ -10,6 +10,7 @@ from bora_workbench._calibration_types import CalibrationError, CalibrationRunEr
 from bora_workbench.config import DEFAULT_MODEL, Config, load_config
 from bora_workbench.engine import JsonObject, load_engine_lock, locate, resolve_model
 from bora_workbench.hardware import HardwareInfo, detect_hardware, ensure_launch_supported
+from bora_workbench.paths import data_dir, state_dir
 from bora_workbench.process import status_services
 from bora_workbench.profiles import Catalog, Mode, enforce_memory_gate, load_catalog
 
@@ -37,6 +38,20 @@ class CalibrationTarget:
     executable: Path
     model_path: Path
     mmproj_path: Path | None
+
+
+def service_roots() -> tuple[Path, ...]:
+    """List every root a managed service can be registered in, the state root first.
+
+    A calibration trial registers its server under the run's own runtime tree instead of the state
+    root, so a run killed before it could rotate that tree leaves a live `llama-server` that
+    `status` and `stop` would never see and that no command could then end (D-071).
+    """
+    calibration_root = data_dir() / "calibration"
+    if not calibration_root.is_dir():
+        return (state_dir(),)
+    trials = sorted(path.parent for path in calibration_root.glob(".runtime-*/*/*/services.json"))
+    return (state_dir(), *trials)
 
 
 def _selected_modes(mode_value: str, catalog: Catalog) -> tuple[Mode, ...]:
@@ -67,9 +82,9 @@ def prepare_target(mode_value: str) -> CalibrationTarget:
     ensure_launch_supported(hardware)
     if config.model != DEFAULT_MODEL:
         raise CalibrationRunError("calibration supports only the pinned default model")
-    report = status_services()
-    if report.services:
-        raise CalibrationRunError("a managed service is running; stop it before calibration")
+    for root in service_roots():
+        if status_services(root).services:
+            raise CalibrationRunError("a managed service is running; run bora stop")
     catalog = load_catalog()
     modes = _selected_modes(mode_value, catalog)
     lock = load_engine_lock()

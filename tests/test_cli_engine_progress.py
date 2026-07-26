@@ -61,7 +61,7 @@ def test_terminal_progress_shows_byte_bar_and_eta() -> None:
 
     rendered = stream.getvalue()
     assert "50.0 B/100.0 B · 10.0 B/s" in rendered
-    assert "ETA ≈ 5s" in rendered
+    assert "ETA ~ 5s" in rendered
     assert "Downloading [1/2] engine.zip complete in 5s." in rendered
 
 
