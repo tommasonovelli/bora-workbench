@@ -35,16 +35,35 @@ from bora_workbench._calibration_memory import (
 from bora_workbench.hardware import GpuProcessIdentity, GpuSnapshot
 
 
-def snapshot(
-    free: float, pids: tuple[int, ...] = (), driver: str = "610.47", *, is_wddm: bool = False
-) -> GpuSnapshot:
-    """Build one fixed 8 GiB aggregate GPU observation."""
-    return GpuSnapshot(8, free, driver, pids, is_wddm)
-
-
 def context(pid: int, created: float, executable: str) -> GpuProcessIdentity:
     """Build one complete opaque compute-process identity."""
     return GpuProcessIdentity(pid, created, executable)
+
+
+def identities(pids: tuple[int, ...]) -> tuple[GpuProcessIdentity, ...]:
+    """Give every PID the stable create-time and executable this suite reports for it."""
+    return tuple(context(pid, float(pid), f"executable-{pid}") for pid in pids)
+
+
+def snapshot(
+    free: float, pids: tuple[int, ...] = (), driver: str = "610.47", *, is_wddm: bool = False
+) -> GpuSnapshot:
+    """Build one fixed 8 GiB aggregate GPU observation with identities aligned to its PIDs."""
+    return GpuSnapshot(8, free, driver, pids, is_wddm, None, identities(pids))
+
+
+def wddm_baseline(*pids: int) -> GpuContextBaseline:
+    """Build the run population a WDDM desktop presents to `capture_gpu_context_baseline`."""
+    return GpuContextBaseline(True, identities(pids))
+
+
+# A Linux or TCC host reports no compute context at all, and capture refuses to start a run when it
+# finds one, so this is the run population every non-WDDM trial begins from.
+NO_COMPUTE_CONTEXTS = GpuContextBaseline(False, ())
+
+# Calibration hands `finish` the exact pid/create-time instance it spawned, which is how the monitor
+# tells its own server apart from a foreign process that reused the same PID.
+MANAGED_SERVER = GpuProcessIdentity(42, 42.0, None)
 
 
 def context_snapshot(free: float, *items: GpuProcessIdentity) -> GpuSnapshot:
@@ -74,9 +93,11 @@ def query_sequence(polled, releases, baseline=None):
     return query, observed
 
 
-def monitor_for(query, tolerance: float = 0) -> VramMonitor:
-    """Build one monitor with an explicit reserve and release tolerance."""
-    return VramMonitor(0, VramThresholds(1, tolerance), query)
+def monitor_for(
+    query, tolerance: float = 0, baseline: GpuContextBaseline = NO_COMPUTE_CONTEXTS
+) -> VramMonitor:
+    """Build one monitor with an explicit reserve, release tolerance, and run population."""
+    return VramMonitor(0, VramThresholds(1, tolerance), baseline, query)
 
 
 def test_monitor_records_peak_reserve_and_clean_release() -> None:
@@ -86,7 +107,7 @@ def test_monitor_records_peak_reserve_and_clean_release() -> None:
 
     monitor.start()
     assert observed.wait(timeout=1)
-    summary = monitor.finish(42)
+    summary = monitor.finish(MANAGED_SERVER)
 
     assert summary.baseline_used_gib == 1
     assert summary.peak_used_gib == 6.5
@@ -104,7 +125,7 @@ def test_release_stabilizes_within_window(monkeypatch) -> None:
 
     monitor.start()
     assert observed.wait(timeout=1)
-    summary = monitor.finish(42)
+    summary = monitor.finish(MANAGED_SERVER)
 
     assert summary.release_used_gib == pytest.approx(1.05)
 
@@ -117,7 +138,7 @@ def test_release_within_explicit_tolerance_is_valid() -> None:
     monitor.start()
     assert observed.wait(timeout=1)
 
-    assert monitor.finish(42).release_used_gib == pytest.approx(1.1)
+    assert monitor.finish(MANAGED_SERVER).release_used_gib == pytest.approx(1.1)
 
 
 def test_release_beyond_window_retains_summary(monkeypatch) -> None:
@@ -129,7 +150,7 @@ def test_release_beyond_window_retains_summary(monkeypatch) -> None:
     assert observed.wait(timeout=1)
 
     with pytest.raises(VramReleaseError, match="stabilize") as captured:
-        monitor.finish(42)
+        monitor.finish(MANAGED_SERVER)
 
     assert captured.value.summary is not None
     assert captured.value.summary.release_used_gib == 2
@@ -149,11 +170,11 @@ def test_stable_wddm_desktop_contexts_are_part_of_the_aggregate_baseline() -> No
     workload = snapshot(2, (42, 100), is_wddm=True)
     release = snapshot(7, (100,), is_wddm=True)
     query, observed = query_sequence(workload, (release,), baseline)
-    monitor = monitor_for(query)
+    monitor = monitor_for(query, baseline=wddm_baseline(100))
 
     monitor.start()
     assert observed.wait(timeout=1)
-    assert monitor.finish(42).release_used_gib == 1
+    assert monitor.finish(MANAGED_SERVER).release_used_gib == 1
 
 
 def test_new_wddm_context_invalidates_the_run() -> None:
@@ -162,12 +183,12 @@ def test_new_wddm_context_invalidates_the_run() -> None:
     workload = snapshot(2, (42, 100, 999), is_wddm=True)
     release = snapshot(7, (100,), is_wddm=True)
     query, observed = query_sequence(workload, (release,), baseline)
-    monitor = monitor_for(query)
+    monitor = monitor_for(query, baseline=wddm_baseline(100))
 
     monitor.start()
     assert observed.wait(timeout=1)
     with pytest.raises(VramEnvironmentError, match="concurrent"):
-        monitor.finish(42)
+        monitor.finish(MANAGED_SERVER)
 
 
 def test_monitor_query_failure_invalidates_the_run() -> None:
@@ -186,7 +207,7 @@ def test_driver_change_during_trial_invalidates_the_run() -> None:
     assert observed.wait(timeout=1)
 
     with pytest.raises(VramEnvironmentError, match="driver version changed"):
-        monitor.finish(42)
+        monitor.finish(MANAGED_SERVER)
 
 
 def test_reserve_violation_retains_measured_summary() -> None:
@@ -197,7 +218,7 @@ def test_reserve_violation_retains_measured_summary() -> None:
     assert observed.wait(timeout=1)
 
     with pytest.raises(VramReserveError, match="reserve") as captured:
-        monitor.finish(42)
+        monitor.finish(MANAGED_SERVER)
 
     assert captured.value.summary is not None
 
@@ -234,7 +255,7 @@ def test_monitor_admits_and_records_same_file_process_replacement() -> None:
         context_snapshot(7.0, original),
     )
     monitor = VramMonitor(
-        0, VramThresholds(0.5, 0.125), query, GpuContextBaseline(True, (original,))
+        0, VramThresholds(0.5, 0.125), GpuContextBaseline(True, (original,)), query
     )
 
     monitor.start()
@@ -254,7 +275,7 @@ def test_monitor_still_invalidates_a_new_executable_file() -> None:
         context_snapshot(7.0, original),
     )
     monitor = VramMonitor(
-        0, VramThresholds(0.5, 0.125), query, GpuContextBaseline(True, (original,))
+        0, VramThresholds(0.5, 0.125), GpuContextBaseline(True, (original,)), query
     )
 
     monitor.start()
@@ -336,6 +357,11 @@ def test_unreadable_initial_context_fails_before_process_work(monkeypatch) -> No
         capture_gpu_context_baseline(0)
 
 
+# Every trial runs the RAM monitor with the protocol reserve, so the tests state one explicitly
+# rather than importing it: a change to the shipped reserve must not silently move these boundaries.
+RAM_RESERVE_GIB = 2.0
+
+
 def ram_query_sequence(polled_gib: float):
     """Return a thread-aware query serving the baseline on the owner thread."""
     observed = threading.Event()
@@ -353,7 +379,7 @@ def ram_query_sequence(polled_gib: float):
 def test_ram_monitor_records_baseline_and_minimum_available() -> None:
     """Track the measured RAM minimum that the record headroom check will reuse."""
     query, observed = ram_query_sequence(18.5)
-    monitor = RamMonitor(query)
+    monitor = RamMonitor(RAM_RESERVE_GIB, query)
 
     monitor.start()
     assert observed.wait(timeout=1)
@@ -367,7 +393,7 @@ def test_ram_monitor_records_baseline_and_minimum_available() -> None:
 def test_universal_reserve_violation_retains_candidate_evidence() -> None:
     """Make one trial infeasible while preserving its measured RAM summary."""
     query, observed = ram_query_sequence(1.5)
-    monitor = RamMonitor(query, minimum_free_gib=2.0)
+    monitor = RamMonitor(RAM_RESERVE_GIB, query)
 
     monitor.start()
     assert observed.wait(timeout=1)
@@ -388,7 +414,7 @@ def test_ram_query_failure_invalidates_the_run() -> None:
             raise OSError("psutil failed")
         return 24.0
 
-    monitor = RamMonitor(failing)
+    monitor = RamMonitor(RAM_RESERVE_GIB, failing)
     monitor.start()
     assert observed.wait(timeout=1)
 
@@ -398,7 +424,7 @@ def test_ram_query_failure_invalidates_the_run() -> None:
 
 def test_ram_baseline_query_failure_invalidates_the_run() -> None:
     """Classify a baseline monitor failure as unreliable environment evidence."""
-    monitor = RamMonitor(lambda: (_ for _ in ()).throw(OSError("psutil failed")))
+    monitor = RamMonitor(RAM_RESERVE_GIB, lambda: (_ for _ in ()).throw(OSError("psutil failed")))
 
     with pytest.raises(RamError, match="RAM monitoring failed"):
         monitor.start()
@@ -407,7 +433,7 @@ def test_ram_baseline_query_failure_invalidates_the_run() -> None:
 def test_unstarted_ram_monitor_is_rejected() -> None:
     """Refuse to fabricate a summary for a monitor that never sampled."""
     with pytest.raises(RamError, match="not started"):
-        RamMonitor(lambda: 24.0).finish()
+        RamMonitor(RAM_RESERVE_GIB, lambda: 24.0).finish()
 
 
 _CUDA_FAILURE = (

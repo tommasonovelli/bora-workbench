@@ -491,13 +491,18 @@ def install_engine(
     """
     from bora_workbench._engine_install import InstallRequest, install_managed_engine
 
+    # Read the lock before inspecting the host: on a machine that is both unsupported and carries an
+    # unreadable packaged lock, the broken lock is the failure the user must hear about first.
+    # Evaluating these inside the constructor would reverse that order.
+    lock = load_engine_lock()
+    platform_key = _platform_key()
     request = InstallRequest(
-        _platform_key(),
+        platform_key,
         backend,
         force,
         data_dir() / "engine",
         cache_dir() / "llama.cpp",
-        load_engine_lock(),
+        lock,
         progress,
     )
     return install_managed_engine(request)

@@ -261,3 +261,14 @@ def test_status_keeps_active_identity_when_engine_probe_fails(tmp_path, monkeypa
     assert status.release == "b10011"
     assert status.is_compatible is False
     assert status.differences == ("version differs from engine.lock",)
+
+
+def test_install_diagnoses_an_unreadable_lock_before_the_host_check(monkeypatch) -> None:
+    """Read the packaged contract first, because a host can fail both checks at once."""
+    monkeypatch.setattr(engine.platform, "machine", lambda: "aarch64")
+    monkeypatch.setattr(
+        engine, "load_engine_lock", Mock(side_effect=EngineError("cannot read engine.lock"))
+    )
+
+    with pytest.raises(EngineError, match=r"engine\.lock"):
+        engine.install_engine("cpu")

@@ -40,8 +40,6 @@ from bora_workbench.hardware import (
 _POLL_INTERVAL_SECONDS = 0.25
 _RELEASE_STABILIZATION_SECONDS = 10.0
 
-_ManagedGpu = GpuProcessIdentity | int | None
-
 
 @dataclass(frozen=True, slots=True)
 class VramThresholds:
@@ -87,8 +85,8 @@ class VramEnvironmentError(VramError):
     """Mark monitor or environmental evidence that invalidates the whole run.
 
     Specification section 5.6 separates reserve/release candidate failures from concurrent compute,
-    monitor, driver, and capacity failures. The subclass keeps calibration/v1 behavior compatible
-    while letting calibration preserve that distinction.
+    monitor, driver, and capacity failures; this subclass is what carries that distinction to the
+    caller, which discards the whole run instead of only the current candidate.
     """
 
 
@@ -98,19 +96,6 @@ class GpuContextBaseline:
 
     is_wddm: bool
     contexts: tuple[GpuProcessIdentity, ...]
-
-
-def _legacy_foreign_pids(
-    snapshots: list[GpuSnapshot],
-    baseline: GpuSnapshot,
-    managed: _ManagedGpu,
-) -> set[int]:
-    """Preserve the historical per-trial exact-PID WDDM contract."""
-    baseline_pids = set(baseline.compute_pids) if baseline.is_wddm else set()
-    managed_pid = managed.pid if isinstance(managed, GpuProcessIdentity) else managed
-    managed_pids = set() if managed_pid is None else {managed_pid}
-    observed = set().union(*(set(snapshot.compute_pids) for snapshot in snapshots))
-    return observed - baseline_pids - managed_pids
 
 
 def _aligned_contexts(snapshot: GpuSnapshot) -> tuple[GpuProcessIdentity, ...]:
@@ -210,8 +195,8 @@ class VramMonitor:
 
     gpu_index: int
     thresholds: VramThresholds
+    context_baseline: GpuContextBaseline
     query: Callable[[int], GpuSnapshot] = query_gpu_snapshot
-    context_baseline: GpuContextBaseline | None = None
     _baseline: GpuSnapshot | None = field(default=None, init=False)
     _samples: list[GpuSnapshot] = field(default_factory=list, init=False)
     _error: Exception | None = field(default=None, init=False)
@@ -230,14 +215,7 @@ class VramMonitor:
     def start(self) -> None:
         """Capture an eligible baseline and begin 250 ms aggregate polling."""
         baseline = self._query_snapshot()
-        if self.context_baseline is not None:
-            validate_gpu_contexts(baseline, self.context_baseline, None)
-        elif baseline.compute_pids and not baseline.is_wddm:
-            pids = ", ".join(str(pid) for pid in baseline.compute_pids)
-            raise VramEnvironmentError(
-                f"concurrent GPU compute workload detected before calibration (PIDs {pids}); "
-                "stop it and retry"
-            )
+        validate_gpu_contexts(baseline, self.context_baseline, None)
         self._baseline = baseline
         self._samples.append(baseline)
         self._thread = threading.Thread(
@@ -257,7 +235,7 @@ class VramMonitor:
                 return
             self._stop_event.wait(max(0.0, deadline - time.monotonic()))
 
-    def finish(self, managed: _ManagedGpu) -> VramSummary:
+    def finish(self, managed: GpuProcessIdentity | None) -> VramSummary:
         """Wait for release and validate resources plus the run-scoped context population."""
         self._stop_polling()
         if self._baseline is None:
@@ -283,20 +261,17 @@ class VramMonitor:
             raise VramEnvironmentError(f"GPU monitoring failed: {self._error}") from self._error
 
     def _has_context_change(
-        self, snapshot: GpuSnapshot, baseline: GpuSnapshot, managed: _ManagedGpu
+        self, snapshot: GpuSnapshot, managed: GpuProcessIdentity | None
     ) -> bool:
-        """Detect a context violation early while preserving v1's exact-PID behavior."""
-        if self.context_baseline is None:
-            return bool(_legacy_foreign_pids([snapshot], baseline, managed))
-        identity = managed if isinstance(managed, GpuProcessIdentity) else None
+        """Detect a context violation early so release sampling stops instead of waiting it out."""
         try:
-            validate_gpu_contexts(snapshot, self.context_baseline, identity)
+            validate_gpu_contexts(snapshot, self.context_baseline, managed)
         except VramEnvironmentError:
             return True
         return False
 
     def _wait_for_release(
-        self, baseline: GpuSnapshot, managed: _ManagedGpu
+        self, baseline: GpuSnapshot, managed: GpuProcessIdentity | None
     ) -> tuple[GpuSnapshot, float]:
         """Sample release until tolerance or deadline and measure stabilization duration."""
         limit = self._used_gib(baseline) + self.thresholds.release_tolerance_gib
@@ -305,7 +280,7 @@ class VramMonitor:
         while True:
             release = self._query_snapshot()
             self._samples.append(release)
-            has_changed_context = self._has_context_change(release, baseline, managed)
+            has_changed_context = self._has_context_change(release, managed)
             has_changed_capacity = release.vram_total_gib != baseline.vram_total_gib
             is_released = self._used_gib(release) <= limit
             remaining = deadline - time.monotonic()
@@ -335,23 +310,11 @@ class VramMonitor:
         """Return aggregate used memory from one total/free GPU snapshot."""
         return snapshot.vram_total_gib - snapshot.vram_free_gib
 
-    def _validate_contexts(self, managed: _ManagedGpu, baseline: GpuSnapshot) -> int:
-        """Validate exact PIDs or immutable run-scoped executable multiplicity."""
-        if self.context_baseline is None:
-            foreign = _legacy_foreign_pids(self._samples, baseline, managed)
-            if foreign:
-                pids = ", ".join(str(pid) for pid in sorted(foreign))
-                message = f"concurrent GPU compute workload contaminated calibration (PIDs {pids})"
-                raise VramEnvironmentError(f"{message}; stop it")
-            return 0
-        identity = managed if isinstance(managed, GpuProcessIdentity) else None
-        return count_context_replacements(self._samples, self.context_baseline, identity)
-
     def _validate_samples(
-        self, managed: _ManagedGpu, baseline: GpuSnapshot, release: GpuSnapshot
+        self, managed: GpuProcessIdentity | None, baseline: GpuSnapshot, release: GpuSnapshot
     ) -> int:
         """Reject context, reserve, capacity, driver, and retained-memory violations."""
-        replacements = self._validate_contexts(managed, baseline)
+        replacements = count_context_replacements(self._samples, self.context_baseline, managed)
         if any(sample.vram_total_gib != baseline.vram_total_gib for sample in self._samples):
             raise VramEnvironmentError("reported total VRAM changed during calibration")
         if any(sample.driver_version != baseline.driver_version for sample in self._samples):
@@ -403,8 +366,8 @@ def query_ram_available_gib() -> float:
 class RamMonitor:
     """Collect fixed-interval available-RAM samples around one fresh server process."""
 
+    minimum_free_gib: float
     query: Callable[[], float] = query_ram_available_gib
-    minimum_free_gib: float | None = None
     _baseline_gib: float | None = field(default=None, init=False)
     _samples: list[float] = field(default_factory=list, init=False)
     _error: Exception | None = field(default=None, init=False)
@@ -455,10 +418,7 @@ class RamMonitor:
         if self._baseline_gib is None:
             raise RamError("RAM monitor was not started")
         summary = RamSummary(self._baseline_gib, min(self._samples))
-        if (
-            self.minimum_free_gib is not None
-            and summary.minimum_available_gib < self.minimum_free_gib
-        ):
+        if summary.minimum_available_gib < self.minimum_free_gib:
             raise RamReserveError(summary)
         return summary
 
