@@ -1,7 +1,7 @@
 # bora-workbench
 
 [![CI](https://github.com/tommasonovelli/bora-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/tommasonovelli/bora-workbench/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/tommasonovelli/bora-workbench.svg)](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.1.6)
+[![Release](https://img.shields.io/github/v/release/tommasonovelli/bora-workbench.svg)](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.2.0)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-31213/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -60,16 +60,13 @@ If this is your first time opening the project, the simplest path is:
 > Do not use it for critical workloads without independent verification and backups of your local
 > data.
 
-Version **`0.2.0`** renames the project to `bora-workbench`, whose command is `bora`. Everything up
-to `0.1.6` was released under the previous name, `qwen-launcher`, so an installation of that series
-is replaced rather than upgraded — its configuration, data, cache, and state directories are not
-read by `bora`.
+Version **`0.2.0`** is the first release named `bora-workbench`, whose command is `bora`. An
+installation of the previous `qwen-launcher` series is replaced rather than upgraded: its
+configuration, data, cache, and state directories are not read by `bora`.
 
-The calibration behavior is the one introduced in `0.1.6`: a single working protocol. The earlier
-laboratory and paired-search protocols, the `--protocol` option, and the older record formats are
-gone, and the search that remains is validated on hardware. A record written by an earlier version
-is diagnosed as superseded, so re-run `calibrate` after installing. The PyPI identity starts at
-`bora-workbench==0.2.0`; no 0.1 artifact is renamed or republished.
+Calibration uses one working protocol. The removed protocol switch and record formats are not
+supported, and a record written by the previous launcher is diagnosed as superseded. Re-run
+`calibrate` after installing instead of copying or converting an old record.
 
 ## Requirements
 
@@ -85,18 +82,60 @@ If `nvidia-smi` is unavailable or unreliable, the launcher falls back to CPU and
 
 ## Installation
 
-Install the explicit PyPI version with the release installer:
+Install the exact `v0.2.0` wheel from the GitHub Release. The commands below download the installer
+and wheel, verify both SHA-256 digests, and then install the tool with pinned uv `0.11.28` and
+CPython `3.12.13`. You do not need to install uv or Python first, and no administrator privileges
+are used.
+
+### Ubuntu
+
+Open a terminal in a new directory, copy the entire block, and press Enter:
 
 ```bash
-base="https://github.com/tommasonovelli/bora-workbench/releases/download/v0.2.0"
-curl --fail --location "$base/install.sh" --output install.sh
-sh ./install.sh --pypi-version 0.2.0
+version="0.2.0"
+base="https://github.com/tommasonovelli/bora-workbench/releases/download/v${version}"
+wheel="bora_workbench-${version}-py3-none-any.whl"
+installer_sha256="102be4606a3b71dfd088a333ed3fe2fed0e2faa61b9c60febe4aa05603ea1ba6"
+wheel_sha256="9a3fc0d3c7f6887ddd87cceed45bc588e36a61b71ba246a471e9e172430b7f27"
+
+curl --fail --location --proto '=https' --tlsv1.2 \
+  "$base/install.sh" --output install.sh
+curl --fail --location --proto '=https' --tlsv1.2 \
+  "$base/$wheel" --output "$wheel"
+printf '%s  %s\n' "$installer_sha256" install.sh | sha256sum --check -
+printf '%s  %s\n' "$wheel_sha256" "$wheel" | sha256sum --check -
+sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 ```
 
-On Windows, download `install.ps1` from the same release and run
-`.\install.ps1 -PypiVersion 0.2.0`.
+### Windows
 
-Verify the installation immediately:
+Open PowerShell in a new directory, copy the entire block, and press Enter:
+
+```powershell
+$Version = "0.2.0"
+$Base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v$Version"
+$Wheel = "bora_workbench-$Version-py3-none-any.whl"
+$InstallerSha256 = "ad9adaa7c4ed1bcf94e64f199dc5e02695f1eb62a6dcaadcd4b2ce0bfacba128"
+$WheelSha256 = "9a3fc0d3c7f6887ddd87cceed45bc588e36a61b71ba246a471e9e172430b7f27"
+
+Invoke-WebRequest -Uri "$Base/install.ps1" -OutFile install.ps1
+Invoke-WebRequest -Uri "$Base/$Wheel" -OutFile $Wheel
+if ((Get-FileHash .\install.ps1 -Algorithm SHA256).Hash.ToLowerInvariant() -ne $InstallerSha256) {
+    throw "install.ps1 SHA-256 mismatch"
+}
+if ((Get-FileHash ".\$Wheel" -Algorithm SHA256).Hash.ToLowerInvariant() -ne $WheelSha256) {
+    throw "$Wheel SHA-256 mismatch"
+}
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 `
+  -Wheel ".\$Wheel" -Sha256 $WheelSha256
+```
+
+`ExecutionPolicy Bypass` applies only to that PowerShell process; it does not change the system
+policy. The downloaded files can be deleted after installation.
+
+### Verify the installation
+
+Open a new terminal or PowerShell window, then run:
 
 ```bash
 bora --version
@@ -104,58 +143,9 @@ bora validate
 bora doctor
 ```
 
-### Historical public release 0.1.6
-
-The last public release belongs to the previous distribution and command. The repository URL was
-renamed, but its artifact identity remains `qwen-launcher` / `qwen_launcher` / `qwen-launcher`.
-
-#### Ubuntu
-
-```bash
-base="https://github.com/tommasonovelli/bora-workbench/releases/download/v0.1.6"
-wheel="qwen_launcher-0.1.6-py3-none-any.whl"
-curl --fail --location "$base/install.sh" --output install.sh
-curl --fail --location "$base/$wheel" --output "$wheel"
-curl --fail --location "$base/SHA256SUMS" --output SHA256SUMS
-sha256sum --check --ignore-missing SHA256SUMS
-wheel_sha256="$(awk -v wheel="$wheel" '$2 == wheel { print $1 }' SHA256SUMS)"
-test "${#wheel_sha256}" -eq 64
-sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
-```
-
-#### Windows
-
-From PowerShell:
-
-```powershell
-$base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v0.1.6"
-$wheel = "qwen_launcher-0.1.6-py3-none-any.whl"
-Invoke-WebRequest "$base/install.ps1" -OutFile install.ps1
-Invoke-WebRequest "$base/$wheel" -OutFile $wheel
-Invoke-WebRequest "$base/SHA256SUMS" -OutFile SHA256SUMS
-$pattern = "^[0-9a-f]{64}\s+$([regex]::Escape($wheel))$"
-$entry = Select-String -Path .\SHA256SUMS -Pattern $pattern
-if ($null -eq $entry) { throw "Wheel digest missing from SHA256SUMS" }
-$sha256 = ($entry.Line -split "\s+")[0]
-if ((Get-FileHash $wheel -Algorithm SHA256).Hash.ToLowerInvariant() -ne $sha256) {
-  throw "Wheel SHA-256 mismatch"
-}
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\install.ps1 `
-  -Wheel ".\$wheel" -Sha256 $sha256
-```
-
-Those historical installers create the `qwen-launcher` command, not `bora`. Current installers pin
-uv `0.11.28` and CPython `3.12.13`, require an explicit source, and never use administrative
-privileges. Details and Windows instructions for the current candidate are in
-[Installation and first run](docs/installation.md).
-
-Verify a historical installation with its actual command:
-
-```bash
-qwen-launcher --version
-qwen-launcher validate
-qwen-launcher doctor
-```
+If `bora` is not found, close and reopen the shell once so it reloads the user PATH. See
+[Installation and first run](docs/installation.md) for requirements, engine setup, model placement,
+and removal.
 
 ## Model
 

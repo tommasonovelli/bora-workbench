@@ -204,8 +204,12 @@ def test_windows_uv_installer_uses_random_temporary_path_and_finally_cleanup() -
 
 
 def test_current_and_historical_install_guides_use_their_actual_commands() -> None:
-    """Keep renamed and immutable historical wheel instructions operationally distinct."""
-    for path in (REPO_ROOT / "README.md", REPO_ROOT / "docs/installation.md"):
-        text = path.read_text(encoding="utf-8")
-        assert "bora --version" in text
-        assert "qwen-launcher --version" in text
+    """Keep the README current while preserving history in the detailed guide."""
+    readme = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    installation = (REPO_ROOT / "docs/installation.md").read_text(encoding="utf-8")
+
+    assert "bora --version" in readme
+    assert "0.1.6" not in readme
+    assert "qwen-launcher --version" not in readme
+    assert "bora --version" in installation
+    assert "qwen-launcher --version" in installation
