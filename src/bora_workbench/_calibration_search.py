@@ -216,7 +216,12 @@ def _cpu_step(provider: SearchProvider, ctx: int, budget: int) -> tuple[list[Sam
 
 
 def search_samples(provider: SearchProvider, plan: GroupPlan) -> tuple[Sample, ...]:
-    """Search every context step and measure each feasible step's usable samples."""
+    """Search the context steps and measure each feasible step's usable samples.
+
+    ``max_context`` selects the largest feasible context and compares rivals only inside it, so the
+    descending scale makes every step below the first measured one unable to change the outcome and
+    the walk ends there (D-075). An infeasible step measures nothing and never ends it.
+    """
     samples: list[Sample] = []
     remaining = plan.budget
     for ctx in plan.contexts:
@@ -226,6 +231,8 @@ def search_samples(provider: SearchProvider, plan: GroupPlan) -> tuple[Sample, .
             measured, spent = _cpu_step(provider, ctx, remaining)
         samples.extend(measured)
         remaining -= spent
+        if measured and plan.preference == "max_context":
+            break
         if remaining <= 0:
             break
     if not samples:

@@ -80,6 +80,41 @@ def test_the_reported_cap_covers_every_trial_the_search_can_start() -> None:
     assert started <= plan.trial_cap
 
 
+def test_max_context_stops_at_the_first_context_that_measures_a_sample() -> None:
+    """Skip every smaller step once one is measured: none of them can win (D-075)."""
+    provider, probed = _cuda_provider(feasible_from=65536, boundary=30)
+    plan = GroupPlan(CONTEXT_SCALE, 28, preference="max_context")
+
+    samples = search_samples(provider, plan)
+
+    assert {item.ctx for item in samples} == {65536}
+    assert probed[:2] == [131072, 98304]
+    assert 49152 not in probed
+
+
+def test_max_context_still_descends_past_the_contexts_it_cannot_afford() -> None:
+    """End the walk on a measured step, never on the first step of the ladder (D-075)."""
+    provider, probed = _cuda_provider(feasible_from=32768, boundary=30)
+    plan = GroupPlan(CONTEXT_SCALE, 28, preference="max_context")
+
+    samples = search_samples(provider, plan)
+
+    assert {item.ctx for item in samples} == {32768}
+    assert probed[:4] == [131072, 98304, 65536, 49152]
+
+
+@pytest.mark.parametrize("preference", ["fast", "balanced"])
+def test_latency_preferences_keep_walking_the_whole_ladder(preference: str) -> None:
+    """Compare latency across contexts, which requires measuring more than the largest one."""
+    provider, probed = _cuda_provider(feasible_from=65536, boundary=30)
+    plan = GroupPlan(CONTEXT_SCALE, 28, preference=preference)  # type: ignore[arg-type]
+
+    samples = search_samples(provider, plan)
+
+    assert {item.ctx for item in samples} > {65536}
+    assert 49152 in probed
+
+
 def test_a_point_that_turns_infeasible_is_dropped_not_fatal() -> None:
     """Drop a single moved boundary point instead of failing the whole mode (spec section 5.6)."""
     probe_calls: list[int] = []
