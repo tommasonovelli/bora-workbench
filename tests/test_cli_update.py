@@ -19,6 +19,15 @@ from bora_workbench.cli import app
 runner = CliRunner()
 
 
+def flat(text: str) -> str:
+    """Join a Rich-wrapped stream into one line so a phrase survives any console width.
+
+    Rich wraps at the console width, which differs between a developer terminal and CI, so a
+    multi-word phrase can be split across lines without the message having changed.
+    """
+    return " ".join(text.split())
+
+
 @pytest.fixture(autouse=True)
 def patch_update_dependencies(tmp_path, monkeypatch) -> list[tuple[object, Path]]:
     """Serve one newer release, an idle host, a uv-managed install, and a captured handoff."""
@@ -48,8 +57,8 @@ def test_update_installs_the_newer_release_and_reports_the_engine_as_unchanged(
     result = runner.invoke(app, ["update"])
 
     assert result.exit_code == 0
-    assert "9.9.9" in result.stdout
-    assert "unchanged" in result.stdout
+    assert "9.9.9" in flat(result.stdout)
+    assert "unchanged" in flat(result.stdout)
     assert len(patch_update_dependencies) == 1
 
 
@@ -62,7 +71,7 @@ def test_update_warns_when_the_new_release_pins_another_engine(
     result = runner.invoke(app, ["update"])
 
     assert result.exit_code == 0
-    assert "bora engine install" in result.stdout
+    assert "run `bora engine install` after the update" in flat(result.stdout)
     assert len(patch_update_dependencies) == 1
 
 
@@ -78,7 +87,7 @@ def test_check_only_reports_without_downloading(monkeypatch, patch_update_depend
     result = runner.invoke(app, ["update", "--check"])
 
     assert result.exit_code == 0
-    assert "9.9.9" in result.stdout
+    assert "9.9.9" in flat(result.stdout)
     assert patch_update_dependencies == []
 
 
@@ -91,7 +100,7 @@ def test_an_installed_version_at_least_as_new_is_left_alone(
     result = runner.invoke(app, ["update"])
 
     assert result.exit_code == 0
-    assert "Up to date" in result.stdout
+    assert "Up to date" in flat(result.stdout)
     assert patch_update_dependencies == []
 
 
@@ -105,8 +114,8 @@ def test_an_installation_uv_does_not_own_is_refused(
     result = runner.invoke(app, ["update"])
 
     assert result.exit_code == 1
-    assert "not managed by" in result.stderr
-    assert "Traceback" not in result.stderr
+    assert "not managed by `uv tool`" in flat(result.stderr)
+    assert "Traceback" not in flat(result.stderr)
     assert patch_update_dependencies == []
 
 
@@ -118,7 +127,7 @@ def test_a_live_managed_service_blocks_the_update(monkeypatch, patch_update_depe
     result = runner.invoke(app, ["update"])
 
     assert result.exit_code == 1
-    assert "bora stop" in result.stderr
+    assert "managed services are running; run bora stop" in flat(result.stderr)
     assert patch_update_dependencies == []
 
 
@@ -136,6 +145,6 @@ def test_an_unreachable_release_api_exits_one_without_a_traceback(
     result = runner.invoke(app, ["update"])
 
     assert result.exit_code == 1
-    assert "Update error" in result.stderr
-    assert "Traceback" not in result.stderr
+    assert "Update error" in flat(result.stderr)
+    assert "Traceback" not in flat(result.stderr)
     assert patch_update_dependencies == []
