@@ -244,6 +244,11 @@ For each context on the ladder, the search:
 4. bisects the VRAM side below that anchor to find the boundary, the least offload that still runs;
 5. measures the boundary, `boundary+2`, and the conservative anchor with the quick-bench.
 
+With `--preference max-context` the ladder stops at the first context that yields a sample. The
+scale descends, so every remaining step is smaller, and that preference compares rivals only inside
+its own context: no lower step could change the result. `fast` and `balanced` compare latency across
+contexts and keep walking the ladder.
+
 Feasibility is treated as a **class**, not a number: a probe either started and served or it did
 not, and an out-of-memory failure is read from the trial's own logs to tell a VRAM refusal from a
 RAM one. A partial load invents no memory peak.
@@ -266,6 +271,11 @@ rounds when it has a near-tied rival — a third round only when the first two d
 and finally passes one gate in a fresh process: a smoke request at about 80% of the context
 **measured in tokens**, a four-turn conversation, and, for `vstudio`, the pinned image request.
 
+A confirmation round runs the warm-up and the three short requests, not the long one. It compares
+median short latency and the spread of that same triple, and the long request feeds neither, so
+measuring it there would only cost time. The cell that gets recorded is still the one the search
+measured with the full quick-bench, so its `prefill_tps` is a real measurement.
+
 A context the hardware cannot afford is rejected after a single probe, so a small card spends most
 of the run on the steps it can actually serve. Runtime depends on the feasible contexts, preference,
 backend, and whether a near-tied rival needs confirmation. Historical three-envelope timings do not
@@ -283,6 +293,8 @@ Each sample runs, against a fresh server:
 2. three short non-cached requests (128 completion tokens each);
 3. one long request of 23180 prompt tokens (64 completion tokens), which is what sets the `32768`
    floor of the ladder above.
+
+A confirmation trial runs steps 1 and 2 only, because step 3 decides nothing there.
 
 Every metric comes from the response `timings` and the wall clock — no log parsing. The request
 payloads are byte-pinned in the wheel and checksummed, because changing them would change what is

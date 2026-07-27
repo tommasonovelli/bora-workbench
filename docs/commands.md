@@ -205,6 +205,10 @@ does not fit in them, so asking for one is refused before any process starts.
 `--mode all` applies the same preference to all three modes. Run individual mode commands when,
 for example, `coding` should retain `fast`, `studio` `balanced`, and `vstudio` `max-context`.
 
+`max-context` is the cheapest preference to measure: the ladder descends, so the first context that
+yields a sample already wins and the remaining steps are skipped. `fast` and `balanced` compare
+latency across contexts and walk the whole ladder.
+
 `--mode` and `--preference` are ordinary Typer options; the other three are handled by the command's
 specialized parser, so `calibrate --help` lists them in the epilog rather than in the generated
 table. The syntax above is the one actually supported.

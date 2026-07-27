@@ -78,6 +78,10 @@ Updated on 26 July 2026.
   GitHub Release through uv, which never downgrades and never reinstalls the managed engine. The
   D-056 uv handoff is generalized to any uv command. The offline suite covers version ordering,
   the manifest gate, the HTTPS rule, and every refusal.
+- [x] Calibration and startup stop paying for work no decision reads (D-074/D-075/D-076):
+  confirmation rounds drop the long request, a `max_context` ladder stops at its first feasible
+  context, and the model's SHA-256 is receipt-cached behind unconditional filename and size checks.
+  The selected cell, the recorded evidence, and the final gate are unchanged.
 
 ### Open work
 
@@ -225,6 +229,9 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-072 | On 26 July 2026 the maintainer authorizes `0.2.2` as the release that distributes D-071, and authorizes the commit, the push to `tommasonovelli/bora-workbench`, the tag `v0.2.2`, and the GitHub Release. The maintainer also decides that the VRAM reserve stays at `0.5` GiB: the `0.3` GiB value of the retired `calibration/v4` and `/v5` is not restored, so record reserves, the packaged policy, and the schema constants are unchanged and existing `calibration-record/v6` records stay valid. Distribution remains GitHub Releases only (D-070). No registry upload, candidate activation, or Gate claim is authorized, and the manual Ubuntu run for this version is waived rather than performed. |
 
 | D-073 | On 27 July 2026 the maintainer requests a self-update command and authorizes `0.2.3` to distribute it, including the commit, the push, the tag `v0.2.3`, and the GitHub Release. `bora update` reads the newest published GitHub Release, refuses anything that is not strictly newer, downloads that release's `SHA256SUMS` and wheel over HTTPS while rejecting any hop that leaves HTTPS, verifies the wheel's SHA-256 against the manifest, and installs it with `uv tool install --force --python 3.12.13`. This repeats the trust boundary of the documented manual install and introduces no new one; the release manifest is not a signature and is not described as one. Distribution stays GitHub Releases only (D-070), so no registry is queried. **The managed engine is deliberately outside the update.** It lives under the data root, is selected by `engine.lock`, and survives the tool replacement, so an update does not reinstall it, does not redownload it, and does not activate anything; the command instead reads `engine.lock` out of the downloaded wheel and reports whether `bora engine install` is now required. Configuration, calibration records, and the model are equally untouched. `update` refuses a live managed service and refuses any installation `uv tool` does not own, reporting the documented installer instead of guessing. Because Windows cannot replace the environment of the running process, uv is invoked through the D-056 handoff, now generalized to any uv command in `_tool_handoff.py`/`_tool_helper.py`; exit code 0 therefore reports a scheduled installation, not a completed one, and the helper prints uv's own failure on the same terminal. No candidate activation, registry upload, or Gate claim is authorized, and the manual Ubuntu and Windows update runs are follow-up verification rather than a passed Gate. |
+| D-074 | On 27 July 2026 the maintainer decides that a paired confirmation round measures the short series only. An `A→B`/`B→A` round compares median short end-to-end latency and the dispersion of that same triple; both derive exclusively from the three short requests, so the 23180-token long request that the full quick-bench also runs is measured four to six times per confirmation and never read. Confirmation therefore runs the excluded warm-up and the three short requests, and stops there. Nothing else moves: the same number of fresh processes start, in the same `A→B→B→A` order, under the same third-round rule, and the confirmed cell is still the sample the search measured, so the record keeps the `prefill_tps` that the full quick-bench produced. The warm-up stays because the first request after a fresh start pays the memory-mapped first-touch cost, not because it is compared. The final gate is unchanged and remains the stricter memory test of the selected cell. |
+| D-075 | On 27 July 2026 the maintainer decides that a `max_context` search stops the ladder at the first context that produces a sample. The approved scale is descending, `max_context` selects the largest feasible context, and its near-tie rule compares only rivals at that same context, so every remaining step is smaller and can change neither the selected cell, nor the finalist a confirmation would compare, nor the rival the gate may retry. The rule is scoped to `max_context` alone: `fast` and `balanced` compare latency across contexts and keep walking the whole ladder under the shared probe budget. An infeasible context still costs one prudent probe and the ladder still continues downward past it; only a step that actually measured a sample ends the walk. |
+| D-076 | On 27 July 2026 the maintainer decides that the default model's SHA-256 verification is receipt-cached. Verifying the pinned artifacts reads 21.11 GiB, and 0.84 GiB more of projector for a vision mode, on every `calibrate` and on every mode launch, with no output while it runs. The locked filename and the exact byte size are still checked every time, because they are free and they are what a truncated or interrupted download fails. The SHA-256 is recomputed unless a cached receipt records the same absolute path, size, modification time, and expected digest; any difference, and a missing, unreadable, or malformed receipt, forces the full hash. The receipt lives under the cache root because it is regenerable and losing it costs only time, and writing it is best-effort: a cache that cannot be created or written is not an error and never fails a launch. Section 5.8 no longer describes model resolution as strictly write-free. This keeps the checks that were written for corruption, interrupted downloads, and a wrong file under the locked name; it does not defend against an attacker holding write access to both the artifact and the user's cache root, who could forge the receipt as easily as the file, and it changes nothing about download verification. |
 
 A new durable decision updates this table in the same step that authorizes it.
 
@@ -383,10 +390,18 @@ Constants:
   round only under its declared dispersion and margin rules;
 - one final smoke and multi-turn gate for the requested cell, plus the vision check for `vstudio`.
 
-An infeasible context costs one prudent probe, so the ladder continues downward. On CPU the
-automatic run confirms the smallest measurable context, while an explicit approved target confirms
-that target; `n_cpu_moe` stays null and no CPU offload axis is invented. `--mode all` applies one preference to
-every selected mode; separate invocations may retain different preferences. Each completed group
+A confirmation round measures the warm-up and the three short requests only. It compares median
+short end-to-end latency and the dispersion of that same triple, and the long request contributes to
+neither, so measuring it there would decide nothing (D-074). The confirmed cell remains the sample
+the search measured, so the recorded `prefill_tps` still comes from a full quick-bench.
+
+An infeasible context costs one prudent probe, so the ladder continues downward. A `max_context`
+search stops at the first context that measures a sample, because the scale descends and that
+preference compares rivals only within its own context (D-075); `fast` and `balanced` walk the whole
+ladder. On CPU the automatic run confirms the smallest measurable context, while an explicit
+approved target confirms that target; `n_cpu_moe` stays null and no CPU offload axis is invented.
+`--mode all` applies one preference to every selected mode; separate invocations may retain
+different preferences. Each completed group
 persists its own candidate records even if a later group produces none.
 
 Records are `<mode>.candidate.json`, active `<mode>.json`, and rollback
@@ -411,9 +426,12 @@ CPU receives no CUDA arguments. No flag originates from semantic hardcoding abse
 Engine order: `engine_path`, `PATH`, managed manifest. Every candidate passes the exact version and
 help probes.
 
-The default model is resolved read-only at the lock's revision according to the observed cache
-precedence. The filename, size, and SHA-256 must match. A different model requires `model_path` and
-inherits no data from the default. Do not use `--hf-repo`.
+The default model is resolved at the lock's revision according to the observed cache precedence. The
+filename, size, and SHA-256 must match. The filename and size are checked on every resolution; the
+SHA-256 is recomputed unless a cached receipt under the cache root records the same path, size,
+modification time, and expected digest, and writing that receipt is best-effort, so resolution is no
+longer strictly write-free (D-076). A different model requires `model_path` and inherits no data
+from the default. Do not use `--hf-repo`.
 
 Assets are selected per OS/backend, downloaded over HTTPS, verified, and activated only after the
 probes complete. Ubuntu CUDA uses the pinned source until the lock verifies a prebuilt.

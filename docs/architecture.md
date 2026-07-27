@@ -155,8 +155,11 @@ and vision explicitly. CUDA uses `-ngl 99`, the plan's `n_cpu_moe`, and a `q8_0`
 receives no CUDA arguments. The weights remain `UD-Q4_K_M`: Q8 concerns the KV cache.
 
 The default model is read from the snapshot of the pinned revision and verified by name, size, and
-digest. `--hf-repo` is not used, so the launcher resolves no remote branches and never writes to the
-Hugging Face cache.
+digest. Name and size are checked on every resolution; the digest is recomputed unless a receipt
+under the cache root still matches the path, size, modification time, and expected value, and
+writing that receipt is best-effort, so an unwritable cache costs time rather than the launch.
+`--hf-repo` is not used, so the launcher resolves no remote branches and never writes to the Hugging
+Face cache.
 
 ### Managed installation
 

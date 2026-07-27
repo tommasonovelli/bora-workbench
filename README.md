@@ -186,6 +186,12 @@ Qwen3.6-35B-A3B-UD-Q4_K_M.gguf
 mmproj-BF16.gguf
 ```
 
+The name and size are checked every time. The SHA-256 is recomputed only when a file is new or has
+changed: after a successful verification the launcher keeps a small receipt under its cache root and
+reuses it while the path, size, modification time, and expected digest all still match. The first
+run therefore reads about 21 GiB and shows its progress; later runs start immediately. Clearing the
+cache, updating the model, or changing `engine.lock` re-verifies in full.
+
 The mmproj is only needed by `vstudio`. Acquire the files separately from the
 [pinned repository revision](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF/tree/5bc3e238d916f48a861bac2f8a1990a0e9b7e98d)
 with a tool of your choice. The Hugging Face cache is never modified, and `uninstall` never removes
@@ -247,7 +253,8 @@ It does not change the model or the quality of the answers: it changes how much 
 hold, how the work is split between CPU and GPU, and the throughput you get from that split.
 
 Calibration can run for a long time and starts many temporary processes; it always shows a preflight
-and asks for confirmation. Read [Local calibration](docs/calibration.md) before running it.
+and asks for confirmation. `max-context` is the quickest of the three, because it stops at the first
+context the hardware can serve. Read [Local calibration](docs/calibration.md) before running it.
 
 ## Concepts in one minute
 
