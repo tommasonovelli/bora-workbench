@@ -7,7 +7,8 @@
 > proposal to read, cut down, and either reject or fold into specification section 8 as
 > **Backlog D — Interactive front end**, after which this file should be deleted rather than kept
 > as a second roadmap. Do not treat any sentence here as a commitment, and do not implement
-> anything described below without an explicit maintainer decision (`D-071`+).
+> anything described below without an explicit maintainer decision recorded in the decision table
+> of `IMPLEMENTATION_SPEC.md`.
 >
 > Everything here is written against the behavior that exists today in `0.2.1`: the commands in
 > `docs/commands.md`, the contracts in specification section 5, and the rules in `AGENTS.md`.
@@ -776,14 +777,21 @@ new.
 
 # Part XI — Decisions the maintainer has to take
 
-| # | Decision |
+These are **open questions, not decisions**. They are numbered `Q1`–`Q6` on purpose: a `D-0xx`
+identifier belongs to the decision table of `IMPLEMENTATION_SPEC.md` and is assigned when the
+maintainer actually decides something, so a proposal that hands itself `D-0xx` numbers either
+collides with real decisions taken meanwhile or silently reserves a block it does not own. Answering
+one of these questions is what creates its `D-0xx` entry, in the specification, with the next free
+number at that moment.
+
+| # | Question |
 |---|---|
-| D-071 | Is the package reorganization (Part I) approved as an independent, behavior-free step? |
-| D-072 | Is an interactive front end accepted at all, as post-0.2 **Backlog D**? |
-| D-073 | Handoff or embedded execution? (This proposal recommends handoff, §3.4.) |
-| D-074 | Rich-only, or is `textual` an approved runtime dependency per the `AGENTS.md` procedure? |
-| D-075 | Does bare `bora` stay `no_args_is_help`? (This proposal recommends yes, plus `bora tui`.) |
-| D-076 | Is the settings pane read-only forever, or is a guarded writer a future decision? |
+| Q1 | Is the package reorganization (Part I) approved as an independent, behavior-free step? |
+| Q2 | Is an interactive front end accepted at all, as post-0.2 **Backlog D**? |
+| Q3 | Handoff or embedded execution? (This proposal recommends handoff, §3.4.) |
+| Q4 | Rich-only, or is `textual` an approved runtime dependency per the `AGENTS.md` procedure? |
+| Q5 | Does bare `bora` stay `no_args_is_help`? (This proposal recommends yes, plus `bora tui`.) |
+| Q6 | Is the settings pane read-only forever, or is a guarded writer a future decision? |
 
 ---
 
