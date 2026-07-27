@@ -66,7 +66,7 @@ def launcher_version() -> str:
     try:
         return version("bora-workbench")
     except PackageNotFoundError:
-        return "0.2.3"
+        return "0.2.4"
 
 
 @dataclass(frozen=True, slots=True)

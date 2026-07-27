@@ -5,8 +5,8 @@ requires explicit human authorization for the push, tag, and GitHub Release.
 
 ## Public status
 
-- release described by this branch: `bora-workbench 0.2.3`;
-- preceding public version: `bora-workbench 0.2.2` on GitHub Releases;
+- release described by this branch: `bora-workbench 0.2.4`;
+- preceding public version: `bora-workbench 0.2.3` on GitHub Releases;
 - historical versions `0.1.0` through `0.1.6` remain immutable under their original
   `qwen-launcher` artifact identity;
 - every published bundle comes from its green Ubuntu/Windows release workflow and contains the
@@ -56,6 +56,29 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.2.4
+
+`0.2.4` makes calibration and startup stop paying for work no decision reads (D-074/D-075/D-076).
+
+Three costs were removed. A paired confirmation round ran the full quick-bench, including the pinned
+23180-token long request, four to six times per confirmation, while comparing only the median short
+latency and the dispersion of that same triple. A `max-context` search walked the whole context
+ladder although it selects the largest feasible context and compares rivals only within it. And the
+model's SHA-256 was recomputed on every `calibrate` and every mode launch — 21.11 GiB, plus 0.84 GiB
+of projector for a vision mode — silently, before any output.
+
+None of this changes what is measured or recorded. The confirmed cell is still the sample the search
+measured with a full quick-bench, so its `prefill_tps` is real; the same fresh processes still run in
+the same `A→B`/`B→A` order under the same third-round rule; the final gate is untouched. The locked
+filename and byte size are still checked on every resolution, and only a receipt matching path, size,
+modification time, and the expected digest can skip the hash. Model resolution now writes that
+receipt under the cache root, best-effort, so section 5.8 no longer calls it write-free.
+
+The engine, model, command contract, `command_contract_sha256`, record format, reserves, and the
+packaged policy and schemas are unchanged, so an existing `calibration-record/v6` stays valid and no
+local candidate is activated. D-077 authorizes this release. The manual Ubuntu and Windows runs are
+follow-up verification, not a passed Gate.
 
 ### Release 0.2.3
 
@@ -206,9 +229,9 @@ added to the public evidence.
 
 Limits and checks that were not run must be explicit. `0.1.3` was authorized for commit, push, tag,
 and GitHub Release before the real spike; this does not amount to a Gate, and PyPI remains excluded.
-For `0.2.2` and `0.2.3`, D-072 and D-073 carry forward the explicit waiver of additional manual
-Ubuntu/Windows and hardware calibration runs before publication; the real update path between two
-published releases is likewise follow-up verification. The automated release matrix remains required; the
+For `0.2.2`, `0.2.3`, and `0.2.4`, D-072, D-073, and D-077 carry forward the explicit waiver of
+additional manual Ubuntu/Windows and hardware calibration runs before publication; the real update
+path between two published releases is likewise follow-up verification. The automated release matrix remains required; the
 waiver is not a passed Gate, and the maintainer will perform platform checks after release.
 
 ## Version, tag, and commit

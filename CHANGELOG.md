@@ -3,6 +3,35 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
+## [0.2.4] - 2026-07-27
+
+### Changed
+
+- A paired confirmation round measures the short series only (D-074). It compares median short
+  end-to-end latency and the dispersion of that same triple, both of which come from the three short
+  requests, so the pinned 23180-token long request was measured four to six times per confirmation
+  and never read. The same number of fresh processes still run, in the same `A→B`/`B→A` order, under
+  the same third-round rule, and the confirmed cell is still the sample the search measured — so the
+  recorded `prefill_tps` still comes from a full quick-bench.
+- A `max-context` search stops at the first context that yields a sample (D-075). The approved scale
+  descends and that preference compares rivals only inside its own context, so no smaller step can
+  change the selected cell, the finalist, or the gate rival. `fast` and `balanced` compare latency
+  across contexts and still walk the whole ladder. An infeasible context still costs one prudent
+  probe and the ladder still continues past it.
+- The model's SHA-256 is verified against a cached receipt instead of being recomputed on every
+  `calibrate` and every mode launch (D-076). Verifying the pinned artifacts reads 21.11 GiB, plus
+  0.84 GiB of projector for a vision mode, which ran silently before any output appeared. The locked
+  filename and the exact byte size are still checked every time; only the digest is skipped, and only
+  while the path, size, modification time, and the digest `engine.lock` expects all still match. The
+  receipt lives under the cache root and writing it is best-effort, so an unwritable cache costs the
+  next run a rehash rather than the launch. Model resolution is therefore no longer strictly
+  write-free.
+
+### Added
+
+- A progress bar for a full model verification, on `calibrate` and on the mode launches. It appears
+  only when the digest is actually recomputed, so a run covered by a receipt prints nothing.
+
 ## [0.2.3] - 2026-07-27
 
 ### Added
