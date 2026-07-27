@@ -7,8 +7,15 @@ from pathlib import Path
 from typing import Literal
 
 from bora_workbench._calibration_types import CalibrationError, CalibrationRunError
+from bora_workbench._model_verification import VerifyProgress
 from bora_workbench.config import DEFAULT_MODEL, Config, load_config
-from bora_workbench.engine import JsonObject, load_engine_lock, locate, resolve_model
+from bora_workbench.engine import (
+    JsonObject,
+    ModelRequest,
+    load_engine_lock,
+    locate,
+    resolve_model,
+)
 from bora_workbench.hardware import HardwareInfo, detect_hardware, ensure_launch_supported
 from bora_workbench.paths import data_dir, state_dir
 from bora_workbench.process import status_services
@@ -74,8 +81,12 @@ def selected_mode_ids(mode_value: str) -> tuple[str, ...]:
     return tuple(mode.id for mode in _selected_modes(mode_value, load_catalog()))
 
 
-def prepare_target(mode_value: str) -> CalibrationTarget:
-    """Verify local model, engine, memory, hardware, modes, and service exclusivity."""
+def prepare_target(mode_value: str, progress: VerifyProgress | None = None) -> CalibrationTarget:
+    """Verify local model, engine, memory, hardware, modes, and service exclusivity.
+
+    ``progress`` observes the model verification, which reads the artifacts in full whenever no
+    receipt covers them and would otherwise run for about a minute with no output (D-076).
+    """
     config = load_config()
     hardware = detect_hardware()
     enforce_memory_gate(config, hardware, force=False)
@@ -88,7 +99,8 @@ def prepare_target(mode_value: str) -> CalibrationTarget:
     catalog = load_catalog()
     modes = _selected_modes(mode_value, catalog)
     lock = load_engine_lock()
-    model = resolve_model(config, lock, require_vision=any(mode.services.vision for mode in modes))
+    vision = any(mode.services.vision for mode in modes)
+    model = resolve_model(config, lock, ModelRequest(vision, progress))
     executable = locate(config, hardware.backend, lock)
     return CalibrationTarget(
         config,

@@ -48,6 +48,7 @@ from bora_workbench._cli_theme import (
     print_success,
     print_warning,
     progress_columns,
+    verifying_model,
 )
 from bora_workbench.calibration import (
     CalibrationError,
@@ -447,7 +448,8 @@ def _run(options: CalibrationCliInput, stdout: Console) -> None:
         _activate(options.mode, stdout)
         return
     preference = _preference(options.preference)
-    target = prepare_target(options.mode)
+    with verifying_model(stdout) as verifying:
+        target = prepare_target(options.mode, verifying)
     show_preflight(target, options, stdout)
     if not typer.confirm("Start calibration?", default=False):
         raise CalibrationCancelled("calibration cancelled before process start")

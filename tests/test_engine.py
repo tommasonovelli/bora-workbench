@@ -4,16 +4,42 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock
 
 import pytest
 
+import bora_workbench._model_verification as model_verification
 import bora_workbench.engine as engine
 from bora_workbench.config import Config
-from bora_workbench.engine import Activation, EngineError
+from bora_workbench.engine import Activation, EngineError, ModelRequest
 from bora_workbench.profiles import LaunchPlan, load_catalog
+
+
+@pytest.fixture(autouse=True)
+def isolated_verification_cache(tmp_path, monkeypatch):
+    """Keep every verification receipt inside the test's own cache root.
+
+    The receipt is keyed by absolute path, so a test that reused the developer's real cache root
+    could both pollute it and read a verdict another test wrote.
+    """
+    monkeypatch.setattr(model_verification, "cache_dir", lambda: tmp_path / "cache-root")
+
+
+def counting_sha256(monkeypatch) -> list[Path]:
+    """Record every artifact the resolver actually hashes, without changing the verdict."""
+    hashed: list[Path] = []
+    real = engine._sha256
+
+    def spy(path: Path, progress, total_bytes: int) -> str:
+        """Record one full read and delegate to the real digest."""
+        hashed.append(path)
+        return real(path, progress, total_bytes)
+
+    monkeypatch.setattr(engine, "_sha256", spy)
+    return hashed
 
 
 def plan(tmp_path: Path, backend: str = "cpu", mode_id: str = "coding") -> LaunchPlan:
@@ -73,8 +99,14 @@ def snapshot_path(cache: Path, lock: engine.JsonObject) -> Path:
     )
 
 
-def test_resolves_exact_pinned_snapshot_without_writing(tmp_path, monkeypatch) -> None:
-    """Resolve only the lock revision below b10011's highest-precedence cache root."""
+def test_resolves_exact_pinned_snapshot_without_touching_the_model_cache(
+    tmp_path, monkeypatch
+) -> None:
+    """Resolve only the lock revision below b10011's highest-precedence cache root.
+
+    The verification receipt is the sole write resolution performs, and it belongs to the tool's
+    own cache root: the Hugging Face cache is still never altered (D-076).
+    """
     lock = tiny_lock()
     cache = tmp_path / "cache"
     model = snapshot_path(cache, lock)
@@ -82,11 +114,129 @@ def test_resolves_exact_pinned_snapshot_without_writing(tmp_path, monkeypatch) -
     model.write_bytes(b"model")
     monkeypatch.setenv("LLAMA_CACHE", str(cache))
 
-    resolved = engine.resolve_model(Config(model="owner/model:file"), lock)
+    resolved = engine.resolve_model(Config(model="owner/model:file"), lock, ModelRequest())
 
     assert resolved.model_path == model.resolve()
     assert resolved.mmproj_path is None
     assert not (model.parent.parent / "different").exists()
+    assert sorted(item.name for item in cache.rglob("*") if item.is_file()) == ["model.gguf"]
+    assert model_verification.receipt_path().is_file()
+
+
+def resolve_twice(lock: engine.JsonObject, monkeypatch) -> list[Path]:
+    """Resolve the same default model twice and report which artifacts were hashed."""
+    hashed = counting_sha256(monkeypatch)
+    for _ in range(2):
+        engine.resolve_model(Config(model="owner/model:file"), lock, ModelRequest())
+    return hashed
+
+
+def test_a_receipt_skips_rereading_an_unchanged_artifact(tmp_path, monkeypatch) -> None:
+    """Hash about 22 GiB once, not on every calibrate and every mode launch (D-076)."""
+    lock = tiny_lock()
+    cache = tmp_path / "cache"
+    model = snapshot_path(cache, lock)
+    model.parent.mkdir(parents=True)
+    model.write_bytes(b"model")
+    monkeypatch.setenv("LLAMA_CACHE", str(cache))
+
+    assert resolve_twice(lock, monkeypatch) == [model]
+
+
+def touch_model(model: Path) -> None:
+    """Give the artifact a distinct modification time without changing its bytes."""
+    os.utime(model, ns=(0, 0))
+
+
+@pytest.mark.parametrize(
+    "invalidate",
+    [
+        pytest.param(touch_model, id="the artifact was modified"),
+        pytest.param(
+            lambda model: model_verification.receipt_path().write_text("{no", encoding="utf-8"),
+            id="the receipt is malformed",
+        ),
+        pytest.param(
+            lambda model: model_verification.receipt_path().unlink(), id="the receipt is gone"
+        ),
+    ],
+)
+def test_anything_that_could_invalidate_a_receipt_forces_a_full_hash(
+    tmp_path, monkeypatch, invalidate
+) -> None:
+    """Reread the artifact whenever the file or the cache stops vouching for it."""
+    lock = tiny_lock()
+    cache = tmp_path / "cache"
+    model = snapshot_path(cache, lock)
+    model.parent.mkdir(parents=True)
+    model.write_bytes(b"model")
+    monkeypatch.setenv("LLAMA_CACHE", str(cache))
+    engine.resolve_model(Config(model="owner/model:file"), lock, ModelRequest())
+
+    invalidate(model)
+    hashed = counting_sha256(monkeypatch)
+    engine.resolve_model(Config(model="owner/model:file"), lock, ModelRequest())
+
+    assert hashed == [model]
+
+
+def test_a_receipt_never_vouches_for_a_digest_the_lock_no_longer_expects(
+    tmp_path, monkeypatch
+) -> None:
+    """Refuse an artifact a new engine.lock rejects, however recently it was verified (D-076)."""
+    cache = tmp_path / "cache"
+    lock = tiny_lock()
+    model = snapshot_path(cache, lock)
+    model.parent.mkdir(parents=True)
+    model.write_bytes(b"model")
+    monkeypatch.setenv("LLAMA_CACHE", str(cache))
+    engine.resolve_model(Config(model="owner/model:file"), lock, ModelRequest())
+
+    repinned = tiny_lock()
+    artifact = repinned["default_model_artifact"]
+    assert isinstance(artifact, dict)
+    artifact["sha256"] = hashlib.sha256(b"a different pin").hexdigest()
+
+    with pytest.raises(engine.EngineError, match="checksum"):
+        engine.resolve_model(Config(model="owner/model:file"), repinned, ModelRequest())
+
+
+def test_an_unwritable_cache_root_costs_time_and_never_the_launch(tmp_path, monkeypatch) -> None:
+    """Resolve normally when the receipt cannot be stored, and hash again next time (D-076)."""
+    lock = tiny_lock()
+    cache = tmp_path / "cache"
+    model = snapshot_path(cache, lock)
+    model.parent.mkdir(parents=True)
+    model.write_bytes(b"model")
+    monkeypatch.setenv("LLAMA_CACHE", str(cache))
+    unwritable = tmp_path / "blocked"
+    unwritable.write_text("not a directory", encoding="utf-8")
+    monkeypatch.setattr(model_verification, "cache_dir", lambda: unwritable / "cache-root")
+
+    hashed = resolve_twice(lock, monkeypatch)
+
+    assert hashed == [model, model]
+
+
+def test_verification_progress_reports_monotonic_positions_against_the_real_size(
+    tmp_path, monkeypatch
+) -> None:
+    """Report a truthful position, so a caller can show the read instead of appearing to hang."""
+    lock = tiny_lock(b"model")
+    cache = tmp_path / "cache"
+    model = snapshot_path(cache, lock)
+    model.parent.mkdir(parents=True)
+    model.write_bytes(b"model")
+    monkeypatch.setenv("LLAMA_CACHE", str(cache))
+    seen: list[tuple[int, int]] = []
+
+    def record(completed: int, total: int) -> None:
+        """Capture one reported verification position."""
+        seen.append((completed, total))
+
+    engine.resolve_model(Config(model="owner/model:file"), lock, ModelRequest(False, record))
+
+    assert seen == [(5, 5)]
 
 
 def test_resolver_rejects_absent_wrong_size_and_wrong_digest(tmp_path, monkeypatch) -> None:
@@ -96,17 +246,17 @@ def test_resolver_rejects_absent_wrong_size_and_wrong_digest(tmp_path, monkeypat
     model = snapshot_path(cache, lock)
     monkeypatch.setenv("LLAMA_CACHE", str(cache))
     with pytest.raises(engine.EngineError, match="absent or unreadable"):
-        engine.resolve_model(Config(model="owner/model:file"), lock)
+        engine.resolve_model(Config(model="owner/model:file"), lock, ModelRequest())
 
     model.parent.mkdir(parents=True)
     model.write_bytes(b"x")
     with pytest.raises(engine.EngineError, match="unexpected size"):
-        engine.resolve_model(Config(model="owner/model:file"), lock)
+        engine.resolve_model(Config(model="owner/model:file"), lock, ModelRequest())
 
     model.write_bytes(b"other")
     lock = tiny_lock(b"wrong")
     with pytest.raises(engine.EngineError, match="checksum"):
-        engine.resolve_model(Config(model="owner/model:file"), lock)
+        engine.resolve_model(Config(model="owner/model:file"), lock, ModelRequest())
 
 
 def test_default_identity_cannot_escape_the_pinned_snapshot(tmp_path) -> None:
@@ -116,18 +266,22 @@ def test_default_identity_cannot_escape_the_pinned_snapshot(tmp_path) -> None:
     model.write_bytes(b"model")
 
     with pytest.raises(engine.EngineError, match="only accepted for a non-default model"):
-        engine.resolve_model(Config(model="owner/model:file", model_path=model), lock)
+        engine.resolve_model(
+            Config(model="owner/model:file", model_path=model), lock, ModelRequest()
+        )
 
 
 def test_nondefault_model_requires_only_explicit_readable_gguf(tmp_path) -> None:
     """Avoid inventing a digest for another identity while requiring a local GGUF."""
     lock = tiny_lock()
     with pytest.raises(engine.EngineError, match="requires an explicit model_path"):
-        engine.resolve_model(Config(model="other/model:file"), lock)
+        engine.resolve_model(Config(model="other/model:file"), lock, ModelRequest())
 
     model = tmp_path / "custom.gguf"
     model.write_bytes(b"unlocked custom bytes")
-    resolved = engine.resolve_model(Config(model="other/model:file", model_path=model), lock)
+    resolved = engine.resolve_model(
+        Config(model="other/model:file", model_path=model), lock, ModelRequest()
+    )
 
     assert resolved.model_path == model.resolve()
 
@@ -142,11 +296,11 @@ def test_vision_resolution_requires_pinned_mmproj(tmp_path, monkeypatch) -> None
     monkeypatch.setenv("LLAMA_CACHE", str(cache))
 
     with pytest.raises(engine.EngineError, match="absent or unreadable"):
-        engine.resolve_model(Config(model="owner/model:file"), lock, require_vision=True)
+        engine.resolve_model(Config(model="owner/model:file"), lock, ModelRequest(True))
 
     mmproj = model.with_name("mmproj.gguf")
     mmproj.write_bytes(b"vision")
-    resolved = engine.resolve_model(Config(model="owner/model:file"), lock, require_vision=True)
+    resolved = engine.resolve_model(Config(model="owner/model:file"), lock, ModelRequest(True))
     assert resolved.mmproj_path == mmproj.resolve()
 
 

@@ -26,6 +26,12 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Literal, cast
 from uuid import uuid4
 
+from bora_workbench._model_verification import (
+    ArtifactIdentity,
+    VerifyProgress,
+    is_verified,
+    remember,
+)
 from bora_workbench.config import Config
 from bora_workbench.paths import cache_dir, data_dir
 from bora_workbench.profiles import LaunchPlan
@@ -51,6 +57,18 @@ class ResolvedModel:
 
     model_path: Path
     mmproj_path: Path | None
+
+
+@dataclass(frozen=True, slots=True)
+class ModelRequest:
+    """Ask for one resolution: which artifacts it needs and who watches a full verification.
+
+    The progress sink travels with the request because verifying an artifact that no receipt covers
+    reads about 22 GiB, which a caller must be able to show rather than appear to hang through.
+    """
+
+    require_vision: bool = False
+    progress: VerifyProgress | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,31 +142,56 @@ def _hf_cache_dir(environ: Mapping[str, str]) -> Path:
     raise EngineError("cannot determine the Hugging Face cache; set HF_HUB_CACHE")
 
 
-def _sha256(path: Path) -> str:
+def _ignore_progress(completed: int, total: int) -> None:
+    """Absorb progress for a caller that asked for none, keeping the hash loop branch-free."""
+    del completed, total
+
+
+def _sha256(path: Path, progress: VerifyProgress | None, total_bytes: int) -> str:
     """Hash one artifact incrementally so multi-GiB GGUF files are never read into memory."""
     digest = hashlib.sha256()
+    report = _ignore_progress if progress is None else progress
+    completed = 0
     try:
         with path.open("rb") as source:
             while chunk := source.read(1024 * 1024):
                 digest.update(chunk)
+                completed += len(chunk)
+                report(completed, total_bytes)
     except OSError as error:
         raise EngineError(f"cannot read model artifact {path}: {error}") from error
     return digest.hexdigest()
 
 
-def _verify_artifact(path: Path, specification: JsonObject) -> Path:
-    """Require the locked filename, exact byte size, and SHA-256 before startup."""
+def _identify(path: Path, specification: JsonObject) -> ArtifactIdentity:
+    """Check the locked filename and exact byte size, which are free and never cached."""
     if path.name != specification["filename"]:
         raise EngineError(f"model artifact must be named {specification['filename']!r}: {path}")
     try:
-        size = path.stat().st_size
+        status = path.stat()
     except OSError as error:
         raise EngineError(f"model artifact is absent or unreadable: {path}: {error}") from error
-    if size != specification["size_bytes"]:
+    if status.st_size != specification["size_bytes"]:
         raise EngineError(f"model artifact has unexpected size: {path}")
-    if _sha256(path) != specification["sha256"]:
+    expected = cast(str, specification["sha256"])
+    return ArtifactIdentity(path.absolute(), status.st_size, status.st_mtime_ns, expected)
+
+
+def _verify_artifact(
+    path: Path, specification: JsonObject, progress: VerifyProgress | None
+) -> Path:
+    """Require the locked filename, exact byte size, and SHA-256 before startup.
+
+    The digest is recomputed unless a receipt already proved this exact file against this exact
+    expectation, because rereading about 22 GiB to reach the same verdict only costs time (D-076).
+    """
+    identity = _identify(path, specification)
+    if is_verified(identity):
+        return identity.path
+    if _sha256(path, progress, identity.size_bytes) != identity.expected_sha256:
         raise EngineError(f"model artifact checksum does not match engine.lock: {path}")
-    return path.absolute()
+    remember(identity)
+    return identity.path
 
 
 def _verify_custom_model(path: Path) -> Path:
@@ -163,8 +206,12 @@ def _verify_custom_model(path: Path) -> Path:
     return path.resolve()
 
 
-def resolve_model(config: Config, lock: JsonObject, require_vision: bool = False) -> ResolvedModel:
-    """Resolve locally without writes, pinned to the lock revision for the default model."""
+def resolve_model(config: Config, lock: JsonObject, request: ModelRequest) -> ResolvedModel:
+    """Resolve the model locally, pinned to the lock revision for the default identity.
+
+    Resolution writes a verification receipt under the cache root on a full verification, so it is
+    no longer strictly write-free; that write is best-effort and cannot fail a launch (D-076).
+    """
     artifact = cast(JsonObject, lock["default_model_artifact"])
     if config.model != lock["default_model"]:
         if config.model_path is None:
@@ -177,12 +224,12 @@ def resolve_model(config: Config, lock: JsonObject, require_vision: bool = False
     snapshot = _hf_cache_dir(os.environ) / f"models--{repository}" / "snapshots"
     snapshot /= cast(str, artifact["revision"])
     model_path = snapshot / cast(str, artifact["filename"])
-    verified_model = _verify_artifact(model_path, artifact)
-    if not require_vision:
+    verified_model = _verify_artifact(model_path, artifact, request.progress)
+    if not request.require_vision:
         return ResolvedModel(verified_model, None)
     mmproj = cast(JsonObject, artifact["mmproj"])
     mmproj_path = model_path.parent / cast(str, mmproj["filename"])
-    return ResolvedModel(verified_model, _verify_artifact(mmproj_path, mmproj))
+    return ResolvedModel(verified_model, _verify_artifact(mmproj_path, mmproj, request.progress))
 
 
 def _expand(tokens: object, values: dict[str, str]) -> list[str]:

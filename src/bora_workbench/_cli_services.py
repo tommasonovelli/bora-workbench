@@ -24,6 +24,7 @@ from bora_workbench._cli_theme import (
     print_success,
     print_warning,
     status_table,
+    verifying_model,
 )
 from bora_workbench._tool_handoff import (
     ToolHandoffError,
@@ -35,6 +36,7 @@ from bora_workbench.config import ConfigError, load_config
 from bora_workbench.engine import (
     EngineError,
     JsonObject,
+    ModelRequest,
     build_command,
     load_engine_lock,
     locate,
@@ -116,7 +118,8 @@ def _prepare_mode(mode_id: str, force: bool, stderr: Console) -> PreparedMode:
             valid = ", ".join(item.id for item in catalog.modes)
             raise PlanError(f"unknown mode {mode_id!r}; valid modes: {valid}")
         lock = load_engine_lock()
-        model = resolve_model(config, lock, require_vision=mode.services.vision)
+        with verifying_model(stderr) as verifying:
+            model = resolve_model(config, lock, ModelRequest(mode.services.vision, verifying))
         request = LaunchRequest(config, mode_id, model.model_path, model.mmproj_path)
         plan = build_launch_plan(request, catalog, hardware)
         executable = locate(config, hardware.backend, lock)

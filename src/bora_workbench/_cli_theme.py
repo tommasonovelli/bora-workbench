@@ -9,11 +9,16 @@ consoles that tests construct—without depending on a registered Rich theme.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
+from contextlib import contextmanager
+
 from rich.box import ROUNDED
 from rich.console import Console
-from rich.progress import BarColumn, ProgressColumn, SpinnerColumn, TextColumn
+from rich.progress import BarColumn, Progress, ProgressColumn, SpinnerColumn, TaskID, TextColumn
 from rich.table import Table
 from rich.text import Text
+
+from bora_workbench._model_verification import VerifyProgress
 
 # Semantic palette. Built-in Rich style names stay valid on every console, themed or not.
 # Colour never carries meaning alone; a plain-text label survives when colour is stripped
@@ -71,6 +76,40 @@ def progress_columns(*trailing: ProgressColumn) -> tuple[ProgressColumn, ...]:
 def metric_column(field: str) -> TextColumn:
     """Build a muted trailing metric column bound to one named progress field."""
     return TextColumn(f"{{task.fields[{field}]}}", style=STYLE_MUTED)
+
+
+@contextmanager
+def verifying_model(console: Console) -> Iterator[VerifyProgress]:
+    """Show how far a full model verification has read, and print nothing when it is skipped.
+
+    A verification with no receipt reads about 22 GiB before any other output appears, which is
+    long enough to read as a hung command. The bar is created on the first reported chunk, so a
+    receipt hit leaves the terminal exactly as it was (D-076).
+    """
+    progress = Progress(*progress_columns(metric_column("read")), console=console, transient=True)
+    task: TaskID | None = None
+
+    def report(completed: int, total: int) -> None:
+        """Start the bar on the first chunk and advance it to the reported position."""
+        nonlocal task
+        if task is None:
+            progress.start()
+            task = progress.add_task("Verifying model integrity", total=total, read="")
+        progress.update(
+            task, completed=completed, total=total, read=_read_fraction(completed, total)
+        )
+
+    try:
+        yield report
+    finally:
+        if task is not None:
+            progress.stop()
+
+
+def _read_fraction(completed: int, total: int) -> str:
+    """Describe verification position in whole GiB, the only unit these artifacts need."""
+    gib = 1024**3
+    return f"{completed / gib:.1f}/{total / gib:.1f} GiB"
 
 
 def print_heading(console: Console, text: str) -> None:

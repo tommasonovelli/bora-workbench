@@ -134,7 +134,7 @@ def test_outcome_shows_only_the_selected_preference_cell() -> None:
 )
 def test_a_failed_search_exits_operationally_without_a_traceback(monkeypatch, error) -> None:
     """Map every measured-run failure onto exit code 1, because the input itself was valid."""
-    monkeypatch.setattr(calibration_cli, "prepare_target", lambda mode: object())
+    monkeypatch.setattr(calibration_cli, "prepare_target", lambda mode, progress=None: object())
     monkeypatch.setattr(calibration_cli, "show_preflight", lambda *args: None)
     monkeypatch.setattr(calibration_cli.typer, "confirm", lambda *args, **kwargs: True)
 
@@ -153,7 +153,7 @@ def test_a_failed_search_exits_operationally_without_a_traceback(monkeypatch, er
 
 def test_declining_the_confirmation_cancels_with_the_contractual_code(monkeypatch) -> None:
     """Leave exit code 130 to an operator who declines before any process starts."""
-    monkeypatch.setattr(calibration_cli, "prepare_target", lambda mode: object())
+    monkeypatch.setattr(calibration_cli, "prepare_target", lambda mode, progress=None: object())
     monkeypatch.setattr(calibration_cli, "show_preflight", lambda *args: None)
     monkeypatch.setattr(calibration_cli.typer, "confirm", lambda *args, **kwargs: False)
 
@@ -176,7 +176,9 @@ def test_a_partial_run_prints_its_records_and_still_exits_operationally(monkeypa
         Path("/evidence/run"),
         ("vstudio: (65536, 36) is no longer feasible",),
     )
-    monkeypatch.setattr(calibration_cli, "prepare_target", lambda mode_value: object())
+    monkeypatch.setattr(
+        calibration_cli, "prepare_target", lambda mode_value, progress=None: object()
+    )
     monkeypatch.setattr(calibration_cli, "show_preflight", lambda *args: None)
     monkeypatch.setattr(calibration_cli.typer, "confirm", lambda *args, **kwargs: True)
     monkeypatch.setattr(calibration_cli, "run_calibration", lambda target, options: result)

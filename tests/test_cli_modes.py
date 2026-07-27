@@ -31,11 +31,11 @@ def patch_preflight(monkeypatch, is_browser_enabled: bool = False) -> list[bool]
     monkeypatch.setattr(service_cli, "load_config", lambda: Config(open_browser=is_browser_enabled))
     monkeypatch.setattr(service_cli, "detect_hardware", cpu_hardware)
 
-    def resolve(config, lock, require_vision=False):
+    def resolve(config, lock, request):
         """Record projector demand and return matching synthetic local artifacts."""
         del config, lock
-        requested_vision.append(require_vision)
-        projector = Path("/models/mmproj.gguf") if require_vision else None
+        requested_vision.append(request.require_vision)
+        projector = Path("/models/mmproj.gguf") if request.require_vision else None
         return ResolvedModel(Path("/models/model.gguf"), projector)
 
     monkeypatch.setattr(service_cli, "resolve_model", resolve)
