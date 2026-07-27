@@ -23,6 +23,7 @@ from bora_workbench._cli_services import (
     show_status,
 )
 from bora_workbench._cli_theme import create_console, print_error
+from bora_workbench._cli_update import UpdateOptions, run_update
 from bora_workbench.calibration import CalibrationError
 
 app = typer.Typer(
@@ -48,7 +49,7 @@ def package_version() -> str:
     try:
         return version("bora-workbench")
     except PackageNotFoundError:
-        return "0.2.2"
+        return "0.2.3"
 
 
 def _version_callback(value: bool) -> None:
@@ -156,6 +157,16 @@ def status() -> None:
 def stop() -> None:
     """Stop only identity-verified managed services and remain idempotent when none exist."""
     run_stop(_stdout, _stderr)
+
+
+@app.command()
+def update(
+    check: bool = typer.Option(
+        False, "--check", help="Only report whether a newer release is published."
+    ),
+) -> None:
+    """Install the newest published release with uv, leaving the managed engine installed."""
+    run_update(UpdateOptions(package_version(), check), _stdout, _stderr)
 
 
 @app.command()

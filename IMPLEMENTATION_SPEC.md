@@ -74,6 +74,10 @@ Updated on 26 July 2026.
 - [x] A real Windows CUDA run on 26 July 2026 exposed the defects of D-071 and, after them, wrote a
   valid `coding` candidate at `ctx=32768`, `n_cpu_moe=33`, with 0.589 GiB of VRAM free at its
   minimum. `0.2.2` distributes those fixes; the candidate was not activated.
+- [x] `0.2.3` adds `bora update` (D-073): a checksum-verified installation of the newest published
+  GitHub Release through uv, which never downgrades and never reinstalls the managed engine. The
+  D-056 uv handoff is generalized to any uv command. The offline suite covers version ordering,
+  the manifest gate, the HTTPS rule, and every refusal.
 
 ### Open work
 
@@ -85,6 +89,9 @@ Updated on 26 July 2026.
   `GATE-PARTIAL` and no envelope is transferred between hosts.
 - [ ] Complete the `0.2.1` automated suite, cross-platform release CI, exact artifact verification,
   and documented manual limitations without calling them a Gate.
+- [ ] Run `bora update` for real on Ubuntu and Windows, from a published release to the next one,
+  and confirm that the managed engine and the local records survive it. The logic is covered by
+  offline tests on both platforms; the deferred uv installation is not.
 - [ ] Router, managed Open WebUI, sync, and standalone benchmark remain post-0.2 backlog.
 
 No local candidate is activated and no post-0.2 backlog item is started without an explicit
@@ -217,6 +224,8 @@ The identifiers stay stable because code, tests, and evidence cite them.
 
 | D-072 | On 26 July 2026 the maintainer authorizes `0.2.2` as the release that distributes D-071, and authorizes the commit, the push to `tommasonovelli/bora-workbench`, the tag `v0.2.2`, and the GitHub Release. The maintainer also decides that the VRAM reserve stays at `0.5` GiB: the `0.3` GiB value of the retired `calibration/v4` and `/v5` is not restored, so record reserves, the packaged policy, and the schema constants are unchanged and existing `calibration-record/v6` records stay valid. Distribution remains GitHub Releases only (D-070). No registry upload, candidate activation, or Gate claim is authorized, and the manual Ubuntu run for this version is waived rather than performed. |
 
+| D-073 | On 27 July 2026 the maintainer requests a self-update command and authorizes `0.2.3` to distribute it, including the commit, the push, the tag `v0.2.3`, and the GitHub Release. `bora update` reads the newest published GitHub Release, refuses anything that is not strictly newer, downloads that release's `SHA256SUMS` and wheel over HTTPS while rejecting any hop that leaves HTTPS, verifies the wheel's SHA-256 against the manifest, and installs it with `uv tool install --force --python 3.12.13`. This repeats the trust boundary of the documented manual install and introduces no new one; the release manifest is not a signature and is not described as one. Distribution stays GitHub Releases only (D-070), so no registry is queried. **The managed engine is deliberately outside the update.** It lives under the data root, is selected by `engine.lock`, and survives the tool replacement, so an update does not reinstall it, does not redownload it, and does not activate anything; the command instead reads `engine.lock` out of the downloaded wheel and reports whether `bora engine install` is now required. Configuration, calibration records, and the model are equally untouched. `update` refuses a live managed service and refuses any installation `uv tool` does not own, reporting the documented installer instead of guessing. Because Windows cannot replace the environment of the running process, uv is invoked through the D-056 handoff, now generalized to any uv command in `_tool_handoff.py`/`_tool_helper.py`; exit code 0 therefore reports a scheduled installation, not a completed one, and the helper prints uv's own failure on the same terminal. No candidate activation, registry upload, or Gate claim is authorized, and the manual Ubuntu and Windows update runs are follow-up verification rather than a passed Gate. |
+
 A new durable decision updates this table in the same step that authorizes it.
 
 ---
@@ -236,7 +245,9 @@ A new durable decision updates this table in the same step that authorizes it.
 | `calibration.py` / `_calibration_*` | local search, records, bundles, and evidence |
 | `engine.py` / `_engine_*` | lock, model, assets, command, installation, and activation |
 | `process.py` / `_process_*` | process, health, state, lock, status, and stop |
-| `uninstall.py` / `_tool_uninstall_helper.py` | confined removal of the roots and handoff to the current uv installation |
+| `uninstall.py` | confined removal of the four public roots |
+| `update.py` | published release lookup, verified wheel, and uv installation |
+| `_tool_handoff.py` / `_tool_helper.py` | uv installation identity and one deferred uv command |
 | `validation.py` / `_validation_*` | schemas and semantic checks |
 | `resources/__init__.py` | `importlib.resources` access |
 | `routing.py` (future) | pure skill normalization and scoring |
@@ -442,6 +453,12 @@ remove uv. When the running command matches `uv tool dir/bora-workbench` exactly
 receipt, a helper on the base Python waits for the process to exit and invokes
 `uv tool uninstall bora-workbench` without a shell. A Python installation outside uv is not removed
 on a guess and is reported explicitly as unchanged.
+
+`update` reuses that identity check and that deferred helper to run `uv tool install --force` on a
+wheel it has already verified against the release `SHA256SUMS` (D-073). It installs only a strictly
+newer version, refuses a live managed service, and leaves the managed engine, the configuration,
+and the calibration records exactly as they were; whether the new version requires
+`bora engine install` is read from the downloaded wheel's own `engine.lock` and reported.
 
 ### 5.11 Errors and exit codes
 

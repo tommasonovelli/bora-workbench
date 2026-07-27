@@ -26,7 +26,7 @@ Expected errors show no traceback. In general:
 
 ### The installer asks for a source
 
-That is intentional: there is no implicit default. For `0.2.2`, use the wheel from the GitHub
+That is intentional: there is no implicit default. For `0.2.3`, use the wheel from the GitHub
 Release and its manifest digest as described in [Installation](installation.md). A full commit hash
 is also accepted for testing an exact repository revision.
 
@@ -47,6 +47,23 @@ uv --version
 ```
 
 must report `0.11.28`.
+
+### `bora update` refuses to run
+
+Three refusals are deliberate and each names its fix. A live managed service must be stopped with
+`bora stop` first, because the running launcher holds the environment uv has to replace. An
+installation that `uv tool` does not own — a development checkout, or a wheel installed by hand —
+is left alone; use the installer commands in [Installation](installation.md). A checksum mismatch
+between the downloaded wheel and the release `SHA256SUMS` aborts before anything is installed;
+retry, and if it persists, report it rather than installing that wheel manually.
+
+### `bora update` reported success but the version did not change
+
+Exit code 0 means the installation was *scheduled*. Windows cannot replace the environment of the
+process that is still running, so uv is invoked by a helper once the command exits, and it prints
+its own outcome on the same terminal a moment later. If that output shows a uv failure, run the
+command it names yourself; the previous installation is still in place until uv succeeds. Check
+with `bora --version` in a new shell.
 
 ### PowerShell blocks the script
 

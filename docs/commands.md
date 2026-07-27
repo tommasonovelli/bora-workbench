@@ -24,6 +24,7 @@ bora [--version] <command> [options]
 | `status` | shows live services and clears stale state | if needed |
 | `stop` | stops verified managed services | yes |
 | `calibrate` | measures the machine and manages local records | yes |
+| `update` | installs the newest published release, engine untouched | the Python tool |
 | `uninstall` | deletes the managed roots after confirmation | yes |
 
 ## `validate`
@@ -220,6 +221,39 @@ engine. Trials use the configured port when it is free and fall back to a system
 port when it is busy; that fallback does not apply to the three normal launches.
 
 Algorithm and record details: [Calibration](calibration.md).
+
+## `update`
+
+```bash
+bora update --check
+bora update
+```
+
+Compares the installed version with the newest GitHub Release and, unless `--check` was given,
+installs it. Both forms print the installed and the published version first; when nothing newer is
+published, both exit with 0 and change nothing. An update never downgrades: only a strictly newer
+`major.minor.patch` is installed.
+
+The installation repeats the trust chain of the documented manual install. The command downloads
+the release `SHA256SUMS` and the release wheel over HTTPS, refuses any hop that leaves HTTPS,
+compares the wheel's SHA-256 with the manifest, and only then hands the verified file to
+`uv tool install --force --python 3.12.13`. The wheel is kept under the managed cache root.
+
+**The managed engine is not reinstalled.** It lives under the data root and survives the tool
+replacement untouched. Before scheduling the installation, `update` reads `engine.lock` out of the
+downloaded wheel and reports one of three things: that the new version keeps the active engine
+release, that it pins a different one and `bora engine install` is required afterwards, or that the
+lock could not be read and `bora engine status` should be checked. Calibration records, the
+configuration, and the model are equally untouched.
+
+Two situations are refused with exit code 1: a live managed service, because the running launcher
+still holds the environment uv has to replace, and an installation `uv tool` does not own — a
+development checkout for example — which must use the documented installer instead.
+
+Because Windows cannot replace the environment of the process that is still running, `uv` is invoked
+by a helper that waits for this command to exit, exactly as `uninstall` does. Exit code 0 therefore
+reports that the installation was *scheduled*, not that uv succeeded: uv writes its own output to
+the same terminal a moment later, and `bora --version` is the confirmation.
 
 ## `uninstall`
 

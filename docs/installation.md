@@ -17,9 +17,9 @@ CUDA on a machine with more than one GPU is detected, but startup is blocked: ph
 only been verified on single-GPU hosts. If `nvidia-smi` is missing, fails, or produces unreadable
 data, the launcher uses the CPU backend and shows why.
 
-## 2. Installing bora-workbench 0.2.2
+## 2. Installing bora-workbench 0.2.3
 
-`bora-workbench` is distributed through GitHub Releases. These commands download the `v0.2.2`
+`bora-workbench` is distributed through GitHub Releases. These commands download the `v0.2.3`
 manifest, verify the installer and wheel, and install with pinned uv `0.11.28` and CPython
 `3.12.13`. They require no administrator privileges.
 
@@ -28,7 +28,7 @@ manifest, verify the installer and wheel, and install with pinned uv `0.11.28` a
 Open a terminal in a new directory and copy the complete block:
 
 ```bash
-version="0.2.2"
+version="0.2.3"
 base="https://github.com/tommasonovelli/bora-workbench/releases/download/v${version}"
 wheel="bora_workbench-${version}-py3-none-any.whl"
 
@@ -52,7 +52,7 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 Open PowerShell in a new directory and copy the complete block:
 
 ```powershell
-$Version = "0.2.2"
+$Version = "0.2.3"
 $Base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v$Version"
 $Wheel = "bora_workbench-$Version-py3-none-any.whl"
 
@@ -101,7 +101,7 @@ testing an exact repository revision and never follows a branch or tag implicitl
 
 ## 3. Verifying the tool
 
-For `0.2.2`:
+For `0.2.3`:
 
 ```bash
 bora --version
@@ -189,7 +189,29 @@ bora status
 bora stop
 ```
 
-## 7. Removal
+## 7. Updating
+
+```bash
+bora update --check
+bora update
+```
+
+`update` compares the installed version with the newest GitHub Release and installs it only when it
+is strictly newer. It downloads that release's `SHA256SUMS` and wheel over HTTPS, verifies the
+wheel's SHA-256 against the manifest, and hands the verified file to
+`uv tool install --force --python 3.12.13` — the same trust chain as the manual commands above.
+
+The managed engine, the configuration, and the calibration records are not touched. Before
+installing, the command reads `engine.lock` out of the downloaded wheel and says whether the new
+version keeps the active engine release or requires `bora engine install` afterwards.
+
+Stop every managed service first: `update` refuses to run while one is live, because the running
+launcher still holds the environment uv must replace. For the same reason uv runs from a helper that
+waits for the command to exit, so exit code 0 means the installation was scheduled; `bora --version`
+in a new shell is the confirmation. An installation that `uv tool` does not own — a development
+checkout, for instance — is reported and left alone; use the installer commands in section 2.
+
+## 8. Removal
 
 ```bash
 bora stop

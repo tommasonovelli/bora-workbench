@@ -25,6 +25,11 @@ from bora_workbench._cli_theme import (
     print_warning,
     status_table,
 )
+from bora_workbench._tool_handoff import (
+    ToolHandoffError,
+    ToolInstallation,
+    inspect_tool_installation,
+)
 from bora_workbench.calibration import service_roots
 from bora_workbench.config import ConfigError, load_config
 from bora_workbench.engine import (
@@ -59,10 +64,7 @@ from bora_workbench.profiles import (
 from bora_workbench.uninstall import (
     ManagedRoot,
     RemovalReport,
-    ToolInstallation,
-    ToolUninstallError,
     UninstallError,
-    inspect_tool_installation,
     managed_roots,
     remove_managed_roots,
     schedule_tool_removal,
@@ -282,18 +284,22 @@ def _show_report(report: RemovalReport, installation: ToolInstallation, stdout: 
         stdout.print("Python tool unchanged: this invocation is not managed by uv tool.")
 
 
-def _require_services_stopped(stderr: Console) -> None:
-    """Refuse to orphan a live managed process by deleting its state (section 5.10)."""
+def require_services_stopped(category: str, stderr: Console) -> None:
+    """Refuse to disturb a live managed process, whether by deleting or replacing its launcher.
+
+    `uninstall` would orphan the process by deleting its state (section 5.10) and `update` would
+    replace the tool environment the running launcher still holds open, so both refuse here.
+    """
     try:
         report = _across_roots(status_services)
     except ProcessError as error:
-        print_error(stderr, "Uninstall error", f"cannot inspect managed services: {error}")
+        print_error(stderr, category, f"cannot inspect managed services: {error}")
         raise typer.Exit(code=1) from error
     for warning in report.warnings:
         print_warning(stderr, warning)
     if report.services:
         detail = "managed services are running; run bora stop"
-        print_error(stderr, "Uninstall error", detail)
+        print_error(stderr, category, detail)
         raise typer.Exit(code=1)
 
 
@@ -301,7 +307,7 @@ def _inspect_installation(stderr: Console) -> ToolInstallation:
     """Map uv installation inspection failures to the operational CLI boundary."""
     try:
         return inspect_tool_installation()
-    except ToolUninstallError as error:
+    except ToolHandoffError as error:
         print_error(stderr, "Uninstall error", str(error))
         raise typer.Exit(code=1) from error
 
@@ -313,14 +319,14 @@ def _remove_everything(
     try:
         report = remove_managed_roots(roots)
         schedule_tool_removal(installation)
-    except (ToolUninstallError, UninstallError) as error:
+    except (ToolHandoffError, UninstallError) as error:
         raise UninstallError(str(error)) from error
     return report
 
 
 def run_uninstall(stdout: Console, stderr: Console) -> None:
     """Confirm once, then remove managed roots and the current uv-managed Python tool."""
-    _require_services_stopped(stderr)
+    require_services_stopped("Uninstall error", stderr)
     installation = _inspect_installation(stderr)
     roots = managed_roots()
     _show_preview(roots, installation, stdout)
@@ -331,7 +337,7 @@ def run_uninstall(stdout: Console, stderr: Console) -> None:
         if not typer.confirm("Remove bora-workbench completely?", default=False):
             stdout.print("Uninstall cancelled; nothing was removed.")
             return
-        _require_services_stopped(stderr)
+        require_services_stopped("Uninstall error", stderr)
         report = _remove_everything(roots, installation)
     except (KeyboardInterrupt, typer.Abort) as error:
         print_warning(stderr, f"Uninstall cancelled: {error}")

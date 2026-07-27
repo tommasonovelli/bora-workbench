@@ -46,7 +46,9 @@ different models, releases, flags, ports, or assets.
 | `profiles.py` | runtime modes, gates, and `LaunchPlan` |
 | `engine.py`, `_engine_*` | lock, model, assets, download/build, installation, and command |
 | `process.py`, `_process_*` | port, startup lock, process, health, state, status, and stop |
-| `uninstall.py`, `_tool_uninstall_helper.py` | confined removal of the managed roots and handoff to the current uv installation |
+| `uninstall.py` | confined removal of the managed roots |
+| `update.py` | published release lookup, checksum-verified wheel, and uv installation |
+| `_tool_handoff.py`, `_tool_helper.py` | identifying the uv installation and running one uv command after this process exits |
 | `calibration.py`, `_calibration_*` | target preparation, search, records, evidence, and reuse |
 | `benchmark.py`, `benchmark_quick.py` | the immutable feasibility probe and the quick-bench |
 | `validation.py`, `_validation_*` | JSON Schema and cross-cutting semantic invariants |

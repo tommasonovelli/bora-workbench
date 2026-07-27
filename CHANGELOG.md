@@ -3,6 +3,35 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
+## [0.2.3] - 2026-07-27
+
+### Added
+
+- `bora update` installs the newest published GitHub Release. It prints the installed and the
+  published version, refuses anything that is not strictly newer, downloads that release's
+  `SHA256SUMS` and wheel over HTTPS while rejecting any hop that leaves HTTPS, verifies the wheel's
+  SHA-256 against the manifest, and installs it with
+  `uv tool install --force --python 3.12.13`. This is the same trust chain as the documented manual
+  installation; the release manifest is a checksum list, not a signature. `--check` reports without
+  downloading anything.
+- **The managed engine is deliberately left installed.** It lives under the data root, so replacing
+  the Python tool does not touch it, and an update neither redownloads nor reactivates it. Instead
+  the command reads `engine.lock` out of the downloaded wheel and reports whether the new version
+  keeps the active `llama.cpp` release or whether `bora engine install` is now required.
+  Configuration, calibration records, and the model are equally untouched.
+- `update` refuses a live managed service, because the running launcher still holds the environment
+  uv has to replace, and refuses an installation `uv tool` does not own, naming the documented
+  installer instead of guessing.
+
+### Changed
+
+- The deferred uv handoff introduced for `uninstall` now runs any uv command and moved to
+  `_tool_handoff.py` with its child in `_tool_helper.py`. Both `uninstall` and `update` need uv to
+  run after the process exits, because Windows cannot delete or replace the environment of the
+  process that is still executing. Exit code 0 from `update` therefore reports a *scheduled*
+  installation; uv prints its own result on the same terminal a moment later, and `bora --version`
+  in a new shell is the confirmation.
+
 ## [0.2.2] - 2026-07-26
 
 ### Fixed

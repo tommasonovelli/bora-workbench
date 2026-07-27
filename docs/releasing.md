@@ -5,8 +5,8 @@ requires explicit human authorization for the push, tag, and GitHub Release.
 
 ## Public status
 
-- release described by this branch: `bora-workbench 0.2.2`;
-- preceding public version: `bora-workbench 0.2.1` on GitHub Releases;
+- release described by this branch: `bora-workbench 0.2.3`;
+- preceding public version: `bora-workbench 0.2.2` on GitHub Releases;
 - historical versions `0.1.0` through `0.1.6` remain immutable under their original
   `qwen-launcher` artifact identity;
 - every published bundle comes from its green Ubuntu/Windows release workflow and contains the
@@ -56,6 +56,28 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.2.3
+
+`0.2.3` adds `bora update` (D-073). Until now the only way to move to a new version was to repeat
+the whole manual install: download the wheel, download `SHA256SUMS`, verify both by hand, and run
+the installer. The command does exactly that and nothing more — newest published release, verified
+wheel, `uv tool install --force` — so it inherits the existing trust boundary instead of adding
+one. It never downgrades, and it never runs while a managed service is live.
+
+The managed engine is deliberately outside the update. It lives under the data root and survives
+the tool replacement, so the command does not reinstall or reactivate it; it reads `engine.lock`
+out of the downloaded wheel and reports whether `bora engine install` is required afterwards.
+Calibration records, the configuration, and the model are equally untouched, so an existing
+`calibration-record/v6` stays valid.
+
+The uv handoff that `uninstall` already used is generalized to any uv command, because Windows
+cannot replace the environment of the process that is still running. That is also why the exit code
+reports a scheduled installation rather than a completed one.
+
+The engine, model, command contract, `command_contract_sha256`, record format, reserves, and the
+packaged policy and schemas are unchanged. The real update path between two published releases is
+follow-up verification on Ubuntu and Windows, not a passed Gate.
 
 ### Release 0.2.2
 
@@ -184,8 +206,9 @@ added to the public evidence.
 
 Limits and checks that were not run must be explicit. `0.1.3` was authorized for commit, push, tag,
 and GitHub Release before the real spike; this does not amount to a Gate, and PyPI remains excluded.
-For `0.2.2`, D-072 carries forward the explicit waiver of additional manual Ubuntu/Windows and
-hardware calibration runs before publication. The automated release matrix remains required; the
+For `0.2.2` and `0.2.3`, D-072 and D-073 carry forward the explicit waiver of additional manual
+Ubuntu/Windows and hardware calibration runs before publication; the real update path between two
+published releases is likewise follow-up verification. The automated release matrix remains required; the
 waiver is not a passed Gate, and the maintainer will perform platform checks after release.
 
 ## Version, tag, and commit
