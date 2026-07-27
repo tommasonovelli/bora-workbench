@@ -20,8 +20,8 @@ from dataclasses import dataclass
 from statistics import median
 
 from bora_workbench._calibration_search import (
+    ConfirmAt,
     GroupPlan,
-    SampleAt,
     SearchProvider,
     search_samples,
 )
@@ -36,6 +36,7 @@ from bora_workbench._calibration_types import (
     SearchError,
     TrialInfeasibleError,
 )
+from bora_workbench.benchmark_quick import ShortBench
 from bora_workbench.profiles import Mode
 
 GateAt = Callable[[int, int | None], GateResult]
@@ -219,13 +220,6 @@ def resolve(rounds: tuple[RoundResult, ...], finalists: tuple[Sample, Sample]) -
     return _equivalence_index(finalists)
 
 
-def _dispersion(sample: Sample) -> float:
-    """Return the intra-sample short end-to-end spread the third-round rule inspects."""
-    values = [metric.e2e_ms for metric in sample.quick.short]
-    center = median(values)
-    return (max(values) - min(values)) / center if center else 0.0
-
-
 class _FinalistLost(Exception):
     """Carry which finalist stopped being feasible while confirmation was re-measuring it."""
 
@@ -235,22 +229,24 @@ class _FinalistLost(Exception):
         self.index = index
 
 
-def _remeasure(finalist: Sample, index: int, sample_at: SampleAt) -> Sample:
+def _remeasure(finalist: Sample, index: int, confirm_at: ConfirmAt) -> ShortBench:
     """Re-measure one finalist, reporting which one the memory boundary moved under."""
     try:
-        return sample_at(finalist.ctx, finalist.n_cpu_moe)
+        return confirm_at(finalist.ctx, finalist.n_cpu_moe)
     except TrialInfeasibleError as error:
         raise _FinalistLost(index) from error
 
 
 def _abba_round(
-    finalists: tuple[Sample, Sample], sample_at: SampleAt, is_reversed: bool = False
+    finalists: tuple[Sample, Sample], confirm_at: ConfirmAt, is_reversed: bool = False
 ) -> RoundResult:
     """Measure one A-B or B-A round while returning metrics in canonical finalist order."""
     order = (1, 0) if is_reversed else (0, 1)
-    measured = {index: _remeasure(finalists[index], index, sample_at) for index in order}
+    measured = {index: _remeasure(finalists[index], index, confirm_at) for index in order}
     first, second = measured[0], measured[1]
-    return RoundResult((first.e2e_ms, second.e2e_ms), (_dispersion(first), _dispersion(second)))
+    return RoundResult(
+        (first.e2e_median_ms, second.e2e_median_ms), (first.dispersion, second.dispersion)
+    )
 
 
 def _finalists(
@@ -264,9 +260,12 @@ def _finalists(
 
 
 def _confirm(
-    finalists: tuple[Sample, Sample], sample_at: SampleAt
+    finalists: tuple[Sample, Sample], confirm_at: ConfirmAt
 ) -> tuple[Sample, tuple[RoundResult, ...]]:
     """Disambiguate near-tied finalists with ABBA and the third-round rule (spec section 5.6).
+
+    The confirmed winner is the finalist the search already measured, not a round's re-measurement,
+    so the recorded cell keeps the full quick-bench evidence a confirmation round never produces.
 
     A finalist that stops fitting the reserves between the search and confirmation cannot become a
     launch envelope, so the surviving finalist is confirmed with no recorded rounds instead of
@@ -274,23 +273,23 @@ def _confirm(
     """
     try:
         rounds = [
-            _abba_round(finalists, sample_at),
-            _abba_round(finalists, sample_at, is_reversed=True),
+            _abba_round(finalists, confirm_at),
+            _abba_round(finalists, confirm_at, is_reversed=True),
         ]
         if needs_third_round((rounds[0], rounds[1])):
-            rounds.append(_abba_round(finalists, sample_at))
+            rounds.append(_abba_round(finalists, confirm_at))
     except _FinalistLost as lost:
         return finalists[1 - lost.index], ()
     return finalists[resolve(tuple(rounds), finalists)], tuple(rounds)
 
 
 def _confirm_selected(
-    samples: tuple[Sample, ...], sample_at: SampleAt, preference: Preference
+    samples: tuple[Sample, ...], confirm_at: ConfirmAt, preference: Preference
 ) -> tuple[Sample, tuple[tuple[float, float], ...]]:
     """Confirm only the requested preference and retain its canonical finalist medians."""
     winner = select_envelope(samples, preference)
     pair = _finalists(samples, winner, preference)
-    sample, rounds = (winner, ()) if pair is None else _confirm(pair, sample_at)
+    sample, rounds = (winner, ()) if pair is None else _confirm(pair, confirm_at)
     return sample, tuple(round_result.medians for round_result in rounds)
 
 
@@ -335,7 +334,7 @@ def run_group(
     samples = search_samples(provider, plan)
     if plan.preference in _PAIRED_PREFERENCES:
         plan.progress.enter(label, "pairing", MAX_PAIRING_TRIALS)
-    confirmed, inputs = _confirm_selected(samples, provider.sample_at, plan.preference)
+    confirmed, inputs = _confirm_selected(samples, provider.confirm_at, plan.preference)
     results = []
     for target in targets:
         plan.progress.enter(target.mode.id, "gate", MAX_GATE_TRIALS)

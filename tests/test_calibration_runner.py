@@ -20,8 +20,9 @@ from bora_workbench._calibration_types import (
     TrialInfeasibleError,
     TrialOutcome,
 )
+from bora_workbench.benchmark_quick import ShortBench
 from bora_workbench.profiles import load_catalog
-from tests.sample_fixtures import sample
+from tests.sample_fixtures import confirm_from, sample
 
 _VRAM = ClassifiedOutcome(TrialOutcome.MEMORY_INFEASIBLE, "vram")
 _SUCCESS = ClassifiedOutcome(TrialOutcome.SUCCESS)
@@ -48,7 +49,7 @@ def _provider() -> SearchProvider:
         """Measure one synthetic sample with context-dependent latency."""
         return sample(ctx, n_cpu_moe, _E2E[ctx])
 
-    return SearchProvider(probe_at, sample_at)
+    return SearchProvider(probe_at, sample_at, confirm_from(sample_at))
 
 
 def _pass_gate(ctx: int, n_cpu_moe: int) -> GateResult:
@@ -117,24 +118,20 @@ def test_gate_failure_retries_next_candidate_then_errors() -> None:
 
 
 def _moving_boundary_provider(lost: tuple[int, int]) -> SearchProvider:
-    """Build a provider where one point is measurable once and then stops fitting the reserves.
+    """Build a provider where one measured point stops fitting the reserves during confirmation.
 
-    The first measurement is the search, which therefore accepts the point and lets selection pick
-    it; every later measurement is confirmation, where the boundary has moved under it.
+    The search accepts the point and lets selection pick it; the confirmation trial that
+    re-measures it then finds that the boundary has moved under it.
     """
     base = _provider()
-    seen = False
 
-    def sample_at(ctx: int, n_cpu_moe: int):
-        """Allow the selected point once before making it infeasible."""
-        nonlocal seen
+    def confirm_at(ctx: int, n_cpu_moe: int | None) -> ShortBench:
+        """Refuse only the point whose boundary moved after the search had measured it."""
         if (ctx, n_cpu_moe) == lost:
-            if seen:
-                raise TrialInfeasibleError(f"{lost} is no longer feasible: VRAM reserve violated")
-            seen = True
-        return base.sample_at(ctx, n_cpu_moe)
+            raise TrialInfeasibleError(f"{lost} is no longer feasible: VRAM reserve violated")
+        return base.confirm_at(ctx, n_cpu_moe)
 
-    return SearchProvider(base.probe_at, sample_at)
+    return SearchProvider(base.probe_at, base.sample_at, confirm_at)
 
 
 def test_a_finalist_that_stops_fitting_confirms_the_other_one() -> None:
@@ -171,17 +168,54 @@ def test_confirmation_executes_abba_order_and_records_canonical_pairs() -> None:
     second = sample(65536, 38, 120.0)
     order: list[int | None] = []
 
-    def sample_at(ctx: int, n_cpu_moe: int | None):
-        """Record execution order and return the matching finalist."""
+    def confirm_at(ctx: int, n_cpu_moe: int | None) -> ShortBench:
+        """Record execution order and return the matching finalist's short series."""
         del ctx
         order.append(n_cpu_moe)
-        return first if n_cpu_moe == first.n_cpu_moe else second
+        return (first if n_cpu_moe == first.n_cpu_moe else second).quick.short
 
-    winner, rounds = _confirm((first, second), sample_at)
+    winner, rounds = _confirm((first, second), confirm_at)
 
     assert order == [40, 38, 38, 40]
     assert tuple(result.medians for result in rounds) == ((100.0, 120.0), (100.0, 120.0))
     assert winner is first
+
+
+def test_confirmation_never_starts_a_full_quick_bench() -> None:
+    """Measure the short series only: the long prefill decides nothing in a round (D-074)."""
+    events: list[str] = []
+    base = _provider()
+
+    def sample_at(ctx: int, n_cpu_moe: int | None):
+        """Record one full quick-bench in execution order."""
+        events.append("sample")
+        return base.sample_at(ctx, n_cpu_moe)
+
+    def confirm_at(ctx: int, n_cpu_moe: int | None) -> ShortBench:
+        """Record one confirmation trial in execution order."""
+        events.append("confirm")
+        return base.confirm_at(ctx, n_cpu_moe)
+
+    run_group(
+        SearchProvider(base.probe_at, sample_at, confirm_at),
+        (GateTarget(_mode("coding"), _pass_gate),),
+        GroupPlan(_CONTEXTS, 24, preference="fast"),
+    )
+
+    assert events.count("confirm") in {4, 6}
+    assert "sample" not in events[events.index("confirm") :]
+
+
+def test_the_confirmed_cell_keeps_the_full_quick_bench_evidence() -> None:
+    """Record the search's own sample, so prefill_tps survives a short-only confirmation."""
+    (result,) = run_group(
+        _provider(),
+        (GateTarget(_mode("coding"), _pass_gate),),
+        GroupPlan(_CONTEXTS, 24, preference="fast"),
+    )
+
+    assert result.envelope.sample in result.samples
+    assert result.envelope.sample.prefill_tps > 0
 
 
 def test_an_envelope_that_stops_fitting_at_the_gate_falls_back_to_its_rival() -> None:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from dataclasses import replace
 
 import httpx
 import pytest
@@ -12,10 +13,13 @@ from bora_workbench.benchmark import BenchmarkError
 from bora_workbench.benchmark_quick import (
     LONG_REQUEST_SHA256,
     SHORT_REQUEST_SHA256,
+    ShortBench,
+    run_confirm_bench,
     run_quick_bench,
     verify_protocol_resources,
 )
 from bora_workbench.resources import resource
+from tests.sample_fixtures import short_bench
 
 
 def quick_response(
@@ -71,7 +75,7 @@ def test_warmup_excluded_and_three_short_plus_long_summarized() -> None:
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
         result = run_quick_bench("http://127.0.0.1:8080", client)
 
-    assert len(result.short) == 3
+    assert len(result.short.metrics) == 3
     assert result.decode_tps_median == 50.0
     assert result.prefill_8k_tps == 333.0
     assert result.short_e2e_median_ms > 0
@@ -79,6 +83,38 @@ def test_warmup_excluded_and_three_short_plus_long_summarized() -> None:
     assert result.long.draft_n_accepted == 7
     assert len(seen) == 5
     assert all(body["cache_prompt"] is False and body["seed"] == 424242 for body in seen)
+
+
+def test_confirmation_runs_the_warm_up_and_short_series_without_the_long_request() -> None:
+    """Start no 23180-token prefill for a comparison that cannot read it (D-074)."""
+    seen: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        """Record each request and answer every short run identically."""
+        body = json.loads(request.content)
+        seen.append(body)
+        return httpx.Response(200, json=quick_response(128, predicted_pps=50.0))
+
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        result = run_confirm_bench("http://127.0.0.1:8080", client)
+
+    assert len(seen) == 4
+    assert all(body["max_tokens"] == 128 for body in seen)
+    assert len(result.metrics) == 3
+    assert result.decode_tps_median == 50.0
+
+
+def test_dispersion_normalizes_the_short_spread_around_its_median() -> None:
+    """Report the spread the third-round rule inspects, and zero when the median is unusable."""
+    spread = short_bench(0.0)
+    metrics = (
+        replace(spread.metrics[0], e2e_ms=90.0),
+        replace(spread.metrics[1], e2e_ms=100.0),
+        replace(spread.metrics[2], e2e_ms=110.0),
+    )
+
+    assert ShortBench(metrics).dispersion == pytest.approx(0.2)
+    assert spread.dispersion == 0.0
 
 
 @pytest.mark.parametrize(

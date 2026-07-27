@@ -119,7 +119,7 @@ def _run_group_for(
         for mode in modes
     }
     search = runners[modes[0].id]
-    provider = SearchProvider(search.probe, search.sample)
+    provider = SearchProvider(search.probe, search.sample, search.confirm)
     targets = tuple(GateTarget(mode, runners[mode.id].gate) for mode in modes)
     has_offload_axis = spec.target.hardware.backend != "cpu"
     plan = GroupPlan(

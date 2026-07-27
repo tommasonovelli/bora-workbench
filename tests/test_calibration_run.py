@@ -116,6 +116,7 @@ def test_requested_preference_reaches_each_shared_group(monkeypatch) -> None:
         driver = "driver"
         probe = object()
         sample = object()
+        confirm = object()
         gate = object()
 
         def __init__(self, *args) -> None:

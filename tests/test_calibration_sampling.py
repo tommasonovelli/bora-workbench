@@ -17,7 +17,7 @@ from bora_workbench._calibration_types import (
     TrialInfeasibleError,
     TrialOutcome,
 )
-from tests.sample_fixtures import sample
+from tests.sample_fixtures import confirm_from, sample
 
 _VRAM = ClassifiedOutcome(TrialOutcome.MEMORY_INFEASIBLE, "vram")
 _SUCCESS = ClassifiedOutcome(TrialOutcome.SUCCESS)
@@ -43,7 +43,7 @@ def _cuda_provider(feasible_from: int, boundary: int) -> tuple[SearchProvider, l
         assert n_cpu_moe is not None
         return sample(ctx, n_cpu_moe, float(ctx))
 
-    return SearchProvider(probe_at, sample_at), probed
+    return SearchProvider(probe_at, sample_at, confirm_from(sample_at)), probed
 
 
 def test_infeasible_large_contexts_cost_one_probe_each_and_do_not_end_the_run() -> None:
@@ -74,7 +74,7 @@ def test_the_reported_cap_covers_every_trial_the_search_can_start() -> None:
         return sample(ctx, n_cpu_moe, float(ctx))
 
     plan = GroupPlan(CONTEXT_SCALE, 28)
-    search_samples(SearchProvider(probe_at, sample_at), plan)
+    search_samples(SearchProvider(probe_at, sample_at, confirm_from(sample_at)), plan)
 
     assert started > plan.budget
     assert started <= plan.trial_cap
@@ -132,7 +132,9 @@ def test_a_point_that_turns_infeasible_is_dropped_not_fatal() -> None:
             raise TrialInfeasibleError("boundary moved")
         return sample(ctx, n_cpu_moe, float(ctx))
 
-    samples = search_samples(SearchProvider(probe_at, sample_at), GroupPlan((65536,), 28))
+    samples = search_samples(
+        SearchProvider(probe_at, sample_at, confirm_from(sample_at)), GroupPlan((65536,), 28)
+    )
     assert samples
     assert all(item.n_cpu_moe != 30 for item in samples)
 
@@ -151,7 +153,9 @@ def test_every_point_turning_infeasible_reports_no_usable_sample() -> None:
         raise TrialInfeasibleError("boundary moved")
 
     with pytest.raises(SearchError, match="no feasible context step"):
-        search_samples(SearchProvider(probe_at, sample_at), GroupPlan((65536,), 28))
+        search_samples(
+            SearchProvider(probe_at, sample_at, confirm_from(sample_at)), GroupPlan((65536,), 28)
+        )
 
 
 def test_cpu_confirms_the_baseline_without_probing_an_offload_axis() -> None:
@@ -170,7 +174,8 @@ def test_cpu_confirms_the_baseline_without_probing_an_offload_axis() -> None:
         return Sample(ctx, n_cpu_moe, "mtp2", sample(ctx, 0, 10.0).quick, 4.0, None, 9.0, None)
 
     samples = search_samples(
-        SearchProvider(probe_at, sample_at), GroupPlan((8192,), 28, has_offload_axis=False)
+        SearchProvider(probe_at, sample_at, confirm_from(sample_at)),
+        GroupPlan((8192,), 28, has_offload_axis=False),
     )
     assert offloads == [None, None]
     assert [item.n_cpu_moe for item in samples] == [None]
@@ -197,7 +202,8 @@ def test_cpu_baseline_uses_the_same_single_retry_taxonomy() -> None:
         return Sample(ctx, None, "mtp2", sample(ctx, 0, 10.0).quick, 4.0, None, 9.0, None)
 
     samples = search_samples(
-        SearchProvider(probe_at, sample_at), GroupPlan((8192,), 2, has_offload_axis=False)
+        SearchProvider(probe_at, sample_at, confirm_from(sample_at)),
+        GroupPlan((8192,), 2, has_offload_axis=False),
     )
 
     assert calls == ["probe", "probe", "sample"]
@@ -219,7 +225,8 @@ def test_cpu_protocol_invalid_probe_stops_the_mode() -> None:
 
     with pytest.raises(SearchError, match="protocol-invalid"):
         search_samples(
-            SearchProvider(probe_at, sample_at), GroupPlan((8192,), 2, has_offload_axis=False)
+            SearchProvider(probe_at, sample_at, confirm_from(sample_at)),
+            GroupPlan((8192,), 2, has_offload_axis=False),
         )
 
 
@@ -238,5 +245,6 @@ def test_an_infeasible_cpu_baseline_reports_no_usable_sample() -> None:
 
     with pytest.raises(SearchError, match="no feasible context step"):
         search_samples(
-            SearchProvider(probe_at, sample_at), GroupPlan((8192,), 28, has_offload_axis=False)
+            SearchProvider(probe_at, sample_at, confirm_from(sample_at)),
+            GroupPlan((8192,), 28, has_offload_axis=False),
         )

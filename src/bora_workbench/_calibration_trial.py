@@ -56,7 +56,12 @@ from bora_workbench.benchmark import (
     run_probe,
     run_vision_probe,
 )
-from bora_workbench.benchmark_quick import QuickBenchResult, run_quick_bench
+from bora_workbench.benchmark_quick import (
+    QuickBenchResult,
+    ShortBench,
+    run_confirm_bench,
+    run_quick_bench,
+)
 from bora_workbench.calibration import CalibrationRunError, CalibrationTarget
 from bora_workbench.engine import build_command
 from bora_workbench.hardware import GpuProcessIdentity
@@ -430,6 +435,18 @@ class TrialRunner:
             ram.minimum_available_gib,
             None if vram is None else vram.minimum_free_gib,
         )
+
+    def confirm(self, ctx: int, n_cpu_moe: int | None) -> ShortBench:
+        """Measure one finalist with the confirmation workload only (spec 5.6, D-074).
+
+        A paired round compares median short latency and the dispersion of that same triple, so
+        this omits the long prefill the full quick-bench runs and measures nothing else differently.
+        """
+        result, _vram, _ram = self._attempt(
+            (ctx, n_cpu_moe), lambda url, _mode, _ctx: run_confirm_bench(url)
+        )
+        assert isinstance(result, ShortBench)
+        return result
 
     def gate(self, ctx: int, n_cpu_moe: int | None) -> GateResult:
         """Run the final per-envelope gate for this mode inside a fresh monitored process."""

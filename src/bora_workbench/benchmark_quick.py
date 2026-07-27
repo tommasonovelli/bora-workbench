@@ -57,21 +57,49 @@ class QuickMetric:
 
 
 @dataclass(frozen=True, slots=True)
+class ShortBench:
+    """Group the three measured short requests and every statistic derived from them alone.
+
+    Selection and paired confirmation read nothing else, which is why a confirmation trial can
+    measure this much and stop (spec section 5.6, D-074).
+    """
+
+    metrics: tuple[QuickMetric, QuickMetric, QuickMetric]
+
+    @property
+    def e2e_median_ms(self) -> float:
+        """Return the median short end-to-end latency fast and balanced selection uses."""
+        return median(metric.e2e_ms for metric in self.metrics)
+
+    @property
+    def decode_tps_median(self) -> float:
+        """Return the median short decode throughput used as the ordering tie-break."""
+        return median(metric.predicted_per_second for metric in self.metrics)
+
+    @property
+    def dispersion(self) -> float:
+        """Return the spread around the median that the third-round rule inspects."""
+        values = [metric.e2e_ms for metric in self.metrics]
+        center = median(values)
+        return (max(values) - min(values)) / center if center else 0.0
+
+
+@dataclass(frozen=True, slots=True)
 class QuickBenchResult:
     """Group the three measured short requests and the one long-prefill request."""
 
-    short: tuple[QuickMetric, QuickMetric, QuickMetric]
+    short: ShortBench
     long: QuickMetric
 
     @property
     def short_e2e_median_ms(self) -> float:
         """Return the median short end-to-end latency fast and balanced selection uses."""
-        return median(metric.e2e_ms for metric in self.short)
+        return self.short.e2e_median_ms
 
     @property
     def decode_tps_median(self) -> float:
         """Return the median short decode throughput used as the ordering tie-break."""
-        return median(metric.predicted_per_second for metric in self.short)
+        return self.short.decode_tps_median
 
     @property
     def prefill_8k_tps(self) -> float:
@@ -184,13 +212,33 @@ def _measure(client: httpx.Client, url: str, workload: _Workload) -> QuickMetric
     return _metric(value, elapsed_ms, workload)
 
 
+def _short_series(client: httpx.Client, url: str) -> ShortBench:
+    """Run the excluded warm-up and the three measured short requests.
+
+    The warm-up is discarded because the first request after a fresh start pays the memory-mapped
+    first-touch cost of the weights, not because its workload differs.
+    """
+    _measure(client, url, _SHORT_WORKLOAD)
+    metrics = tuple(_measure(client, url, _SHORT_WORKLOAD) for _ in range(3))
+    return ShortBench(cast(tuple[QuickMetric, QuickMetric, QuickMetric], metrics))
+
+
 def run_quick_bench(base_url: str, client: httpx.Client | None = None) -> QuickBenchResult:
     """Run an excluded warm-up, three short requests, and one long prefill (spec section 5.6)."""
     verify_protocol_resources()
     with _session(client) as session:
         url = f"{base_url}/v1/chat/completions"
-        _measure(session, url, _SHORT_WORKLOAD)
-        short_metrics = tuple(_measure(session, url, _SHORT_WORKLOAD) for _ in range(3))
+        short = _short_series(session, url)
         long_metric = _measure(session, url, _LONG_WORKLOAD)
-    triple = cast(tuple[QuickMetric, QuickMetric, QuickMetric], short_metrics)
-    return QuickBenchResult(triple, long_metric)
+    return QuickBenchResult(short, long_metric)
+
+
+def run_confirm_bench(base_url: str, client: httpx.Client | None = None) -> ShortBench:
+    """Run only what a paired confirmation round compares (spec section 5.6, D-074).
+
+    A round reads the median short end-to-end latency and the dispersion of that same triple, so
+    the long prefill the full quick-bench also runs could not change its verdict.
+    """
+    verify_protocol_resources()
+    with _session(client) as session:
+        return _short_series(session, f"{base_url}/v1/chat/completions")

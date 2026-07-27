@@ -33,10 +33,12 @@ from bora_workbench._calibration_types import (
     TrialInfeasibleError,
     TrialOutcome,
 )
+from bora_workbench.benchmark_quick import ShortBench
 
 Probe = Callable[[int | None], ClassifiedOutcome]
 ProbeAt = Callable[[int, int | None], ClassifiedOutcome]
 SampleAt = Callable[[int, int | None], Sample]
+ConfirmAt = Callable[[int, int | None], ShortBench]
 
 # A feasible step measures at most the boundary, boundary+2, and the prudent anchor; on CPU it
 # measures the single confirmed baseline. The budget bounds probes only, so the trial cap has to
@@ -46,10 +48,15 @@ MAX_SAMPLES_PER_STEP = 3
 
 @dataclass(frozen=True, slots=True)
 class SearchProvider:
-    """Group the shared feasibility probe and quick-bench sample callables for one group."""
+    """Group the probe, quick-bench, and confirmation callables one group shares.
+
+    Confirmation is a separate callable rather than a flag on ``sample_at`` because it measures a
+    strictly smaller workload and returns only what a paired round compares (D-074).
+    """
 
     probe_at: ProbeAt
     sample_at: SampleAt
+    confirm_at: ConfirmAt
 
 
 @dataclass(frozen=True, slots=True)
