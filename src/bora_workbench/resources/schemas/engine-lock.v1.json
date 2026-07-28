@@ -14,6 +14,7 @@
     "verified_flags",
     "version_contract",
     "help_contract",
+    "model_alias_contract",
     "command_contract",
     "api_contract",
     "health_contract",
@@ -55,6 +56,9 @@
     },
     "help_contract": {
       "$ref": "#/$defs/helpProbe"
+    },
+    "model_alias_contract": {
+      "$ref": "#/$defs/aliasContract"
     },
     "command_contract": {
       "$ref": "#/$defs/commandContract"
@@ -185,6 +189,23 @@
         },
         "must_list_verified_flags": {
           "const": true
+        }
+      }
+    },
+    "aliasContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "args",
+        "alias"
+      ],
+      "properties": {
+        "args": {
+          "$ref": "#/$defs/tokens"
+        },
+        "alias": {
+          "type": "string",
+          "minLength": 1
         }
       }
     },

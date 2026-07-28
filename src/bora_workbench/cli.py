@@ -9,11 +9,14 @@ import typer
 
 from bora_workbench._cli_calibration import parse_calibration_input, run_calibrate
 from bora_workbench._cli_diagnostics import (
+    EngineInstallOptions,
     run_doctor,
     run_engine_install,
     run_validate,
     show_engine_status,
 )
+from bora_workbench._cli_models import RemoveOptions, run_pull, run_remove_model
+from bora_workbench._cli_pi import PiOptions, run_pi
 from bora_workbench._cli_services import (
     run_coding,
     run_stop,
@@ -49,7 +52,7 @@ def package_version() -> str:
     try:
         return version("bora-workbench")
     except PackageNotFoundError:
-        return "0.2.4"
+        return "0.3.0"
 
 
 def _version_callback(value: bool) -> None:
@@ -88,9 +91,44 @@ def doctor() -> None:
 @engine_app.command("install")
 def engine_install_command(
     force: bool = typer.Option(False, "--force", help="Reinstall an already compatible target."),
+    no_model: bool = typer.Option(
+        False, "--no-model", help="Install only the engine, without downloading the weights."
+    ),
 ) -> None:
-    """Install and atomically activate the lock-selected engine for detected hardware."""
-    run_engine_install(force, _stdout, _stderr)
+    """Install the engine for detected hardware and download the pinned model."""
+    run_engine_install(EngineInstallOptions(force, not no_model), _stdout, _stderr)
+
+
+@app.command()
+def pull() -> None:
+    """Download the pinned model into the managed store and verify it against engine.lock."""
+    run_pull(_stdout, _stderr)
+
+
+@app.command("rm")
+def remove_model_command(
+    keep_cache: bool = typer.Option(
+        False, "--keep-hf", help="Leave copies in the shared Hugging Face cache untouched."
+    ),
+    dry_run: bool = typer.Option(
+        False, "--dry-run", help="List what would be deleted without deleting anything."
+    ),
+) -> None:
+    """Delete the pinned model from the managed store, and from the cache when confirmed."""
+    run_remove_model(RemoveOptions(keep_cache, dry_run), _stdout, _stderr)
+
+
+@app.command()
+def pi(
+    print_only: bool = typer.Option(
+        False, "--print", help="Print the provider entry instead of writing it."
+    ),
+    install: bool = typer.Option(
+        False, "--install", help="Install pi with npm when it is not on PATH."
+    ),
+) -> None:
+    """Point the pi coding agent at this machine's bora service."""
+    run_pi(PiOptions(print_only, install), _stdout, _stderr)
 
 
 @engine_app.command("status")

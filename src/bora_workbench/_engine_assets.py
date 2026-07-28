@@ -59,6 +59,15 @@ TransferProgressCallback = Callable[[TransferProgress], None]
 
 
 @dataclass(frozen=True, slots=True)
+class RemoteFile:
+    """Describe one pinned file that can be fetched over HTTPS and proved by digest."""
+
+    filename: str
+    url: str
+    sha256: str
+
+
+@dataclass(frozen=True, slots=True)
 class EngineAsset:
     """Describe one archive pinned by ``engine.lock`` for a target pair."""
 
@@ -258,7 +267,7 @@ def _write_response(
 
 
 def _stream_to_file(
-    asset: EngineAsset, partial: Path, progress: TransferProgressCallback | None
+    asset: RemoteFile, partial: Path, progress: TransferProgressCallback | None
 ) -> str:
     """Stream one HTTPS response into a partial file and report measured transfer bytes."""
     timeout = httpx.Timeout(60.0, connect=10.0)
@@ -274,24 +283,51 @@ def download_asset(
     cache_root: Path,
     progress: TransferProgressCallback | None = None,
 ) -> Path:
-    """Return a verified cached archive, reporting bytes for download progress and ETA."""
+    """Return a verified cached engine archive, reporting bytes for progress and ETA."""
+    return download_file(RemoteFile(asset.filename, asset.url, asset.sha256), cache_root, progress)
+
+
+def _is_already_verified(
+    target: Path, asset: RemoteFile, progress: TransferProgressCallback | None
+) -> bool:
+    """Report whether the destination already holds this exact file, clearing what it must not.
+
+    A symlink or a non-regular file under the target name is removed or refused before any
+    download, so a publish by rename can never follow a link out of the managed root.
+    """
+    if target.is_symlink():
+        target.unlink()
+    if target.is_file() and _file_sha256(target) == asset.sha256:
+        if progress is not None:
+            size = target.stat().st_size
+            progress(TransferProgress(size, size, True))
+        return True
+    if target.exists() and not target.is_file():
+        raise EngineError(f"managed cache target is not a regular file: {target}")
+    if target.exists():
+        target.unlink()
+    return False
+
+
+def download_file(
+    asset: RemoteFile,
+    cache_root: Path,
+    progress: TransferProgressCallback | None = None,
+) -> Path:
+    """Return one verified file in the destination root, downloading it only when needed.
+
+    Engine archives and model weights share this transfer because they share the same
+    requirements: HTTPS only, a mandatory digest, a partial file that is never mistaken for a
+    complete one, and an atomic rename that publishes the result (specification section 5.10).
+    """
     partial = cache_root / f".{asset.filename}-{uuid4().hex}.part"
     try:
         if cache_root.is_symlink():
             raise EngineError(f"managed cache root must not be a symlink: {cache_root}")
         cache_root.mkdir(parents=True, exist_ok=True)
         target = cache_root / asset.filename
-        if target.is_symlink():
-            target.unlink()
-        if target.is_file() and _file_sha256(target) == asset.sha256:
-            if progress is not None:
-                size = target.stat().st_size
-                progress(TransferProgress(size, size, True))
+        if _is_already_verified(target, asset, progress):
             return target
-        if target.exists() and not target.is_file():
-            raise EngineError(f"managed cache target is not a regular file: {target}")
-        if target.exists():
-            target.unlink()
         digest = _stream_to_file(asset, partial, progress)
         if digest != asset.sha256:
             raise EngineError(

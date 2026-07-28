@@ -17,6 +17,7 @@ import bora_workbench.engine as engine
 from bora_workbench._engine_assets import EngineAsset, TransferProgress
 from bora_workbench._engine_install import InstallRequest
 from bora_workbench.engine import Backend, EngineError, InstallProgressEvent
+from tests.symlink_support import require_symlinks
 
 
 class _FakeProcess:
@@ -325,6 +326,7 @@ def test_control_signal_cleans_staging_without_being_replaced(tmp_path, monkeypa
 
 def test_install_refuses_symlinked_engine_root(tmp_path, monkeypatch) -> None:
     """Never redirect installation writes through a symlinked managed root."""
+    require_symlinks(tmp_path)
     patch_artifacts(monkeypatch)
     external = tmp_path / "external"
     external.mkdir()
@@ -340,6 +342,7 @@ def test_install_refuses_symlinked_engine_root(tmp_path, monkeypatch) -> None:
 
 def test_cleanup_unlinks_staging_symlink_without_touching_target(tmp_path) -> None:
     """Remove only the managed link when a staging path points outside the engine root."""
+    require_symlinks(tmp_path)
     engine_root = tmp_path / "engine"
     engine_root.mkdir()
     external = tmp_path / "external"

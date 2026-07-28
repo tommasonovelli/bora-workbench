@@ -25,6 +25,7 @@
     "-np",
     "--fit",
     "--help",
+    "--alias",
     "--cache-type-k",
     "--cache-type-v",
     "--cors-origins",
@@ -67,6 +68,13 @@
     ],
     "exit_code": 0,
     "must_list_verified_flags": true
+  },
+  "model_alias_contract": {
+    "args": [
+      "--alias",
+      "{alias}"
+    ],
+    "alias": "Qwen 3.6"
   },
   "command_contract": {
     "model_args": [

@@ -57,8 +57,23 @@ def _extended_and_server(presence: str, reasoning: str) -> tuple[str, ...]:
 
 
 def _backend_tail() -> tuple[str, ...]:
-    """Return the fixed CUDA offload and KV-cache argv tail."""
-    return ("-ngl", "99", "-ncmoe", "48", "--cache-type-k", "q8_0", "--cache-type-v", "q8_0")
+    """Return the fixed CUDA offload and KV-cache argv tail, then the API model alias.
+
+    The alias closes every command because `model_alias_contract` is expanded after the digested
+    `command_contract`, which is what keeps `command_contract_sha256` unchanged (D-080).
+    """
+    return (
+        "-ngl",
+        "99",
+        "-ncmoe",
+        "48",
+        "--cache-type-k",
+        "q8_0",
+        "--cache-type-v",
+        "q8_0",
+        "--alias",
+        "Qwen 3.6",
+    )
 
 
 @pytest.mark.parametrize(

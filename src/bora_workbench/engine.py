@@ -19,7 +19,7 @@ import platform
 import re
 import shutil
 import subprocess
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath, PureWindowsPath
@@ -33,7 +33,7 @@ from bora_workbench._model_verification import (
     remember,
 )
 from bora_workbench.config import Config
-from bora_workbench.paths import cache_dir, data_dir
+from bora_workbench.paths import cache_dir, data_dir, hf_hub_dir, models_dir
 from bora_workbench.profiles import LaunchPlan
 from bora_workbench.resources import read_json
 
@@ -122,24 +122,13 @@ def load_engine_lock() -> JsonObject:
     return cast(JsonObject, read_json("engine.lock"))
 
 
-def _hf_cache_dir(environ: Mapping[str, str]) -> Path:
-    """Apply the exact b10011 cache precedence observed in locked ``hf-cache.cpp``."""
-    entries = (
-        ("LLAMA_CACHE", Path()),
-        ("HF_HUB_CACHE", Path()),
-        ("HUGGINGFACE_HUB_CACHE", Path()),
-        ("HF_HOME", Path("hub")),
-        ("XDG_CACHE_HOME", Path("huggingface") / "hub"),
-    )
-    for variable, suffix in entries:
-        if value := environ.get(variable):
-            return Path(value) / suffix
-    home_variable = "USERPROFILE" if os.name == "nt" else "HOME"
-    if value := environ.get(home_variable):
-        return Path(value) / ".cache" / "huggingface" / "hub"
-    if os.name != "nt":
-        return Path.home() / ".cache" / "huggingface" / "hub"
-    raise EngineError("cannot determine the Hugging Face cache; set HF_HUB_CACHE")
+def hf_snapshot_dir(artifact: JsonObject) -> Path:
+    """Return the pinned Hugging Face snapshot directory of one locked model artifact."""
+    hub = hf_hub_dir()
+    if hub is None:
+        raise EngineError("cannot determine the Hugging Face cache; set HF_HUB_CACHE")
+    repository = cast(str, artifact["repository"]).replace("/", "--")
+    return hub / f"models--{repository}" / "snapshots" / cast(str, artifact["revision"])
 
 
 def _ignore_progress(completed: int, total: int) -> None:
@@ -206,6 +195,19 @@ def _verify_custom_model(path: Path) -> Path:
     return path.resolve()
 
 
+def artifact_source(artifact: JsonObject) -> Path:
+    """Return the directory to read the pinned artifacts from, preferring the managed store.
+
+    The store is checked first because it is the only location the tool writes and deletes; the
+    pinned Hugging Face snapshot stays a read-only fallback so weights acquired before the store
+    existed, or by another tool, still launch without being downloaded twice (D-078).
+    """
+    store = models_dir()
+    if (store / cast(str, artifact["filename"])).is_file():
+        return store
+    return hf_snapshot_dir(artifact)
+
+
 def resolve_model(config: Config, lock: JsonObject, request: ModelRequest) -> ResolvedModel:
     """Resolve the model locally, pinned to the lock revision for the default identity.
 
@@ -220,10 +222,7 @@ def resolve_model(config: Config, lock: JsonObject, request: ModelRequest) -> Re
     if config.model_path is not None:
         message = "model_path is only accepted for a non-default model identity"
         raise EngineError(message)
-    repository = cast(str, artifact["repository"]).replace("/", "--")
-    snapshot = _hf_cache_dir(os.environ) / f"models--{repository}" / "snapshots"
-    snapshot /= cast(str, artifact["revision"])
-    model_path = snapshot / cast(str, artifact["filename"])
+    model_path = artifact_source(artifact) / cast(str, artifact["filename"])
     verified_model = _verify_artifact(model_path, artifact, request.progress)
     if not request.require_vision:
         return ResolvedModel(verified_model, None)
@@ -246,9 +245,11 @@ def _expand(tokens: object, values: dict[str, str]) -> list[str]:
     return expanded
 
 
-def _values(plan: LaunchPlan) -> dict[str, str]:
-    """Serialize plan values for exact lock placeholder substitution."""
+def _values(plan: LaunchPlan, lock: JsonObject) -> dict[str, str]:
+    """Serialize plan and lock values for exact lock placeholder substitution."""
+    alias = cast(JsonObject, lock["model_alias_contract"])
     values = {
+        "alias": cast(str, alias["alias"]),
         "model_path": str(plan.model_path),
         "ctx": str(plan.ctx),
         "temp": str(plan.mode.sampling.temp),
@@ -306,12 +307,16 @@ def build_command(executable: Path, plan: LaunchPlan, lock: JsonObject) -> tuple
 
     The flag vocabulary and its order come only from the lock: `command_contract_sha256` binds
     published calibration records to these exact bytes, so nothing here may be reordered or
-    rewritten without invalidating measured evidence.
+    rewritten without invalidating measured evidence. The API model alias is therefore declared
+    outside `command_contract`: it renames what `/v1/models` reports without changing any measured
+    behavior, and folding it into the digested contract would supersede every existing record
+    (D-080).
     """
     command = cast(JsonObject, lock["command_contract"])
-    values = _values(plan)
+    alias = cast(JsonObject, lock["model_alias_contract"])
+    values = _values(plan, lock)
     arguments: list[str] = [str(executable)]
-    for tokens in _contract_arrays(plan, command):
+    for tokens in (*_contract_arrays(plan, command), alias["args"]):
         arguments.extend(_expand(tokens, values))
     verified = set(cast(list[str], lock["verified_flags"]))
     emitted = {token for token in arguments[1:] if token.startswith("-")}

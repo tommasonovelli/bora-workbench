@@ -25,6 +25,7 @@ from bora_workbench._engine_assets import (
 from bora_workbench.engine import EngineError, load_engine_lock
 from bora_workbench.validation import validate_resources
 from tests.content_fixtures import copy_resource_root, read_json, write_json
+from tests.symlink_support import require_symlinks
 
 
 @pytest.mark.parametrize(
@@ -277,6 +278,7 @@ def test_rejects_intermediate_redirect_downgrade(tmp_path, monkeypatch) -> None:
 
 def test_download_refuses_symlinked_cache_root(tmp_path, monkeypatch) -> None:
     """Never redirect managed cache writes through a symlinked root."""
+    require_symlinks(tmp_path)
     external = tmp_path / "external"
     external.mkdir()
     cache = tmp_path / "cache"

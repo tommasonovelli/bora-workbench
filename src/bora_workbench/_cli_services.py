@@ -17,6 +17,7 @@ import typer
 from rich.console import Console
 from rich.text import Text
 
+from bora_workbench._cli_models import offer_cache_removal
 from bora_workbench._cli_theme import (
     print_error,
     print_heading,
@@ -272,7 +273,9 @@ def _show_preview(
         stdout.print(f"  {root.label}: {root.path} ({state})", markup=False, soft_wrap=True)
     tool_state = "will be removed with uv" if installation.is_managed_by_uv else "not uv-managed"
     stdout.print(f"  Python tool: {installation.environment} ({tool_state})", markup=False)
-    stdout.print("The Hugging Face cache and uv itself are never touched.")
+    stdout.print("The data root contains the model store, so its weights are deleted with it.")
+    stdout.print("uv itself is never touched. Weights in the Hugging Face cache are asked about")
+    stdout.print("separately, after this step.")
 
 
 def _show_report(report: RemovalReport, installation: ToolInstallation, stdout: Console) -> None:
@@ -349,3 +352,16 @@ def run_uninstall(stdout: Console, stderr: Console) -> None:
         print_error(stderr, "Uninstall error", str(error))
         raise typer.Exit(code=1) from error
     _show_report(report, installation, stdout)
+    _offer_cached_weights(stdout, stderr)
+
+
+def _offer_cached_weights(stdout: Console, stderr: Console) -> None:
+    """Ask separately about weights that outlive the managed roots in the shared cache.
+
+    A failure here must not turn a completed uninstall into a non-zero exit: the managed roots are
+    already gone, and the only thing left to report is that the cache was not touched (D-079).
+    """
+    try:
+        offer_cache_removal(load_engine_lock(), stdout)
+    except (EngineError, KeyboardInterrupt, typer.Abort) as error:
+        print_warning(stderr, f"Hugging Face cache left unchanged: {error}")

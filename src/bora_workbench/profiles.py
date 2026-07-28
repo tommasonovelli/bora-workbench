@@ -30,7 +30,7 @@ JsonObject = dict[str, object]
 DEFAULT_MODEL_MIN_TOTAL_GIB = 28.0
 DEFAULT_MODEL_MIN_AVAILABLE_GIB = 22.0
 
-_FALLBACK_CTX = 8192
+FALLBACK_CTX = 8192
 _FALLBACK_CUDA_N_CPU_MOE = 48
 
 
@@ -363,7 +363,7 @@ def _fallback(request: LaunchRequest, hardware: HardwareInfo) -> tuple[Envelope,
             "This model has no local calibration record; using the default model's baseline "
             "without performance or compatibility guarantees."
         )
-    return Envelope(_FALLBACK_CTX, n_cpu_moe, None), (warning,)
+    return Envelope(FALLBACK_CTX, n_cpu_moe, None), (warning,)
 
 
 def _record_evaluation(

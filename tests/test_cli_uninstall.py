@@ -15,7 +15,11 @@ runner = CliRunner()
 
 @pytest.fixture(autouse=True)
 def patch_uninstall_dependencies(tmp_path, monkeypatch) -> list[object]:
-    """Isolate service inspection and uv self-removal from the host installation."""
+    """Isolate service inspection, uv self-removal, and the host Hugging Face cache.
+
+    The separate cached-weights question reaches the real cache of whatever machine runs the
+    suite, so it is replaced here; the question itself is covered by its own tests.
+    """
     empty = SimpleNamespace(services=(), warnings=(), stopped=())
     installation = service_cli.ToolInstallation(
         tmp_path / "uv-tools" / "bora-workbench", tmp_path / "bin" / "uv"
@@ -25,6 +29,7 @@ def patch_uninstall_dependencies(tmp_path, monkeypatch) -> list[object]:
     monkeypatch.setattr(service_cli, "status_services", lambda root: empty)
     monkeypatch.setattr(service_cli, "inspect_tool_installation", lambda: installation)
     monkeypatch.setattr(service_cli, "schedule_tool_removal", scheduled.append)
+    monkeypatch.setattr(service_cli, "offer_cache_removal", lambda lock, stdout: None)
     return scheduled
 
 
@@ -80,10 +85,30 @@ def test_uninstall_removes_only_managed_roots_and_spares_hugging_face_cache(
     result = runner.invoke(app, ["uninstall"], input="y\n")
 
     assert result.exit_code == 0
-    assert "The Hugging Face cache and uv itself are never touched." in result.stdout
+    assert "uv itself is never touched" in result.stdout
+    assert "model store" in result.stdout
     assert not any(path.exists() for path in roots.values())
     assert (hugging_face_cache / "model.gguf").read_text(encoding="utf-8") == "weights"
     assert "Python tool will be removed" in result.stdout
+
+
+def test_uninstall_asks_about_cached_weights_after_removing_the_roots(
+    tmp_path, monkeypatch
+) -> None:
+    """The shared-cache question is asked separately, and only once the roots are gone (D-079)."""
+    roots = patch_managed_roots(tmp_path, monkeypatch)
+    populate(roots)
+    asked: list[bool] = []
+    monkeypatch.setattr(
+        service_cli,
+        "offer_cache_removal",
+        lambda lock, stdout: asked.append(any(path.exists() for path in roots.values())),
+    )
+
+    result = runner.invoke(app, ["uninstall"], input="y\n")
+
+    assert result.exit_code == 0
+    assert asked == [False]
 
 
 def test_uninstall_is_idempotent_when_roots_are_absent(tmp_path, monkeypatch) -> None:

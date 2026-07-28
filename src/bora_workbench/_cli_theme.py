@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from time import monotonic
 
 from rich.box import ROUNDED
 from rich.console import Console
@@ -18,6 +19,7 @@ from rich.progress import BarColumn, Progress, ProgressColumn, SpinnerColumn, Ta
 from rich.table import Table
 from rich.text import Text
 
+from bora_workbench._engine_assets import TransferProgress, TransferProgressCallback
 from bora_workbench._model_verification import VerifyProgress
 
 # Semantic palette. Built-in Rich style names stay valid on every console, themed or not.
@@ -110,6 +112,84 @@ def _read_fraction(completed: int, total: int) -> str:
     """Describe verification position in whole GiB, the only unit these artifacts need."""
     gib = 1024**3
     return f"{completed / gib:.1f}/{total / gib:.1f} GiB"
+
+
+def format_bytes(size: float) -> str:
+    """Format transfer bytes with compact binary units."""
+    units = ("B", "KiB", "MiB", "GiB")
+    value = max(0.0, size)
+    for unit in units[:-1]:
+        if value < 1024:
+            return f"{value:.1f} {unit}"
+        value /= 1024
+    return f"{value:.1f} {units[-1]}"
+
+
+def format_duration(seconds: float) -> str:
+    """Format a short transfer estimate without implying subsecond precision."""
+    rounded = max(0, round(seconds))
+    minutes, remaining_seconds = divmod(rounded, 60)
+    if minutes:
+        return f"{minutes}m {remaining_seconds:02d}s"
+    return f"{remaining_seconds}s"
+
+
+def _transfer_fields(update: TransferProgress, elapsed: float) -> tuple[str, str]:
+    """Describe how much has arrived, how fast, and how long the remainder should take."""
+    amount = format_bytes(update.completed_bytes)
+    if update.total_bytes is not None:
+        amount = f"{amount}/{format_bytes(update.total_bytes)}"
+    if update.is_cached:
+        return f"{amount} · already verified", ""
+    if elapsed <= 0 or update.completed_bytes <= 0:
+        return amount, "ETA learning…" if update.total_bytes else ""
+    rate = update.completed_bytes / elapsed
+    metrics = f"{amount} · {format_bytes(rate)}/s"
+    if update.total_bytes is None:
+        return metrics, ""
+    remaining = max(0, update.total_bytes - update.completed_bytes) / rate
+    return metrics, f"ETA ~ {format_duration(remaining)}"
+
+
+@contextmanager
+def transferring(console: Console, description: str) -> Iterator[TransferProgressCallback]:
+    """Show one transfer's position, rate, and estimate, and stay silent when not on a terminal.
+
+    A multi-gigabyte download has to look alive, but redirected output must not receive thousands
+    of refresh lines, so the bar exists only on an interactive console. It is created on the first
+    reported chunk, which leaves the terminal untouched when nothing had to be transferred.
+    """
+    progress = Progress(
+        *progress_columns(metric_column("metrics"), metric_column("eta")),
+        console=console,
+        refresh_per_second=4,
+        transient=True,
+    )
+    started = monotonic()
+    task: TaskID | None = None
+
+    def report(update: TransferProgress) -> None:
+        """Start the bar on the first reported chunk and advance it to the measured position."""
+        nonlocal task
+        if not console.is_terminal:
+            return
+        if task is None:
+            progress.start()
+            task = progress.add_task(description, total=update.total_bytes, metrics="", eta="")
+        metrics, eta = _transfer_fields(update, monotonic() - started)
+        progress.update(
+            task,
+            completed=update.completed_bytes,
+            total=update.total_bytes,
+            metrics=metrics,
+            eta=eta,
+        )
+
+    try:
+        yield report
+    finally:
+        if task is not None:
+            progress.stop()
 
 
 def print_heading(console: Console, text: str) -> None:

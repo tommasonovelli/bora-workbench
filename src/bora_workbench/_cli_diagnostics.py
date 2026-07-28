@@ -21,7 +21,10 @@ from rich.table import Table
 from rich.text import Text
 
 from bora_workbench._calibration_reuse import RecordEvaluation, ReuseQuery, evaluate_record
+from bora_workbench._cli_models import pull_model
 from bora_workbench._cli_theme import (
+    format_bytes,
+    format_duration,
     metric_column,
     phase_result_style,
     print_error,
@@ -48,24 +51,12 @@ from bora_workbench.profiles import load_catalog
 from bora_workbench.validation import ValidationIssue, ValidationResult, validate_resources
 
 
-def _format_duration(seconds: float) -> str:
-    """Format a short transfer estimate without implying subsecond precision."""
-    rounded = max(0, round(seconds))
-    minutes, remaining_seconds = divmod(rounded, 60)
-    if minutes:
-        return f"{minutes}m {remaining_seconds:02d}s"
-    return f"{remaining_seconds}s"
+@dataclass(frozen=True, slots=True)
+class EngineInstallOptions:
+    """Group what `engine install` was asked to reinstall and to acquire."""
 
-
-def _format_bytes(size: float) -> str:
-    """Format transfer bytes with compact binary units."""
-    units = ("B", "KiB", "MiB", "GiB")
-    value = max(0.0, size)
-    for unit in units[:-1]:
-        if value < 1024:
-            return f"{value:.1f} {unit}"
-        value /= 1024
-    return f"{value:.1f} {units[-1]}"
+    force: bool
+    include_model: bool
 
 
 def _position(event: InstallProgressEvent) -> str:
@@ -196,18 +187,18 @@ class EngineInstallProgress:
             return "", ""
         completed = event.completed_bytes
         total = event.total_bytes
-        amount = _format_bytes(completed)
+        amount = format_bytes(completed)
         if total is not None:
-            amount = f"{amount}/{_format_bytes(total)}"
+            amount = f"{amount}/{format_bytes(total)}"
         elapsed = self._get_time() - self._phase_started_at
         if elapsed <= 0 or completed <= 0:
             return amount, "ETA learning…" if total else ""
         rate = completed / elapsed
-        metrics = f"{amount} · {_format_bytes(rate)}/s"
+        metrics = f"{amount} · {format_bytes(rate)}/s"
         if total is None:
             return metrics, ""
         remaining = max(0, total - completed) / rate
-        return metrics, f"ETA ~ {_format_duration(remaining)}"
+        return metrics, f"ETA ~ {format_duration(remaining)}"
 
     def _finish_phase(self, is_success: bool) -> None:
         """Clear the transient task and retain summaries for measured work."""
@@ -216,7 +207,7 @@ class EngineInstallProgress:
         self._progress.remove_task(self._task_id)
         event = self._last_event
         if event is not None and event.completed_bytes is not None:
-            elapsed = _format_duration(self._get_time() - self._phase_started_at)
+            elapsed = format_duration(self._get_time() - self._phase_started_at)
             state = "complete" if is_success else "stopped"
             if event.stage == "download" and event.is_cached:
                 state = "cached"
@@ -257,8 +248,20 @@ def _install_with_progress(backend: Backend, force: bool, stdout: Console) -> In
         return install_engine(backend, force, progress)
 
 
-def run_engine_install(force: bool, stdout: Console, stderr: Console) -> None:
-    """Detect the target backend, install it, and map expected failures to exit code 1."""
+def _report_install(result: InstallResult, stdout: Console) -> None:
+    """State what the managed engine installation left active."""
+    action = "Installed and activated" if result.was_installed else "Already active"
+    print_success(stdout, action, f"llama.cpp {result.status.release}")
+    print_note(stdout, "Backend", result.status.backend or "none")
+    print_note(stdout, "Executable", str(result.status.executable))
+
+
+def run_engine_install(options: EngineInstallOptions, stdout: Console, stderr: Console) -> None:
+    """Install the engine, then acquire the pinned model unless the caller declined it.
+
+    The weights are fetched here because an engine without them cannot serve anything, and asking
+    a first-time user to discover a second command was the largest part of the old setup (D-078).
+    """
     try:
         hardware = detect_hardware()
         for warning in hardware.warnings:
@@ -267,14 +270,16 @@ def run_engine_install(force: bool, stdout: Console, stderr: Console) -> None:
         stdout.print("Third-party notices will be retained inside the managed installation.")
         if hardware.backend == "cuda":
             stdout.print("Managed Windows CUDA runtime assets are subject to the NVIDIA CUDA EULA.")
-        result = _install_with_progress(hardware.backend, force, stdout)
+        result = _install_with_progress(hardware.backend, options.force, stdout)
+        _report_install(result, stdout)
+        if options.include_model:
+            pull_model(load_engine_lock(), stdout)
     except (EngineError, HardwareError) as error:
         print_error(stderr, "Engine installation error", str(error))
         raise typer.Exit(code=1) from error
-    action = "Installed and activated" if result.was_installed else "Already active"
-    print_success(stdout, action, f"llama.cpp {result.status.release}")
-    print_note(stdout, "Backend", result.status.backend or "none")
-    print_note(stdout, "Executable", str(result.status.executable))
+    except KeyboardInterrupt as error:
+        print_warning(stderr, "Interrupted; nothing incomplete was kept.")
+        raise typer.Exit(code=130) from error
 
 
 def show_engine_status(stdout: Console, stderr: Console) -> None:

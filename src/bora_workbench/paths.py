@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import os
 import platform
+from collections.abc import Mapping
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 _APP_NAME = "bora-workbench"
@@ -99,3 +100,40 @@ def state_dir() -> Path:
         return _windows_local_root() / "state"
     base = _environment_path("XDG_STATE_HOME", Path.home() / ".local" / "state", windows=False)
     return base / _APP_NAME
+
+
+def models_dir() -> Path:
+    """Return the managed model store without creating it.
+
+    The store lives under the data root so that `pull` writes and `rm` deletes inside a root the
+    tool already owns, and so an uninstall of the managed roots takes the weights with it
+    (specification section 5.2, D-078).
+    """
+    return data_dir() / "models"
+
+
+def hf_hub_dir(environ: Mapping[str, str] | None = None) -> Path | None:
+    """Return the Hugging Face hub root the engine reads, or None when it cannot be determined.
+
+    The precedence is the one observed in the locked `hf-cache.cpp` of the pinned llama.cpp
+    release, not the one documented by `huggingface_hub`: the launcher must look where the engine
+    itself would look (specification section 5.8). Returning None instead of raising keeps this
+    module free of failure policy; the caller decides whether an absent cache is an error.
+    """
+    selected = os.environ if environ is None else environ
+    entries = (
+        ("LLAMA_CACHE", Path()),
+        ("HF_HUB_CACHE", Path()),
+        ("HUGGINGFACE_HUB_CACHE", Path()),
+        ("HF_HOME", Path("hub")),
+        ("XDG_CACHE_HOME", Path("huggingface") / "hub"),
+    )
+    for variable, suffix in entries:
+        if value := selected.get(variable):
+            return Path(value) / suffix
+    home_variable = "USERPROFILE" if os.name == "nt" else "HOME"
+    if value := selected.get(home_variable):
+        return Path(value) / ".cache" / "huggingface" / "hub"
+    if os.name != "nt":
+        return Path.home() / ".cache" / "huggingface" / "hub"
+    return None
