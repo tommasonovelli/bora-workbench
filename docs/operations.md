@@ -91,40 +91,47 @@ Events `3033` and `3077` name the refused file. The message says *"did not meet 
 signing level requirements"*, which reads like a corporate policy but is the wording Smart App
 Control uses on a personal machine too.
 
-#### Why it happens
+#### What it is not
 
-Smart App Control admits an executable by **either** a signature with established reputation **or**
-the reputation of the file's own hash in Microsoft's cloud. Neither applies here:
+It is tempting to blame the missing signature, and wrong. The shim is unsigned, but so are
+`uv.exe`, the managed `python.exe`, and `llama-server.exe` — none of which is ever refused, which is
+why the managed engine keeps working. `Get-AuthenticodeSignature` on any of them reports
+`NotSigned`.
 
-- the shim is unsigned — `Get-AuthenticodeSignature` reports `NotSigned`;
-- its hash is effectively unique. uv builds the shim by appending the target interpreter path to a
-  trampoline, so the bytes describe *this* installation. A file almost nobody else has cannot
-  accumulate reputation.
+It is not the version either. Authenticode is applied at build time or not at all: it does not
+expire when a newer release appears, and no version of this tool is signed.
 
-Two comparisons on the same machine make the mechanism visible. `uv.exe` is **also** unsigned and
-has never been refused: it takes the reputation path, being a widely distributed binary with a
-stable public hash. `llama-server.exe`, likewise unsigned, runs fine for the same reason — the
-managed engine is not affected by this.
+Nor is it that the file is new to the world. Every uv shim is unique: uv builds it by appending the
+target interpreter path to a trampoline, so two installations at different paths produce different
+bytes — the path is readable inside the executable. Unknown-to-everyone files of exactly this shape
+are nevertheless admitted routinely.
 
-The signature has nothing to do with the version. Authenticode is applied at build time or not at
-all; it does not expire when a newer release appears, and installing a different version of this
-tool will not change the verdict.
+#### What it is
 
-#### Why it may start after working for weeks
+A per-file verdict from Microsoft's cloud reputation service, which the machine records but does not
+explain. Nothing observable locally predicts it, and it is **not stable over time**. What was
+measured on the machine where this was diagnosed:
 
-The verdict is per hash and is decided by Microsoft, so it can differ between two files that this
-project builds identically. On the machine where this was diagnosed, the shim ran normally for days,
-was rewritten by an ordinary reinstall, and the first refusal was logged **seven seconds later**;
-no local policy changed that day — the newest `.cip` under
-`C:\Windows\System32\CodeIntegrity\CiPolicies\Active` was two weeks old. The predecessor
-`qwen-launcher.exe` had been refused the same way on two earlier dates.
+- the shim ran normally for days;
+- an ordinary reinstall rewrote it, and the first refusal was logged **seven seconds later**;
+- refusals continued for about an hour, covering both the shim on the `PATH` and the one inside the
+  tool environment;
+- no local policy changed that day — the newest `.cip` under
+  `C:\Windows\System32\CodeIntegrity\CiPolicies\Active` was two weeks old;
+- a shim built **after** that hour ran without complaint, including from the very directory where
+  the refused one had lived;
+- the predecessor `qwen-launcher.exe` had been refused the same way on two earlier, isolated dates.
+
+So a refusal does not mean the installation is broken, and it does not mean the next one will be
+refused too. Reinstalling is a reasonable thing to try, and so is simply trying again later.
 
 Note that the log records refusals only. An absence of events for a period is evidence the file was
 **not** being blocked then, not evidence it never ran.
 
 #### What to do
 
-Use the module entry point. It is the same program, and nothing is missing from it:
+While it lasts, use the module entry point. It is the same program — the wheel declares
+`bora = bora_workbench.cli:app`, and `python -m bora_workbench.cli` calls that same `app()`:
 
 ```powershell
 & "$env:APPDATA\uv\tools\bora-workbench\Scripts\python.exe" -m bora_workbench.cli doctor
@@ -136,13 +143,15 @@ Define a shorthand for the session if you use it often:
 function bora { & "$env:APPDATA\uv\tools\bora-workbench\Scripts\python.exe" -m bora_workbench.cli @args }
 ```
 
-A PowerShell function is not a file, so Smart App Control has nothing to judge. Put it in your
-profile to keep it. A `bora.cmd` beside the shim would **not** work: `.EXE` precedes `.CMD` in
-`PATHEXT`, so the refused file still wins.
+A PowerShell function is not a file, so Smart App Control has nothing to judge, and PowerShell
+resolves functions before executables on the `PATH`: typing `bora` never reaches the refused file.
+Put it in your profile to keep it. A `bora.cmd` beside the shim would **not** work, because `.EXE`
+precedes `.CMD` in `PATHEXT`.
 
 Turning Smart App Control off does restore the short command, but it is **not reversible without
-reinstalling Windows**. That is a deliberate security decision about the whole machine, not a
-workaround for one tool, and this project neither changes nor recommends it.
+reinstalling Windows**. Given that the refusal has been observed to clear on its own, that is a
+disproportionate response: it is a security decision about the whole machine, not a workaround for
+one tool, and this project neither changes nor recommends it.
 
 ### PowerShell blocks the script
 
