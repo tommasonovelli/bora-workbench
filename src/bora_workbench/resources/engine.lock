@@ -4,6 +4,7 @@
   "release": "b10011",
   "source_commit": "bf2c86ddc0685f580595954056c2e77ebabfab4f",
   "default_model": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M",
+  "default_model_handle": "qwen",
   "default_model_artifact": {
     "repository": "unsloth/Qwen3.6-35B-A3B-MTP-GGUF",
     "revision": "5bc3e238d916f48a861bac2f8a1990a0e9b7e98d",

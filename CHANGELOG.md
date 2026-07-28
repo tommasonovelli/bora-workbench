@@ -3,6 +3,23 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
+## [0.3.1] - 2026-07-28
+
+### Changed
+
+- Removal takes the cached repository with its last snapshot, `refs` included (D-079). Deleting the
+  pinned artifacts used to leave a stub whose `refs/main` still named a revision whose files no
+  longer existed. A repository that still holds another revision keeps everything, and repositories
+  belonging to other tools are still never examined.
+- `pull` and `rm` accept the pinned model by name: `bora pull qwen` and `bora pull` are the same
+  request. The name is declared as `default_model_handle` in `engine.lock`, and any other name
+  fails immediately instead of being read as the default. `command_contract_sha256` is unchanged.
+
+### Fixed
+
+- The test suite no longer appends temporary paths to the verification receipt of the machine
+  running it. The model store fixture redirects the receipt root, as the engine tests already did.
+
 ## [0.3.0] - 2026-07-27
 
 ### Added

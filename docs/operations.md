@@ -26,7 +26,7 @@ Expected errors show no traceback. In general:
 
 ### The installer asks for a source
 
-That is intentional: there is no implicit default. For `0.3.0`, use the wheel from the GitHub
+That is intentional: there is no implicit default. For `0.3.1`, use the wheel from the GitHub
 Release and its manifest digest as described in [Installation](installation.md). A full commit hash
 is also accepted for testing an exact repository revision.
 

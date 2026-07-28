@@ -36,14 +36,16 @@ from bora_workbench.models import (
     model_artifacts,
     remove_copy,
     repository_root,
+    require_handle,
 )
 from bora_workbench.paths import models_dir
 
 
 @dataclass(frozen=True, slots=True)
 class RemoveOptions:
-    """Group what `rm` was asked to spare and whether it may delete at all."""
+    """Group which model `rm` was asked for, what to spare, and whether it may delete at all."""
 
+    model: str | None
     keep_cache: bool
     dry_run: bool
 
@@ -79,10 +81,11 @@ def pull_model(lock: JsonObject, stdout: Console) -> None:
         _pull_one(artifact, stdout)
 
 
-def run_pull(stdout: Console, stderr: Console) -> None:
+def run_pull(model: str | None, stdout: Console, stderr: Console) -> None:
     """Download the pinned model into the managed store and map failures to exit code 1."""
     try:
         lock = load_engine_lock()
+        require_handle(lock, model)
         pull_model(lock, stdout)
     except EngineError as error:
         print_error(stderr, "Model error", str(error))
@@ -138,6 +141,7 @@ def _remove_group(group: _Group, root: Path | None, stdout: Console) -> int:
 
 def _delete(options: RemoveOptions, lock: JsonObject, stdout: Console) -> None:
     """Show the plan, then delete each confirmed group unless this is only a dry run."""
+    require_handle(lock, options.model)
     groups = _groups(locate_copies(lock), options.keep_cache)
     if not groups:
         stdout.print("No pinned model artifacts are present; nothing to remove.")

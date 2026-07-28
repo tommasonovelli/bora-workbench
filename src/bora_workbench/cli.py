@@ -39,6 +39,7 @@ app.add_typer(engine_app, name="engine")
 _stdout = create_console()
 _stderr = create_console(stderr=True)
 _MEMORY_GATE_HELP = "Bypass only the default-model total and available RAM gate."
+_MODEL_HELP = "Pinned model to act on. Optional: this distribution pins only 'qwen'."
 _CALIBRATION_EPILOG = (
     "Extras: --no-activate keeps the measured candidates without replacing the active records; "
     "--activate promotes candidates measured earlier without measuring again; --target-ctx N "
@@ -52,7 +53,7 @@ def package_version() -> str:
     try:
         return version("bora-workbench")
     except PackageNotFoundError:
-        return "0.3.0"
+        return "0.3.1"
 
 
 def _version_callback(value: bool) -> None:
@@ -100,13 +101,14 @@ def engine_install_command(
 
 
 @app.command()
-def pull() -> None:
+def pull(model: Annotated[str | None, typer.Argument(help=_MODEL_HELP)] = None) -> None:
     """Download the pinned model into the managed store and verify it against engine.lock."""
-    run_pull(_stdout, _stderr)
+    run_pull(model, _stdout, _stderr)
 
 
 @app.command("rm")
 def remove_model_command(
+    model: Annotated[str | None, typer.Argument(help=_MODEL_HELP)] = None,
     keep_cache: bool = typer.Option(
         False, "--keep-hf", help="Leave copies in the shared Hugging Face cache untouched."
     ),
@@ -115,7 +117,7 @@ def remove_model_command(
     ),
 ) -> None:
     """Delete the pinned model from the managed store, and from the cache when confirmed."""
-    run_remove_model(RemoveOptions(keep_cache, dry_run), _stdout, _stderr)
+    run_remove_model(RemoveOptions(model, keep_cache, dry_run), _stdout, _stderr)
 
 
 @app.command()

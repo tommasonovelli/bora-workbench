@@ -10,6 +10,7 @@
     "release",
     "source_commit",
     "default_model",
+    "default_model_handle",
     "default_model_artifact",
     "verified_flags",
     "version_contract",
@@ -38,6 +39,10 @@
     "default_model": {
       "type": "string",
       "minLength": 1
+    },
+    "default_model_handle": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9.-]*$"
     },
     "default_model_artifact": {
       "$ref": "#/$defs/modelArtifact"

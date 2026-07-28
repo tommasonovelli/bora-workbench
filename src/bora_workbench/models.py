@@ -59,6 +59,24 @@ def display_name(lock: JsonObject) -> str:
     return cast(str, cast(JsonObject, lock["model_alias_contract"])["alias"])
 
 
+def model_handle(lock: JsonObject) -> str:
+    """Return the short name `pull` and `rm` accept on the command line."""
+    return cast(str, lock["default_model_handle"])
+
+
+def require_handle(lock: JsonObject, requested: str | None) -> None:
+    """Accept the pinned model's own name, and refuse anything else by naming what exists.
+
+    The argument is optional because there is exactly one pinned model, so `bora pull` and
+    `bora pull qwen` are the same request. It is accepted at all so the command reads the way it
+    will still read if a second model is ever pinned, and so a wrong name fails immediately instead
+    of being silently understood as the default (D-078).
+    """
+    handle = model_handle(lock)
+    if requested is not None and requested != handle:
+        raise EngineError(f"unknown model {requested!r}; this distribution pins only {handle!r}")
+
+
 def _artifact(label: str, model: JsonObject, spec: JsonObject) -> ModelArtifact:
     """Build one artifact whose download URL is pinned to the locked repository revision."""
     filename = cast(str, spec["filename"])

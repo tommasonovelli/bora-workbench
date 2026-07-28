@@ -106,17 +106,44 @@ def test_cache_removal_deletes_a_plain_file_and_prunes_what_it_empties(
     assert not locations.repository.exists()
 
 
+def test_cache_removal_takes_the_refs_stub_with_the_last_snapshot(
+    locations,  # noqa: F811
+) -> None:
+    """A refs file naming a revision whose artifacts are gone is a stub, not content."""
+    cached = place(locations.snapshot, "model.gguf", WEIGHTS)
+    place(locations.repository / "refs", "main", b"a" * 40)
+
+    remove_cache_file(cached, locations.repository)
+
+    assert not locations.repository.exists()
+
+
 def test_cache_removal_keeps_a_repository_that_still_holds_something(
     locations,  # noqa: F811
 ) -> None:
-    """Pruning uses rmdir, so a directory with any remaining content survives untouched."""
+    """Another revision's files are real content, so the repository survives with its refs."""
     cached = place(locations.snapshot, "model.gguf", WEIGHTS)
+    other = place(locations.repository / "snapshots" / ("b" * 40), "config.json", b"{}")
     kept = place(locations.repository / "refs", "main", b"a" * 40)
 
     remove_cache_file(cached, locations.repository)
 
     assert not cached.exists()
+    assert other.exists()
     assert kept.exists()
+
+
+def test_cache_removal_never_looks_at_another_repository(
+    locations,  # noqa: F811
+) -> None:
+    """A cache shared with other tools must come out of a removal exactly as it went in."""
+    cached = place(locations.snapshot, "model.gguf", WEIGHTS)
+    stranger = place(locations.repository.parent / "models--someone--else", "other.gguf", WEIGHTS)
+
+    remove_cache_file(cached, locations.repository)
+
+    assert not locations.repository.exists()
+    assert stranger.exists()
 
 
 def test_cache_removal_frees_a_blob_no_other_snapshot_references(

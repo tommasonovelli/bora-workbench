@@ -1,7 +1,7 @@
 # bora-workbench
 
 [![CI](https://github.com/tommasonovelli/bora-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/tommasonovelli/bora-workbench/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/tommasonovelli/bora-workbench.svg)](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.3.0)
+[![Release](https://img.shields.io/github/v/release/tommasonovelli/bora-workbench.svg)](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.3.1)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-31213/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -61,7 +61,7 @@ If this is your first time opening the project, the simplest path is:
 > Do not use it for critical workloads without independent verification and backups of your local
 > data.
 
-Version **`0.3.0`** is distributed exclusively through GitHub Releases. Its distribution is
+Version **`0.3.1`** is distributed exclusively through GitHub Releases. Its distribution is
 `bora-workbench` and its command is `bora`. An installation of the previous `qwen-launcher` series
 is replaced rather than upgraded: its configuration, data, cache, and state directories are not
 read by `bora`.
@@ -84,7 +84,7 @@ If `nvidia-smi` is unavailable or unreliable, the launcher falls back to CPU and
 
 ## Installation
 
-Install the exact `v0.3.0` wheel from the GitHub Release. The commands below download the release
+Install the exact `v0.3.1` wheel from the GitHub Release. The commands below download the release
 manifest, verify the installer and wheel against it, and install the tool with pinned uv `0.11.28`
 and CPython `3.12.13`. You do not need to install uv or Python first, and no administrator
 privileges are used.
@@ -94,7 +94,7 @@ privileges are used.
 Open a terminal in a new directory, copy the entire block, and press Enter:
 
 ```bash
-version="0.3.0"
+version="0.3.1"
 base="https://github.com/tommasonovelli/bora-workbench/releases/download/v${version}"
 wheel="bora_workbench-${version}-py3-none-any.whl"
 
@@ -118,7 +118,7 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 Open PowerShell in a new directory, copy the entire block, and press Enter:
 
 ```powershell
-$Version = "0.3.0"
+$Version = "0.3.1"
 $Base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v$Version"
 $Wheel = "bora_workbench-$Version-py3-none-any.whl"
 

@@ -108,11 +108,17 @@ another way.
 
 ```bash
 bora pull
+bora pull qwen
 ```
 
-Downloads the artifacts pinned by `engine.lock` into the managed store at `<data root>/models` and
-verifies each one against its locked size and SHA-256. The URL contains the pinned revision, so a
-moved branch or a re-uploaded file cannot change what arrives.
+Downloads **everything the model needs** — the weights and the vision projector — into the managed
+store at `<data root>/models`, and verifies each against its locked size and SHA-256. The URL
+contains the pinned revision, so a moved branch or a re-uploaded file cannot change what arrives.
+
+The model name is optional because this distribution pins exactly one model; `qwen` and no argument
+are the same request, and any other name fails immediately instead of being read as the default.
+There is no third artifact to fetch: MTP is a property of these weights, not a separate download,
+and the launcher enables it through engine flags.
 
 On a terminal each artifact shows transferred bytes against the total, the measured rate, and a
 computed ETA; redirected output prints nothing per chunk. Bytes are written to a partial file and
@@ -127,11 +133,13 @@ without rehashing about 21 GiB.
 
 ```bash
 bora rm
+bora rm qwen
 bora rm --keep-hf
 bora rm --dry-run
 ```
 
-Deletes the pinned artifacts and reports the space freed. It asks up to two questions, and both
+Deletes everything `pull` installed — both artifacts, in both locations — and reports the space
+freed. The model name is optional on the same terms as `pull`. It asks up to two questions, and both
 default to no:
 
 1. the copies in the managed store, which belong to this tool;
@@ -143,7 +151,10 @@ entirely, and `--dry-run` lists every file and byte count without asking or dele
 Cache deletion cannot leave the pinned snapshot of the locked repository: it removes only the
 artifacts `engine.lock` names, follows a symlinked entry no further than that repository's own
 `blobs/`, keeps a blob another snapshot still references, refuses a symlinked cache directory, and
-prunes only already-empty directories. Nothing is ever written into that cache.
+prunes only already-empty directories. When the last snapshot goes, the cached repository goes with
+it, `refs` included: what those refs name is a revision whose files no longer exist. A repository
+that still holds another revision keeps everything, and repositories belonging to other tools are
+never examined. Nothing is ever written into that cache.
 
 ## `pi`
 

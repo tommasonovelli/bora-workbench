@@ -126,6 +126,36 @@ def test_rm_deletes_both_locations_when_both_are_confirmed(
     assert not locations.repository.exists()
 
 
+def test_commands_accept_the_pinned_model_by_name(
+    locations,  # noqa: F811
+    monkeypatch,
+) -> None:
+    """`bora rm qwen` is the same request as `bora rm`, so the name may always be written."""
+    use_tiny_lock(monkeypatch)
+    populate(locations)
+
+    result = runner.invoke(app, ["rm", "qwen", "--dry-run"])
+
+    assert result.exit_code == 0
+    assert "nothing was deleted" in result.stdout
+
+
+def test_commands_refuse_a_model_this_distribution_does_not_pin(
+    locations,  # noqa: F811
+    monkeypatch,
+) -> None:
+    """A wrong name fails immediately and names what exists, instead of meaning the default."""
+    use_tiny_lock(monkeypatch)
+    populate(locations)
+
+    result = runner.invoke(app, ["rm", "llama"])
+
+    assert result.exit_code == 1
+    assert "unknown model 'llama'" in result.output
+    assert "'qwen'" in result.output
+    assert (locations.store / "model.gguf").exists()
+
+
 def test_rm_reports_an_empty_machine_without_asking(
     locations,  # noqa: F811
     monkeypatch,

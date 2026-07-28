@@ -5,8 +5,8 @@ requires explicit human authorization for the push, tag, and GitHub Release.
 
 ## Public status
 
-- release described by this branch: `bora-workbench 0.3.0`;
-- preceding public version: `bora-workbench 0.2.4` on GitHub Releases;
+- release described by this branch: `bora-workbench 0.3.1`;
+- preceding public version: `bora-workbench 0.3.0` on GitHub Releases;
 - historical versions `0.1.0` through `0.1.6` remain immutable under their original
   `qwen-launcher` artifact identity;
 - every published bundle comes from its green Ubuntu/Windows release workflow and contains the
@@ -56,6 +56,17 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.3.1
+
+`0.3.1` finishes what `0.3.0` started, after using it on a real machine.
+
+Removing the pinned artifacts left the cached repository behind as a stub whose `refs` still named
+a revision whose files no longer existed, so a clean removal was not actually clean; the repository
+now goes with its last snapshot, while a surviving revision keeps everything and another tool's
+repository is still never examined. `pull` and `rm` accept the pinned model by name, so
+`bora pull qwen` reads the way the command is meant to read. The suite also stopped writing
+temporary paths into the verification receipt of whatever machine ran it.
 
 ### Release 0.3.0
 

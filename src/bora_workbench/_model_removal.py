@@ -9,7 +9,9 @@ repository still needs. So every deletion here is confined by construction rathe
 3. the blob is removed only once no other snapshot of that repository still points at it;
 4. a symlinked cache directory is refused instead of followed;
 5. directories are pruned with `rmdir`, which by definition cannot delete a directory that still
-   holds anything.
+   holds anything;
+6. the repository directory itself goes only when its last snapshot did, leaving no stub whose
+   `refs` still name a revision this machine no longer has.
 
 Writing into the cache stays forbidden: fabricating snapshots or refs is what would corrupt the
 expectations of the tools that share it (specification section 5.12).
@@ -17,6 +19,7 @@ expectations of the tools that share it (specification section 5.12).
 
 from __future__ import annotations
 
+import shutil
 from contextlib import suppress
 from pathlib import Path
 
@@ -71,6 +74,30 @@ def _remove_if_empty(directory: Path) -> None:
         directory.rmdir()
 
 
+def _holds_only_refs(repository: Path) -> bool:
+    """Report whether nothing but the `refs` stub survives in the cached repository.
+
+    Every other directory has already been removed by `rmdir` if it was empty, so anything still
+    present besides `refs` is real content: another revision's snapshot, or blobs a file this tool
+    does not manage still needs.
+    """
+    return all(entry.name == "refs" for entry in repository.iterdir())
+
+
+def _prune_repository(repository: Path) -> None:
+    """Remove the cached repository once its last snapshot is gone.
+
+    What `refs` names is a revision whose files no longer exist, so leaving it behind is leaving a
+    stub that claims a cached model this machine no longer has. Removing it stays confined: the
+    directory belongs to the locked repository, and a surviving snapshot or blob stops the prune.
+    """
+    if repository.is_symlink() or not repository.is_dir():
+        return
+    with suppress(OSError):
+        if _holds_only_refs(repository):
+            shutil.rmtree(repository)
+
+
 def remove_cache_file(path: Path, repository: Path) -> None:
     """Delete one pinned artifact from the cache, then prune whatever it left empty.
 
@@ -82,11 +109,6 @@ def remove_cache_file(path: Path, repository: Path) -> None:
     _unlink(path)
     if blob is not None and not _is_referenced(blob, repository):
         _unlink(blob)
-    for directory in (
-        path.parent,
-        repository / "snapshots",
-        repository / "blobs",
-        repository / "refs",
-        repository,
-    ):
+    for directory in (path.parent, repository / "snapshots", repository / "blobs"):
         _remove_if_empty(directory)
+    _prune_repository(repository)
