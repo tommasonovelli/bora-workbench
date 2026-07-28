@@ -16,7 +16,7 @@ from bora_workbench._cli_diagnostics import (
     show_engine_status,
 )
 from bora_workbench._cli_models import RemoveOptions, run_pull, run_remove_model
-from bora_workbench._cli_pi import PiOptions, run_pi
+from bora_workbench._cli_pi import PiOptions, run_pi, run_pi_removal, run_pi_uninstall
 from bora_workbench._cli_services import (
     run_coding,
     run_stop,
@@ -36,6 +36,13 @@ app = typer.Typer(
 )
 engine_app = typer.Typer(help="Install and inspect the pinned managed llama.cpp engine.")
 app.add_typer(engine_app, name="engine")
+# `bora pi` keeps connecting when it is called with no subcommand, so the two ways of undoing that
+# connection can be commands of their own instead of a fifth flag on one overloaded command.
+pi_app = typer.Typer(
+    help="Connect the pi coding agent to this machine's bora service, or take it back.",
+    invoke_without_command=True,
+)
+app.add_typer(pi_app, name="pi")
 _stdout = create_console()
 _stderr = create_console(stderr=True)
 _MEMORY_GATE_HELP = "Bypass only the default-model total and available RAM gate."
@@ -120,8 +127,9 @@ def remove_model_command(
     run_remove_model(RemoveOptions(model, keep_cache, dry_run), _stdout, _stderr)
 
 
-@app.command()
+@pi_app.callback()
 def pi(
+    context: typer.Context,
     print_only: bool = typer.Option(
         False, "--print", help="Print the provider entry instead of writing it."
     ),
@@ -130,7 +138,20 @@ def pi(
     ),
 ) -> None:
     """Point the pi coding agent at this machine's bora service."""
-    run_pi(PiOptions(print_only, install), _stdout, _stderr)
+    if context.invoked_subcommand is None:
+        run_pi(PiOptions(print_only, install), _stdout, _stderr)
+
+
+@pi_app.command("remove")
+def pi_remove_command() -> None:
+    """Delete the provider entry `bora pi` writes, leaving pi itself installed."""
+    run_pi_removal(_stdout, _stderr)
+
+
+@pi_app.command("uninstall")
+def pi_uninstall_command() -> None:
+    """Uninstall pi itself with npm, then ask separately about the provider entry."""
+    run_pi_uninstall(_stdout, _stderr)
 
 
 @engine_app.command("status")

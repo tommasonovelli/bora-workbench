@@ -39,6 +39,7 @@ from bora_workbench._calibration_types import (
     SearchError,
     UnclassifiableTrialError,
 )
+from bora_workbench._cli_pi import print_pi_hint
 from bora_workbench._cli_theme import (
     metric_column,
     phase_result_style,
@@ -420,6 +421,21 @@ def show_outcome(result: RunResult, console: Console) -> None:
     console.print("No private record or process log was uploaded.")
 
 
+def _coding_context(result: RunResult) -> int | None:
+    """Return the context this run measured for `coding`, which is what pi would be told."""
+    for mode_result in result.mode_results:
+        if mode_result.mode.id == "coding":
+            return mode_result.envelope.sample.ctx
+    return None
+
+
+def _offer_pi_handoff(result: RunResult, console: Console) -> None:
+    """Name the command that hands a freshly activated `coding` window to the pi agent (D-082)."""
+    ctx = _coding_context(result)
+    if ctx is not None:
+        print_pi_hint(ctx, console)
+
+
 def _activate(mode_value: str, console: Console) -> None:
     """Promote already measured candidates without rerunning expensive trials."""
     for mode_id in selected_mode_ids(mode_value):
@@ -462,6 +478,8 @@ def _run(options: CalibrationCliInput, stdout: Console) -> None:
         )
         result = _measure(target, run_options)
     show_outcome(result, stdout)
+    if not options.no_activate:
+        _offer_pi_handoff(result, stdout)
     if result.failures:
         # The records that were written stay valid and activated; the run is still incomplete, so
         # the exit code must not claim success for modes that produced nothing (spec 5.11).

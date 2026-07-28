@@ -9,6 +9,7 @@ import typer
 from rich.console import Console
 
 import bora_workbench._cli_calibration as calibration_cli
+import bora_workbench._cli_pi as pi_cli
 from bora_workbench._calibration_run import RunResult
 from bora_workbench._calibration_runner import ModeResult
 from bora_workbench._calibration_types import (
@@ -28,6 +29,7 @@ from bora_workbench._cli_calibration import (
     show_outcome,
 )
 from bora_workbench.calibration import CalibrationError
+from bora_workbench.pi_link import PiInstallation
 from bora_workbench.profiles import load_catalog
 from tests.sample_fixtures import sample
 
@@ -161,6 +163,40 @@ def test_declining_the_confirmation_cancels_with_the_contractual_code(monkeypatc
         run_calibrate(CalibrationCliInput("coding"), *_output())
 
     assert exit_info.value.exit_code == 130
+
+
+def _coding_run() -> RunResult:
+    """Build a finished run that measured and activated one `coding` cell."""
+    mode = load_catalog().mode("coding")
+    assert mode is not None
+    envelope = EnvelopeResult("balanced", sample(65536, 33, 100.0), GateResult(True, True, None))
+    return RunResult(
+        "b" * 32,
+        (Path("/records/coding.json"),),
+        (ModeResult(mode, envelope, (sample(65536, 33, 100.0),), ()),),
+        Path("/evidence/run"),
+    )
+
+
+@pytest.mark.parametrize(("no_activate", "is_named"), [(False, True), (True, False)])
+def test_an_activated_coding_run_names_the_pi_handoff(monkeypatch, no_activate, is_named) -> None:
+    """Only an activated record changes what a launch serves, so only it points at pi (D-082)."""
+    monkeypatch.setattr(
+        calibration_cli, "prepare_target", lambda mode_value, progress=None: object()
+    )
+    monkeypatch.setattr(calibration_cli, "show_preflight", lambda *args: None)
+    monkeypatch.setattr(calibration_cli.typer, "confirm", lambda *args, **kwargs: True)
+    monkeypatch.setattr(calibration_cli, "run_calibration", lambda target, options: _coding_run())
+    monkeypatch.setattr(
+        pi_cli, "inspect_pi", lambda: PiInstallation(Path("pi"), Path("models.json"))
+    )
+    console = Console(record=True, width=200)
+
+    run_calibrate(
+        CalibrationCliInput("coding", no_activate=no_activate), console, Console(quiet=True)
+    )
+
+    assert ("bora pi" in console.export_text()) is is_named
 
 
 def test_a_partial_run_prints_its_records_and_still_exits_operationally(monkeypatch) -> None:

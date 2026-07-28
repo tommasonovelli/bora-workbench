@@ -10,6 +10,10 @@ project writes its own state — read, merge, atomic replace, with a backup kept
 silently: the caller shows the change and asks first. Installing pi is delegated to npm with
 `--ignore-scripts`, which is the vendor's own instruction; this project pins no digest for it and
 must not pretend otherwise.
+
+Both writes have an exact inverse, because what one command adds another one has to be able to take
+back (D-082): the entry can be dropped from that same file, and the package can be handed back to
+npm.
 """
 
 from __future__ import annotations
@@ -66,6 +70,15 @@ def install_command() -> tuple[str, ...]:
     return ("npm", "install", "-g", "--ignore-scripts", PACKAGE_NAME)
 
 
+def uninstall_command() -> tuple[str, ...]:
+    """Return the removal command for exactly the package `install_command` adds.
+
+    It undoes an npm installation and nothing else: an installation made another way is not npm's
+    to remove, so the caller reports what is left instead of guessing at it (D-082).
+    """
+    return ("npm", "uninstall", "-g", PACKAGE_NAME)
+
+
 def provider_entry(lock: JsonObject, port: int, context_window: int) -> JsonObject:
     """Build the single provider entry that points pi at this machine's bora service.
 
@@ -117,6 +130,21 @@ def merged_document(document: JsonObject, entry: JsonObject) -> JsonObject:
     merged[PROVIDER_NAME] = entry
     updated = dict(document)
     updated["providers"] = merged
+    return updated
+
+
+def document_without_provider(document: JsonObject) -> JsonObject:
+    """Return the document with only the bora provider dropped, leaving every other one intact.
+
+    The empty `providers` object is kept rather than deleted: removing this project's entry is not
+    a reason to change the shape of a file that belongs to pi.
+    """
+    providers = document.get("providers")
+    if not isinstance(providers, dict):
+        return dict(document)
+    remaining = {name: value for name, value in providers.items() if name != PROVIDER_NAME}
+    updated = dict(document)
+    updated["providers"] = remaining
     return updated
 
 

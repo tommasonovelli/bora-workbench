@@ -1,37 +1,60 @@
-"""Present `bora pi`: point the pi coding agent at this machine's bora service.
+"""Present `bora pi`: point the pi coding agent at this machine's bora service, or take it back.
 
 The command is presentation and consent only. It shows the exact provider entry it would write,
 asks once, and hands the merge and the atomic write to `pi_link.py` (specification section 4.1).
 Installing pi is never implicit: without `--install` an absent pi is reported with the vendor's own
 instructions for the two supported platforms.
+
+`pi remove` and `pi uninstall` are the inverses of those two writes, and they stay separate
+questions: the provider entry lives in a file that belongs to pi, while the package belongs to npm,
+so consenting to one is not consenting to the other (D-082, applying the rule D-079 established for
+the shared model cache).
+
+The context window handed over is the one this machine actually serves, and the output always says
+where the number came from. A managed service already listening on the configured port knows its
+own window and is asked first: record reuse weighs free memory that the running service is itself
+holding, so consulting the record while it runs would report the baseline for a machine that is
+serving far more than that (D-082).
 """
 
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import typer
 from rich.console import Console
 
 from bora_workbench._calibration_reuse import ReuseQuery, evaluate_record
-from bora_workbench._cli_theme import print_error, print_heading, print_note, print_success
+from bora_workbench._cli_services import across_service_roots
+from bora_workbench._cli_theme import (
+    print_error,
+    print_heading,
+    print_note,
+    print_success,
+    print_warning,
+)
 from bora_workbench.config import Config, ConfigError, load_config
 from bora_workbench.engine import EngineError, JsonObject, load_engine_lock
 from bora_workbench.hardware import HardwareError, detect_hardware
 from bora_workbench.models import display_name
 from bora_workbench.pi_link import (
+    PACKAGE_NAME,
     PROVIDER_NAME,
     PiInstallation,
     current_entry,
+    document_without_provider,
     inspect_pi,
     install_command,
     merged_document,
     provider_entry,
     read_document,
     render,
+    uninstall_command,
     write_document,
 )
+from bora_workbench.process import ProcessError, status_services
 from bora_workbench.profiles import FALLBACK_CTX, PlanError, load_catalog
 
 # Both lines stay ASCII and short enough not to wrap: a wrapped install command cannot be copied,
@@ -44,12 +67,30 @@ _WINDOWS_HINT = 'powershell -c "irm https://pi.dev/install.ps1 | iex"'
 class PiOptions:
     """Group whether `bora pi` may write and whether it may install pi first."""
 
-    print_only: bool
-    install: bool
+    print_only: bool = False
+    install: bool = False
 
 
-def _context_window(config: Config, lock: JsonObject) -> int:
-    """Return the context `coding` would launch with: its local record's, or the baseline.
+@dataclass(frozen=True, slots=True)
+class ContextWindow:
+    """Pair the window pi is told about with where that number came from and why."""
+
+    tokens: int
+    source: str
+    diagnostics: tuple[str, ...] = ()
+
+
+def _live_window(port: int) -> ContextWindow | None:
+    """Return the window of a managed service already serving the configured port."""
+    report = across_service_roots(status_services)
+    serving = next((service for service in report.services if service.port == port), None)
+    if serving is None:
+        return None
+    return ContextWindow(serving.ctx, f"running {serving.mode} service on port {port}")
+
+
+def _record_window(config: Config, lock: JsonObject) -> ContextWindow:
+    """Return the window `coding` would launch with: its local record's, or the baseline.
 
     pi needs a number, and an invented one would misreport the model. The record is the same
     source the launcher itself uses, so the two agree by construction (specification section 5.5).
@@ -59,8 +100,31 @@ def _context_window(config: Config, lock: JsonObject) -> int:
         raise EngineError("the packaged mode catalog has no coding mode")
     evaluation = evaluate_record(ReuseQuery(config, mode, detect_hardware(), lock))
     if evaluation.status == "valid" and evaluation.ctx is not None:
-        return int(evaluation.ctx)
-    return FALLBACK_CTX
+        return ContextWindow(int(evaluation.ctx), "local coding calibration record")
+    return ContextWindow(FALLBACK_CTX, "verified non-optimized baseline", evaluation.diagnostics)
+
+
+def _context_window(config: Config, lock: JsonObject) -> ContextWindow:
+    """Resolve the window pi will be given, preferring what a live service already serves."""
+    live = _live_window(config.llama_port)
+    return _record_window(config, lock) if live is None else live
+
+
+def _show_window(window: ContextWindow, stdout: Console) -> None:
+    """Report the window with its origin, so a number smaller than expected explains itself."""
+    print_note(stdout, "Context window", f"{window.tokens} tokens, from the {window.source}")
+    for diagnostic in window.diagnostics:
+        print_warning(stdout, diagnostic)
+
+
+def _run_npm(command: tuple[str, ...]) -> None:
+    """Run one already shown and confirmed npm command without a shell."""
+    try:
+        completed = subprocess.run(command, check=False, shell=False)
+    except OSError as error:
+        raise EngineError(f"cannot run npm; install Node.js first: {error}") from error
+    if completed.returncode != 0:
+        raise EngineError(f"npm exited with code {completed.returncode}")
 
 
 def _install_pi(stdout: Console) -> None:
@@ -70,12 +134,7 @@ def _install_pi(stdout: Console) -> None:
     stdout.print("This installs from the npm registry; bora-workbench pins no digest for it.")
     if not typer.confirm("Install pi now?", default=False):
         raise EngineError("pi was not installed; rerun without --install once it is on PATH")
-    try:
-        completed = subprocess.run(command, check=False, shell=False)
-    except OSError as error:
-        raise EngineError(f"cannot run npm; install Node.js first: {error}") from error
-    if completed.returncode != 0:
-        raise EngineError(f"npm exited with code {completed.returncode}")
+    _run_npm(command)
 
 
 def _require_pi(options: PiOptions, stdout: Console) -> PiInstallation:
@@ -116,7 +175,9 @@ def _connect(options: PiOptions, stdout: Console) -> None:
     """Build the entry, show it, and write it once the user confirms."""
     config = load_config()
     lock = load_engine_lock()
-    entry = provider_entry(lock, config.llama_port, _context_window(config, lock))
+    window = _context_window(config, lock)
+    _show_window(window, stdout)
+    entry = provider_entry(lock, config.llama_port, window.tokens)
     if options.print_only:
         print_heading(stdout, "Add this to pi's models.json")
         stdout.print(render({"providers": _as_document(entry)}), markup=False, soft_wrap=True)
@@ -132,13 +193,94 @@ def _connect(options: PiOptions, stdout: Console) -> None:
     print_note(stdout, "Use", usage)
 
 
-def run_pi(options: PiOptions, stdout: Console, stderr: Console) -> None:
-    """Connect pi to the local service and map expected failures to exit code 1."""
+def _remove_provider(stdout: Console) -> None:
+    """Delete only this project's provider from pi's model store, after showing what goes.
+
+    pi does not have to be installed for this to work: an entry written earlier outlives the
+    package, and it is exactly then that removing it has to remain possible.
+    """
+    models_file = inspect_pi().models_file
+    document = read_document(models_file)
+    existing = current_entry(document)
+    if existing is None:
+        message = f"No provider named {PROVIDER_NAME!r} in {models_file}; nothing to remove."
+        stdout.print(message, markup=False, soft_wrap=True)
+        return
+    print_heading(stdout, f"Provider {PROVIDER_NAME!r} in {models_file}")
+    stdout.print(render(_as_document(existing)), markup=False, soft_wrap=True)
+    if not typer.confirm(f"Remove this provider from {models_file}?", default=False):
+        stdout.print("Cancelled; pi's configuration was not changed.")
+        return
+    write_document(models_file, document_without_provider(document))
+    print_success(stdout, "Removed", f"pi provider {PROVIDER_NAME!r}")
+
+
+def _report_removal(stdout: Console) -> None:
+    """Report what npm actually removed by looking for pi on PATH once more."""
+    remaining = inspect_pi()
+    if remaining.executable is None:
+        print_success(stdout, "Uninstalled", PACKAGE_NAME)
+        return
+    print_warning(stdout, f"pi is still on PATH at {remaining.executable}; npm did not own it.")
+
+
+def _uninstall_pi(stdout: Console) -> None:
+    """Hand the package back to npm after showing the command and asking for consent."""
+    if not inspect_pi().is_installed:
+        stdout.print("pi is not on PATH; no npm package was removed.")
+        return
+    command = uninstall_command()
+    print_note(stdout, "Uninstall command", " ".join(command))
+    stdout.print("This removes the global npm package. An installation made another way, such as")
+    stdout.print("the vendor's Windows script, has to be removed the way it was installed.")
+    if not typer.confirm("Uninstall pi now?", default=False):
+        stdout.print("Skipped; pi is still installed.")
+        return
+    _run_npm(command)
+    _report_removal(stdout)
+
+
+def _uninstall(stdout: Console) -> None:
+    """Remove pi itself, then ask separately about the provider entry it leaves behind."""
+    _uninstall_pi(stdout)
+    _remove_provider(stdout)
+
+
+def print_pi_hint(ctx: int, stdout: Console) -> None:
+    """Point a finished `coding` calibration at the command that hands that window to pi.
+
+    Nothing updates the entry when a record is activated: it is a number stored in somebody else's
+    configuration file, so the run that changes what the machine serves names the command that
+    applies it (D-082).
+    """
+    if not inspect_pi().is_installed:
+        print_note(stdout, "pi", "not installed; `bora pi --install` installs and connects it")
+        return
+    print_note(stdout, "pi", f"run `bora pi` to hand it this {ctx}-token context window")
+
+
+def _run_action(action: Callable[[Console], None], stdout: Console, stderr: Console) -> None:
+    """Run one pi action with the contractual failure mapping of section 5.11."""
     try:
-        _connect(options, stdout)
-    except (ConfigError, EngineError, HardwareError, PlanError) as error:
+        action(stdout)
+    except (ConfigError, EngineError, HardwareError, PlanError, ProcessError) as error:
         print_error(stderr, "pi integration error", str(error))
         raise typer.Exit(code=1) from error
     except (KeyboardInterrupt, typer.Abort) as error:
         print_error(stderr, "pi integration error", "cancelled")
         raise typer.Exit(code=130) from error
+
+
+def run_pi(options: PiOptions, stdout: Console, stderr: Console) -> None:
+    """Connect pi to the local service and map expected failures to exit code 1."""
+    _run_action(lambda console: _connect(options, console), stdout, stderr)
+
+
+def run_pi_removal(stdout: Console, stderr: Console) -> None:
+    """Delete the provider entry `bora pi` writes, leaving pi itself installed."""
+    _run_action(_remove_provider, stdout, stderr)
+
+
+def run_pi_uninstall(stdout: Console, stderr: Console) -> None:
+    """Uninstall pi itself, then ask separately about the provider entry."""
+    _run_action(_uninstall, stdout, stderr)

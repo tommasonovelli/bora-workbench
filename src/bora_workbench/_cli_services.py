@@ -205,11 +205,13 @@ def _print_warnings(warnings: tuple[str, ...], stdout: Console) -> None:
         print_warning(stdout, warning)
 
 
-def _across_roots(operation: Callable[[Path], ServiceReport]) -> ServiceReport:
+def across_service_roots(operation: Callable[[Path], ServiceReport]) -> ServiceReport:
     """Apply one process-layer operation to every service root and merge its reports.
 
     Composing the roots here keeps the calibration tree layout inside the calibration module and
-    the lifecycle rules inside the process module, as specification section 4.1 requires.
+    the lifecycle rules inside the process module, as specification section 4.1 requires. `bora pi`
+    reads the same sweep, because a service already listening on the configured port is the one
+    thing that knows the context window it is actually serving (D-082).
     """
     services: list[ServiceState] = []
     warnings: list[str] = []
@@ -225,7 +227,7 @@ def _across_roots(operation: Callable[[Path], ServiceReport]) -> ServiceReport:
 def show_status(stdout: Console, stderr: Console) -> None:
     """Present live managed services and preserve status idempotence."""
     try:
-        report = _across_roots(status_services)
+        report = across_service_roots(status_services)
     except ProcessError as error:
         print_error(stderr, "Status error", str(error))
         raise typer.Exit(code=1) from error
@@ -251,7 +253,7 @@ def show_status(stdout: Console, stderr: Console) -> None:
 def run_stop(stdout: Console, stderr: Console) -> None:
     """Present identity-safe stop results and preserve empty-state idempotence."""
     try:
-        report = _across_roots(stop_services)
+        report = across_service_roots(stop_services)
     except ProcessError as error:
         print_error(stderr, "Stop error", str(error))
         raise typer.Exit(code=1) from error
@@ -297,7 +299,7 @@ def require_services_stopped(category: str, stderr: Console) -> None:
     replace the tool environment the running launcher still holds open, so both refuse here.
     """
     try:
-        report = _across_roots(status_services)
+        report = across_service_roots(status_services)
     except ProcessError as error:
         print_error(stderr, category, f"cannot inspect managed services: {error}")
         raise typer.Exit(code=1) from error
