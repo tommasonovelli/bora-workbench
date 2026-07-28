@@ -11,6 +11,9 @@ live in `IMPLEMENTATION_SPEC.md`.
   pinned artifacts used to leave a stub whose `refs/main` still named a revision whose files no
   longer existed. A repository that still holds another revision keeps everything, and repositories
   belonging to other tools are still never examined.
+- `rm` now takes back everything `pull` wrote, and only that: the artifact, its verification
+  receipt, and the store directory once it is empty. A receipt naming a file that no longer exists
+  claimed a verification nobody could check, and an empty directory is a leftover.
 - `pull` and `rm` accept the pinned model by name: `bora pull qwen` and `bora pull` are the same
   request. The name is declared as `default_model_handle` in `engine.lock`, and any other name
   fails immediately instead of being read as the default. `command_contract_sha256` is unchanged.

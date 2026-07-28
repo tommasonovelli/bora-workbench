@@ -83,7 +83,25 @@ def remember(identity: ArtifactIdentity) -> None:
     path = receipt_path()
     artifacts = _load(path)
     artifacts[str(identity.path)] = _entry(identity)
-    document = {"schema": _SCHEMA, "artifacts": artifacts}
+    _write(path, {"schema": _SCHEMA, "artifacts": artifacts})
+
+
+def forget(path: Path) -> None:
+    """Drop one artifact's receipt, so removing a file also removes what was claimed about it.
+
+    `remember` is what `pull` writes, so `rm` owes the symmetric write: a receipt naming a file that
+    no longer exists claims a verification for bytes nobody can check. Like `remember`, this is
+    best-effort — a receipt that cannot be rewritten costs a later rehash, never a failed removal.
+    """
+    receipt = receipt_path()
+    artifacts = _load(receipt)
+    if artifacts.pop(str(path), None) is None:
+        return
+    _write(receipt, {"schema": _SCHEMA, "artifacts": artifacts})
+
+
+def _write(path: Path, document: JsonObject) -> None:
+    """Replace the receipt atomically, leaving the cache untouched when it cannot be written."""
     temporary = path.with_name(f".{path.name}.{uuid4().hex}.tmp")
     try:
         path.parent.mkdir(parents=True, exist_ok=True)

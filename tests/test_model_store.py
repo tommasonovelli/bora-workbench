@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import json
+
 import pytest
 
+import bora_workbench._model_verification as model_verification
 from bora_workbench import engine, models
 from bora_workbench._model_removal import remove_cache_file
 from bora_workbench.config import Config
@@ -68,6 +71,31 @@ def test_ensure_artifact_downloads_only_what_the_store_is_missing(
     assert calls == ["model.gguf", "mmproj.gguf"]
     assert models.ensure_artifact(weights) is True
     assert calls == ["model.gguf", "mmproj.gguf"]
+
+
+def test_removal_leaves_behind_nothing_pull_had_written(
+    locations,  # noqa: F811
+    monkeypatch,
+) -> None:
+    """What `pull` writes, `rm` takes back: the file, its receipt, and the store directory."""
+    lock = tiny_lock()
+    monkeypatch.setattr(
+        models,
+        "download_file",
+        lambda asset, destination, progress=None: place(
+            destination, asset.filename, WEIGHTS if "model" in asset.filename else PROJECTOR
+        ),
+    )
+    for artifact in models.model_artifacts(lock):
+        models.ensure_artifact(artifact)
+    receipt = model_verification.receipt_path()
+    assert set(json.loads(receipt.read_text(encoding="utf-8"))["artifacts"])
+
+    for copy in models.locate_copies(lock):
+        models.remove_copy(copy, models.repository_root(lock))
+
+    assert json.loads(receipt.read_text(encoding="utf-8"))["artifacts"] == {}
+    assert not locations.store.exists()
 
 
 def test_locate_copies_separates_the_store_from_the_shared_cache(locations) -> None:  # noqa: F811

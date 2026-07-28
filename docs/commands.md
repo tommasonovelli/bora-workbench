@@ -138,8 +138,9 @@ bora rm --keep-hf
 bora rm --dry-run
 ```
 
-Deletes everything `pull` installed — both artifacts, in both locations — and reports the space
-freed. The model name is optional on the same terms as `pull`. It asks up to two questions, and both
+Deletes everything `pull` installed — both artifacts, their verification receipts, and the store
+directory once it is empty — and reports the space freed. The model name is optional on the same
+terms as `pull`. Nothing this tool did not write is touched without the second question below. It asks up to two questions, and both
 default to no:
 
 1. the copies in the managed store, which belong to this tool;

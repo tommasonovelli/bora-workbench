@@ -15,13 +15,14 @@ Nothing here branches on the operating system: every root comes from `paths.py`.
 
 from __future__ import annotations
 
+from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
 from bora_workbench._engine_assets import RemoteFile, TransferProgressCallback, download_file
 from bora_workbench._model_removal import remove_cache_file
-from bora_workbench._model_verification import ArtifactIdentity, is_verified, remember
+from bora_workbench._model_verification import ArtifactIdentity, forget, is_verified, remember
 from bora_workbench.engine import EngineError, JsonObject, hf_snapshot_dir
 from bora_workbench.paths import models_dir
 
@@ -170,13 +171,30 @@ def locate_copies(lock: JsonObject) -> tuple[StoredArtifact, ...]:
 
 
 def remove_copy(copy: StoredArtifact, root: Path | None) -> None:
-    """Delete one located copy: a plain file in the store, or a confined cache entry."""
+    """Delete one located copy, leaving behind nothing that `pull` had written for it.
+
+    The receipt goes with the file it describes, because `pull` is what wrote it; the store
+    directory goes once it is empty, because `pull` is what created it. What stays behind is only
+    what this tool did not put there (D-078).
+    """
     if not copy.is_shared_cache:
         _unlink(copy.path)
+        _prune_store()
+    else:
+        if root is None:
+            message = f"cannot confine a cache deletion without a repository root: {copy.path}"
+            raise EngineError(message)
+        remove_cache_file(copy.path, root)
+    forget(copy.path.absolute())
+
+
+def _prune_store() -> None:
+    """Remove the managed store directory once it holds nothing."""
+    store = models_dir()
+    if store.is_symlink() or not store.is_dir():
         return
-    if root is None:
-        raise EngineError(f"cannot confine a cache deletion without a repository root: {copy.path}")
-    remove_cache_file(copy.path, root)
+    with suppress(OSError):
+        store.rmdir()
 
 
 def _unlink(path: Path) -> None:

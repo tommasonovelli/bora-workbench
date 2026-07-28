@@ -463,9 +463,11 @@ MTP is a property of these weights, enabled by engine flags, not a separate down
 the `default_model_handle` of the lock as an optional argument and refuses any other name. It
 writes only into the store, over HTTPS against the pinned revision, through a `.part` file
 published by atomic rename, and writes the D-076 receipt on success. `engine install` performs the
-same acquisition unless `--no-model` declines it. `rm` deletes the store copies and then, behind a
-separately asked confirmation, the pinned artifacts in the Hugging Face cache under the confinement
-rules of D-079. Nothing is ever written into that cache.
+same acquisition unless `--no-model` declines it. `rm` takes back exactly what `pull` wrote — the artifact, its
+receipt, and the store directory once empty — and then, behind a separately asked confirmation, the
+pinned artifacts in the Hugging Face cache under the confinement rules of D-079. That second group
+is the one deliberate asymmetry: it may remove copies this tool did not download, which is why it is
+never included in another confirmation. Nothing is ever written into that cache.
 
 `model_alias_contract` declares the name `/v1/models` reports and is expanded after
 `command_contract`, which leaves `command_contract_sha256` and every existing record valid (D-080).
