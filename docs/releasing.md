@@ -5,8 +5,8 @@ requires explicit human authorization for the push, tag, and GitHub Release.
 
 ## Public status
 
-- release described by this branch: `bora-workbench 0.2.4`;
-- preceding public version: `bora-workbench 0.2.3` on GitHub Releases;
+- release described by this branch: `bora-workbench 0.3.0`;
+- preceding public version: `bora-workbench 0.2.4` on GitHub Releases;
 - historical versions `0.1.0` through `0.1.6` remain immutable under their original
   `qwen-launcher` artifact identity;
 - every published bundle comes from its green Ubuntu/Windows release workflow and contains the
@@ -56,6 +56,24 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.3.0
+
+`0.3.0` makes the launcher own the model it was already verifying (D-078/D-079/D-080/D-081).
+
+Until now the weights had to be acquired by hand before anything worked, and could not be removed
+by the tool that depended on them. `pull` downloads the locked artifacts into a managed store,
+`engine install` does it in the same run, and `rm` gives the disk space back. Removal reaches the
+shared Hugging Face cache too, but only for the pinned artifacts of the locked repository and only
+behind a confirmation asked separately from every other one; writing into that cache stays
+forbidden. The API now reports the model as `Qwen 3.6`, declared outside `command_contract` so that
+`command_contract_sha256` — and therefore every existing calibration record — is unchanged. `bora pi`
+connects the pi coding agent to the running service in one command.
+
+Release checks for this version: the three symlink tests of `test_engine_assets` and
+`test_engine_install` require a host that grants the symlink privilege, which a plain Windows
+account does not; they must be green on the Ubuntu job. The manual Ubuntu run of `pull`, `rm`, and
+`pi` is follow-up verification, not a passed Gate.
 
 ### Release 0.2.4
 

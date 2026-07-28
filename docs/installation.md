@@ -17,9 +17,9 @@ CUDA on a machine with more than one GPU is detected, but startup is blocked: ph
 only been verified on single-GPU hosts. If `nvidia-smi` is missing, fails, or produces unreadable
 data, the launcher uses the CPU backend and shows why.
 
-## 2. Installing bora-workbench 0.2.4
+## 2. Installing bora-workbench 0.3.0
 
-`bora-workbench` is distributed through GitHub Releases. These commands download the `v0.2.4`
+`bora-workbench` is distributed through GitHub Releases. These commands download the `v0.3.0`
 manifest, verify the installer and wheel, and install with pinned uv `0.11.28` and CPython
 `3.12.13`. They require no administrator privileges.
 
@@ -28,7 +28,7 @@ manifest, verify the installer and wheel, and install with pinned uv `0.11.28` a
 Open a terminal in a new directory and copy the complete block:
 
 ```bash
-version="0.2.4"
+version="0.3.0"
 base="https://github.com/tommasonovelli/bora-workbench/releases/download/v${version}"
 wheel="bora_workbench-${version}-py3-none-any.whl"
 
@@ -52,7 +52,7 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 Open PowerShell in a new directory and copy the complete block:
 
 ```powershell
-$Version = "0.2.4"
+$Version = "0.3.0"
 $Base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v$Version"
 $Wheel = "bora_workbench-$Version-py3-none-any.whl"
 
@@ -101,7 +101,7 @@ testing an exact repository revision and never follows a branch or tag implicitl
 
 ## 3. Verifying the tool
 
-For `0.2.4`:
+For `0.3.0`:
 
 ```bash
 bora --version
@@ -114,8 +114,8 @@ hardware, engine, and records without modifying them.
 
 ## 4. Making the model available
 
-The launcher neither distributes nor downloads the weights. For the default identity it looks up,
-read-only, the Hugging Face snapshot of the revision pinned in `engine.lock`:
+The launcher does not distribute the weights, but it does acquire them. `bora pull` downloads the
+artifacts pinned in `engine.lock`, and `bora engine install` does it in the same run:
 
 ```text
 repository: unsloth/Qwen3.6-35B-A3B-MTP-GGUF
@@ -124,16 +124,21 @@ GGUF:       Qwen3.6-35B-A3B-UD-Q4_K_M.gguf
 mmproj:     mmproj-BF16.gguf
 ```
 
-Acquire the two files separately from the
-[pinned repository revision](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF/tree/5bc3e238d916f48a861bac2f8a1990a0e9b7e98d)
-with a tool of your choice. Size and SHA-256 must match the lock. The projector is only required by
-`vstudio`; the launcher creates no refs or snapshots and never alters the Hugging Face cache.
+The download uses HTTPS against that exact revision, shows transferred bytes, rate, and an
+estimate, writes through a partial file that is never mistaken for a complete one, and accepts the
+result only when the name, size, and SHA-256 all match the lock. The projector is only required by
+`vstudio`.
+
+The artifacts land in the managed store, `<data root>/models`. Resolution at launch looks there
+first and then falls back, read-only, to the pinned Hugging Face snapshot, so files acquired by any
+other tool are used as they are and never downloaded a second time. Nothing is ever written into
+that cache: no refs, no snapshots, no blobs.
 
 A different model requires a consistent `model` + `model_path` pair in the configuration. It
-inherits none of the default model's gates, records, or compatibility; `vstudio` cannot use it,
-because an alternative mmproj is not configurable.
+inherits none of the default model's gates, records, or compatibility; `pull` and `rm` do not
+manage it, and `vstudio` cannot use it, because an alternative mmproj is not configurable.
 
-## 5. Installing the engine
+## 5. Installing the engine and the model
 
 ```bash
 bora engine install
@@ -151,6 +156,11 @@ extraction with the current asset, speed, and computed ETA; the other operations
 visible without inventing a duration. It is normal for the Ubuntu CUDA build to take several
 minutes. The final version and help probes stay bounded to 60 seconds each. See the
 [architecture](architecture.md#engine-and-model) for the contract.
+
+Once the engine is active the command downloads the pinned model, unless `--no-model` declines it,
+so a first setup is one command rather than three. About 22 GB arrive at this step. `bora pull`
+performs exactly the same acquisition on its own and is what to rerun after an interruption: a
+verified artifact is recognized and not fetched again.
 
 ## 6. First use
 
@@ -189,6 +199,9 @@ bora status
 bora stop
 ```
 
+To drive the API from the [pi](https://pi.dev/) coding agent, start `bora coding` and run
+`bora pi` once; see [Commands](commands.md#bora-pi).
+
 ## 7. Updating
 
 ```bash
@@ -214,13 +227,26 @@ checkout, for instance — is reported and left alone; use the installer command
 ## 8. Removal
 
 ```bash
+bora rm          # only the model, keeping the tool installed
 bora stop
-bora uninstall
+bora uninstall   # everything
 ```
 
 `uninstall` shows the four managed roots and the Python installation, then asks for a single
 confirmation. It refuses live services, roots that are symlinks, or an altered set of paths. With
 the supported script installation it also removes the Python tool through uv as soon as the command
-finishes; the Hugging Face cache and uv itself always stay excluded.
+finishes; uv itself always stays excluded.
+
+The model store lives inside the data root, so the weights it holds are deleted with it. Weights
+that also exist in the Hugging Face cache survive that deletion and are offered afterwards as a
+**separate question**, which defaults to no. That separation is deliberate: the managed roots
+belong to this tool, while the cache is shared with everything else on the machine. Declining it,
+or answering nothing at all, leaves the cache exactly as it was.
+
+Cache deletion is confined to the pinned snapshot of the locked repository. It removes only the
+artifacts named by `engine.lock`, follows a symlinked entry no further than that repository's own
+`blobs/`, keeps a blob that another snapshot of the same repository still references, refuses a
+symlinked cache directory instead of following it, and prunes only directories that are already
+empty. Repositories belonging to other tools are never even looked at.
 
 **Next:** [Commands](commands.md)

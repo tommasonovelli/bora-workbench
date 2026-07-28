@@ -97,6 +97,10 @@ Updated on 26 July 2026.
 - [ ] Run `bora update` for real on Ubuntu and Windows, from a published release to the next one,
   and confirm that the managed engine and the local records survive it. The logic is covered by
   offline tests on both platforms; the deferred uv installation is not.
+- [ ] Run `bora pull`, `bora rm`, and `bora pi` for real on Ubuntu and on Windows. The store, the
+  confined cache deletion, and the pi writer are covered by offline tests on both platforms; the
+  actual 22 GB transfer, and the three symlink tests that a plain Windows account cannot run, are
+  not.
 - [ ] Router, managed Open WebUI, sync, and standalone benchmark remain post-0.2 backlog.
 
 No local candidate is activated and no post-0.2 backlog item is started without an explicit
@@ -114,7 +118,12 @@ current session.
 engine, builds a plan, governs `llama-server`, exposes three modes, and measures one envelope
 locally for each machine.
 
-It is not a generic model manager, a plugin framework, or a multi-backend orchestrator.
+Since `0.3.0` it also acquires and releases that pinned model: `pull` downloads it into a managed
+store, `rm` deletes it again, and `engine install` does both halves of a first setup (D-078).
+
+It is still not a generic model manager, a model registry, a plugin framework, or a multi-backend
+orchestrator. A model exists here only if `engine.lock` pins its repository, revision, filenames,
+sizes, and digests.
 
 ### 1.2 Platforms
 
@@ -124,9 +133,17 @@ It is not a generic model manager, a plugin framework, or a multi-backend orches
 - services exclusively on `127.0.0.1`.
 
 Out of perimeter: macOS, ARM, Vulkan, ROCm, distributed multi-GPU, auto-update, native GUI, Python
-plugins, deleting the Hugging Face cache, and arbitrary user modes.
+plugins, writing into the Hugging Face cache, and arbitrary user modes.
 
-### 1.3 The 0.2 boundary
+### 1.3 The 0.2 and 0.3 boundaries
+
+`0.3.0` gives the launcher ownership of the pinned model: the managed store, `pull`, `rm`, the
+acquisition folded into `engine install`, the separate cached-weights question in `uninstall`, the
+API alias, and the pi handoff (D-078 to D-081). It changes no engine release, no calibration
+protocol, no record format, and no `command_contract_sha256`, so every existing
+`calibration-record/v6` stays valid. It adds no second model: the catalog is still exactly what
+`engine.lock` pins, and supporting another one remains a future decision with its own evidence.
+
 
 `0.2.0` is the repository/package refactor from `qwen-launcher` to `bora-workbench`, including the
 `bora` command, new managed-root identity, consolidated modules, and the stabilization required by
@@ -234,6 +251,11 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-075 | On 27 July 2026 the maintainer decides that a `max_context` search stops the ladder at the first context that produces a sample. The approved scale is descending, `max_context` selects the largest feasible context, and its near-tie rule compares only rivals at that same context, so every remaining step is smaller and can change neither the selected cell, nor the finalist a confirmation would compare, nor the rival the gate may retry. The rule is scoped to `max_context` alone: `fast` and `balanced` compare latency across contexts and keep walking the whole ladder under the shared probe budget. An infeasible context still costs one prudent probe and the ladder still continues downward past it; only a step that actually measured a sample ends the walk. |
 | D-076 | On 27 July 2026 the maintainer decides that the default model's SHA-256 verification is receipt-cached. Verifying the pinned artifacts reads 21.11 GiB, and 0.84 GiB more of projector for a vision mode, on every `calibrate` and on every mode launch, with no output while it runs. The locked filename and the exact byte size are still checked every time, because they are free and they are what a truncated or interrupted download fails. The SHA-256 is recomputed unless a cached receipt records the same absolute path, size, modification time, and expected digest; any difference, and a missing, unreadable, or malformed receipt, forces the full hash. The receipt lives under the cache root because it is regenerable and losing it costs only time, and writing it is best-effort: a cache that cannot be created or written is not an error and never fails a launch. Section 5.8 no longer describes model resolution as strictly write-free. This keeps the checks that were written for corruption, interrupted downloads, and a wrong file under the locked name; it does not defend against an attacker holding write access to both the artifact and the user's cache root, who could forge the receipt as easily as the file, and it changes nothing about download verification. |
 | D-077 | On 27 July 2026 the maintainer authorizes `0.2.4` as the release that distributes D-074, D-075, and D-076, including the commit, the push to `tommasonovelli/bora-workbench`, the tag `v0.2.4`, and the GitHub Release created from that tag's green release workflow. The engine, model, command contract, `command_contract_sha256`, record format, reserves, and the packaged policy and schemas are unchanged, so an existing `calibration-record/v6` stays valid and no local candidate is activated. Distribution remains GitHub Releases only (D-070); no registry upload is authorized. The manual Ubuntu and Windows runs for this version are waived rather than performed, and no Gate claim is authorized. The same commit adds `TUI.md`, an explicitly non-normative design proposal for an interactive front end. It is a decision input only: nothing in it is approved, scheduled, or implemented. Its closing table poses open questions to the maintainer and numbers them `Q1`–`Q6`, deliberately carrying no `D-0xx` identifier: a decision number is assigned by this table when something is actually decided, so a proposal that hands itself one either collides with the decisions taken meanwhile or reserves a block it does not own. Answering one of those questions is what creates its entry here. Folding the file into section 8 as a backlog entry, or deleting it, remains a later decision. |
+
+| D-078 | On 27 July 2026 the maintainer decides that the launcher owns the pinned model instead of only reading it. A managed store under `data/models` becomes the first place launch resolution looks; the pinned Hugging Face snapshot stays a read-only fallback, so weights acquired before this store existed keep launching and are never downloaded twice. `bora pull` fetches the locked artifacts from the pinned revision over HTTPS, verifies each against its locked size and SHA-256, publishes them by atomic rename, and writes the D-076 receipt so the first launch afterwards does not hash 22 GiB again. `bora engine install` performs that same acquisition unless `--no-model` declines it, because an engine with no weights cannot serve anything and the second command was the largest part of first setup. This does not make the project a model manager: the artifacts still exist only as the repository, revision, filenames, sizes, and digests that `engine.lock` pins, and adding a second model remains a future decision with its own evidence. |
+| D-079 | On 27 July 2026 the maintainer decides that removal must actually free the disk. `bora rm` deletes the pinned artifacts from the managed store, and then asks a second, separate question about the copies that live in the shared Hugging Face cache; `uninstall` takes the store with the data root it already owns and asks that same separate question afterwards. Consenting to the first never implies consenting to the second, both default to no, and `--keep-hf` and `--dry-run` exist for the cases where neither is wanted. Cache deletion is confined by construction rather than by care: only a file directly inside the pinned `snapshots/<revision>/` of a locked repository, only as far as that repository's own `blobs/` when the entry is a symlink, only once no other snapshot of that repository still references the blob, never through a symlinked cache directory, and directories are pruned with `rmdir`, which cannot remove a directory that still holds something. Writing into that cache stays forbidden: fabricating snapshots or refs is what would corrupt the tools that share it. |
+| D-080 | On 27 July 2026 the maintainer decides that the API reports the model as `Qwen 3.6` rather than as its artifact identity. The pinned `b10011` `--help` lists `--alias`, so the flag joins `verified_flags`, and the alias is declared in a new top-level `model_alias_contract`. It is deliberately outside `command_contract`: `command_contract_sha256` binds every published and local `calibration-record/v6` to those exact bytes, and a name that changes what `/v1/models` reports while changing no measured behavior must not supersede a single record. The digest is therefore unchanged and existing records stay valid. |
+| D-081 | On 27 July 2026 the maintainer decides that the launcher can connect the pi coding agent to a running service. pi is bring-your-own-key and speaks the OpenAI completions API, so `bora pi` writes one provider named `bora` into pi's own `models.json`: the loopback base URL from the configured port, a placeholder key the managed server ignores, and the D-080 alias as the model id, with the context window taken from the same local record the launcher would use rather than invented. The write shows the entry, asks once, keeps a backup, and replaces the file atomically; `--print` never writes at all. `--install` delegates to `npm install -g --ignore-scripts`, which is the vendor's own instruction: this project pins no digest for pi, says so, and does not install it implicitly. No other agent, editor, or provider is supported by this decision. |
 
 A new durable decision updates this table in the same step that authorizes it.
 
@@ -428,12 +450,22 @@ CPU receives no CUDA arguments. No flag originates from semantic hardcoding abse
 Engine order: `engine_path`, `PATH`, managed manifest. Every candidate passes the exact version and
 help probes.
 
-The default model is resolved at the lock's revision according to the observed cache precedence. The
-filename, size, and SHA-256 must match. The filename and size are checked on every resolution; the
-SHA-256 is recomputed unless a cached receipt under the cache root records the same path, size,
-modification time, and expected digest, and writing that receipt is best-effort, so resolution is no
-longer strictly write-free (D-076). A different model requires `model_path` and inherits no data
-from the default. Do not use `--hf-repo`.
+The default model is resolved from the managed store at `data/models` first, then at the lock's
+revision according to the observed cache precedence (D-078). The filename, size, and SHA-256 must
+match in either location. The filename and size are checked on every resolution; the SHA-256 is
+recomputed unless a cached receipt under the cache root records the same path, size, modification
+time, and expected digest, and writing that receipt is best-effort, so resolution is no longer
+strictly write-free (D-076). A different model requires `model_path` and inherits no data from the
+default, and is managed by neither `pull` nor `rm`. Do not use `--hf-repo`.
+
+`pull` writes only into the store, over HTTPS against the pinned revision, through a `.part` file
+published by atomic rename, and writes the D-076 receipt on success. `engine install` performs the
+same acquisition unless `--no-model` declines it. `rm` deletes the store copies and then, behind a
+separately asked confirmation, the pinned artifacts in the Hugging Face cache under the confinement
+rules of D-079. Nothing is ever written into that cache.
+
+`model_alias_contract` declares the name `/v1/models` reports and is expanded after
+`command_contract`, which leaves `command_contract_sha256` and every existing record valid (D-080).
 
 Assets are selected per OS/backend, downloaded over HTTPS, verified, and activated only after the
 probes complete. Ubuntu CUDA uses the pinned source until the lock verifies a prebuilt.
@@ -468,8 +500,10 @@ Extraction rejects absolute paths, drive letters, `..`, special files, and escap
 are limited to the managed data/cache after verification.
 
 `uninstall` shows config/data/cache/state and the current Python installation, asks for a single
-confirmation, refuses live services and symlinks, never touches the Hugging Face cache, and does not
-remove uv. When the running command matches `uv tool dir/bora-workbench` exactly and owns the uv
+confirmation, refuses live services and symlinks, and does not remove uv. The model store lives
+inside the data root, so the weights it holds are deleted with it. Weights that also exist in the
+Hugging Face cache outlive that deletion and are offered afterwards as their own question, whose
+refusal is the default and whose failure never turns a completed uninstall into an error (D-079). When the running command matches `uv tool dir/bora-workbench` exactly and owns the uv
 receipt, a helper on the base Python waits for the process to exit and invokes
 `uv tool uninstall bora-workbench` without a shell. A Python installation outside uv is not removed
 on a guess and is reported explicitly as unchanged.
@@ -499,10 +533,12 @@ ignored.
 - no side effects at import;
 - no incompatible schema without a new version;
 - no undocumented fallback;
-- no changes to the user config or the Hugging Face cache;
+- no changes to the user config, and no writes into the Hugging Face cache;
+- no deletion from that cache outside the pinned artifacts of a locked repository, and never
+  without a separately asked confirmation (D-079);
 - no deletions outside the managed roots;
 - no disabled TLS/checksums;
-- no anticipated future features;
+- no feature in code before its step is active; design documents may describe later ones;
 - no plugins, async, or speculative abstractions;
 - no remote operations without explicit authorization.
 

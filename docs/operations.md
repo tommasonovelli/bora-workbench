@@ -26,7 +26,7 @@ Expected errors show no traceback. In general:
 
 ### The installer asks for a source
 
-That is intentional: there is no implicit default. For `0.2.4`, use the wheel from the GitHub
+That is intentional: there is no implicit default. For `0.3.0`, use the wheel from the GitHub
 Release and its manifest digest as described in [Installation](installation.md). A full commit hash
 is also accepted for testing an exact repository revision.
 
@@ -65,6 +65,29 @@ its own outcome on the same terminal a moment later. If that output shows a uv f
 command it names yourself; the previous installation is still in place until uv succeeds. Check
 with `bora --version` in a new shell.
 
+### Windows blocks `bora.exe` after an install or an update
+
+```text
+'...\.local\bin\bora.exe' was blocked by your organization's Device Guard policy.
+```
+
+This is Windows, not the tool. Smart App Control — `VerifiedAndReputablePolicyState` is `1` under
+`HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy` — blocks unsigned executables that have no
+reputation yet, and every install or update writes a **new** launcher shim. The Python environment
+itself is installed correctly and unaffected; only the small `.exe` that starts it is refused. The
+shim inside the tool environment is refused for the same reason.
+
+Confirm the installation and keep working with:
+
+```powershell
+& "$env:APPDATA\uv\tools\bora-workbench\Scripts\python.exe" -m bora_workbench.cli --version
+```
+
+Every command works through that form. To restore the short `bora` command, the machine's Smart App
+Control setting has to accept the shim; that is a Windows security decision, and this project does
+not change it. Note that turning Smart App Control off in Windows Security is not reversible without
+reinstalling Windows, so decide deliberately rather than as a workaround.
+
 ### PowerShell blocks the script
 
 Run the local file downloaded from the release in a separate process:
@@ -97,9 +120,9 @@ then check the resolved value with `doctor`.
 
 ### The default model is not found
 
-The launcher does not download it. Check that the snapshot of the pinned revision exists in the
-selected Hugging Face cache and that the filename is exact. `vstudio` also requires
-`mmproj-BF16.gguf`.
+Run `bora pull`. Resolution looks in the managed store at `<data root>/models` first and then in
+the pinned snapshot of the selected Hugging Face cache, so this means neither holds a file with the
+exact locked name. `vstudio` also requires `mmproj-BF16.gguf`.
 
 ### Wrong size or digest
 
@@ -274,8 +297,10 @@ Stop the services first. If a managed root is a symlink, a file instead of a dir
 match the current preview, the command stops without removing anything. Fix the structure by hand
 only after verifying the path.
 
-The Hugging Face cache and uv are never included. With the supported `uv tool` installation, the
-same confirmation also removes the command as soon as the current process exits. If the summary
+uv is never included. The managed roots take the model store with them; weights that also exist in
+the Hugging Face cache are a separate question asked afterwards, which defaults to no. With the
+supported `uv tool` installation, the same confirmation also removes the command as soon as the
+current process exits. If the summary
 reports that the Python installation is not managed by uv, use the manager it was installed with:
 the launcher neither guesses nor modifies external environments.
 

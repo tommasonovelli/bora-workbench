@@ -17,7 +17,10 @@ bora [--version] <command> [options]
 | `validate` | validates the installed resources | no |
 | `doctor` | describes configuration, hardware, engine, and records | no |
 | `engine status` | inspects the managed engine | no |
-| `engine install` | installs and activates the engine from the lock | yes |
+| `engine install` | installs the engine from the lock and downloads the model | yes |
+| `pull` | downloads and verifies the pinned model | yes |
+| `rm` | deletes the pinned model after confirmation | yes |
+| `pi` | connects the pi coding agent to the local service | pi's config |
 | `coding` | starts the text API | state and logs |
 | `studio` | starts the built-in text UI | state and logs |
 | `vstudio` | starts the UI with vision | state and logs |
@@ -80,6 +83,7 @@ incompatible exits with 1.
 ```bash
 bora engine install
 bora engine install --force
+bora engine install --no-model
 ```
 
 Detects CPU/CUDA, selects the exact asset set from the lock, downloads over HTTPS, verifies SHA-256,
@@ -94,6 +98,81 @@ invented estimate. Redirected output stays line-oriented. It may use the network
 CUDA, run CMake and a build lasting several minutes: the phase stays visible even while CMake has
 not finished yet. The `--version` and `--help` probes are bounded to 60 seconds each. The command
 installs no system prerequisites and never elevates privileges.
+
+Once the engine is active it downloads the pinned model, exactly as `pull` does, so that a first
+setup is one command. `--no-model` installs only the engine. Note that the model is about 22 GB:
+`--no-model` is the option to use on a metered connection, or when the weights are being acquired
+another way.
+
+## `pull`
+
+```bash
+bora pull
+```
+
+Downloads the artifacts pinned by `engine.lock` into the managed store at `<data root>/models` and
+verifies each one against its locked size and SHA-256. The URL contains the pinned revision, so a
+moved branch or a re-uploaded file cannot change what arrives.
+
+On a terminal each artifact shows transferred bytes against the total, the measured rate, and a
+computed ETA; redirected output prints nothing per chunk. Bytes are written to a partial file and
+published by atomic rename, so an interrupted download never leaves something that looks complete.
+Rerunning after an interruption resumes the work at file granularity: a complete, verified artifact
+is recognized and skipped.
+
+A successful download also writes the verification receipt, so the first launch afterwards starts
+without rehashing about 21 GiB.
+
+## `rm`
+
+```bash
+bora rm
+bora rm --keep-hf
+bora rm --dry-run
+```
+
+Deletes the pinned artifacts and reports the space freed. It asks up to two questions, and both
+default to no:
+
+1. the copies in the managed store, which belong to this tool;
+2. the copies in the Hugging Face cache, which is **shared with every other tool on the machine**.
+
+Answering yes to the first never implies the second. `--keep-hf` skips the second question
+entirely, and `--dry-run` lists every file and byte count without asking or deleting anything.
+
+Cache deletion cannot leave the pinned snapshot of the locked repository: it removes only the
+artifacts `engine.lock` names, follows a symlinked entry no further than that repository's own
+`blobs/`, keeps a blob another snapshot still references, refuses a symlinked cache directory, and
+prunes only already-empty directories. Nothing is ever written into that cache.
+
+## `pi`
+
+```bash
+bora pi
+bora pi --print
+bora pi --install
+```
+
+Writes one provider named `bora` into pi's own model store, `~/.pi/agent/models.json`: the loopback
+base URL built from the configured port, a placeholder API key that the managed server ignores, and
+the model id `Qwen 3.6` — the same name `/v1/models` reports. The context window comes from this
+machine's local calibration record when one applies, and from the verified baseline otherwise.
+
+The entry is shown before anything is written, the confirmation defaults to no, the previous file
+is kept as `models.json.bak`, and the replacement is atomic. Every other provider in that file is
+preserved; a file that cannot be parsed is reported rather than overwritten.
+
+`--print` shows the entry and writes nothing, which is also the way to configure any other
+OpenAI-compatible client by hand. `--install` runs
+`npm install -g --ignore-scripts @earendil-works/pi-coding-agent` after showing the command and
+asking: this project pins no digest for pi and does not claim to verify it. Without `--install`, an
+absent pi is reported with the vendor's instructions for Ubuntu and Windows.
+
+Afterwards, with `bora coding` running:
+
+```bash
+pi --provider bora --model "Qwen 3.6"
+```
 
 ## Run modes
 
@@ -125,7 +204,8 @@ Once READY, the CLI shows:
 
 The contract also exposes `/health`, `/v1/models`, `/v1/chat/completions`, and `/metrics`. The
 service listens on `127.0.0.1` only. `studio` and `vstudio` open the browser only after READY and
-only when `open_browser=true`.
+only when `open_browser=true`. `/v1/models` reports the model as `Qwen 3.6`, which is the alias the
+engine is launched with; that name is what a client sends back in a request.
 
 With `coding` running, a minimal request from another POSIX terminal is:
 
@@ -268,9 +348,14 @@ bora uninstall
 Refuses to proceed while a live managed service exists. It shows the configuration, data, cache,
 state, and the current Python installation, then asks for a single confirmation. If the command
 comes from the supported `uv tool` installation, it also removes the Python tool through uv as soon
-as the process exits; uv itself and the Hugging Face cache stay unchanged. A Python installation not
-managed by uv is reported explicitly and is not removed on a guess. A normal cancellation deletes
-nothing and exits with 0; `Ctrl-C` exits with 130.
+as the process exits; uv itself stays unchanged. A Python installation not managed by uv is reported
+explicitly and is not removed on a guess. A normal cancellation deletes nothing and exits with 0;
+`Ctrl-C` exits with 130.
+
+The model store is inside the data root, so its weights go with it. Weights that also exist in the
+Hugging Face cache are offered afterwards as a **separate question**, defaulting to no and using
+the same confinement rules as `rm`. It is asked only once the managed roots are actually gone, and
+a failure or refusal there leaves the completed uninstall successful.
 
 ## Exit codes
 

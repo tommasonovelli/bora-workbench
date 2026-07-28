@@ -17,8 +17,11 @@ apply here.
 ## Current project boundary
 
 - This is a Python 3.12 launcher for a local, calibrated Qwen model served by an exact, verified
-  `llama.cpp` release. It is not a generic model manager or plugin framework.
-- Work one implementation step at a time and do not anticipate later milestones.
+  `llama.cpp` release. Since `0.3.0` it also acquires and releases that pinned model itself
+  (D-078). It stays a curated distribution: not a generic model manager, not a model registry, not
+  a plugin framework. A model exists here only if `engine.lock` pins its revision and digests.
+- Work one implementation step at a time. Design documents may describe later milestones; code may
+  not anticipate them.
 - **Steps 3, 4, 5, 5A, 5B, 6A, 6B and 7 are complete.** Versions `0.1.0`–`0.1.6`, their tags and
   GitHub Releases are public; release artifacts come only from their green release test/build jobs.
   The maintainer authorized `0.1.3` on 24 July 2026 before the local spike runs, `0.1.4` with the
@@ -146,7 +149,10 @@ A TODO must include date and context, for example:
   strings.
 - Bind managed services only to `127.0.0.1`, never `0.0.0.0`.
 - Keep TLS and checksum verification enabled. Downloads must use HTTPS and safe extraction rules.
-- Never delete outside managed data/cache/state roots, and never alter the Hugging Face cache.
+- Never write into the Hugging Face cache. Deleting from it is allowed only for the pinned
+  artifacts of a locked repository, only through the confinement rules in `_model_removal.py`, and
+  only after a confirmation asked separately from any other one (D-079). Everything else stays
+  inside the managed data, cache, and state roots.
 - Keep declarative model identity separate from the physical GGUF path; resolve the default model
   only from the pinned revision and digest in `engine.lock`.
 - Set `CUDA_VISIBLE_DEVICES` only in the child environment; do not mutate the parent process.

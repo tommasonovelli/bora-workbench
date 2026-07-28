@@ -154,12 +154,23 @@ Jinja, flash attention, mmap, a single slot, MTP, and CORS on `localhost`; it en
 and vision explicitly. CUDA uses `-ngl 99`, the plan's `n_cpu_moe`, and a `q8_0` K/V cache; CPU
 receives no CUDA arguments. The weights remain `UD-Q4_K_M`: Q8 concerns the KV cache.
 
-The default model is read from the snapshot of the pinned revision and verified by name, size, and
-digest. Name and size are checked on every resolution; the digest is recomputed unless a receipt
-under the cache root still matches the path, size, modification time, and expected value, and
-writing that receipt is best-effort, so an unwritable cache costs time rather than the launch.
-`--hf-repo` is not used, so the launcher resolves no remote branches and never writes to the Hugging
-Face cache.
+The lock also carries `model_alias_contract`, the name `/v1/models` reports. It sits outside
+`command_contract` deliberately: `command_contract_sha256` binds every calibration record to those
+exact bytes, and renaming the model changes no measured behavior, so the digest — and every
+existing record — stays valid.
+
+The default model is looked for in the managed store at `data_dir()/models` and then, read-only, in
+the snapshot of the pinned revision. Both are verified by name, size, and digest. Name and size are
+checked on every resolution; the digest is recomputed unless a receipt under the cache root still
+matches the path, size, modification time, and expected value, and writing that receipt is
+best-effort, so an unwritable cache costs time rather than the launch.
+
+`pull` writes only into the store, using the same verified transfer as the engine assets: HTTPS to
+the pinned revision, a `.part` file, a mandatory digest, and an atomic rename. `--hf-repo` is not
+used and nothing is ever written into the Hugging Face cache, so the launcher resolves no remote
+branches and fabricates no snapshots or refs. Deleting from that cache is possible only through
+`rm` and `uninstall`, confined to the pinned artifacts of the locked repository and gated by a
+confirmation of its own.
 
 ### Managed installation
 
@@ -218,8 +229,9 @@ The main invariants:
 - no `shell=True`, `eval`, `exec`, `sudo`, or automatic elevation;
 - no bind on `0.0.0.0`;
 - TLS and checksums cannot be disabled;
-- deletions limited to the managed roots;
-- the Hugging Face cache is never modified or deleted;
+- deletions limited to the managed roots, plus the pinned artifacts of the locked repository in the
+  Hugging Face cache, which need their own separate confirmation;
+- nothing is ever written into the Hugging Face cache;
 - config and records are never uploaded;
 - unrelated processes are protected by full identity checks;
 - tests use no real network, GPU, model, or server.

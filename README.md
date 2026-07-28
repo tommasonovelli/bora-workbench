@@ -1,7 +1,7 @@
 # bora-workbench
 
 [![CI](https://github.com/tommasonovelli/bora-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/tommasonovelli/bora-workbench/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/tommasonovelli/bora-workbench.svg)](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.2.4)
+[![Release](https://img.shields.io/github/v/release/tommasonovelli/bora-workbench.svg)](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.3.0)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-31213/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -18,8 +18,9 @@ engine for the hardware it detects, resolves and checks the model, and manages t
 lifecycle: start, health check, status, logs, and an identity-safe stop. Services listen on
 `127.0.0.1` only.
 
-You provide the weights. Everything else — engine build, flags, checksums, ports, and process
-lifetime — is already decided, pinned, and verified.
+`bora engine install` acquires both halves of the setup: the engine, and the pinned weights it was
+verified against. Everything else — flags, checksums, ports, and process lifetime — is already
+decided, pinned, and verified.
 
 ## Why it exists
 
@@ -38,7 +39,8 @@ landscape to suggest what you should run, and it does not stop at making memory 
 three defined ways to use one combination that is known to work, and then offers to tune that
 combination for your machine.
 
-It is not a generic model manager and it runs no plugins.
+It acquires and releases that one pinned model, and nothing else: it is not a generic model
+manager, not a registry, and it runs no plugins.
 
 ## Start here
 
@@ -46,21 +48,20 @@ If this is your first time opening the project, the simplest path is:
 
 1. check the [requirements](#requirements);
 2. [install the release](#installation);
-3. make the [pinned model](#model) available;
-4. run `engine install`;
-5. start `coding`, `studio`, or `vstudio`;
-6. once that works, [calibrate the machine](#calibration-is-the-second-step-not-the-entry-price);
-7. use the [full documentation](docs/README.md) when you want configuration and details.
+3. run `bora engine install`, which installs the engine and downloads the [model](#model);
+4. start `coding`, `studio`, or `vstudio`;
+5. once that works, [calibrate the machine](#calibration-is-the-second-step-not-the-entry-price);
+6. use the [full documentation](docs/README.md) when you want configuration and details.
 
 ## Project status
 
 > [!WARNING]
-> The `0.2` series is **not stable** and is intended for evaluation, exactly like `0.1` before it.
+> The `0.3` series is **not stable** and is intended for evaluation, exactly like `0.1` and `0.2`.
 > The CLI, configuration, record formats, procedures, and performance carry no stability guarantee.
 > Do not use it for critical workloads without independent verification and backups of your local
 > data.
 
-Version **`0.2.4`** is distributed exclusively through GitHub Releases. Its distribution is
+Version **`0.3.0`** is distributed exclusively through GitHub Releases. Its distribution is
 `bora-workbench` and its command is `bora`. An installation of the previous `qwen-launcher` series
 is replaced rather than upgraded: its configuration, data, cache, and state directories are not
 read by `bora`.
@@ -75,15 +76,15 @@ supported, and a record written by the previous launcher is diagnosed as superse
 - CPU, or a single NVIDIA CUDA GPU;
 - at least **28 GiB total RAM** and **22 GiB available** for the default model;
 - room for the GGUF (22,663,387,424 bytes), the mmproj (902,822,528 bytes), the engine, and logs;
-- the model already present in the pinned Hugging Face cache;
-- HTTPS connectivity to install the tool and the engine, unless the artifacts are already available.
+- HTTPS connectivity to install the tool, the engine, and the model, unless they are already
+  available locally.
 
 CUDA on multi-GPU hosts is blocked because isolation has only been verified on single-GPU hosts.
 If `nvidia-smi` is unavailable or unreliable, the launcher falls back to CPU and prints a warning.
 
 ## Installation
 
-Install the exact `v0.2.4` wheel from the GitHub Release. The commands below download the release
+Install the exact `v0.3.0` wheel from the GitHub Release. The commands below download the release
 manifest, verify the installer and wheel against it, and install the tool with pinned uv `0.11.28`
 and CPython `3.12.13`. You do not need to install uv or Python first, and no administrator
 privileges are used.
@@ -93,7 +94,7 @@ privileges are used.
 Open a terminal in a new directory, copy the entire block, and press Enter:
 
 ```bash
-version="0.2.4"
+version="0.3.0"
 base="https://github.com/tommasonovelli/bora-workbench/releases/download/v${version}"
 wheel="bora_workbench-${version}-py3-none-any.whl"
 
@@ -117,7 +118,7 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 Open PowerShell in a new directory, copy the entire block, and press Enter:
 
 ```powershell
-$Version = "0.2.4"
+$Version = "0.3.0"
 $Base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v$Version"
 $Wheel = "bora_workbench-$Version-py3-none-any.whl"
 
@@ -177,32 +178,43 @@ and calibration records are untouched.
 
 ## Model
 
-The weights are not bundled and the launcher does not download them. For the default model it reads
-the Hugging Face snapshot of revision `5bc3e238d916f48a861bac2f8a1990a0e9b7e98d` read-only and
-verifies the name, size, and SHA-256 of:
+The weights are not bundled. `bora engine install` downloads them, and `bora pull` does it on its
+own:
 
-```text
-Qwen3.6-35B-A3B-UD-Q4_K_M.gguf
-mmproj-BF16.gguf
+```bash
+bora pull            # download and verify the pinned artifacts
+bora rm              # delete them and free the disk
+bora rm --dry-run    # list what would be deleted, and delete nothing
 ```
 
-The name and size are checked every time. The SHA-256 is recomputed only when a file is new or has
-changed: after a successful verification the launcher keeps a small receipt under its cache root and
-reuses it while the path, size, modification time, and expected digest all still match. The first
-run therefore reads about 21 GiB and shows its progress; later runs start immediately. Clearing the
-cache, updating the model, or changing `engine.lock` re-verifies in full.
+Both artifacts come from revision `5bc3e238d916f48a861bac2f8a1990a0e9b7e98d`, over HTTPS, and are
+accepted only if their name, size, and SHA-256 match `engine.lock`:
 
-The mmproj is only needed by `vstudio`. Acquire the files separately from the
-[pinned repository revision](https://huggingface.co/unsloth/Qwen3.6-35B-A3B-MTP-GGUF/tree/5bc3e238d916f48a861bac2f8a1990a0e9b7e98d)
-with a tool of your choice. The Hugging Face cache is never modified, and `uninstall` never removes
-it.
+```text
+Qwen3.6-35B-A3B-UD-Q4_K_M.gguf   21.1 GiB
+mmproj-BF16.gguf                  0.8 GiB, only needed by vstudio
+```
+
+They land in the managed store under the data root. A copy already sitting in the Hugging Face
+cache — from an earlier version of this tool, or from any other tool — is still used and is never
+downloaded twice: the store is only searched first. Nothing is ever written into that cache.
+
+The name and size are checked every launch. The SHA-256 is recomputed only when a file is new or
+has changed, because a receipt kept under the cache root records the last successful verification;
+`pull` writes that receipt itself, so the first launch after a download starts immediately.
+
+`rm` deletes the store copies after one confirmation, then asks a **second, separate** question
+about copies in the Hugging Face cache, because that cache is shared with everything else on the
+machine. `uninstall` behaves the same way. Cache deletion never reaches outside the pinned snapshot
+of the locked repository, and `--keep-hf` skips it entirely.
 
 ## First run
 
-Install the engine that matches the detected hardware:
+One command installs the engine for the detected hardware and downloads the model:
 
 ```bash
-bora engine install
+bora engine install          # engine + weights
+bora engine install --no-model   # engine only
 bora engine status
 ```
 
@@ -222,6 +234,24 @@ Control it from another terminal:
 ```bash
 bora status
 bora stop
+```
+
+### Use it from a coding agent
+
+With `bora coding` running, the API is a plain OpenAI-compatible endpoint at
+`http://127.0.0.1:<llama_port>/v1`, and it reports the model as **Qwen 3.6**. For the
+[pi](https://pi.dev/) terminal agent there is one command that wires it up:
+
+```bash
+bora pi            # write a provider named "bora" into pi's models.json
+bora pi --print    # print that entry instead, and change nothing
+bora pi --install  # install pi with npm first, when it is missing
+```
+
+It shows the entry, asks once, keeps a backup, and leaves every other provider alone. Afterwards:
+
+```bash
+pi --provider bora --model "Qwen 3.6"
 ```
 
 The full command surface, options, and exit codes are in [Commands](docs/commands.md).
@@ -291,7 +321,8 @@ variables, and the record layout.
 - stop based on `pid + create_time`, not on the PID alone;
 - `CUDA_VISIBLE_DEVICES` set in the child environment only;
 - config, records, and logs are never uploaded automatically;
-- the Hugging Face cache is never modified or deleted.
+- nothing is ever written into the Hugging Face cache, and deleting from it needs its own explicit
+  confirmation and never reaches outside the pinned snapshot of the locked repository.
 
 ## Documentation
 

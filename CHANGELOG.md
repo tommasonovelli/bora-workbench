@@ -3,6 +3,52 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
+## [0.3.0] - 2026-07-27
+
+### Added
+
+- `bora pull` downloads the pinned model (D-078). The artifacts named by `engine.lock` are fetched
+  over HTTPS from the pinned revision — so a moved branch or a re-uploaded file cannot change what
+  arrives — into a managed store at `<data root>/models`, and are accepted only when name, size, and
+  SHA-256 all match. On a terminal each artifact shows transferred bytes against the total, the
+  measured rate, and a computed ETA. Bytes go through a partial file and are published by atomic
+  rename, so an interrupted download never leaves something that looks complete, and rerunning
+  resumes at file granularity. A completed download also writes the D-076 receipt, so the first
+  launch afterwards does not rehash about 21 GiB.
+- `bora engine install` performs that same acquisition once the engine is active, unless
+  `--no-model` declines it. A first setup is now one command instead of three.
+- `bora rm` deletes the pinned model and reports the space freed (D-079). It asks up to two
+  questions, both defaulting to no: the copies in the managed store, and then — separately — the
+  copies in the shared Hugging Face cache. `--keep-hf` skips the second entirely and `--dry-run`
+  lists every file and byte count without asking or deleting anything.
+- `bora pi` connects the [pi](https://pi.dev/) coding agent to the local service (D-081). It writes
+  one provider named `bora` into pi's own `models.json`: the loopback base URL from the configured
+  port, a placeholder key the managed server ignores, and the model id `Qwen 3.6`, with the context
+  window taken from this machine's local record when one applies. The entry is shown first, the
+  confirmation defaults to no, the previous file is kept as `models.json.bak`, the replacement is
+  atomic, and every other provider is preserved. `--print` writes nothing; `--install` delegates to
+  `npm install -g --ignore-scripts` after showing the command, and pins no digest for pi.
+
+### Changed
+
+- Model resolution prefers the managed store and falls back, read-only, to the pinned Hugging Face
+  snapshot (D-078). Weights acquired before this version, or by any other tool, keep launching from
+  where they already are and are never downloaded twice.
+- The API reports the model as `Qwen 3.6` (D-080). The pinned `b10011` `--help` lists `--alias`, so
+  the flag joins `verified_flags` and the name is declared in a new top-level
+  `model_alias_contract`. It is deliberately outside `command_contract`: `command_contract_sha256`
+  binds every calibration record to those exact bytes, and a name that changes no measured behavior
+  must not supersede a single record. **The digest is unchanged and existing records stay valid.**
+- `uninstall` takes the model store with the data root it already owns, and then asks separately
+  about weights that survive in the Hugging Face cache. That question defaults to no, and neither
+  refusing it nor failing it turns a completed uninstall into an error.
+- Deleting from the Hugging Face cache is now possible, confined by construction (D-079): only a
+  file directly inside the pinned `snapshots/<revision>/` of the locked repository, following a
+  symlinked entry no further than that repository's own `blobs/`, keeping a blob another snapshot
+  still references, refusing a symlinked cache directory, and pruning only already-empty
+  directories. Repositories belonging to other tools are never examined. **Writing into that cache
+  stays forbidden.**
+
 ## [0.2.4] - 2026-07-27
 
 ### Changed

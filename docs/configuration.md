@@ -51,14 +51,18 @@ No keys other than these five are accepted; endpoints, bind addresses, mmproj, a
 `model` is a declarative identity used by locks, records, and state. `model_path` is the physical
 file passed to the engine. The valid combinations are:
 
-- default model + no `model_path`: resolution of the pinned Hugging Face snapshot;
+- default model + no `model_path`: resolution from the managed store, then the pinned Hugging Face
+  snapshot;
 - different model + explicit `model_path`: a local GGUF, with no inherited calibration or
   guarantees.
 
 The default model with an explicit `model_path` is rejected, so the bytes cannot be silently
 replaced while the verified identity is kept. A different model without a path is rejected.
 
-For the default model the cache lookup follows the order observed in the engine release:
+For the default model the managed store at `<data root>/models` is searched first. It is the only
+location `pull` writes and `rm` deletes. When it holds no file with the locked name, the pinned
+Hugging Face snapshot is used instead, read-only, and its cache lookup follows the order observed in
+the engine release:
 
 1. `LLAMA_CACHE`;
 2. `HF_HUB_CACHE`;
@@ -69,7 +73,8 @@ For the default model the cache lookup follows the order observed in the engine 
 
 The launcher reads only
 `models--<repository>/snapshots/<pinned-revision>/<filename>` and verifies the size and SHA-256. It
-does not follow moving branches and does not modify the cache.
+does not follow moving branches and never writes into that cache. `rm` and `uninstall` can delete
+those exact artifacts from it, each behind its own confirmation.
 
 ## Engine resolution
 
@@ -130,9 +135,10 @@ previous managed ones are removed. Records are private and are not wheel content
 
 ## What `uninstall` deletes
 
-After confirmation, exactly the four roots above are deleted. Excluded are:
+After confirmation, exactly the four roots above are deleted, including the model store inside the
+data root. Excluded are:
 
-- the Hugging Face cache;
+- the Hugging Face cache, whose pinned artifacts are offered afterwards as a separate question;
 - external GGUF and mmproj files;
 - executables pointed at by `engine_path` or found on the `PATH`;
 - uv, its caches, and other tools;
