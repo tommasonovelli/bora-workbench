@@ -60,7 +60,7 @@ def package_version() -> str:
     try:
         return version("bora-workbench")
     except PackageNotFoundError:
-        return "0.3.1"
+        return "0.3.2"
 
 
 def _version_callback(value: bool) -> None:

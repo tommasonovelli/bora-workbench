@@ -200,12 +200,13 @@ ever written into that cache.
 bora pi
 bora pi --print
 bora pi --install
+bora pi remove
+bora pi uninstall
 ```
 
 Writes one provider named `bora` into pi's own model store, `~/.pi/agent/models.json`: the loopback
 base URL built from the configured port, a placeholder API key that the managed server ignores, and
-the model id `Qwen 3.6` — the same name `/v1/models` reports. The context window comes from this
-machine's local calibration record when one applies, and from the verified baseline otherwise.
+the model id `Qwen 3.6` — the same name `/v1/models` reports.
 
 The entry is shown before anything is written, the confirmation defaults to no, the previous file
 is kept as `models.json.bak`, and the replacement is atomic. Every other provider in that file is
@@ -222,6 +223,37 @@ Afterwards, with `bora coding` running:
 ```bash
 pi --provider bora --model "Qwen 3.6"
 ```
+
+### Which context window pi is given
+
+The first line of output says how large the window is and where the number came from:
+
+| Source | When it answers |
+|---|---|
+| `running <mode> service on port <port>` | a managed service is already listening on the configured port |
+| `local coding calibration record` | no service is running and this machine has an active `coding` record |
+| `verified non-optimized baseline` | neither applies; the reason is printed as a warning below the line |
+
+A running service comes first because it is the only thing that knows what it is actually serving.
+Record reuse also weighs the free VRAM that this very service is holding, so asking the record
+during a session would report the 8192-token baseline for a machine serving far more.
+
+The number is a copy: nothing rewrites `models.json` when a record is activated later. That is why
+a calibration run that activates a `coding` record ends by naming this command, and why it suggests
+`bora pi --install` when pi is not installed.
+
+### Taking the connection back
+
+`bora pi remove` deletes only the provider named `bora`, after showing it and asking. Every other
+provider stays, the backup is written as usual, and pi does not have to be installed — an entry
+written earlier outlives the package.
+
+`bora pi uninstall` removes pi itself. It shows `npm uninstall -g @earendil-works/pi-coding-agent`,
+asks, runs it, and then checks PATH again: an installation made another way — the vendor's Windows
+script, for instance — is not npm's to remove, and is reported as still present rather than
+described as removed. Afterwards it asks separately about the provider entry, because the package
+belongs to npm and the entry belongs to a file that belongs to pi. Answering yes to one is not
+answering yes to the other.
 
 ## Run modes
 
@@ -348,6 +380,11 @@ On an interactive terminal the run shows a live bar with the phase, the trial, t
 an estimate learned from the current phase; redirected output stays line-oriented, one line per
 completed trial. Every phase total is a cap (`<=N`), not a schedule or a promise. The final summary
 prints the one measured cell per completed mode and reports its observed RAM and VRAM minima.
+
+When a run activates a `coding` record it also names the context window that record now carries and
+the command that hands it to the pi agent — `bora pi`, or `bora pi --install` when pi is not
+installed. Nothing else has to be done: the launcher already reads the new record itself. With
+`--no-activate` there is no such line, because a candidate steers no launch.
 
 Calibration uploads nothing, does not modify `config.toml`, and installs neither the model nor the
 engine. Trials use the configured port when it is free and fall back to a system-assigned loopback

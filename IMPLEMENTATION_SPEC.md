@@ -7,7 +7,7 @@ preserve and the activities not implemented yet. The behavior available today is
 
 ## 0. Actual status and tracker
 
-Updated on 26 July 2026.
+Updated on 28 July 2026.
 
 ### Completed baseline
 
@@ -83,6 +83,12 @@ Updated on 26 July 2026.
   context, and the model's SHA-256 is receipt-cached behind unconditional filename and size checks.
   The selected cell, the recorded evidence, and the final gate are unchanged. `0.2.4` distributes
   them (D-077), which also carries `TUI.md` as a non-normative design proposal.
+- [x] `0.3.2` makes the pi handoff report what this machine actually serves and makes both of its
+  writes reversible (D-082). The context window comes from a service already listening on the
+  configured port, else the active `coding` record, else the verified baseline, and the command
+  names which of the three it used; an activated `coding` calibration ends by naming the command
+  that applies the new window; `bora pi remove` and `bora pi uninstall` undo the entry and the
+  package as two separate consents.
 
 ### Open work
 
@@ -101,6 +107,10 @@ Updated on 26 July 2026.
   confined cache deletion, and the pi writer are covered by offline tests on both platforms; the
   actual 22 GB transfer, and the three symlink tests that a plain Windows account cannot run, are
   not.
+- [~] `bora pi` was exercised on Windows on 28 July 2026 against an isolated home and an isolated
+  state root: the window came from a registered `coding` service, from the baseline with its
+  diagnostic when no record existed, and `pi remove` deleted only the `bora` provider while keeping
+  the backup. The npm removal itself was never run, on either platform.
 - [ ] Router, managed Open WebUI, sync, and standalone benchmark remain post-0.2 backlog.
 
 No local candidate is activated and no post-0.2 backlog item is started without an explicit
@@ -143,6 +153,11 @@ API alias, and the pi handoff (D-078 to D-081). It changes no engine release, no
 protocol, no record format, and no `command_contract_sha256`, so every existing
 `calibration-record/v6` stays valid. It adds no second model: the catalog is still exactly what
 `engine.lock` pins, and supporting another one remains a future decision with its own evidence.
+
+`0.3.2` finishes that handoff (D-082): the window pi is given is the one this machine actually
+serves and says where it came from, a calibration that activates a `coding` record names the command
+that applies it, and both writes into pi's world can be taken back. It changes no engine, model,
+calibration, or record behavior either.
 
 
 `0.2.0` is the repository/package refactor from `qwen-launcher` to `bora-workbench`, including the
@@ -256,6 +271,7 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-079 | On 27 July 2026 the maintainer decides that removal must actually free the disk. `bora rm` deletes the pinned artifacts from the managed store, and then asks a second, separate question about the copies that live in the shared Hugging Face cache; `uninstall` takes the store with the data root it already owns and asks that same separate question afterwards. Consenting to the first never implies consenting to the second, both default to no, and `--keep-hf` and `--dry-run` exist for the cases where neither is wanted. Cache deletion is confined by construction rather than by care: only a file directly inside the pinned `snapshots/<revision>/` of a locked repository, only as far as that repository's own `blobs/` when the entry is a symlink, only once no other snapshot of that repository still references the blob, never through a symlinked cache directory, and directories are pruned with `rmdir`, which cannot remove a directory that still holds something. Writing into that cache stays forbidden: fabricating snapshots or refs is what would corrupt the tools that share it. `0.3.1` extends the last rule: when a removal takes the repository's last snapshot, the repository directory goes with it, `refs` included, because refs naming a revision whose files no longer exist is a stub rather than content; a surviving snapshot or blob stops the prune, and another tool's repository is still never examined. |
 | D-080 | On 27 July 2026 the maintainer decides that the API reports the model as `Qwen 3.6` rather than as its artifact identity. The pinned `b10011` `--help` lists `--alias`, so the flag joins `verified_flags`, and the alias is declared in a new top-level `model_alias_contract`. It is deliberately outside `command_contract`: `command_contract_sha256` binds every published and local `calibration-record/v6` to those exact bytes, and a name that changes what `/v1/models` reports while changing no measured behavior must not supersede a single record. The digest is therefore unchanged and existing records stay valid. |
 | D-081 | On 27 July 2026 the maintainer decides that the launcher can connect the pi coding agent to a running service. pi is bring-your-own-key and speaks the OpenAI completions API, so `bora pi` writes one provider named `bora` into pi's own `models.json`: the loopback base URL from the configured port, a placeholder key the managed server ignores, and the D-080 alias as the model id, with the context window taken from the same local record the launcher would use rather than invented. The write shows the entry, asks once, keeps a backup, and replaces the file atomically; `--print` never writes at all. `--install` delegates to `npm install -g --ignore-scripts`, which is the vendor's own instruction: this project pins no digest for pi, says so, and does not install it implicitly. No other agent, editor, or provider is supported by this decision. |
+| D-082 | On 28 July 2026 the maintainer decides that the pi handoff must report the context window this machine actually serves, and that both of its writes must be reversible. The window is resolved in one order and the command always names which source answered: a managed service already listening on the configured port reports the window it was launched with; otherwise the active `coding` record supplies its calibrated context; otherwise the verified baseline does, together with the diagnostics that explain why the record was not used. The live service comes first because record reuse also weighs free memory that this very service is holding, so consulting the record during a session would report `ctx=8192` for a machine serving far more. A calibration run that activates a `coding` record ends by naming the command that applies the new window — nothing rewrites a number stored in somebody else's configuration file — and offers `bora pi --install` when pi is absent; `--no-activate` prints no such hand-off, because a candidate steers no launch. `bora pi remove` deletes only the `bora` provider from `models.json`, whether or not pi is still installed, and keeps every other provider and the backup; `bora pi uninstall` hands the package back to `npm uninstall -g` after showing the command, reports an executable still on PATH instead of claiming a removal npm did not make, and then asks separately about the entry. Neither consent implies the other, and an installation made by the vendor's own script is not npm's to remove. No other agent, editor, or provider is added, and the engine, model, calibration, and record behavior are unchanged. |
 
 A new durable decision updates this table in the same step that authorizes it.
 

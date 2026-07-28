@@ -5,8 +5,8 @@ requires explicit human authorization for the push, tag, and GitHub Release.
 
 ## Public status
 
-- release described by this branch: `bora-workbench 0.3.1`;
-- preceding public version: `bora-workbench 0.3.0` on GitHub Releases;
+- release described by this branch: `bora-workbench 0.3.2`;
+- preceding public version: `bora-workbench 0.3.1` on GitHub Releases;
 - historical versions `0.1.0` through `0.1.6` remain immutable under their original
   `qwen-launcher` artifact identity;
 - every published bundle comes from its green Ubuntu/Windows release workflow and contains the
@@ -56,6 +56,28 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.3.2
+
+`0.3.2` finishes the pi handoff, after using it on a real machine (D-082).
+
+The connection reported `ctx=8192` whatever the machine was serving. The window came from the local
+`coding` record, and reusing that record also weighs the free memory a running service is holding,
+so connecting during a session — the only moment the connection is useful — always fell back to the
+baseline. The window is now taken from the service that is actually listening on the configured
+port, then from the active record, then from the baseline, and the command names which of the three
+answered and prints the reason when it is the last one. A calibration that activates a `coding`
+record also names the command that applies its new window, because the entry is a copy that nothing
+rewrites on its own.
+
+Both writes into pi's world can now be taken back: `bora pi remove` for the provider entry,
+`bora pi uninstall` for the package, as two consents that do not imply each other.
+
+Release checks for this version: the npm removal itself was never executed on either platform, and
+`bora pi` was exercised on Windows only, against an isolated home and state root. Neither is a
+passed Gate. The engine, model, command contract, `command_contract_sha256`, record format,
+reserves, and the packaged policy and schemas are unchanged, so every existing
+`calibration-record/v6` stays valid and no local candidate is activated.
 
 ### Release 0.3.1
 

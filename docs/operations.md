@@ -26,7 +26,7 @@ Expected errors show no traceback. In general:
 
 ### The installer asks for a source
 
-That is intentional: there is no implicit default. For `0.3.1`, use the wheel from the GitHub
+That is intentional: there is no implicit default. For `0.3.2`, use the wheel from the GitHub
 Release and its manifest digest as described in [Installation](installation.md). A full commit hash
 is also accepted for testing an exact repository revision.
 
@@ -364,6 +364,22 @@ bora calibrate --mode <mode> --activate
 Check `doctor` first. Activation atomically replaces the active record and keeps a single
 `previous`.
 
+### pi shows a smaller context than the record
+
+`bora pi` prints where the window came from before it writes anything:
+
+```text
+Context window: 65536 tokens, from the running coding service on port 8080
+Context window: 8192 tokens, from the verified non-optimized baseline
+```
+
+A baseline line is followed by a warning that names the reason — no record, a superseded one, a
+changed identity, or too little free memory right now. Re-run `bora pi` after calibrating: the entry
+in `models.json` is a copy, and nothing rewrites it when a new record is activated.
+
+A number that is right in the launcher but wrong in pi is almost always an entry written before the
+record existed. `bora pi` overwrites it, showing the old and the new entry first.
+
 ### Every probe fails
 
 Read the summary and the private evidence of the last run. Common causes are insufficient RAM/VRAM,
@@ -391,6 +407,14 @@ supported `uv tool` installation, the same confirmation also removes the command
 current process exits. If the summary
 reports that the Python installation is not managed by uv, use the manager it was installed with:
 the launcher neither guesses nor modifies external environments.
+
+The provider entry that `bora pi` writes lives in pi's own `~/.pi/agent/models.json`, which is not a
+managed root, so an uninstall leaves it in place. Remove it before or after, as its own step:
+
+```bash
+bora pi remove       # the entry only
+bora pi uninstall    # pi itself, then the entry as a separate question
+```
 
 ## Reporting a problem
 

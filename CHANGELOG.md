@@ -3,6 +3,31 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
+## [0.3.2] - 2026-07-28
+
+### Added
+
+- `bora pi remove` deletes the provider entry that `bora pi` writes, leaving pi installed and every
+  other provider in `models.json` untouched (D-082). It works with pi absent too: an entry written
+  earlier outlives the package, and that is exactly when removing it has to remain possible.
+- `bora pi uninstall` removes pi itself. It shows `npm uninstall -g @earendil-works/pi-coding-agent`,
+  asks, runs it, and then looks at PATH again — an installation made another way, such as the
+  vendor's Windows script, is reported as still present instead of being described as removed.
+  Afterwards it asks separately about the provider entry, because the package belongs to npm and
+  the entry belongs to a file that belongs to pi.
+
+### Changed
+
+- `bora pi` hands over the context window this machine actually serves, and says where the number
+  came from (D-082): a managed service already listening on the configured port, otherwise the
+  active `coding` calibration record, otherwise the verified baseline with the diagnostic that
+  explains it. Connecting while a service was running always wrote `8192`, because reuse of the
+  record re-checks free memory that this very service is holding.
+- A calibration run that activates a `coding` record ends by naming the window that record now
+  carries and the command that hands it to pi — `bora pi`, or `bora pi --install` when pi is not
+  installed. The entry is a copy: nothing rewrites it when a new record is activated. `--no-activate`
+  prints no such line, because a candidate steers no launch.
+
 ## [0.3.1] - 2026-07-28
 
 ### Changed

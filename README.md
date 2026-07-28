@@ -1,7 +1,7 @@
 # bora-workbench
 
 [![CI](https://github.com/tommasonovelli/bora-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/tommasonovelli/bora-workbench/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/tommasonovelli/bora-workbench.svg)](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.3.1)
+[![Release](https://img.shields.io/github/v/release/tommasonovelli/bora-workbench.svg)](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.3.2)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-31213/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -61,7 +61,7 @@ If this is your first time opening the project, the simplest path is:
 > Do not use it for critical workloads without independent verification and backups of your local
 > data.
 
-Version **`0.3.1`** is distributed exclusively through GitHub Releases. Its distribution is
+Version **`0.3.2`** is distributed exclusively through GitHub Releases. Its distribution is
 `bora-workbench` and its command is `bora`. An installation of the previous `qwen-launcher` series
 is replaced rather than upgraded: its configuration, data, cache, and state directories are not
 read by `bora`.
@@ -84,7 +84,7 @@ If `nvidia-smi` is unavailable or unreliable, the launcher falls back to CPU and
 
 ## Installation
 
-Install the exact `v0.3.1` wheel from the GitHub Release. The commands below download the release
+Install the exact `v0.3.2` wheel from the GitHub Release. The commands below download the release
 manifest, verify the installer and wheel against it, and install the tool with pinned uv `0.11.28`
 and CPython `3.12.13`. You do not need to install uv or Python first, and no administrator
 privileges are used.
@@ -94,7 +94,7 @@ privileges are used.
 Open a terminal in a new directory, copy the entire block, and press Enter:
 
 ```bash
-version="0.3.1"
+version="0.3.2"
 base="https://github.com/tommasonovelli/bora-workbench/releases/download/v${version}"
 wheel="bora_workbench-${version}-py3-none-any.whl"
 
@@ -118,7 +118,7 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 Open PowerShell in a new directory, copy the entire block, and press Enter:
 
 ```powershell
-$Version = "0.3.1"
+$Version = "0.3.2"
 $Base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v$Version"
 $Wheel = "bora_workbench-$Version-py3-none-any.whl"
 
@@ -246,6 +246,8 @@ With `bora coding` running, the API is a plain OpenAI-compatible endpoint at
 bora pi            # write a provider named "bora" into pi's models.json
 bora pi --print    # print that entry instead, and change nothing
 bora pi --install  # install pi with npm first, when it is missing
+bora pi remove     # delete that provider entry again
+bora pi uninstall  # remove pi itself, then ask about the entry separately
 ```
 
 It shows the entry, asks once, keeps a backup, and leaves every other provider alone. Afterwards:
@@ -253,6 +255,11 @@ It shows the entry, asks once, keeps a backup, and leaves every other provider a
 ```bash
 pi --provider bora --model "Qwen 3.6"
 ```
+
+The context window it hands over is the one this machine actually serves — a running service is
+asked first, then the active `coding` calibration record, then the verified baseline — and the
+command says which of the three answered. Run it again after calibrating: the entry is a copy, and
+nothing rewrites it on its own.
 
 The full command surface, options, and exit codes are in [Commands](docs/commands.md).
 
