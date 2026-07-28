@@ -71,22 +71,78 @@ with `bora --version` in a new shell.
 '...\.local\bin\bora.exe' was blocked by your organization's Device Guard policy.
 ```
 
-This is Windows, not the tool. Smart App Control — `VerifiedAndReputablePolicyState` is `1` under
-`HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy` — blocks unsigned executables that have no
-reputation yet, and every install or update writes a **new** launcher shim. The Python environment
-itself is installed correctly and unaffected; only the small `.exe` that starts it is refused. The
-shim inside the tool environment is refused for the same reason.
+**This is Windows refusing the launcher shim, not a problem with the tool.** The Python environment
+is installed correctly, the managed engine runs, and every command works — through a longer form.
 
-Confirm the installation and keep working with:
+#### Confirming the diagnosis
 
 ```powershell
-& "$env:APPDATA\uv\tools\bora-workbench\Scripts\python.exe" -m bora_workbench.cli --version
+# 1. Is Smart App Control enforced? 1 = yes, 2 = evaluation, 0 = off
+Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy" |
+  Select-Object VerifiedAndReputablePolicyState
+
+# 2. What exactly was refused, and when?
+Get-WinEvent -LogName "Microsoft-Windows-CodeIntegrity/Operational" |
+  Where-Object { $_.Message -match "bora" } |
+  Select-Object TimeCreated, Id, Message -First 5
 ```
 
-Every command works through that form. To restore the short `bora` command, the machine's Smart App
-Control setting has to accept the shim; that is a Windows security decision, and this project does
-not change it. Note that turning Smart App Control off in Windows Security is not reversible without
-reinstalling Windows, so decide deliberately rather than as a workaround.
+Events `3033` and `3077` name the refused file. The message says *"did not meet the Enterprise
+signing level requirements"*, which reads like a corporate policy but is the wording Smart App
+Control uses on a personal machine too.
+
+#### Why it happens
+
+Smart App Control admits an executable by **either** a signature with established reputation **or**
+the reputation of the file's own hash in Microsoft's cloud. Neither applies here:
+
+- the shim is unsigned — `Get-AuthenticodeSignature` reports `NotSigned`;
+- its hash is effectively unique. uv builds the shim by appending the target interpreter path to a
+  trampoline, so the bytes describe *this* installation. A file almost nobody else has cannot
+  accumulate reputation.
+
+Two comparisons on the same machine make the mechanism visible. `uv.exe` is **also** unsigned and
+has never been refused: it takes the reputation path, being a widely distributed binary with a
+stable public hash. `llama-server.exe`, likewise unsigned, runs fine for the same reason — the
+managed engine is not affected by this.
+
+The signature has nothing to do with the version. Authenticode is applied at build time or not at
+all; it does not expire when a newer release appears, and installing a different version of this
+tool will not change the verdict.
+
+#### Why it may start after working for weeks
+
+The verdict is per hash and is decided by Microsoft, so it can differ between two files that this
+project builds identically. On the machine where this was diagnosed, the shim ran normally for days,
+was rewritten by an ordinary reinstall, and the first refusal was logged **seven seconds later**;
+no local policy changed that day — the newest `.cip` under
+`C:\Windows\System32\CodeIntegrity\CiPolicies\Active` was two weeks old. The predecessor
+`qwen-launcher.exe` had been refused the same way on two earlier dates.
+
+Note that the log records refusals only. An absence of events for a period is evidence the file was
+**not** being blocked then, not evidence it never ran.
+
+#### What to do
+
+Use the module entry point. It is the same program, and nothing is missing from it:
+
+```powershell
+& "$env:APPDATA\uv\tools\bora-workbench\Scripts\python.exe" -m bora_workbench.cli doctor
+```
+
+Define a shorthand for the session if you use it often:
+
+```powershell
+function bora { & "$env:APPDATA\uv\tools\bora-workbench\Scripts\python.exe" -m bora_workbench.cli @args }
+```
+
+A PowerShell function is not a file, so Smart App Control has nothing to judge. Put it in your
+profile to keep it. A `bora.cmd` beside the shim would **not** work: `.EXE` precedes `.CMD` in
+`PATHEXT`, so the refused file still wins.
+
+Turning Smart App Control off does restore the short command, but it is **not reversible without
+reinstalling Windows**. That is a deliberate security decision about the whole machine, not a
+workaround for one tool, and this project neither changes nor recommends it.
 
 ### PowerShell blocks the script
 
@@ -124,10 +180,33 @@ Run `bora pull`. Resolution looks in the managed store at `<data root>/models` f
 the pinned snapshot of the selected Hugging Face cache, so this means neither holds a file with the
 exact locked name. `vstudio` also requires `mmproj-BF16.gguf`.
 
+### `pull` says the model is already present, but the disk did not fill up
+
+It found a complete, verified copy and did not fetch it again. Run `bora rm --dry-run` to see where
+it is: a copy already in the Hugging Face cache — from an earlier version of this tool, or from
+another tool entirely — is used where it lies and is never duplicated into the store.
+
+### The same 21.9 GiB appears twice
+
+That is what a `pull` on a machine that already had the weights in its cache produces: the store
+copy is downloaded, the cache copy stays where it was, and both are valid. `bora rm --dry-run`
+lists them as two groups.
+
+To keep the store copy and free the other, run `bora rm` and answer **no** to the first question and
+**yes** to the second. There is no `--keep-store` flag because the two questions already are the
+choice. `--keep-hf` does the opposite: it empties the store and never mentions the cache.
+
+### `rm` reported freed space but the disk did not change
+
+The copy it deleted was not the only one. `rm` reports each group separately, and each figure is
+what *that* group frees; declining the second question leaves the second figure on the disk. Run
+`bora rm --dry-run` to see both groups before deciding.
+
 ### Wrong size or digest
 
 The file is incomplete or different from the pinned one. Do not rename it to bypass the check and do
-not modify `engine.lock`. Restore the correct bytes from the source you chose.
+not modify `engine.lock`. Restore the correct bytes with `bora pull`, which replaces a file whose
+digest does not match.
 
 ### A custom model is rejected
 

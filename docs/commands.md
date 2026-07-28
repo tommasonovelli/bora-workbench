@@ -138,24 +138,61 @@ bora rm --keep-hf
 bora rm --dry-run
 ```
 
-Deletes everything `pull` installed — both artifacts, their verification receipts, and the store
-directory once it is empty — and reports the space freed. The model name is optional on the same
-terms as `pull`. Nothing this tool did not write is touched without the second question below. It asks up to two questions, and both
-default to no:
+Deletes the pinned model and reports the space freed. The model name is optional on the same terms
+as `pull`.
 
-1. the copies in the managed store, which belong to this tool;
-2. the copies in the Hugging Face cache, which is **shared with every other tool on the machine**.
+### Why there are two questions
 
-Answering yes to the first never implies the second. `--keep-hf` skips the second question
-entirely, and `--dry-run` lists every file and byte count without asking or deleting anything.
+The weights can exist in two places, and the two are not equally yours to delete:
 
-Cache deletion cannot leave the pinned snapshot of the locked repository: it removes only the
-artifacts `engine.lock` names, follows a symlinked entry no further than that repository's own
-`blobs/`, keeps a blob another snapshot still references, refuses a symlinked cache directory, and
-prunes only already-empty directories. When the last snapshot goes, the cached repository goes with
-it, `refs` included: what those refs name is a revision whose files no longer exist. A repository
-that still holds another revision keeps everything, and repositories belonging to other tools are
-never examined. Nothing is ever written into that cache.
+| Location | Who put it there | What `rm` does |
+|---|---|---|
+| `<data root>/models` — the managed store | this tool, through `pull` | first question |
+| the Hugging Face cache | you, or any other tool on this machine | second question, asked separately |
+
+The store is this tool's own directory: deleting from it is symmetric with `pull`, and takes back
+exactly what `pull` wrote — the artifact, its verification receipt, and the directory itself once it
+is empty. Nothing is left claiming to exist.
+
+The cache is different. It is shared: other projects keep their models beside ours, a snapshot entry
+may be a symlink into a content-addressed blob a second revision still needs, and — the point — a
+copy there may be one this tool never downloaded. Deleting it is still the right default *offer*,
+because otherwise a `rm` that reports 21.9 GiB freed can leave 21.9 GiB on the disk. But consenting
+to the first question must never be read as consenting to the second, so it is asked on its own,
+after the first, and it defaults to no.
+
+### The flags
+
+`--keep-hf` **skips the second question entirely.** Use it when the cache copy is not yours to
+remove, or is shared with a project you still use, or you simply want the store emptied without
+being asked about anything else. It is also the flag for scripts: with it, `rm` can touch nothing
+outside the directory this tool owns.
+
+`--dry-run` **asks nothing and deletes nothing.** It prints both groups, every file path, and the
+bytes each would free. Run it first when you are unsure which of the two locations actually holds
+the weights — the answer is often "both", and that is exactly the case where the difference between
+the two questions matters.
+
+The two flags compose: `bora rm --keep-hf --dry-run` shows only what the store would lose.
+
+### Answering only the second question
+
+There is no `--keep-store`, and none is needed: answer **no** to the first question and **yes** to
+the second. That is the ordinary case right after a `pull` on a machine that already had the model
+in its cache, where the store copy is the one to keep and the cache copy is the duplicate.
+
+### What cache deletion may and may not touch
+
+It cannot leave the pinned snapshot of the locked repository. It removes only the artifacts
+`engine.lock` names, follows a symlinked entry no further than that repository's own `blobs/`, keeps
+a blob another snapshot still references, refuses a symlinked cache directory instead of following
+it, and prunes only directories that are already empty. When the last snapshot goes, the cached
+repository goes with it, `refs` included: what those refs name is a revision whose files no longer
+exist. A repository that still holds another revision keeps everything.
+
+Repositories belonging to other tools are never examined — not skipped after a check, but never
+looked at, because the only path the command can build is the one `engine.lock` pins. Nothing is
+ever written into that cache.
 
 ## `pi`
 
