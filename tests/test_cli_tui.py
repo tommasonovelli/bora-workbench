@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+import bora_workbench.cli as cli_module
 import bora_workbench.tui.app as tui_app
 import bora_workbench.tui.terminal as terminal_module
 from bora_workbench._calibration_reuse import RecordEvaluation
@@ -30,6 +31,7 @@ from bora_workbench.snapshot import (
     WorkbenchCollectionError,
     WorkbenchSnapshot,
 )
+from bora_workbench.tui.actions import TuiResult, compose_doctor
 from bora_workbench.tui.screens.calibration import CalibrationView
 from bora_workbench.tui.screens.installation import InstallationView
 from bora_workbench.tui.screens.modes import ModesView
@@ -160,12 +162,91 @@ def test_cli_plain_mode_reaches_tui_after_capability_check(monkeypatch) -> None:
     selected = TerminalMode(True, True, "requested with --plain")
     calls = []
     monkeypatch.setattr(terminal_module, "inspect_terminal", lambda plain: selected)
-    monkeypatch.setattr(tui_app, "run_tui", lambda version, mode: calls.append((version, mode)))
+
+    def run(version, mode, comparison):
+        """Record lazy launch inputs and then model a user quitting immediately."""
+        calls.append((version, mode, comparison))
+        return TuiResult(None, None)
+
+    monkeypatch.setattr(tui_app, "run_tui", run)
 
     result = runner.invoke(app, ["tui", "--plain"])
 
     assert result.exit_code == 0
-    assert calls == [("0.3.2", selected)]
+    assert calls == [("0.3.2", selected, None)]
+
+
+def test_returning_action_dispatches_after_teardown_then_reopens(monkeypatch) -> None:
+    """Run one safe command in process and pass its before-snapshot to a fresh UI lifetime."""
+    selected = TerminalMode(True, False)
+    snapshot = _snapshot()
+    results = iter((TuiResult(compose_doctor(), snapshot), TuiResult(None, _snapshot())))
+    events = []
+
+    def run(version, mode, comparison):
+        """Model complete terminal teardown before returning one selection."""
+        events.append(("tui-stopped", comparison))
+        return next(results)
+
+    def dispatch(arguments):
+        """Assert dispatch observes a stopped UI and return CLI success."""
+        assert events[-1][0] == "tui-stopped"
+        events.append(("dispatch", arguments))
+        return 0
+
+    monkeypatch.setattr(terminal_module, "inspect_terminal", lambda plain: selected)
+    monkeypatch.setattr(tui_app, "run_tui", run)
+    monkeypatch.setattr(cli_module, "_dispatch_tui_arguments", dispatch)
+    monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: pytest.fail("subprocess used"))
+
+    result = runner.invoke(app, ["tui"])
+
+    assert result.exit_code == 0
+    assert "Selected command: bora doctor" in result.stdout
+    assert events == [
+        ("tui-stopped", None),
+        ("dispatch", ("doctor",)),
+        ("tui-stopped", snapshot),
+    ]
+
+
+@pytest.mark.parametrize("exit_code", (1, 2, 130))
+def test_returning_action_propagates_failure_without_reopening(monkeypatch, exit_code) -> None:
+    """Exit with the exact real callback result instead of swallowing a failed handoff."""
+    selected = TerminalMode(True, False)
+    calls = []
+
+    def run(version, mode, comparison):
+        """Return one command and fail if the CLI tries to open another UI lifetime."""
+        calls.append(comparison)
+        return TuiResult(compose_doctor(), _snapshot())
+
+    monkeypatch.setattr(terminal_module, "inspect_terminal", lambda plain: selected)
+    monkeypatch.setattr(tui_app, "run_tui", run)
+    monkeypatch.setattr(cli_module, "_dispatch_tui_arguments", lambda arguments: exit_code)
+
+    result = runner.invoke(app, ["tui"])
+
+    assert result.exit_code == exit_code
+    assert calls == [None]
+
+
+def test_same_process_dispatch_invokes_real_typer_leaf_and_maps_interrupt(monkeypatch) -> None:
+    """Use the existing root parser directly and retain its successful and interrupted results."""
+    calls = []
+    monkeypatch.setattr(
+        cli_module, "run_doctor", lambda version, stdout, stderr: calls.append(version)
+    )
+
+    assert cli_module._dispatch_tui_arguments(("doctor",)) == 0
+    assert calls == ["0.3.2"]
+
+    def interrupt(version, stdout, stderr):
+        """Raise the interruption the Typer root maps to contractual exit 130."""
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli_module, "run_doctor", interrupt)
+    assert cli_module._dispatch_tui_arguments(("doctor",)) == 130
 
 
 @pytest.mark.parametrize(
@@ -242,8 +323,6 @@ def test_repeated_refreshes_never_overlap_collectors() -> None:
             assert "Version: 0.test" in _overview_text(workbench)
             assert "Suggested command: bora engine install" in _overview_text(workbench)
             assert state["maximum"] == 1 and state["calls"] == 2
-            await pilot.press("enter")
-            assert workbench.is_running is True and state["calls"] == 2
             await pilot.press("q")
 
     try:

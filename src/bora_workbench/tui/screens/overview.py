@@ -7,7 +7,10 @@ from textual.containers import Vertical
 from textual.widgets import Static
 
 from bora_workbench.snapshot import SnapshotFailure, WorkbenchSnapshot, record_display_label
+from bora_workbench.tui.actions import CommandSpec, overview_commands
 from bora_workbench.tui.advice import Suggestion, next_step
+
+_ACTIONS = overview_commands()
 
 
 def _engine_label(snapshot: WorkbenchSnapshot) -> str:
@@ -110,6 +113,16 @@ def render_snapshot(snapshot: WorkbenchSnapshot) -> str:
     return "\n".join(sections)
 
 
+def render_action_menu(selected_index: int) -> str:
+    """Show exact returning commands with a text marker on the Enter selection."""
+    lines = ["Returning diagnostics (Tab selects; Enter runs after the TUI closes)"]
+    lines.extend(
+        f"{'>' if index == selected_index else ' '} {command.display}"
+        for index, command in enumerate(_ACTIONS)
+    )
+    return "\n".join(lines)
+
+
 def render_failure(failure: SnapshotFailure | None, unexpected_detail: str | None) -> str:
     """Render failed collection truth and deterministic remediation when one is known."""
     if failure is not None:
@@ -131,20 +144,37 @@ class OverviewView(Vertical):
     def __init__(self) -> None:
         """Create the fixed content region without collecting any machine facts."""
         super().__init__(id="content")
+        self._action_index = 0
 
     def compose(self) -> ComposeResult:
-        """Yield the static Overview title, status line, and detail pane."""
+        """Yield title, status, exact returning actions, comparison, and detail text."""
         yield Static("Overview", id="view-title", markup=False)
         yield Static("Waiting to inspect this machine...", id="snapshot-status", markup=False)
+        yield Static(render_action_menu(self._action_index), id="overview-actions", markup=False)
+        yield Static("", id="changes", markup=False)
         yield Static("Local facts will appear here.", id="overview", markup=False)
 
     def update_status(self, text: str) -> None:
         """Replace the bounded collector-state line with literal text."""
         self.query_one("#snapshot-status", Static).update(text)
 
+    def move_action(self, offset: int) -> None:
+        """Move the text-marked action selection without running a callback."""
+        self._action_index = (self._action_index + offset) % len(_ACTIONS)
+        self.query_one("#overview-actions", Static).update(render_action_menu(self._action_index))
+
+    def selected_action(self) -> CommandSpec:
+        """Return the command already visible beside the current text marker."""
+        return _ACTIONS[self._action_index]
+
     def show_snapshot(self, snapshot: WorkbenchSnapshot) -> None:
         """Replace the detail pane with current immutable facts and advice."""
         self.query_one("#overview", Static).update(render_snapshot(snapshot))
+
+    def show_changes(self, changes: tuple[str, ...]) -> None:
+        """Show concise recollected differences after one returning command."""
+        content = "Since the returning command\n" + "\n".join(f"- {item}" for item in changes)
+        self.query_one("#changes", Static).update(content)
 
     def show_failure(self, failure: SnapshotFailure | None, detail: str | None) -> None:
         """Replace stale detail with the current failed-attempt diagnosis."""

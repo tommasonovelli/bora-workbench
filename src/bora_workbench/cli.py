@@ -6,6 +6,7 @@ from importlib.metadata import PackageNotFoundError, version
 from typing import Annotated
 
 import typer
+from typer.main import get_command
 
 from bora_workbench._cli_calibration import CalibrationCliInput, run_calibrate
 from bora_workbench._cli_diagnostics import (
@@ -62,6 +63,16 @@ def package_version() -> str:
         return "0.3.2"
 
 
+def _dispatch_tui_arguments(arguments: tuple[str, ...]) -> int:
+    """Invoke one recursively parsed CLI leaf in this process after Textual has stopped."""
+    command = get_command(app)
+    try:
+        result = command.main(args=list(arguments), prog_name="bora", standalone_mode=False)
+    except typer.Abort:
+        return 130
+    return 0 if result is None else int(result)
+
+
 def _version_callback(value: bool) -> None:
     """Print the version and exit before any command runs."""
     if value:
@@ -112,7 +123,16 @@ def tui(
     # Textual stays outside non-TTY and ordinary CLI startup paths by design (D-086).
     from bora_workbench.tui.app import run_tui
 
-    run_tui(package_version(), terminal_mode)
+    comparison_snapshot = None
+    while True:
+        result = run_tui(package_version(), terminal_mode, comparison_snapshot)
+        if result.command is None:
+            return
+        typer.echo(f"Selected command: {result.command.display}")
+        exit_code = _dispatch_tui_arguments(result.command.cli_arguments)
+        if exit_code != 0 or result.command.disposition == "terminal":
+            raise typer.Exit(exit_code)
+        comparison_snapshot = result.snapshot
 
 
 @engine_app.command("install")

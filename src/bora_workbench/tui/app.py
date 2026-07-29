@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, Protocol, runtime_checkable
 
 from textual import work
 from textual.app import App, ComposeResult
@@ -19,6 +19,7 @@ from bora_workbench.snapshot import (
     WorkbenchSnapshot,
     collect_workbench_snapshot,
 )
+from bora_workbench.tui.actions import CommandSpec, TuiResult, snapshot_changes
 from bora_workbench.tui.palette import stylesheet
 from bora_workbench.tui.screens.calibration import CalibrationView
 from bora_workbench.tui.screens.installation import InstallationView
@@ -51,6 +52,37 @@ _VIEW_TYPES: tuple[type[ReadOnlyView], ...] = (
 _VIEW_LABELS = ("Overview", "Modes", "Calibration", "Setup", "Pi", "Settings", "This installation")
 
 
+@runtime_checkable
+class ActionView(Protocol):
+    """Describe the narrow selection surface shared by actionable read-only views."""
+
+    def move_action(self, offset: int) -> None:
+        """Move the visible command marker without dispatching."""
+        ...
+
+    def selected_action(self) -> CommandSpec:
+        """Return the exact command already marked in the view."""
+        ...
+
+
+@runtime_checkable
+class ReviewingActionView(Protocol):
+    """Allow a wizard view to consume Enter for review before returning a command."""
+
+    def review_action(self) -> CommandSpec | None:
+        """Advance review or return the command after final review."""
+        ...
+
+
+@runtime_checkable
+class BoundKeyInputView(Protocol):
+    """Let a focused confirmation consume a printable key otherwise bound by the app."""
+
+    def accept_bound_key(self, key: str) -> bool:
+        """Insert one bound key and report whether refresh should be suppressed."""
+        ...
+
+
 @dataclass(frozen=True, slots=True)
 class _CollectionResult:
     """Carry either collected truth or an explicit presentation-safe failure."""
@@ -79,7 +111,7 @@ def _collect(collector: SnapshotCollector, version: str) -> _CollectionResult:
         return _CollectionResult(None, unexpected_detail=str(error) or type(error).__name__)
 
 
-class WorkbenchApp(App[None]):
+class WorkbenchApp(App[TuiResult]):
     """Present seven read-only views while serializing one snapshot worker."""
 
     CSS = (
@@ -98,6 +130,9 @@ class WorkbenchApp(App[None]):
         Binding("up,k,left", "previous_view", "Previous", priority=True),
         Binding("down,j,right", "next_view", "Next", priority=True),
         Binding("question_mark", "toggle_help", "Help", priority=True),
+        Binding("tab", "next_action", "Next action", priority=True, show=False),
+        Binding("shift+tab", "previous_action", "Previous action", priority=True, show=False),
+        Binding("enter", "select_action", "Select", priority=True, show=False),
         Binding("pageup", "scroll_detail_up", "Scroll up", priority=True, show=False),
         Binding("pagedown", "scroll_detail_down", "Scroll down", priority=True, show=False),
         Binding("q", "exit_workbench", "Quit", priority=True),
@@ -119,6 +154,8 @@ class WorkbenchApp(App[None]):
         self._selected_index = 0
         self._is_help_visible = False
         self._status_text = "Waiting to inspect this machine."
+        self._latest_snapshot: WorkbenchSnapshot | None = None
+        self._comparison_snapshot: WorkbenchSnapshot | None = None
 
     def compose(self) -> ComposeResult:
         """Paint complete static chrome and all read-only views before collection starts."""
@@ -168,9 +205,12 @@ class WorkbenchApp(App[None]):
     def _keybar_text(self) -> str:
         """Render compact or expanded key help beside the current collection state."""
         if self._is_help_visible:
-            keys = "Arrows/j/k Navigate | PgUp/PgDn Scroll | r Refresh | q/Esc Quit | ? Close help"
+            keys = (
+                "Arrows/j/k Navigate | Tab Action | Enter Select | r Refresh | "
+                "q/Esc Quit | ? Close help"
+            )
         else:
-            keys = "Arrows/j/k Navigate | r Refresh | ? Help | q Quit"
+            keys = "Arrows/j/k Navigate | Tab Action | Enter Select | r Refresh | ? Help | q Quit"
         return f"{keys}\n{self._status_text}"
 
     def _show_selected_view(self) -> None:
@@ -185,6 +225,10 @@ class WorkbenchApp(App[None]):
         self._status_text = text
         self.query_one(OverviewView).update_status(text)
         self.query_one("#keybar", Static).update(self._keybar_text())
+
+    def set_comparison_snapshot(self, snapshot: WorkbenchSnapshot | None) -> None:
+        """Provide one pre-command snapshot for the next successful collection to compare."""
+        self._comparison_snapshot = snapshot
 
     def _request_snapshot(self) -> None:
         """Start one worker or coalesce repeated refresh requests behind the active one."""
@@ -207,15 +251,22 @@ class WorkbenchApp(App[None]):
         self._is_collecting = False
         overview = self.query_one(OverviewView)
         if event.result.snapshot is None:
+            self._latest_snapshot = None
             self._set_status("Inspection failed; details are current for this attempt.")
             overview.show_failure(event.result.failure, event.result.unexpected_detail)
             content = render_failure(event.result.failure, event.result.unexpected_detail)
             for view in self._views()[1:]:
                 view.query_one(".section-body", Static).update(content)
         else:
+            self._latest_snapshot = event.result.snapshot
             self._set_status("Local snapshot ready.")
             for view in self._views():
                 view.show_snapshot(event.result.snapshot)
+            if self._comparison_snapshot is not None:
+                overview.show_changes(
+                    snapshot_changes(self._comparison_snapshot, event.result.snapshot)
+                )
+                self._comparison_snapshot = None
         if self._is_refresh_pending:
             self._is_refresh_pending = False
             self.call_after_refresh(self._request_snapshot)
@@ -238,6 +289,38 @@ class WorkbenchApp(App[None]):
         self._is_help_visible = not self._is_help_visible
         self.query_one("#keybar", Static).update(self._keybar_text())
 
+    def _action_view(self) -> ActionView | None:
+        """Return the selected view only when it exposes exact visible command selection."""
+        view = self._views()[self._selected_index]
+        return view if isinstance(view, ActionView) else None
+
+    def action_next_action(self) -> None:
+        """Move the selected screen's command marker forward without dispatching."""
+        if view := self._action_view():
+            view.move_action(1)
+
+    def action_previous_action(self) -> None:
+        """Move the selected screen's command marker backward without dispatching."""
+        if view := self._action_view():
+            view.move_action(-1)
+
+    def action_select_action(self) -> None:
+        """Stop Textual with a visible action only after a complete current snapshot."""
+        view = self._action_view()
+        if view is None:
+            self._set_status("This read-only screen has no selectable action yet.")
+            return
+        if self._is_collecting or self._latest_snapshot is None:
+            self._set_status("Wait for a successful local snapshot before selecting an action.")
+            return
+        command = (
+            view.review_action()
+            if isinstance(view, ReviewingActionView)
+            else view.selected_action()
+        )
+        if command is not None:
+            self.exit(TuiResult(command, self._latest_snapshot))
+
     def action_scroll_detail_up(self) -> None:
         """Scroll a long selected view by one page in small terminals."""
         self.query_one("#views", VerticalScroll).scroll_page_up(animate=False)
@@ -247,18 +330,24 @@ class WorkbenchApp(App[None]):
         self.query_one("#views", VerticalScroll).scroll_page_down(animate=False)
 
     def action_refresh_snapshot(self) -> None:
-        """Request a read-only refresh without allowing overlapping collectors."""
+        """Request refresh unless the selected confirmation is consuming the r key."""
+        view = self._views()[self._selected_index]
+        if isinstance(view, BoundKeyInputView) and view.accept_bound_key("r"):
+            return
         self._request_snapshot()
 
     def action_exit_workbench(self) -> None:
-        """Leave the presentation loop without waiting for another key sequence."""
-        self.exit()
+        """Leave the presentation loop without selecting a command."""
+        self.exit(TuiResult(None, self._latest_snapshot))
 
 
 def run_tui(
     version: str,
     terminal_mode: TerminalMode,
-    collector: SnapshotCollector = collect_workbench_snapshot,
-) -> None:
-    """Run the interactive presentation after the CLI has completed capability checks."""
-    WorkbenchApp(version, terminal_mode, collector).run()
+    comparison_snapshot: WorkbenchSnapshot | None = None,
+) -> TuiResult:
+    """Run one UI lifetime and return only after Textual has restored the terminal."""
+    application = WorkbenchApp(version, terminal_mode, collect_workbench_snapshot)
+    application.set_comparison_snapshot(comparison_snapshot)
+    result = application.run()
+    return result or TuiResult(None, None)
