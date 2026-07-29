@@ -203,7 +203,10 @@ def test_repeated_refreshes_never_overlap_collectors() -> None:
             releases[1].set()
             await pilot.pause(0.1)
             assert "Version: 0.test" in _overview_text(workbench)
+            assert "Suggested command: bora engine install" in _overview_text(workbench)
             assert state["maximum"] == 1 and state["calls"] == 2
+            await pilot.press("enter")
+            assert workbench.is_running is True and state["calls"] == 2
             await pilot.press("q")
 
     try:
