@@ -22,6 +22,12 @@ The TOML file is validated **in full before** the environment overrides are appl
 or a malformed value therefore stays an error even when a variable would replace it. The launcher
 never creates or rewrites `config.toml` automatically.
 
+The read-only TUI retains the winning source beside each resolved value: `environment`,
+`config.toml`, or `default`. This is provenance for presentation, not another configuration layer;
+all existing commands consume the same resolved `Config`, and collecting provenance writes nothing.
+An empty optional path variable is still reported as `environment`, because that explicit override
+is what cleared the file value.
+
 ## Public keys
 
 | Key | Environment variable | Default | Constraint |

@@ -1,10 +1,11 @@
 """Tests for strict TOML parsing, environment overrides, and configuration precedence."""
 
+from dataclasses import astuple, fields
 from pathlib import Path
 
 import pytest
 
-from bora_workbench.config import DEFAULT_MODEL, ConfigError, load_config
+from bora_workbench.config import DEFAULT_MODEL, ConfigError, load_config, load_config_details
 
 
 def write_config(tmp_path: Path, content: str) -> Path:
@@ -23,6 +24,44 @@ def test_absent_file_uses_defaults(tmp_path):
     assert config.llama_port == 8080
     assert config.engine_path is None
     assert config.open_browser is True
+
+
+def test_config_details_report_default_sources(tmp_path) -> None:
+    """Name defaults without creating the absent configuration file."""
+    path = tmp_path / "missing.toml"
+
+    resolution = load_config_details(path, environ={})
+
+    assert resolution.config == load_config(path, environ={})
+    assert resolution.path == path
+    assert {field.name for field in fields(resolution.sources)} == {
+        "model",
+        "model_path",
+        "llama_port",
+        "engine_path",
+        "open_browser",
+    }
+    assert set(astuple(resolution.sources)) == {"default"}
+
+
+def test_config_details_report_file_and_environment_sources(tmp_path) -> None:
+    """Preserve the winning source for every field, including an empty path override."""
+    path = write_config(
+        tmp_path,
+        'model = "file/model"\nmodel_path = "~/file.gguf"\nllama_port = 9000\n',
+    )
+
+    resolution = load_config_details(
+        path,
+        environ={"BORA_MODEL_PATH": "", "BORA_OPEN_BROWSER": "false"},
+    )
+
+    assert resolution.config.model_path is None
+    assert resolution.sources.model == "config.toml"
+    assert resolution.sources.model_path == "environment"
+    assert resolution.sources.llama_port == "config.toml"
+    assert resolution.sources.engine_path == "default"
+    assert resolution.sources.open_browser == "environment"
 
 
 def test_environment_overrides_valid_file(tmp_path):

@@ -13,7 +13,7 @@ import tomllib
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from bora_workbench.paths import config_dir
 
@@ -46,6 +46,29 @@ class Config:
     llama_port: int = DEFAULT_LLAMA_PORT
     engine_path: Path | None = None
     open_browser: bool = DEFAULT_OPEN_BROWSER
+
+
+ConfigSource = Literal["environment", "config.toml", "default"]
+
+
+@dataclass(frozen=True, slots=True)
+class ConfigSources:
+    """Name the precedence layer that supplied each resolved setting (D-084)."""
+
+    model: ConfigSource
+    model_path: ConfigSource
+    llama_port: ConfigSource
+    engine_path: ConfigSource
+    open_browser: ConfigSource
+
+
+@dataclass(frozen=True, slots=True)
+class ConfigResolution:
+    """Pair resolved configuration with its read-only path and provenance."""
+
+    config: Config
+    path: Path
+    sources: ConfigSources
 
 
 def _validate_model(value: Any, *, source: str) -> str:
@@ -173,6 +196,42 @@ def _read_toml(path: Path) -> dict[str, Any]:
     return _validate_file_values(parsed, source=str(path))
 
 
+def _config_source(
+    key: str, file_values: Mapping[str, Any], overrides: Mapping[str, Any]
+) -> ConfigSource:
+    """Return the highest-precedence layer that supplied one field."""
+    if key in overrides:
+        return "environment"
+    if key in file_values:
+        return "config.toml"
+    return "default"
+
+
+def _config_sources(file_values: Mapping[str, Any], overrides: Mapping[str, Any]) -> ConfigSources:
+    """Build explicit per-field provenance for one resolved configuration."""
+    return ConfigSources(
+        model=_config_source("model", file_values, overrides),
+        model_path=_config_source("model_path", file_values, overrides),
+        llama_port=_config_source("llama_port", file_values, overrides),
+        engine_path=_config_source("engine_path", file_values, overrides),
+        open_browser=_config_source("open_browser", file_values, overrides),
+    )
+
+
+def load_config_details(
+    path: Path | None = None,
+    *,
+    environ: Mapping[str, str] | None = None,
+) -> ConfigResolution:
+    """Resolve validated configuration together with its path and precedence sources."""
+    config_path = config_dir() / "config.toml" if path is None else path
+    environment = os.environ if environ is None else environ
+    file_values = _read_toml(config_path)
+    overrides = _environment_overrides(environment)
+    values = {**file_values, **overrides}
+    return ConfigResolution(Config(**values), config_path, _config_sources(file_values, overrides))
+
+
 def load_config(
     path: Path | None = None,
     *,
@@ -184,11 +243,4 @@ def load_config(
     reported even when an environment variable would have replaced the offending key: the error must
     stay reproducible once that variable is gone.
     """
-    config_path = config_dir() / "config.toml" if path is None else path
-    environment = os.environ if environ is None else environ
-
-    # Each layer overwrites the previous one, so the update order is the precedence rule itself;
-    # a key neither layer supplies keeps the code default declared on `Config`.
-    values = _read_toml(config_path)
-    values.update(_environment_overrides(environment))
-    return Config(**values)
+    return load_config_details(path, environ=environ).config
