@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -26,6 +27,14 @@ def place(directory, name: str, data: bytes):
     target = directory / name
     target.write_bytes(data)
     return target
+
+
+def tree_bytes(root: Path) -> dict[str, bytes | None]:
+    """Capture one test tree so inspection cannot hide a write."""
+    return {
+        path.relative_to(root).as_posix(): path.read_bytes() if path.is_file() else None
+        for path in sorted(root.rglob("*"))
+    }
 
 
 def test_store_copy_is_preferred_over_the_pinned_snapshot(locations) -> None:  # noqa: F811
@@ -109,6 +118,94 @@ def test_locate_copies_separates_the_store_from_the_shared_cache(locations) -> N
 
     assert [copy.is_shared_cache for copy in copies] == [False, True, True]
     assert sum(copy.size_bytes for copy in copies) == 2 * len(WEIGHTS) + len(PROJECTOR)
+
+
+def test_model_inspection_reports_each_location_without_hashing_or_writing(
+    locations,  # noqa: F811
+    monkeypatch,
+) -> None:
+    """Distinguish receipts, wrong sizes, unverified copies, and absence by metadata only."""
+    lock = tiny_lock()
+    weights, _ = models.model_artifacts(lock)
+    stored = place(locations.store, "model.gguf", WEIGHTS)
+    place(locations.store, "mmproj.gguf", b"short")
+    place(locations.snapshot, "model.gguf", WEIGHTS)
+    identity = models._identity(stored, weights)
+    assert identity is not None
+    model_verification.remember(identity)
+    before = tree_bytes(locations.store.parent)
+    monkeypatch.setattr(engine, "_sha256", lambda *args: (_ for _ in ()).throw(AssertionError()))
+    monkeypatch.setattr(
+        models, "download_file", lambda *args: (_ for _ in ()).throw(AssertionError())
+    )
+    monkeypatch.setattr(models, "remember", lambda *args: (_ for _ in ()).throw(AssertionError()))
+
+    inspection = models.inspect_model(Config(model="owner/model:file"), lock)
+
+    assert [item.status for item in inspection.artifacts] == [
+        "receipt-verified",
+        "present-unverified",
+        "wrong-size",
+        "absent",
+    ]
+    assert [item.location for item in inspection.artifacts] == [
+        "managed-store",
+        "hugging-face-cache",
+        "managed-store",
+        "hugging-face-cache",
+    ]
+    assert inspection.is_verified is False
+    assert tree_bytes(locations.store.parent) == before
+
+
+def test_malformed_receipt_means_present_unverified(locations) -> None:  # noqa: F811
+    """Treat a foreign receipt as no evidence and preserve its malformed bytes."""
+    lock = tiny_lock()
+    place(locations.store, "model.gguf", WEIGHTS)
+    receipt = model_verification.receipt_path()
+    receipt.parent.mkdir(parents=True)
+    receipt.write_bytes(b"{broken")
+    before = tree_bytes(locations.store.parent)
+
+    inspection = models.inspect_model(Config(model="owner/model:file"), lock)
+
+    weights = inspection.artifacts[0]
+    assert weights.status == "present-unverified"
+    assert tree_bytes(locations.store.parent) == before
+
+
+def test_custom_model_inspection_never_applies_the_managed_contract(tmp_path) -> None:
+    """Report a user-managed path without a receipt claim or a pull recommendation state."""
+    custom = place(tmp_path, "custom.gguf", b"custom")
+
+    present = models.inspect_model(
+        Config(model="custom/model:file", model_path=custom), tiny_lock()
+    )
+    missing = models.inspect_model(
+        Config(model="custom/model:file", model_path=tmp_path / "missing.gguf"), tiny_lock()
+    )
+    incomplete = models.inspect_model(Config(model="custom/model:file"), tiny_lock())
+
+    assert present.is_managed is False and present.artifacts[0].status == "present-unverified"
+    assert present.artifacts[0].expected_size_bytes is None
+    assert missing.artifacts[0].status == "absent"
+    assert incomplete.artifacts == () and "model_path" in incomplete.diagnostics[0]
+
+
+def test_model_inspection_is_verified_when_each_artifact_has_one_receipt(locations) -> None:  # noqa: F811
+    """Accept mixed store/cache locations only when both locked artifacts have receipts."""
+    lock = tiny_lock()
+    weights, projector = models.model_artifacts(lock)
+    stored = place(locations.store, "model.gguf", WEIGHTS)
+    cached = place(locations.snapshot, "mmproj.gguf", PROJECTOR)
+    for path, artifact in ((stored, weights), (cached, projector)):
+        identity = models._identity(path, artifact)
+        assert identity is not None
+        model_verification.remember(identity)
+
+    inspection = models.inspect_model(Config(model="owner/model:file"), lock)
+
+    assert inspection.is_verified is True
 
 
 def test_cache_removal_refuses_a_path_outside_the_pinned_snapshot(locations) -> None:  # noqa: F811

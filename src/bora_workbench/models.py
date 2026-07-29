@@ -18,11 +18,12 @@ from __future__ import annotations
 from contextlib import suppress
 from dataclasses import dataclass
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 from bora_workbench._engine_assets import RemoteFile, TransferProgressCallback, download_file
 from bora_workbench._model_removal import remove_cache_file
 from bora_workbench._model_verification import ArtifactIdentity, forget, is_verified, remember
+from bora_workbench.config import Config
 from bora_workbench.engine import EngineError, JsonObject, hf_snapshot_dir
 from bora_workbench.paths import models_dir
 
@@ -53,6 +54,41 @@ class StoredArtifact:
     path: Path
     size_bytes: int
     is_shared_cache: bool
+
+
+ArtifactStatus = Literal["absent", "wrong-size", "receipt-verified", "present-unverified"]
+ArtifactLocation = Literal["managed-store", "hugging-face-cache", "user-managed"]
+
+
+@dataclass(frozen=True, slots=True)
+class ArtifactInspection:
+    """Describe what a read-only check knows about one artifact at one location."""
+
+    label: str
+    path: Path
+    location: ArtifactLocation
+    status: ArtifactStatus
+    size_bytes: int | None
+    expected_size_bytes: int | None
+
+
+@dataclass(frozen=True, slots=True)
+class ModelInspection:
+    """Collect receipt-aware model facts without hashing or writing (D-084)."""
+
+    model: str
+    is_managed: bool
+    artifacts: tuple[ArtifactInspection, ...]
+    diagnostics: tuple[str, ...] = ()
+
+    @property
+    def is_verified(self) -> bool:
+        """Report whether every locked artifact has a receipt-verified copy."""
+        if not self.is_managed:
+            return False
+        expected = {item.label for item in self.artifacts}
+        verified = {item.label for item in self.artifacts if item.status == "receipt-verified"}
+        return bool(expected) and expected == verified
 
 
 def display_name(lock: JsonObject) -> str:
@@ -168,6 +204,65 @@ def locate_copies(lock: JsonObject) -> tuple[StoredArtifact, ...]:
         if snapshot is not None:
             found.append(_copy_at(artifact, snapshot, True))
     return tuple(copy for copy in found if copy is not None)
+
+
+def _inspect_artifact(
+    artifact: ModelArtifact, path: Path, location: ArtifactLocation
+) -> ArtifactInspection:
+    """Inspect one locked path by metadata and receipt, never by payload digest."""
+    try:
+        status = path.stat()
+    except (FileNotFoundError, NotADirectoryError):
+        return ArtifactInspection(
+            artifact.label, path, location, "absent", None, artifact.size_bytes
+        )
+    except OSError as error:
+        raise EngineError(f"cannot inspect model artifact {path}: {error}") from error
+    if status.st_size != artifact.size_bytes:
+        state: ArtifactStatus = "wrong-size"
+    else:
+        identity = ArtifactIdentity(
+            path.absolute(), status.st_size, status.st_mtime_ns, artifact.remote.sha256
+        )
+        state = "receipt-verified" if is_verified(identity) else "present-unverified"
+    return ArtifactInspection(
+        artifact.label, path, location, state, status.st_size, artifact.size_bytes
+    )
+
+
+def _inspect_custom(config: Config) -> ModelInspection:
+    """Describe one user-managed path without applying the locked default-model contract."""
+    if config.model_path is None:
+        diagnostic = "custom model requires an explicit model_path"
+        return ModelInspection(config.model, False, (), (diagnostic,))
+    path = config.model_path
+    try:
+        size = path.stat().st_size
+        status: ArtifactStatus = "present-unverified"
+    except (FileNotFoundError, NotADirectoryError):
+        size, status = None, "absent"
+    except OSError as error:
+        raise EngineError(f"cannot inspect custom model {path}: {error}") from error
+    artifact = ArtifactInspection("custom model", path, "user-managed", status, size, None)
+    return ModelInspection(config.model, False, (artifact,))
+
+
+def inspect_model(config: Config, lock: JsonObject) -> ModelInspection:
+    """Inspect default copies or one custom path without downloads, hashes, or writes."""
+    default_model = cast(str, lock["default_model"])
+    if config.model_path is not None or config.model != default_model:
+        return _inspect_custom(config)
+    store = models_dir()
+    snapshot = _snapshot_dir(lock)
+    inspected: list[ArtifactInspection] = []
+    for artifact in model_artifacts(lock):
+        inspected.append(
+            _inspect_artifact(artifact, store / artifact.remote.filename, "managed-store")
+        )
+        if snapshot is not None:
+            path = snapshot / artifact.remote.filename
+            inspected.append(_inspect_artifact(artifact, path, "hugging-face-cache"))
+    return ModelInspection(config.model, True, tuple(inspected))
 
 
 def remove_copy(copy: StoredArtifact, root: Path | None) -> None:
