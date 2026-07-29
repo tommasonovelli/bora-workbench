@@ -51,6 +51,23 @@ def _configuration(config: Config | None = None) -> ConfigResolution:
     return ConfigResolution(config or Config(), Path("config.toml"), sources)
 
 
+@pytest.mark.parametrize(
+    ("status", "label"),
+    (
+        ("valid", "active"),
+        ("missing", "absent"),
+        ("candidate", "candidate"),
+        ("superseded", "superseded"),
+        ("invalid", "invalid"),
+        ("incompatible", "incompatible"),
+        ("insufficient-headroom", "insufficient headroom"),
+    ),
+)
+def test_record_display_labels_are_canonical(status, label) -> None:
+    """Keep CLI and TUI vocabulary tied to every real core status."""
+    assert snapshot_module.record_display_label(status) == label
+
+
 _COLLECTOR_FUNCTIONS = (
     ("configuration", "load_config_details", "config"),
     ("hardware", "detect_hardware", "hardware"),

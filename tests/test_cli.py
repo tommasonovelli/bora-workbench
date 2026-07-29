@@ -119,7 +119,7 @@ def test_doctor_is_read_only_and_reports_hardware(tmp_path, monkeypatch) -> None
     assert "bora-workbench diagnostics" in result.stdout
     assert "Test CPU" in result.stdout
     assert "32.00 GiB" in result.stdout
-    assert "no active record" in result.stdout
+    assert "active record is absent" in result.stdout
     assert not any(tmp_path.iterdir())
 
 

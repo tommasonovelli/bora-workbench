@@ -57,13 +57,17 @@ Shows the version, resolved configuration, OS, CPU, RAM, backend, GPU/VRAM, the 
 four public directories, and content validation. For each mode it also evaluates the state of the
 local record:
 
-- active and valid, with the calibrated parameters applied to launches (`ctx` and, on CUDA,
+- `active`, with the calibrated parameters applied to launches (`ctx` and, on CUDA,
   `--n-cpu-moe`);
-- a candidate awaiting activation;
-- absent;
-- incompatible or stale;
-- superseded schema;
-- insufficient current headroom.
+- `absent`;
+- `candidate` awaiting activation;
+- `superseded` schema;
+- `invalid`;
+- `incompatible`;
+- `insufficient headroom` under current memory availability.
+
+A pending candidate is shown as a secondary fact beside the active-record state. `stale` is reserved
+for process state; it is not a calibration-record status.
 
 The command creates no directories and fixes no problem automatically. An invalid configuration
 exits with 2; a hardware or content error with 1; diagnostic warnings with 0.

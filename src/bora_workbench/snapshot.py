@@ -12,7 +12,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from bora_workbench._calibration_reuse import RecordEvaluation, ReuseQuery, evaluate_record
+from bora_workbench._calibration_reuse import (
+    RecordEvaluation,
+    RecordStatus,
+    ReuseQuery,
+    evaluate_record,
+)
 from bora_workbench.calibration import service_roots
 from bora_workbench.config import Config, ConfigError, ConfigResolution, load_config_details
 from bora_workbench.engine import (
@@ -44,6 +49,20 @@ class SnapshotError(RuntimeError):
 SnapshotFailureCategory = Literal[
     "configuration", "hardware", "content", "engine", "paths", "services", "model", "pi"
 ]
+_RECORD_LABELS: dict[RecordStatus, str] = {
+    "valid": "active",
+    "missing": "absent",
+    "candidate": "candidate",
+    "superseded": "superseded",
+    "invalid": "invalid",
+    "incompatible": "incompatible",
+    "insufficient-headroom": "insufficient headroom",
+}
+
+
+def record_display_label(status: RecordStatus) -> str:
+    """Return the one CLI/TUI label approved for a record evaluation state."""
+    return _RECORD_LABELS[status]
 
 
 @dataclass(frozen=True, slots=True)

@@ -47,7 +47,12 @@ from bora_workbench.engine import (
 )
 from bora_workbench.hardware import HardwareError, HardwareInfo, detect_hardware
 from bora_workbench.profiles import ContentError
-from bora_workbench.snapshot import DoctorSnapshot, SnapshotError, collect_doctor_snapshot
+from bora_workbench.snapshot import (
+    DoctorSnapshot,
+    SnapshotError,
+    collect_doctor_snapshot,
+    record_display_label,
+)
 from bora_workbench.validation import ValidationIssue, ValidationResult, validate_resources
 
 
@@ -384,8 +389,9 @@ def _calibrated_parameters(ctx: int | None, n_cpu_moe: int | None) -> str:
 
 
 def _record_line(mode_id: str, evaluation: RecordEvaluation) -> str:
-    """Describe active, candidate, superseded, invalid, and headroom record states."""
+    """Describe every record state with the shared canonical display label."""
     detail = escape(evaluation.diagnostics[0]) if evaluation.diagnostics else ""
+    label = record_display_label(evaluation.status)
     suffix = ""
     if evaluation.candidate_status == "valid":
         suffix = " Pending candidate is valid and awaits `calibrate --activate`."
@@ -401,18 +407,15 @@ def _record_line(mode_id: str, evaluation: RecordEvaluation) -> str:
         )
     if evaluation.status == "missing":
         return (
-            f"[yellow]Calibration[/yellow] {mode_id}: no active record; "
+            f"[yellow]Calibration[/yellow] {mode_id}: active record is {label}; "
             f"baseline not optimized.{suffix}"
         )
     if evaluation.status == "candidate":
-        return f"[yellow]Calibration[/yellow] {mode_id}: valid candidate awaits activation."
+        return f"[yellow]Calibration[/yellow] {mode_id}: {label} awaits activation."
     if evaluation.status == "superseded":
-        return (
-            f"[yellow]Calibration[/yellow] {mode_id}: record schema superseded: {detail}.{suffix}"
-        )
+        return f"[yellow]Calibration[/yellow] {mode_id}: record schema {label}: {detail}.{suffix}"
     if evaluation.status == "insufficient-headroom":
-        return f"[yellow]Calibration[/yellow] {mode_id}: {detail}{suffix}"
-    label = "invalid" if evaluation.status == "invalid" else "stale"
+        return f"[yellow]Calibration[/yellow] {mode_id}: {label}: {detail}{suffix}"
     return f"[yellow]Calibration[/yellow] {mode_id}: active record is {label}: {detail}{suffix}"
 
 
