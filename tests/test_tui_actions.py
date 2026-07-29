@@ -26,7 +26,11 @@ from bora_workbench.tui.actions import (
     compose_pull,
     compose_status,
     compose_stop,
+    compose_uninstall,
+    compose_update,
+    compose_update_check,
     compose_validate,
+    installation_commands,
     mode_commands,
     pi_commands,
     setup_commands,
@@ -34,6 +38,7 @@ from bora_workbench.tui.actions import (
 )
 from bora_workbench.tui.app import WorkbenchApp
 from bora_workbench.tui.screens.calibration import CalibrationView
+from bora_workbench.tui.screens.installation import InstallationView
 from bora_workbench.tui.screens.modes import ModesView
 from bora_workbench.tui.screens.overview import OverviewView
 from bora_workbench.tui.screens.pi import PiView
@@ -207,6 +212,22 @@ def test_invalid_mode_and_calibration_states_are_unrepresentable(operation) -> N
         operation()
 
 
+def test_installation_commands_preserve_returning_and_terminal_disposition() -> None:
+    """Keep only explicit update checking returnable before replacement and removal."""
+    assert installation_commands() == (
+        compose_update_check(),
+        compose_update(),
+        compose_uninstall(),
+    )
+    assert tuple(command.disposition for command in installation_commands()) == (
+        "returning",
+        "terminal",
+        "terminal",
+    )
+    for command in installation_commands():
+        assert _parse_leaf(get_command(app), command.cli_arguments) in {"update", "uninstall"}
+
+
 def test_command_spec_rejects_display_argument_divergence() -> None:
     """Prevent a visible command from differing from what same-process dispatch receives."""
     with pytest.raises(ValueError, match="display tokens"):
@@ -258,6 +279,7 @@ def test_overview_enter_returns_the_exact_visible_action_after_collection() -> N
         (ModesView, 1, 5, mode_commands()[5]),
         (SetupView, 3, 4, setup_commands()[4]),
         (PiView, 4, 4, pi_commands()[4]),
+        (InstallationView, 6, 1, compose_update()),
     ),
 )
 def test_actionable_screens_return_the_exact_marked_command(
@@ -334,6 +356,36 @@ def test_candidate_activation_skips_preference_and_target_questions() -> None:
             await pilot.press("enter")
             assert workbench.return_value is not None
             assert workbench.return_value.command == compose_calibration_activation("coding")
+
+    asyncio.run(exercise())
+
+
+def test_uninstall_requires_exact_typed_remove_before_terminal_handoff() -> None:
+    """Apply TUI friction without answering either independent real CLI confirmation."""
+    calls = []
+
+    def collect(version: str) -> WorkbenchSnapshot:
+        """Count snapshots so the bound r in remove cannot masquerade as refresh."""
+        calls.append(version)
+        return _snapshot()
+
+    async def exercise() -> None:
+        """Select uninstall, reject a mismatch, correct it, and inspect the terminal result."""
+        workbench = WorkbenchApp("0.test", TerminalMode(True, False), collect)
+        async with workbench.run_test() as pilot:
+            await pilot.pause(0.1)
+            await pilot.press(*(["down"] * 6), "tab", "tab", "enter")
+            view = workbench.query_one(InstallationView)
+            phrase = view.query_one("#removal-phrase")
+            assert phrase.display is True and phrase.has_focus is True
+            assert workbench.is_running is True
+            await pilot.press("r", "e", "m", "o", "v", "e", "e", "enter")
+            assert workbench.is_running is True
+            assert "does not match" in str(view.query_one("#removal-message").render())
+            await pilot.press("backspace", "enter")
+            assert workbench.return_value is not None
+            assert workbench.return_value.command == compose_uninstall()
+            assert calls == ["0.test"]
 
     asyncio.run(exercise())
 

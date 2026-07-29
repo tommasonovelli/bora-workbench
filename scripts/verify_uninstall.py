@@ -55,6 +55,23 @@ def _run(command: list[str], environment: dict[str, str], *, input_text: str | N
         raise RuntimeError(f"command failed with exit {result.returncode}: {command}\n{detail}")
 
 
+def _verify_tui_entry(command: Path, environment: dict[str, str]) -> None:
+    """Require the installed TUI command to reject redirected use before self-uninstall."""
+    result = subprocess.run(
+        [str(command), "tui"],
+        env=environment,
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    if result.returncode != 2:
+        detail = f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        raise RuntimeError(f"installed TUI returned {result.returncode}, expected 2\n{detail}")
+    if "requires interactive stdin and stdout terminals" not in result.stderr:
+        raise RuntimeError(f"installed TUI emitted an unexpected refusal: {result.stderr!r}")
+
+
 def _wait_until_absent(path: Path) -> None:
     """Allow the post-exit helper a short bounded interval to finish uv removal."""
     deadline = time.monotonic() + 10
@@ -85,6 +102,7 @@ def main() -> None:
         command = root / "bin" / f"bora{suffix}"
         if not command.is_file():
             raise RuntimeError(f"uv did not create the bora-workbench command: {command}")
+        _verify_tui_entry(command, environment)
         _run([str(command), "uninstall"], environment, input_text="y\n")
         _wait_until_absent(root / "uv-tools" / "bora-workbench")
         _wait_until_absent(command)

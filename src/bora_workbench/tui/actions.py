@@ -191,6 +191,26 @@ def compose_pi_uninstall() -> CommandSpec:
     return _command("pi", "uninstall")
 
 
+def compose_update_check() -> CommandSpec:
+    """Compose the explicit returning network check for a published release."""
+    return _command("update", "--check")
+
+
+def compose_update() -> CommandSpec:
+    """Compose self-update as terminal because its helper must observe this process exit."""
+    return _terminal_command("update")
+
+
+def compose_uninstall() -> CommandSpec:
+    """Compose self-removal as terminal while retaining every real CLI confirmation."""
+    return _terminal_command("uninstall")
+
+
+def installation_commands() -> tuple[CommandSpec, ...]:
+    """Return explicit update check, terminal replacement, then terminal removal."""
+    return (compose_update_check(), compose_update(), compose_uninstall())
+
+
 def overview_commands() -> tuple[CommandSpec, ...]:
     """Return the four E4 diagnostic actions in their stable presentation order."""
     return (compose_doctor(), compose_validate(), compose_status(), compose_engine_status())
