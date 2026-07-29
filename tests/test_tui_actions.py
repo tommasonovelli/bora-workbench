@@ -439,8 +439,12 @@ def test_reopened_app_shows_before_after_difference() -> None:
         workbench = WorkbenchApp("0.test", TerminalMode(True, False), lambda version: after)
         workbench.set_comparison_snapshot(before)
         async with workbench.run_test() as pilot:
-            await pilot.pause(0.1)
-            changes = str(workbench.query_one(OverviewView).query_one("#changes").render())
+            changes = ""
+            for _ in range(100):
+                await pilot.pause(0.02)
+                changes = str(workbench.query_one(OverviewView).query_one("#changes").render())
+                if "Since the returning command" in changes:
+                    break
             assert "Since the returning command" in changes
             assert "pi context" in changes and "4096" in changes
             await pilot.press("q")

@@ -52,7 +52,7 @@ def test_preference_normalization_and_rejection() -> None:
 
 def test_calibration_help_declares_every_supported_option() -> None:
     """Expose the complete composer surface through generated Typer help."""
-    result = runner.invoke(cli_module.app, ["calibrate", "--help"])
+    result = runner.invoke(cli_module.app, ["calibrate", "--help"], color=False)
 
     assert result.exit_code == 0
     for option in ("--mode", "--preference", "--no-activate", "--activate", "--target-ctx"):

@@ -31,7 +31,7 @@ def test_engine_install_uses_detected_backend_and_reports_activation(monkeypatch
 
     monkeypatch.setattr(diagnostics_cli, "install_engine", install)
 
-    result = runner.invoke(app, ["engine", "install"])
+    result = runner.invoke(app, ["engine", "install", "--no-model"])
 
     assert result.exit_code == 0
     assert "backend=cuda" in result.stdout
