@@ -413,7 +413,7 @@ normative specification before continuing. Do not silently amend this plan throu
 - **Goal.** Separate the state `doctor` collects from how Rich prints it.
 - **Files.** new `src/bora_workbench/snapshot.py`,
   `src/bora_workbench/_cli_diagnostics.py`, new `tests/test_snapshot.py`,
-  `tests/test_cli_doctor.py`.
+  `tests/test_cli_doctor.py`, `tests/test_cli.py`.
 - **Change.**
   - Add a frozen, slotted `DoctorSnapshot` containing version, resolved config, hardware, content
     validation, compatible-profile count, record evaluations, engine status, and the four paths.
