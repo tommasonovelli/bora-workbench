@@ -7,7 +7,7 @@ preserve and the activities not implemented yet. The behavior available today is
 
 ## 0. Actual status and tracker
 
-Updated on 28 July 2026.
+Updated on 29 July 2026.
 
 ### Completed baseline
 
@@ -89,6 +89,9 @@ Updated on 28 July 2026.
   names which of the three it used; an activated `coding` calibration ends by naming the command
   that applies the new window; `bora pi remove` and `bora pi uninstall` undo the entry and the
   package as two separate consents.
+- [x] On 29 July 2026 the maintainer selected the reduced `0.4.0` TUI scope and its current-command,
+  read-only, post-UI handoff boundary (D-083–D-085). This authorizes local implementation and local
+  commits only; it does not authorize release operations or Open WebUI work.
 
 ### Open work
 
@@ -111,11 +114,13 @@ Updated on 28 July 2026.
   state root: the window came from a registered `coding` service, from the baseline with its
   diagnostic when no record existed, and `pi remove` deleted only the `bora` provider while keeping
   the backup. The npm removal itself was never run, on either platform.
-- [ ] Router, managed Open WebUI, sync, and standalone benchmark remain post-0.2 backlog.
+- [ ] Implement Backlog D from `TUI_PLAN.md`, without starting the Open WebUI spike or anticipating
+  its service roles and actions.
+- [ ] Router, managed Open WebUI, sync, and standalone benchmark remain deferred post-0.2 backlog.
 
-No local candidate is activated and no post-0.2 backlog item is started without an explicit
-request. Pushes, tags, releases, uploads, and remote settings always require authorization in the
-current session.
+No local candidate is activated. Backlog D is active by D-083–D-085; Backlogs A–C remain deferred
+without another explicit request. Pushes, tags, releases, uploads, and remote settings always
+require authorization in the current session.
 
 ---
 
@@ -172,6 +177,18 @@ calibration, record, or candidate behavior.
 The previously planned router, skills, managed Open WebUI, sync, and standalone benchmark are
 post-0.2 backlog. They are not silently included in `0.2.0` and create no dependency or compatibility
 claim for this release.
+
+### 1.4 The proposed 0.4 boundary
+
+`0.4.0` is the interactive-front-end milestone authorized by D-083–D-085. It keeps the current CLI
+names and flat package tree, adds `bora tui`, extracts a structured non-mutating read model, and
+hands every real operation back to the existing CLI only after the UI runtime has ended. Bare
+`bora` remains help and settings remain read-only. The implementation may evaluate and add Textual
+under the dependency gate; motion is optional and ships only if its measured budget passes.
+
+This boundary changes no engine release, model identity, calibration protocol, record format,
+command contract, reserve, managed root, or candidate lifecycle. Open WebUI remains separately
+deferred and is not represented by placeholder TUI rows, actions, or service roles.
 
 ---
 
@@ -272,6 +289,9 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-080 | On 27 July 2026 the maintainer decides that the API reports the model as `Qwen 3.6` rather than as its artifact identity. The pinned `b10011` `--help` lists `--alias`, so the flag joins `verified_flags`, and the alias is declared in a new top-level `model_alias_contract`. It is deliberately outside `command_contract`: `command_contract_sha256` binds every published and local `calibration-record/v6` to those exact bytes, and a name that changes what `/v1/models` reports while changing no measured behavior must not supersede a single record. The digest is therefore unchanged and existing records stay valid. |
 | D-081 | On 27 July 2026 the maintainer decides that the launcher can connect the pi coding agent to a running service. pi is bring-your-own-key and speaks the OpenAI completions API, so `bora pi` writes one provider named `bora` into pi's own `models.json`: the loopback base URL from the configured port, a placeholder key the managed server ignores, and the D-080 alias as the model id, with the context window taken from the same local record the launcher would use rather than invented. The write shows the entry, asks once, keeps a backup, and replaces the file atomically; `--print` never writes at all. `--install` delegates to `npm install -g --ignore-scripts`, which is the vendor's own instruction: this project pins no digest for pi, says so, and does not install it implicitly. No other agent, editor, or provider is supported by this decision. |
 | D-082 | On 28 July 2026 the maintainer decides that the pi handoff must report the context window this machine actually serves, and that both of its writes must be reversible. The window is resolved in one order and the command always names which source answered: a managed service already listening on the configured port reports the window it was launched with; otherwise the active `coding` record supplies its calibrated context; otherwise the verified baseline does, together with the diagnostics that explain why the record was not used. The live service comes first because record reuse also weighs free memory that this very service is holding, so consulting the record during a session would report `ctx=8192` for a machine serving far more. A calibration run that activates a `coding` record ends by naming the command that applies the new window — nothing rewrites a number stored in somebody else's configuration file — and offers `bora pi --install` when pi is absent; `--no-activate` prints no such hand-off, because a candidate steers no launch. `bora pi remove` deletes only the `bora` provider from `models.json`, whether or not pi is still installed, and keeps every other provider and the backup; `bora pi uninstall` hands the package back to `npm uninstall -g` after showing the command, reports an executable still on PATH instead of claiming a removal npm did not make, and then asks separately about the entry. Neither consent implies the other, and an installation made by the vendor's own script is not npm's to remove. No other agent, editor, or provider is added, and the engine, model, calibration, and record behavior are unchanged. |
+| D-083 | On 29 July 2026 the maintainer selects the reduced `0.4.0` scope in `TUI_PLAN.md`: keep every current CLI name and the flat package tree, keep bare `bora` as help, keep settings read-only, and add the explicit `bora tui` dashboard, command composer, and teaching surface. The TUI owns no launch, calibration, setup, pi, update, removal, or confirmation rule. Clipboard integration, editor launching, configuration writes, command aliases, generic model management, package reorganization, and Open WebUI integration remain outside this milestone. This authorizes local implementation and the step-scoped local commits, but no push, tag, release, upload, remote setting, candidate activation, or Gate claim. |
+| D-084 | The TUI opening and refresh are non-mutating: no network, model hashing, receipt write, state cleanup or quarantine, directory creation, configuration write, managed-service start, or background polling. They may perform the same bounded read-only hardware and engine subprocess probes as `doctor`, from one presentation worker, because calling the current diagnostics process-free would be false. A shared synchronous snapshot reports corrupt state as unreadable, model artifacts as receipt-verified only when the D-076 identity matches, and configuration provenance without changing existing callers. |
+| D-085 | Every selected command is displayed exactly and runs only after the UI runtime has ended and restored the terminal. Dispatch invokes the existing Click/Typer command in the same bora process rather than leaving a TUI parent waiting in `subprocess.run`; returning actions reopen only after exit 0, while failures, invalid input, and interruption propagate `1`, `2`, and `130`. The project may review and add Textual before the first interaction loop; if accepted, Textual alone owns the UI event loop and one presentation worker, while core APIs remain synchronous and no general concurrency facility is added. Motion is optional for `0.4.0` and is omitted if its measured budget fails. |
 
 A new durable decision updates this table in the same step that authorizes it.
 
@@ -296,6 +316,8 @@ A new durable decision updates this table in the same step that authorizes it.
 | `update.py` | published release lookup, verified wheel, and uv installation |
 | `_tool_handoff.py` / `_tool_helper.py` | uv installation identity and one deferred uv command |
 | `validation.py` / `_validation_*` | schemas and semantic checks |
+| `snapshot.py` (0.4) | synchronous, structured, non-mutating local diagnostics for CLI and TUI |
+| `tui/` (0.4) | terminal presentation, navigation, composition, and post-UI dispatch only |
 | `resources/__init__.py` | `importlib.resources` access |
 | `routing.py` (future) | pure skill normalization and scoring |
 | `webui.py` (future) | Open WebUI lock, environment, installation, and process |
@@ -560,7 +582,8 @@ ignored.
 - no deletions outside the managed roots;
 - no disabled TLS/checksums;
 - no feature in code before its step is active; design documents may describe later ones;
-- no plugins, async, or speculative abstractions;
+- no plugins or speculative abstractions; no async except Textual's D-085 presentation boundary
+  after its dependency review, and no async core API or general executor;
 - no remote operations without explicit authorization.
 
 ---
@@ -691,8 +714,9 @@ and does not retroactively turn the single current host into universal evidence.
 
 ## 8. Post-0.2 backlog
 
-D-068 postpones the former 0.2 roadmap. The items below are possible later milestones, not
-requirements or promises for `0.2.0`. Every item still requires an explicit future decision.
+D-068 postpones the former 0.2 roadmap. Backlogs A–C are possible later milestones and still
+require an explicit future decision. Backlog D is the one active item, authorized by D-083–D-085;
+its release remains separately unauthorized.
 
 ### Backlog A — Skills and deterministic router
 
@@ -825,6 +849,29 @@ Also complete:
 Tests: missing/incompatible server, warm-up, five measurements, median, record present/absent,
 comparison, no content changes, no real network, and metadata from the state.
 
+### Backlog D — Interactive front end
+
+**Objective:** an optional, read-mostly terminal dashboard and exact command composer over the
+existing CLI, never a second launcher runtime.
+
+[`TUI_PLAN.md`](TUI_PLAN.md) is the authorized execution detail. Its A1 decision answers are D-083
+through D-085, and its A2–E9 steps proceed one local commit at a time. The implementation keeps
+current command names and the flat package tree; extracts configuration provenance, non-mutating
+service/model inspection, shared pi context selection, and doctor/workbench snapshots; reviews
+Textual before any interaction loop; then adds `bora tui`, seven read-only screens, deterministic
+advice, recursively parser-checked command composition, and same-process dispatch after UI teardown.
+
+Opening and refresh perform no network, hashing, writes, cleanup, directory creation, service start,
+or polling. Bounded diagnostic subprocess probes are allowed in one presentation worker. Every real
+prompt and operational rule remains in its existing CLI callback. Motion is optional and must be
+plain-mode-safe and measured before it ships. Open WebUI remains absent from the snapshot, screens,
+actions, and process-state shape until Backlog B receives its own future authorization.
+
+Tests are offline and cover side-effect refusal, first-frame responsiveness, serialized refresh,
+canonical record labels, parser acceptance of every reachable argv, terminal restoration, and exact
+exit propagation. Manual Ubuntu and Windows terminal, signal, update, and uninstall checks remain
+release criteria and are never reported as a calibration Gate.
+
 ### Local 0.2.0 finalization
 
 D-068 authorizes the final `0.2.0` version for the repository/package refactor without claiming a
@@ -875,6 +922,14 @@ remote-setting changes, and candidate activation are not authorized.
 - [x] D-070 authorizes the `0.2.1` commit, push, tag, and GitHub Release in this session while
   excluding registry upload, remote-setting changes, candidate activation, and a Gate claim.
 - [x] The release workflow and installers expose no package-registry publication or install path.
+
+### Proposed milestone 0.4
+
+- [x] D-083–D-085 authorize the reduced TUI boundary and local step-scoped implementation.
+- [ ] Complete `TUI_PLAN.md` A2–E9 with the required offline checks.
+- [ ] Complete the available Ubuntu and Windows terminal, signal, update, and uninstall checks.
+- [ ] Finalize `0.4.0` only after automated acceptance; no release operation is authorized yet.
+- [ ] Keep Backlog B and its real Open WebUI spike deferred until a separate request.
 
 ---
 

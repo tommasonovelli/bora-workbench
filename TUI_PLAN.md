@@ -1,13 +1,12 @@
 # bora TUI — revised decision and execution plan for a proposed 0.4.0
 
-> **Status: decision input, not authorization.** `IMPLEMENTATION_SPEC.md` is the only normative
-> plan. No implementation step below starts until section A1 records the maintainer's decisions in
-> that specification. This file supplies execution detail; it cannot authorize itself.
+> **Status: authorized execution detail.** D-083–D-085 in `IMPLEMENTATION_SPEC.md` approve the
+> reduced boundary and local step-scoped implementation. That specification remains normative; this
+> file defines the sequence and cannot authorize a push, tag, release, remote operation, candidate
+> activation, Open WebUI work, or Gate claim.
 >
-> This revision was checked against `bora-workbench 0.3.2` after the first TUI plan exposed useful
-> ideas and several incorrect assumptions. `TUI.md` remains the visual design source, but it is stale
-> in places and is aligned with the current product only in A1. Match implementation references by
-> content rather than by historical line number.
+> This revision was checked against `bora-workbench 0.3.2`. `TUI.md` is the aligned design record;
+> match implementation references by content rather than by historical line number.
 
 ---
 
@@ -162,23 +161,20 @@ exists.
 
 ---
 
-## 3. Decisions required before A1
+## 3. Recorded decisions
 
-The questions below deliberately carry no `D-0xx` numbers. The decision table assigns the next free
-numbers only after the maintainer answers them.
+On 29 July 2026 the maintainer approved implementation of this TUI plan and deferred Open WebUI.
+D-083–D-085 record the answers:
 
-| # | Question | Recommendation |
-|---|---|---|
-| Q1 | Is the reduced `0.4.0` scope in section 0 approved? | **Yes.** |
-| Q2 | Do command names and the current flat package tree stay unchanged for this milestone? | **Yes.** Review either independently later. |
-| Q3 | Is handoff defined as same-process CLI dispatch after the UI runtime has ended, rather than `subprocess.run()` from a live TUI parent? | **Yes**, subject to the isolated spike and tests in E3/E7. |
-| Q4 | May the project evaluate and, after due diligence, add Textual as the interaction framework before E1? | **Yes.** If the review fails, stop Part E rather than hand-roll a second framework. |
-| Q5 | May the TUI use Textual's event loop and one presentation worker while all core APIs remain synchronous? | **Yes**, as a narrow UI exception to the current no-async/no-speculative-concurrency rule. |
-| Q6 | Do bare `bora` and read-only settings remain permanent decisions for this milestone? | **Yes.** |
-| Q7 | Is motion required for `0.4.0`, or may the functional TUI ship first? | **Recommend optional:** E8 lands only if its measured budget passes. |
-| Q8 | May opening run bounded read-only hardware/engine probes under section 2.1? | **Yes.** Calling it process-free would be inaccurate. |
-
-A1 records the answers, not merely these recommendations.
+- the reduced `0.4.0` scope is approved;
+- current command names and the flat package tree stay unchanged;
+- handoff is same-process dispatch after complete UI teardown;
+- Textual may be reviewed and added before E1, with only its UI event loop and one presentation
+  worker allowed;
+- bare `bora` remains help and settings remain read-only;
+- motion is optional and ships only if its measured budget passes;
+- bounded read-only hardware and engine probes are allowed during snapshot collection;
+- Open WebUI remains absent and its available future spike machine is not used in this milestone.
 
 ---
 
@@ -222,7 +218,7 @@ normative specification before continuing. Do not silently amend this plan throu
      - the canonical record labels of C7;
      - clipboard and `$EDITOR` explicitly deferred;
      - all prose in English.
-- **Decision.** The next free entries created from Q1–Q8.
+- **Decision.** D-083–D-085.
 - **Verify.** Search both TUI documents for obsolete `0.2.1`, "never downloads weights",
   `bora self`, `bora model`, `pi connect`, and subprocess handoff claims; none remain except clearly
   labelled rejected alternatives.
@@ -233,12 +229,14 @@ normative specification before continuing. Do not silently amend this plan throu
 
 - **Goal.** Keep every document referenced by the normative plan available in the source
   distribution.
-- **Files.** `pyproject.toml`.
-- **Change.** Add `TUI.md` and `TUI_PLAN.md` to `tool.uv.build-backend.source-include`; change no
-  wheel resource and no packaged declarative content.
-- **Decision.** The design-record decision from A1.
+- **Files.** `pyproject.toml`, `scripts/verify_wheel.py`.
+- **Change.** Add `TUI.md` and `TUI_PLAN.md` to
+  `tool.uv.build-backend.source-include` and the sdist verifier; preserve the already included
+  `IMPLEMENTATION_SPEC.md` and deferred `WEBUI_PLAN.md`. Change no wheel resource and no packaged
+  declarative content.
+- **Decision.** D-083.
 - **Verify.** Build an sdist in a temporary output directory and assert that it contains
-  `IMPLEMENTATION_SPEC.md`, `TUI.md`, and `TUI_PLAN.md`.
+  `IMPLEMENTATION_SPEC.md`, `TUI.md`, `TUI_PLAN.md`, and `WEBUI_PLAN.md`.
 - **Done when.** A consumer of the sdist can follow every plan reference without the Git checkout.
 
 ---
@@ -258,7 +256,7 @@ normative specification before continuing. Do not silently amend this plan throu
   - Make it also fail when a registered function no longer exceeds the limit, so stale exceptions
     cannot accumulate.
   - Add no exception in this step.
-- **Decision.** The parameter-policy decision recorded in A1.
+- **Decision.** D-083.
 - **Verify.** A temporary four-parameter production function fails; registering it passes; removing
   the function while retaining the registration fails.
 - **Done when.** The exception map is empty and all existing source remains unchanged.
@@ -282,7 +280,7 @@ normative specification before continuing. Do not silently amend this plan throu
   - Accept Click's standard last-occurrence behavior for repeated singleton options as an explicit
     CLI behavior change. The real preflight still prints the selected value and asks for
     confirmation. Do not claim byte-for-byte parser compatibility with the removed hand parser.
-- **Decision.** The composable-CLI decision recorded in A1.
+- **Decision.** D-083.
 - **Verify.** Generated help lists all five options; `--target-ctx=65536` works;
   `--activate --target-ctx 65536`, `--activate --preference fast`, unknown options, malformed
   integers, and unmeasurable targets exit 2 before a process starts.
@@ -347,7 +345,7 @@ normative specification before continuing. Do not silently amend this plan throu
     result and precedence.
   - Validate the whole TOML before environment overrides exactly as today.
   - Perform no path creation or file write.
-- **Decision.** The read-only settings decision from A1.
+- **Decision.** D-083/D-084.
 - **Verify.** Existing config tests remain unchanged and green; new table tests cover every source,
   including an empty optional path environment override.
 - **Done when.** CLI and TUI can consume the same resolved values, and only the TUI asks for their
@@ -367,7 +365,7 @@ normative specification before continuing. Do not silently amend this plan throu
     `unreadable`, never silently `empty`.
   - Continue verifying `pid + create_time`; an unopenable PID follows the existing D-071 identity
     rule.
-- **Decision.** The read-only opening decision from A1.
+- **Decision.** D-084.
 - **Verify.** Snapshot the temporary filesystem before and after live, stale, corrupt, absent, and
   trial-root inspections; bytes and paths remain identical.
 - **Done when.** The TUI can report service state without performing `status` cleanup.
@@ -386,7 +384,7 @@ normative specification before continuing. Do not silently amend this plan throu
   - Inspect both the managed store and pinned cache fallback without writing into either.
   - Represent an explicit custom `model_path` as user-managed and never recommend `bora pull` for
     that path.
-- **Decision.** The truthful model-status decision from A1.
+- **Decision.** D-084.
 - **Verify.** Tests cover every state, both locations, a malformed receipt, and a custom model; mock
   hashing and writes to fail if called.
 - **Done when.** The dashboard can say exactly what it knows and direct an unverified default
@@ -424,7 +422,7 @@ normative specification before continuing. Do not silently amend this plan throu
     at `run_doctor()` to exit 1 or 2 as required.
   - Make `run_doctor()` collect, render, and map the result; it computes nothing while printing.
   - Keep successful redirected output byte-identical in this step.
-- **Decision.** The structured-snapshot decision from A1.
+- **Decision.** D-084.
 - **Verify.** Capture redirected `doctor` output before and after on the same fakes and compare bytes;
   separately fake each formerly unguarded operation and require an actionable exit without a
   traceback.
@@ -444,7 +442,7 @@ normative specification before continuing. Do not silently amend this plan throu
   - Collect no published release version and perform no network request.
   - Expose a structured collection failure with category and actionable detail so the first frame
     can remain usable even when config, hardware, resources, or paths are broken.
-- **Decision.** The read-model decision from A1.
+- **Decision.** D-084.
 - **Verify.** Patch network, hashing, writes, directory creation, lifecycle locks, state cleanup, and
   service starts to fail if called; every valid snapshot shape still collects.
 - **Done when.** Every read-only screen can be rendered from one object and no screen performs core
@@ -469,7 +467,7 @@ normative specification before continuing. Do not silently amend this plan throu
 
   A valid or invalid pending candidate remains a secondary fact beside the active-record label.
   The word `stale` remains available for process state; it is not a calibration-record status.
-- **Decision.** The terminology decision recorded in A1.
+- **Decision.** D-083/D-084.
 - **Verify.** Table-driven tests cover every primary status and every candidate-status combination.
 - **Done when.** `doctor`, docs, and the future screens use the same seven labels.
 
@@ -494,8 +492,7 @@ normative specification before continuing. Do not silently amend this plan throu
      scheduler, or general executor.
   6. If the review fails, record `NO-GO` and stop Part E. Do not replace it with hand-written
      `termios`/`msvcrt` input.
-- **Decision.** A new durable dependency/concurrency decision following the A1 authorization to
-  evaluate it.
+- **Decision.** D-085 plus the new exact dependency decision recorded by this step.
 - **Verify.** `uv lock --check`, frozen sync, dependency-tree review, licence review, and the full
   offline suite on both release CI platforms.
 - **Done when.** The interaction stack is approved and frozen, or the interactive front end is
@@ -522,7 +519,7 @@ normative specification before continuing. Do not silently amend this plan throu
   - Render collection failures in the detail pane without a traceback.
   - `--plain`, `TERM=dumb`, and unsupported encoding select a plain, motion-free rendering. Do not
     promise automatic raster-font detection; `--plain` is the deterministic escape hatch.
-- **Decision.** The TUI and dependency decisions from A1/D1.
+- **Decision.** D-083–D-085 and D1's exact dependency decision.
 - **Verify.** Headless UI tests prove first render precedes collector invocation, keys work while a
   fake collector blocks, refresh is serialized, non-TTY imports no Textual module, and package
   import remains side-effect-free.
@@ -547,7 +544,7 @@ normative specification before continuing. Do not silently amend this plan throu
 
   A custom external model never receives a `bora pull` suggestion. The suggestion is visible but
   cannot execute yet.
-- **Decision.** The advice boundary from A1.
+- **Decision.** D-083/D-084.
 - **Verify.** A truth table covers every priority and tie in packaged mode order.
 - **Done when.** The overview never infers a fact absent from the snapshot.
 
@@ -573,7 +570,7 @@ normative specification before continuing. Do not silently amend this plan throu
 
   Services and diagnostics remain in Overview. There is no settings writer, model picker, arbitrary
   flag editor, published-version lookup, clipboard protocol, or editor launcher.
-- **Decision.** The screen boundary from A1.
+- **Decision.** D-083/D-084.
 - **Verify.** Headless navigation at 60x20, 80x24, and 120x40 reaches every screen, preserves focus
   on refresh, and exposes every fact as text rather than colour alone.
 - **Done when.** The front end is complete as a read-only dashboard.
@@ -596,7 +593,7 @@ normative specification before continuing. Do not silently amend this plan throu
     callback.
   - Reopen the TUI only after a returning command exits 0; re-collect and show a concise before/after
     difference. Exit immediately with any non-zero or 130 result.
-- **Decision.** The handoff decision from A1.
+- **Decision.** D-085.
 - **Verify.** Fakes prove the UI teardown precedes dispatch, no subprocess is created, every argv is
   accepted by the real recursive parser, non-zero codes propagate, and terminal state restoration
   runs under every exception.
@@ -622,7 +619,7 @@ normative specification before continuing. Do not silently amend this plan throu
 
   Invalid pi combinations are unreachable. The UI disappears while the command owns inherited
   terminal I/O and real prompts. Exit 0 returns and refreshes; all other exits propagate.
-- **Decision.** The handoff/action boundary from A1.
+- **Decision.** D-083/D-085.
 - **Verify.** Table-driven composer tests plus recursive real-parser tests cover every reachable
   option state. Operational tests use fake callbacks only.
 - **Done when.** No setup rule, prompt, npm action, deletion, or verification is duplicated in
@@ -643,7 +640,7 @@ normative specification before continuing. Do not silently amend this plan throu
   - The review screen says that the real preflight and confirmation follow.
   - Modes and calibration are `terminal`: after UI teardown they do not reopen the TUI and their
     exact exit code becomes the `bora tui` exit code.
-- **Decision.** The composer and no-embedding decisions from A1.
+- **Decision.** D-083/D-085.
 - **Verify.** Enumerate every reachable wizard state; every composed argv recursively parses, every
   forbidden combination is unreachable, and no fake command runs before final review.
 - **Done when.** The TUI can teach every supported calibration form without owning calibration.
@@ -664,7 +661,7 @@ normative specification before continuing. Do not silently amend this plan throu
   - Do not create a subprocess wrapper, suppress a confirmation, or infer uv ownership.
   - Extend isolated verification so the presence of the TUI command does not break complete
     uv-tool uninstall; no automated test performs a real update.
-- **Decision.** The self-command handoff decision from A1.
+- **Decision.** D-085.
 - **Verify.** Unit tests prove ordering and exact argv; isolated wheel uninstall passes; manual
   Windows checks confirm the environment is removed only after the command process exits.
 - **Done when.** There is no live TUI parent during uv replacement/removal and no helper race is
@@ -686,7 +683,7 @@ normative specification before continuing. Do not silently amend this plan throu
   - Keep static text and every action complete when motion is absent.
   - If measured idle CPU exceeds the accepted budget, do not ship motion in `0.4.0`; keep the
     functional TUI and record the limitation instead of weakening the budget.
-- **Decision.** Q7's motion decision from A1.
+- **Decision.** D-085.
 - **Verify.** Frozen-time/seed tests, headless kill-switch tests, measured frame rate, and manual idle
   CPU measurements on the maintained Windows and Ubuntu machines.
 - **Done when.** Motion is deterministic in tests, instantly interruptible, and optional in every
@@ -706,7 +703,7 @@ normative specification before continuing. Do not silently amend this plan throu
   - State that command selection closes the UI before the existing command owns the terminal.
   - Keep clipboard integration, editor launching, command aliases, arbitrary model selection, and
     config writes out of current docs.
-- **Decision.** The documentation/accessibility decision from A1.
+- **Decision.** D-083–D-085.
 - **Verify.** Every action table names a real current command; every command remains documented
   independently of the TUI.
 - **Done when.** A reader can ignore `docs/tui.md` and still operate the complete product.
@@ -735,7 +732,8 @@ All of the following must pass from a clean checkout:
 - [ ] `bora --version` and package import do not import `bora_workbench.tui` or Textual;
 - [ ] static mode consumes no periodic refresh; motion, if shipped, stays within its measured
       budget;
-- [ ] the sdist carries `IMPLEMENTATION_SPEC.md`, `TUI.md`, and `TUI_PLAN.md`;
+- [ ] the sdist carries `IMPLEMENTATION_SPEC.md`, `TUI.md`, `TUI_PLAN.md`, and deferred
+      `WEBUI_PLAN.md`;
 - [ ] existing engine, model, calibration, record, and command-contract tests remain unchanged in
       meaning.
 
@@ -798,7 +796,7 @@ uv run --frozen python scripts/verify_uninstall.py
 git diff --check
 ```
 
-Inspect the sdist contents for the three design/plan documents and inspect the wheel for the TUI
+Inspect the sdist contents for the specification and all three design/plan documents, and inspect the wheel for the TUI
 Python modules and any non-Python UI assets. Any edit after the build invalidates `dist/` and requires
 all checks and the build again.
 
