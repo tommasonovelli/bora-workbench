@@ -3,6 +3,52 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
+## [0.4.0] - 2026-07-29
+
+### Added
+
+- `bora tui`, an optional seven-screen terminal workbench for Overview, Modes, Calibration, Setup,
+  Pi, Settings, and This installation (D-083–D-088). Opening and explicit refresh collect one
+  structured local snapshot without network, model hashing, writes, cleanup, directory creation, or
+  managed-service startup. Static chrome renders first, one Textual thread worker owns the
+  synchronous collector, input stays responsive during bounded probes, and repeated refreshes never
+  overlap.
+- Exact text-visible composition of every supported TUI action. Textual ends and restores the
+  terminal before the existing Click/Typer leaf callback runs in the same process, so real
+  preflights, confirmations, subprocesses, network, writes, and exit codes remain unchanged.
+  Successful returning actions reopen with a concise snapshot comparison; foreground modes,
+  calibration, update, and uninstall are terminal. Uninstall adds typed `remove` friction without
+  answering either real removal question.
+- A staged calibration composer that can produce only valid current mode, preference, activation,
+  and measurable-context combinations. Candidate activation is a separate route and the exact
+  command receives final review before the real CLI confirmation.
+- Optional deterministic wind/sea decoration at 8 fps. It settles after about three active seconds
+  and is disabled by plain presentation, `NO_COLOR`, `TERM=dumb`, limited encoding, small terminals,
+  another screen, focus loss, or `BORA_TUI_MOTION=off`; malformed values exit 2. Static text and all
+  actions remain complete without colour or motion.
+
+### Changed
+
+- Shared diagnostics now expose immutable `DoctorSnapshot` and `WorkbenchSnapshot` read models,
+  receipt-aware model inspection, non-cleaning service inspection, configuration provenance, and
+  one shared pi context-window selection. The CLI, snapshots, and TUI use one canonical calibration
+  record vocabulary.
+- `calibrate` declares its full public option surface through Typer; contradictory pi options are
+  input errors; expected validation resource I/O failures no longer leak tracebacks; and
+  `engine status` keeps its difference report on one redirectable stream.
+- Textual `8.2.8` and its frozen MIT-licensed dependency graph join the runtime under the narrow
+  presentation-only concurrency boundary (D-086).
+
+### Verification limits
+
+- Automated tests and scoped Ubuntu pseudo-terminal checks cover sizes, plain/full presentation,
+  refresh/navigation/quit, returning `doctor`, terminal `coding` preflight, alternate-screen exit,
+  static settlement, and isolated package uninstall. The checks were not manual visual checks; a
+  real foreground model process and its `Ctrl-C` restoration were unavailable, and Windows TUI
+  checks were not performed. None is described as passed or as a calibration Gate.
+- The engine, model, calibration protocol, record format, command contract, reserves, and candidate
+  lifecycle are unchanged; no candidate is activated and coverage remains `GATE-PARTIAL`.
+
 ## [0.3.2] - 2026-07-28
 
 ### Added

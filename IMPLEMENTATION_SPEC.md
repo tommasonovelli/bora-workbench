@@ -94,6 +94,9 @@ Updated on 29 July 2026.
   commits only; it does not authorize release operations or Open WebUI work.
 - [x] The TUI dependency gate accepted MIT-licensed Textual `8.2.8` under the narrow presentation
   concurrency boundary, with the exact dependency graph frozen in `uv.lock` (D-086).
+- [x] TUI steps E1–E9 implement the responsive seven-screen dashboard, exact same-process handoff,
+  command composers, finite optional motion, and complete optional manual without changing the core
+  engine, model, calibration, or record contracts (D-083–D-087).
 
 ### Open work
 
@@ -116,13 +119,11 @@ Updated on 29 July 2026.
   state root: the window came from a registered `coding` service, from the baseline with its
   diagnostic when no record existed, and `pi remove` deleted only the `bora` provider while keeping
   the backup. The npm removal itself was never run, on either platform.
-- [ ] Implement Backlog D from `TUI_PLAN.md`, without starting the Open WebUI spike or anticipating
-  its service roles and actions.
 - [ ] Router, managed Open WebUI, sync, and standalone benchmark remain deferred post-0.2 backlog.
 
-No local candidate is activated. Backlog D is active by D-083–D-085; Backlogs A–C remain deferred
-without another explicit request. Pushes, tags, releases, uploads, and remote settings always
-require authorization in the current session.
+No local candidate is activated. Backlog D is complete; Backlogs A–C remain deferred without
+another explicit request. Pushes, tags, releases, uploads, and remote settings always require
+authorization in the current session.
 
 ---
 
@@ -180,13 +181,13 @@ The previously planned router, skills, managed Open WebUI, sync, and standalone 
 post-0.2 backlog. They are not silently included in `0.2.0` and create no dependency or compatibility
 claim for this release.
 
-### 1.4 The proposed 0.4 boundary
+### 1.4 The 0.4 boundary
 
-`0.4.0` is the interactive-front-end milestone authorized by D-083–D-085. It keeps the current CLI
+`0.4.0` is the interactive-front-end milestone authorized by D-083–D-088. It keeps the current CLI
 names and flat package tree, adds `bora tui`, extracts a structured non-mutating read model, and
 hands every real operation back to the existing CLI only after the UI runtime has ended. Bare
-`bora` remains help and settings remain read-only. The implementation may evaluate and add Textual
-under the dependency gate; motion is optional and ships only if its measured budget passes.
+`bora` remains help and settings remain read-only. Textual `8.2.8` is accepted and frozen under the
+narrow presentation boundary; finite motion ships after the scoped Ubuntu observation in D-087.
 
 This boundary changes no engine release, model identity, calibration protocol, record format,
 command contract, reserve, managed root, or candidate lifecycle. Open WebUI remains separately
@@ -296,6 +297,7 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-085 | Every selected command is displayed exactly and runs only after the UI runtime has ended and restored the terminal. Dispatch invokes the existing Click/Typer command in the same bora process rather than leaving a TUI parent waiting in `subprocess.run`; returning actions reopen only after exit 0, while failures, invalid input, and interruption propagate `1`, `2`, and `130`. The project may review and add Textual before the first interaction loop; if accepted, Textual alone owns the UI event loop and one presentation worker, while core APIs remain synchronous and no general concurrency facility is added. Motion is optional for `0.4.0` and is omitted if its measured budget fails. |
 | D-086 | The TUI dependency gate is `GO` with Textual `8.2.8`, resolved exactly by `uv.lock`. Its MIT licence, Python 3.12 support, documented Linux and Windows support, maintained release history, Worker API, and headless Pilot tests meet the milestone's needs. The 29 July 2026 review found no published PyPI or GitHub advisory for Textual and the frozen dependency audit found no known vulnerability; upstream's lack of a published security policy remains a recorded limitation. Textual owns only the presentation event loop and one thread worker for the synchronous snapshot collector. Core modules gain no async API, scheduler, executor, or other concurrency. |
 | D-087 | On 29 July 2026 the maintainer accepts the available Ubuntu-only E8 motion check and directs implementation to continue through E9 while the Windows motion measurement is recorded as unavailable. This is scoped to optional TUI motion and does not turn any other unavailable Windows acceptance check into a pass. The final local 120x40 pseudo-terminal observation used three alternating static/automatic pairs at 8 fps: automatic motion added 2.666 percentage points of median one-core CPU during its three-second active window, both modes measured 0.0% median in the two-second settled window, and every run exited 0. Motion therefore ships with the 12 fps ceiling, finite settlement, and all kill switches from D-085; the raw observation and its limits live in `evidence/tui/ubuntu-motion.json`. This authorizes neither `0.4.0` finalization nor a push, tag, release, upload, remote change, candidate activation, or Gate claim. |
+| D-088 | On 29 July 2026, after E9 and the available Ubuntu pseudo-terminal acceptance checks, the maintainer directs release of `0.4.0` if the TUI checks remain green. The 60x20 and 120x40 plain/full presentation runs, explicit refresh/navigation/quit sequence, returning `doctor` handoff, terminal `coding` preflight handoff, alternate-screen exit, zero isolated-root writes, and no-traceback checks passed; their raw observation is `evidence/tui/ubuntu-acceptance.json`. They are programmatic pseudo-terminal checks, not manual visual checks. A real foreground model process and its `Ctrl-C` restoration were unavailable because the isolated roots held no engine or model; Windows TUI checks were not performed under D-087. Neither is called passed. After the complete frozen local suite is green, this decision authorizes the `0.4.0` finalization commit, push to `main`, and tag `v0.4.0`; the GitHub Release is authorized only after that tag's release workflow is green and only from its exact bundle. GitHub Releases remains the only distribution channel; no registry upload, remote-setting change, candidate activation, Open WebUI work, or Gate claim is authorized. |
 
 A new durable decision updates this table in the same step that authorizes it.
 
@@ -929,13 +931,16 @@ remote-setting changes, and candidate activation are not authorized.
   excluding registry upload, remote-setting changes, candidate activation, and a Gate claim.
 - [x] The release workflow and installers expose no package-registry publication or install path.
 
-### Proposed milestone 0.4
+### Milestone 0.4
 
-- [x] D-083–D-085 authorize the reduced TUI boundary and local step-scoped implementation.
-- [ ] Complete `TUI_PLAN.md` A2–E9 with the required offline checks.
-- [ ] Complete the available Ubuntu and Windows terminal, signal, update, and uninstall checks.
-- [ ] Finalize `0.4.0` only after automated acceptance; no release operation is authorized yet.
-- [ ] Keep Backlog B and its real Open WebUI spike deferred until a separate request.
+- [x] D-083–D-088 authorize the reduced TUI boundary, implementation, scoped acceptance, local
+  finalization/tag after green local checks, and GitHub-only release after green tag checks.
+- [x] `TUI_PLAN.md` A2–E9 and the automated F1 acceptance checks are complete.
+- [~] Ubuntu pseudo-terminal presentation and handoff checks are recorded, but the manual visual,
+  real foreground `Ctrl-C`, and all Windows TUI checks were unavailable and are not called passed.
+- [x] `0.4.0` finalization follows automated acceptance; D-088 authorizes the push, tag, and GitHub
+  Release from the exact green workflow bundle.
+- [x] Backlog B and its real Open WebUI spike remain deferred until a separate request.
 
 ---
 

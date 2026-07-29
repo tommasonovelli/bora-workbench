@@ -1,0 +1,99 @@
+{
+  "schema": "bora-tui-acceptance-observation/v1",
+  "date": "2026-07-29",
+  "platform": "Ubuntu-compatible Linux pseudo-terminal",
+  "method": {
+    "presentation_input": "j, k, r, ?, ?, q",
+    "returning_input": "Enter on default bora doctor, then q after reopen",
+    "terminal_input": "j to Modes, then Enter on default bora coding",
+    "roots": "isolated XDG, APPDATA, and LOCALAPPDATA directories"
+  },
+  "results": [
+    {
+      "kind": "presentation",
+      "size": [60, 20],
+      "arguments": ["--plain"],
+      "motion": "auto",
+      "return_code": 0,
+      "output_bytes": 39183,
+      "brand_seen": true,
+      "alternate_screen_entered": true,
+      "alternate_screen_exited": true,
+      "traceback_seen": false,
+      "isolated_root_entries": []
+    },
+    {
+      "kind": "presentation",
+      "size": [60, 20],
+      "arguments": [],
+      "motion": "auto",
+      "return_code": 0,
+      "output_bytes": 43546,
+      "brand_seen": true,
+      "alternate_screen_entered": true,
+      "alternate_screen_exited": true,
+      "traceback_seen": false,
+      "isolated_root_entries": []
+    },
+    {
+      "kind": "presentation",
+      "size": [120, 40],
+      "arguments": ["--plain"],
+      "motion": "auto",
+      "return_code": 0,
+      "output_bytes": 82728,
+      "brand_seen": true,
+      "alternate_screen_entered": true,
+      "alternate_screen_exited": true,
+      "traceback_seen": false,
+      "isolated_root_entries": []
+    },
+    {
+      "kind": "presentation",
+      "size": [120, 40],
+      "arguments": [],
+      "motion": "auto",
+      "return_code": 0,
+      "output_bytes": 139669,
+      "brand_seen": true,
+      "alternate_screen_entered": true,
+      "alternate_screen_exited": true,
+      "traceback_seen": false,
+      "isolated_root_entries": []
+    },
+    {
+      "kind": "returning-doctor",
+      "size": [120, 40],
+      "arguments": [],
+      "motion": "off",
+      "return_code": 0,
+      "output_bytes": 132531,
+      "brand_seen": true,
+      "alternate_screen_entered": true,
+      "alternate_screen_exited": true,
+      "traceback_seen": false,
+      "selected_doctor_seen": true,
+      "doctor_output_seen": true,
+      "isolated_root_entries": []
+    },
+    {
+      "kind": "terminal-coding-preflight",
+      "size": [120, 40],
+      "arguments": [],
+      "motion": "off",
+      "return_code": 1,
+      "output_bytes": 74818,
+      "brand_seen": true,
+      "alternate_screen_entered": true,
+      "alternate_screen_exited": true,
+      "traceback_seen": false,
+      "selected_coding_seen": true,
+      "isolated_root_entries": []
+    }
+  ],
+  "limitations": [
+    "Programmatic pseudo-terminal checks are not manual visual checks.",
+    "The real coding process and Ctrl-C restoration were unavailable because the pinned engine and model were not installed in the isolated roots.",
+    "Windows checks were not performed by maintainer direction D-087."
+  ]
+}

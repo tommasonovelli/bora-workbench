@@ -5,8 +5,8 @@ requires explicit human authorization for the push, tag, and GitHub Release.
 
 ## Public status
 
-- release described by this branch: `bora-workbench 0.3.2`;
-- preceding public version: `bora-workbench 0.3.1` on GitHub Releases;
+- release described by this branch: `bora-workbench 0.4.0`;
+- preceding public version: `bora-workbench 0.3.2` on GitHub Releases;
 - historical versions `0.1.0` through `0.1.6` remain immutable under their original
   `qwen-launcher` artifact identity;
 - every published bundle comes from its green Ubuntu/Windows release workflow and contains the
@@ -56,6 +56,38 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.4.0
+
+`0.4.0` adds the optional `bora tui` terminal workbench authorized by D-083–D-088. Seven
+read-only screens present one structured local snapshot, deterministic advice, configuration
+provenance, exact current commands, and a staged calibration composer. Textual always exits and
+restores the terminal before the existing Click/Typer callback owns prompts, network, writes,
+foreground processes, and exit codes. Returning success recollects; modes, calibration, update, and
+uninstall never reopen. Bare `bora`, every existing command name, the flat core package tree, and the
+read-only settings boundary stay unchanged.
+
+Textual `8.2.8` is frozen under D-086. Optional 8 fps wind/sea decoration carries no information,
+settles after about three active seconds, and has explicit accessibility, size, focus, terminal, and
+environment kill switches. The Ubuntu motion observation and its limits are in
+`evidence/tui/ubuntu-motion.json`.
+
+Available Ubuntu acceptance used isolated pseudo-terminals at 60x20 and 120x40 in plain and full
+modes. Navigation, explicit refresh, help, quit, alternate-screen exit, zero isolated-root writes,
+and no traceback were observed; a real `doctor` returned and reopened the TUI, while a selected
+`coding` command reached its terminal preflight and exited 1 without reopening because the isolated
+roots had no engine or model. These are programmatic pseudo-terminal checks, not manual visual
+checks. A real foreground model process and its `Ctrl-C` restoration were unavailable, and Windows
+TUI checks were not performed under D-087. The raw scope is recorded in
+`evidence/tui/ubuntu-acceptance.json`; none of the unavailable checks is called passed.
+
+The engine release, model identity, calibration protocol, record format, command contract,
+`command_contract_sha256`, reserves, policy, and schemas are unchanged, so existing
+`calibration-record/v6` files remain valid. No local candidate is activated, calibration coverage
+remains `GATE-PARTIAL`, and publication remains GitHub Releases only. D-088 authorizes the
+finalization, push, and `v0.4.0` tag after the complete local suite is green. The GitHub Release is
+authorized only after that tag's Ubuntu/Windows release workflow succeeds and must use its exact
+bundle.
 
 ### Release 0.3.2
 

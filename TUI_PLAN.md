@@ -39,8 +39,8 @@ Those ideas may be considered independently later. Coupling them to the TUI woul
 review surface, break command habits, and create import and packaging risk without making the TUI
 more truthful.
 
-The version remains `0.3.2` until the complete release scope passes Part F. This file proposes
-`0.4.0`; it does not authorize a version bump, commit, push, tag, or release.
+The version remained `0.3.2` through E9. Part F alone finalizes it as `0.4.0`; D-088 separately
+authorizes the finalization, push, tag, and GitHub Release after the required green checks.
 
 ---
 
@@ -717,25 +717,24 @@ normative specification before continuing. Do not silently amend this plan throu
 
 All of the following must pass from a clean checkout:
 
-- [ ] every authorized step A1–E9 is one reviewed commit with its step-specific checks;
-- [ ] `bora tui` imports no TUI framework before its command runs;
-- [ ] non-TTY invocation exits 2 without side effects;
-- [ ] first chrome renders before snapshot collection starts;
-- [ ] key input remains responsive while a fake collector blocks;
-- [ ] repeated refresh never overlaps collection;
-- [ ] opening and refresh perform no network, hash, write, cleanup, directory creation, or service
+- [x] every authorized step A1–E9 is one reviewed commit with its step-specific checks;
+- [x] `bora tui` imports no TUI framework before its command runs;
+- [x] non-TTY invocation exits 2 without side effects;
+- [x] first chrome renders before snapshot collection starts;
+- [x] key input remains responsive while a fake collector blocks;
+- [x] repeated refresh never overlaps collection;
+- [x] opening and refresh perform no network, hash, write, cleanup, directory creation, or service
       start;
-- [ ] every composed argv reaches a real leaf parser without execution;
-- [ ] every real preflight and confirmation remains owned by the existing CLI callback;
-- [ ] returning success reopens and refreshes; non-zero and 130 propagate exactly;
-- [ ] update/uninstall have no waiting TUI subprocess parent;
-- [ ] rendering is usable at 60x20, 80x24, and 120x40 in plain and full modes;
-- [ ] `bora --version` and package import do not import `bora_workbench.tui` or Textual;
-- [ ] static mode consumes no periodic refresh; motion, if shipped, stays within its measured
-      budget;
-- [ ] the sdist carries `IMPLEMENTATION_SPEC.md`, `TUI.md`, `TUI_PLAN.md`, and deferred
+- [x] every composed argv reaches a real leaf parser without execution;
+- [x] every real preflight and confirmation remains owned by the existing CLI callback;
+- [x] returning success reopens and refreshes; non-zero and 130 propagate exactly;
+- [x] update/uninstall have no waiting TUI subprocess parent;
+- [x] rendering is usable at 60x20, 80x24, and 120x40 in plain and full modes;
+- [x] `bora --version` and package import do not import `bora_workbench.tui` or Textual;
+- [x] static mode consumes no periodic refresh; shipped motion stays within its measured budget;
+- [x] the sdist carries `IMPLEMENTATION_SPEC.md`, `TUI.md`, `TUI_PLAN.md`, and deferred
       `WEBUI_PLAN.md`;
-- [ ] existing engine, model, calibration, record, and command-contract tests remain unchanged in
+- [x] existing engine, model, calibration, record, and command-contract tests remain unchanged in
       meaning.
 
 There is no invented total snapshot timeout. The UI exposes collection in progress and remains

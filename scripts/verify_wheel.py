@@ -23,7 +23,7 @@ def _resource_probe() -> str:
         "from importlib.metadata import version; "
         "from bora_workbench.profiles import load_catalog; "
         "from bora_workbench.resources import read_json, read_text, resource; "
-        "assert version('bora-workbench') == '0.3.2'; "
+        "assert version('bora-workbench') == '0.4.0'; "
         "assert 'Spike 0' in read_text('README.txt'); "
         "lock = read_json('engine.lock'); "
         "assert lock['release'] == 'b10011' and lock['assets_complete']; "
@@ -168,6 +168,7 @@ _REQUIRED_SDIST_PATHS = (
     "docs/releasing.md",
     "docs/tui.md",
     "evidence/README.md",
+    "evidence/tui/ubuntu-acceptance.json",
     "evidence/tui/ubuntu-motion.json",
     "evidence/calibration/windows-11-rtx-2060-super-v3/SHA256SUMS",
     "install.ps1",

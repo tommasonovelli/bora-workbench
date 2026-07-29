@@ -43,10 +43,10 @@ of the launcher.
 
 ## Current status
 
-This branch defines the `bora-workbench 0.3.2` release, package `bora_workbench`, and command
+This branch defines the `bora-workbench 0.4.0` release, package `bora_workbench`, and command
 `bora`, distributed exclusively through GitHub Releases.
 
-The preceding public release is `bora-workbench 0.2.2`. Historical `qwen-launcher 0.1.6` is now
+The preceding public release is `bora-workbench 0.3.2`. Historical `qwen-launcher 0.1.6` is now
 hosted under the renamed repository URL; its package, command, wheel names, and verified artifacts
 remain unchanged and must not be rebuilt or relabelled.
 
@@ -59,6 +59,6 @@ remain unchanged and must not be rebuilt or relabelled.
 - weights and mmproj are not redistributed and are acquired only by explicit `engine install` or
   `pull` commands;
 - the empirical calibration evidence is still `GATE-PARTIAL` because it covers a single real machine;
-- no interface stability guarantee for the 0.3 series.
+- no interface stability guarantee for the 0.4 series.
 
 **Next:** [Installation and first run](installation.md)
