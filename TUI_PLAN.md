@@ -451,8 +451,8 @@ normative specification before continuing. Do not silently amend this plan throu
 ## C7 — Use one canonical record vocabulary
 
 - **Goal.** Stop the CLI and TUI from assigning different words to the same record state.
-- **Files.** `src/bora_workbench/_cli_diagnostics.py`, `tests/test_cli_doctor.py`,
-  `docs/commands.md`, `TUI.md`.
+- **Files.** `src/bora_workbench/snapshot.py`, `src/bora_workbench/_cli_diagnostics.py`,
+  `tests/test_snapshot.py`, `tests/test_cli_doctor.py`, `docs/commands.md`, `TUI.md`.
 - **Change.** Map the actual `RecordEvaluation` states to these display labels:
 
   | Core status | Display label |
