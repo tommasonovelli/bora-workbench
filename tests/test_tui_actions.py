@@ -3,27 +3,38 @@
 from __future__ import annotations
 
 import asyncio
+from dataclasses import replace
+from itertools import product
 
 import pytest
 from typer.main import get_command
 
+from bora_workbench._calibration_reuse import RecordEvaluation
+from bora_workbench._calibration_types import MEASURABLE_CONTEXT_SCALE, PREFERENCES
 from bora_workbench.cli import app
 from bora_workbench.pi_link import ContextWindow
 from bora_workbench.snapshot import WorkbenchSnapshot
 from bora_workbench.tui.actions import (
+    CalibrationSelection,
     CommandSpec,
+    compose_calibration,
+    compose_calibration_activation,
     compose_doctor,
     compose_engine_status,
+    compose_mode,
     compose_pi,
     compose_pull,
     compose_status,
     compose_stop,
     compose_validate,
+    mode_commands,
     pi_commands,
     setup_commands,
     snapshot_changes,
 )
 from bora_workbench.tui.app import WorkbenchApp
+from bora_workbench.tui.screens.calibration import CalibrationView
+from bora_workbench.tui.screens.modes import ModesView
 from bora_workbench.tui.screens.overview import OverviewView
 from bora_workbench.tui.screens.pi import PiView
 from bora_workbench.tui.screens.setup import SetupView
@@ -86,6 +97,15 @@ def _expected_leaf(arguments: tuple[str, ...]) -> str:
     return arguments[0]
 
 
+def _candidate_snapshot() -> WorkbenchSnapshot:
+    """Add one valid pending coding candidate to the standard immutable fake snapshot."""
+    snapshot = _snapshot()
+    evaluation = RecordEvaluation("candidate", None, None, (), "valid")
+    record = replace(snapshot.doctor.records[0], evaluation=evaluation)
+    doctor = replace(snapshot.doctor, records=(record,))
+    return replace(snapshot, doctor=doctor)
+
+
 def test_setup_commands_enumerate_every_reachable_option_state() -> None:
     """Cover every engine, optional model handle, cache, and dry-run combination."""
     expected_engine = (
@@ -133,6 +153,58 @@ def test_every_setup_and_pi_command_recursively_parses(command: CommandSpec) -> 
     leaf = _parse_leaf(get_command(app), command.cli_arguments)
 
     assert leaf == _expected_leaf(command.cli_arguments)
+
+
+def test_mode_commands_cover_force_and_stay_terminal() -> None:
+    """Compose all three foreground modes with only the exact memory-gate override."""
+    assert tuple(command.cli_arguments for command in mode_commands()) == (
+        ("coding",),
+        ("coding", "--force"),
+        ("studio",),
+        ("studio", "--force"),
+        ("vstudio",),
+        ("vstudio", "--force"),
+    )
+    assert all(command.disposition == "terminal" for command in mode_commands())
+
+
+def test_every_reachable_calibration_state_parses_without_forbidden_flags() -> None:
+    """Enumerate measurement and activation routes through the real recursive parser."""
+    root = get_command(app)
+    states = product(
+        ("coding", "studio", "vstudio", "all"),
+        PREFERENCES,
+        (False, True),
+        (None, *MEASURABLE_CONTEXT_SCALE),
+    )
+    for mode, preference, is_candidate_only, target in states:
+        selection = CalibrationSelection(mode, preference, is_candidate_only, target)
+        command = compose_calibration(selection)
+        assert command.disposition == "terminal"
+        assert "--activate" not in command.cli_arguments
+        assert _parse_leaf(root, command.cli_arguments) == "calibrate"
+    for mode in ("coding", "studio", "vstudio"):
+        command = compose_calibration_activation(mode)
+        assert command.cli_arguments[-1] == "--activate"
+        assert "--preference" not in command.cli_arguments
+        assert "--target-ctx" not in command.cli_arguments
+        assert _parse_leaf(root, command.cli_arguments) == "calibrate"
+
+
+@pytest.mark.parametrize(
+    "operation",
+    (
+        lambda: compose_mode("unknown"),  # type: ignore[arg-type]
+        lambda: CalibrationSelection("unknown", "balanced"),  # type: ignore[arg-type]
+        lambda: CalibrationSelection("coding", "unknown"),  # type: ignore[arg-type]
+        lambda: CalibrationSelection("coding", "balanced", target_ctx=8192),
+        lambda: compose_calibration_activation("all"),  # type: ignore[arg-type]
+    ),
+)
+def test_invalid_mode_and_calibration_states_are_unrepresentable(operation) -> None:
+    """Reject domains and combinations the wizard never offers."""
+    with pytest.raises(ValueError):
+        operation()
 
 
 def test_command_spec_rejects_display_argument_divergence() -> None:
@@ -183,6 +255,7 @@ def test_overview_enter_returns_the_exact_visible_action_after_collection() -> N
     ("view_type", "navigation_count", "tab_count", "expected"),
     (
         (OverviewView, 0, 4, compose_stop()),
+        (ModesView, 1, 5, mode_commands()[5]),
         (SetupView, 3, 4, setup_commands()[4]),
         (PiView, 4, 4, pi_commands()[4]),
     ),
@@ -190,7 +263,7 @@ def test_overview_enter_returns_the_exact_visible_action_after_collection() -> N
 def test_actionable_screens_return_the_exact_marked_command(
     view_type, navigation_count: int, tab_count: int, expected: CommandSpec
 ) -> None:
-    """Select stop, full engine flags, and pi uninstall from their visible screen menus."""
+    """Select stop, forced vstudio, full engine flags, and pi uninstall from visible menus."""
 
     async def exercise() -> None:
         """Navigate, move the action marker, and inspect the post-Textual result."""
@@ -205,6 +278,62 @@ def test_actionable_screens_return_the_exact_marked_command(
             await pilot.press(*(["tab"] * tab_count), "enter")
             assert workbench.return_value is not None
             assert workbench.return_value.command == expected
+
+    asyncio.run(exercise())
+
+
+def test_calibration_wizard_reaches_review_before_returning_measurement() -> None:
+    """Ask every measurement question and expose the exact command only at final review."""
+
+    async def exercise() -> None:
+        """Choose max-context, candidate-only, and one approved target step by step."""
+        workbench = WorkbenchApp("0.test", TerminalMode(True, False), lambda version: _snapshot())
+        async with workbench.run_test() as pilot:
+            await pilot.pause(0.1)
+            await pilot.press("down", "down", "enter")
+            assert workbench.is_running is True
+            await pilot.press("tab", "enter", "tab", "enter")
+            assert workbench.is_running is True
+            await pilot.press("tab", "tab", "tab", "enter")
+            review = str(
+                workbench.query_one(CalibrationView).query_one(".section-actions").render()
+            )
+            expected = (
+                "bora calibrate --mode coding --preference max-context "
+                "--no-activate --target-ctx 65536"
+            )
+            assert expected in review
+            assert "real CLI preflight and confirmation follow" in review
+            assert workbench.is_running is True and workbench.return_value is None
+            await pilot.press("enter")
+            assert workbench.return_value is not None
+            assert workbench.return_value.command is not None
+            assert workbench.return_value.command.display == expected
+            assert workbench.return_value.command.disposition == "terminal"
+
+    asyncio.run(exercise())
+
+
+def test_candidate_activation_skips_preference_and_target_questions() -> None:
+    """Offer only snapshot-valid candidate routes and jump directly to exact activation review."""
+
+    async def exercise() -> None:
+        """Choose the appended coding candidate route and confirm its two-stage Enter behavior."""
+        workbench = WorkbenchApp(
+            "0.test", TerminalMode(True, False), lambda version: _candidate_snapshot()
+        )
+        async with workbench.run_test() as pilot:
+            await pilot.pause(0.1)
+            await pilot.press("down", "down", "tab", "tab", "tab", "tab", "enter")
+            review = str(
+                workbench.query_one(CalibrationView).query_one(".section-actions").render()
+            )
+            assert "bora calibrate --mode coding --activate" in review
+            assert "--preference" not in review and "--target-ctx" not in review
+            assert workbench.is_running is True
+            await pilot.press("enter")
+            assert workbench.return_value is not None
+            assert workbench.return_value.command == compose_calibration_activation("coding")
 
     asyncio.run(exercise())
 

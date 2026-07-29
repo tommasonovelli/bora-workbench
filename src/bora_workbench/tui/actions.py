@@ -5,9 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
+from bora_workbench._calibration_types import MEASURABLE_CONTEXT_SCALE, PREFERENCES, Preference
 from bora_workbench.snapshot import WorkbenchSnapshot
 
 CommandDisposition = Literal["returning", "terminal"]
+ModeId = Literal["coding", "studio", "vstudio"]
+CalibrationMode = Literal["coding", "studio", "vstudio", "all"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,9 +42,70 @@ class TuiResult:
     snapshot: WorkbenchSnapshot | None
 
 
+@dataclass(frozen=True, slots=True)
+class CalibrationSelection:
+    """Hold one valid measurement route chosen by the calibration wizard."""
+
+    mode: CalibrationMode
+    preference: Preference
+    is_candidate_only: bool = False
+    target_ctx: int | None = None
+
+    def __post_init__(self) -> None:
+        """Reject values outside current CLI domains before composing parser tokens."""
+        if self.mode not in ("coding", "studio", "vstudio", "all"):
+            raise ValueError(f"unsupported calibration mode: {self.mode}")
+        if self.preference not in PREFERENCES:
+            raise ValueError(f"unsupported calibration preference: {self.preference}")
+        if self.target_ctx is not None and self.target_ctx not in MEASURABLE_CONTEXT_SCALE:
+            raise ValueError(f"unmeasurable calibration target: {self.target_ctx}")
+
+
 def _command(*arguments: str) -> CommandSpec:
     """Build one returning command whose display has the canonical bora executable name."""
     return CommandSpec(("bora", *arguments), arguments, "returning")
+
+
+def _terminal_command(*arguments: str) -> CommandSpec:
+    """Build one foreground command that ends the TUI invocation after dispatch."""
+    return CommandSpec(("bora", *arguments), arguments, "terminal")
+
+
+def compose_mode(mode: ModeId, is_force: bool = False) -> CommandSpec:
+    """Compose one current foreground mode and its exact memory-gate override."""
+    if mode not in ("coding", "studio", "vstudio"):
+        raise ValueError(f"unsupported launch mode: {mode}")
+    arguments = [mode]
+    if is_force:
+        arguments.append("--force")
+    return _terminal_command(*arguments)
+
+
+def compose_calibration(selection: CalibrationSelection) -> CommandSpec:
+    """Compose a measurement route that cannot contain candidate activation."""
+    preference = selection.preference.replace("_", "-")
+    arguments = ["calibrate", "--mode", selection.mode, "--preference", preference]
+    if selection.is_candidate_only:
+        arguments.append("--no-activate")
+    if selection.target_ctx is not None:
+        arguments.extend(("--target-ctx", str(selection.target_ctx)))
+    return _terminal_command(*arguments)
+
+
+def compose_calibration_activation(mode: ModeId) -> CommandSpec:
+    """Compose candidate activation without preference, target, or no-activate flags."""
+    if mode not in ("coding", "studio", "vstudio"):
+        raise ValueError(f"unsupported candidate mode: {mode}")
+    return _terminal_command("calibrate", "--mode", mode, "--activate")
+
+
+def mode_commands() -> tuple[CommandSpec, ...]:
+    """Return every current foreground mode with and without its memory override."""
+    return tuple(
+        compose_mode(mode, is_force)
+        for mode in ("coding", "studio", "vstudio")
+        for is_force in (False, True)
+    )
 
 
 def compose_doctor() -> CommandSpec:

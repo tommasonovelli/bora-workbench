@@ -8,6 +8,10 @@ from textual.widgets import Static
 
 from bora_workbench.profiles import FALLBACK_CTX
 from bora_workbench.snapshot import ModeRecordSnapshot, WorkbenchSnapshot, record_display_label
+from bora_workbench.tui.actions import CommandSpec, mode_commands, render_command_menu
+
+_ACTIONS = mode_commands()
+_HEADING = "Foreground modes (Tab selects; Enter closes the TUI before launch)"
 
 
 def _cell(record: ModeRecordSnapshot) -> str:
@@ -27,7 +31,9 @@ def render_modes(snapshot: WorkbenchSnapshot) -> str:
         return "Mode details are unavailable because no trusted packaged records were collected."
     lines = [
         "Each mode uses an active local cell when valid; otherwise the verified baseline "
-        "still works."
+        "still works.",
+        "--force bypasses only the default-model total and available RAM gate.",
+        "The selected mode owns the foreground terminal after this TUI closes.",
     ]
     for record in records:
         status = record_display_label(record.evaluation.status)
@@ -43,11 +49,27 @@ class ModesView(Vertical):
     def __init__(self) -> None:
         """Create the hidden-until-selected read-only mode region."""
         super().__init__(classes="section-view")
+        self._action_index = 0
 
     def compose(self) -> ComposeResult:
-        """Yield the static title and literal detail body."""
+        """Yield the title, exact terminal mode commands, and literal detail body."""
         yield Static("Modes", classes="section-title", markup=False)
+        yield Static(
+            render_command_menu(_ACTIONS, self._action_index, _HEADING),
+            classes="section-actions",
+            markup=False,
+        )
         yield Static("Waiting for the local snapshot...", classes="section-body", markup=False)
+
+    def move_action(self, offset: int) -> None:
+        """Move the text marker through mode and force combinations."""
+        self._action_index = (self._action_index + offset) % len(_ACTIONS)
+        content = render_command_menu(_ACTIONS, self._action_index, _HEADING)
+        self.query_one(".section-actions", Static).update(content)
+
+    def selected_action(self) -> CommandSpec:
+        """Return the exact terminal mode command currently marked in text."""
+        return _ACTIONS[self._action_index]
 
     def show_snapshot(self, snapshot: WorkbenchSnapshot) -> None:
         """Replace the body with cells derived only from the shared snapshot."""

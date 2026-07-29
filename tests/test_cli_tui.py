@@ -31,7 +31,7 @@ from bora_workbench.snapshot import (
     WorkbenchCollectionError,
     WorkbenchSnapshot,
 )
-from bora_workbench.tui.actions import TuiResult, compose_doctor
+from bora_workbench.tui.actions import TuiResult, compose_doctor, compose_mode
 from bora_workbench.tui.screens.calibration import CalibrationView
 from bora_workbench.tui.screens.installation import InstallationView
 from bora_workbench.tui.screens.modes import ModesView
@@ -208,6 +208,27 @@ def test_returning_action_dispatches_after_teardown_then_reopens(monkeypatch) ->
         ("dispatch", ("doctor",)),
         ("tui-stopped", snapshot),
     ]
+
+
+def test_terminal_action_success_exits_without_reopening(monkeypatch) -> None:
+    """Keep foreground modes terminal even when their real callback returns zero."""
+    selected = TerminalMode(True, False)
+    calls = []
+
+    def run(version, mode, comparison):
+        """Return one terminal command and fail if another UI lifetime is requested."""
+        calls.append(comparison)
+        return TuiResult(compose_mode("coding"), _snapshot())
+
+    monkeypatch.setattr(terminal_module, "inspect_terminal", lambda plain: selected)
+    monkeypatch.setattr(tui_app, "run_tui", run)
+    monkeypatch.setattr(cli_module, "_dispatch_tui_arguments", lambda arguments: 0)
+
+    result = runner.invoke(app, ["tui"])
+
+    assert result.exit_code == 0
+    assert calls == [None]
+    assert "Selected command: bora coding" in result.stdout
 
 
 @pytest.mark.parametrize("exit_code", (1, 2, 130))
