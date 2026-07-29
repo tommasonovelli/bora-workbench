@@ -18,7 +18,9 @@ _NESTING_NODES = (
     ast.Try,
     ast.Match,
 )
-_PARAMETER_EXCEPTIONS: dict[str, str] = {}
+_PARAMETER_EXCEPTIONS = {
+    "src/bora_workbench/cli.py::calibrate": "Typer parameters are the published option surface.",
+}
 
 
 class _QualifiedDefinitionVisitor(ast.NodeVisitor):

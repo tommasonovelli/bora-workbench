@@ -370,9 +370,10 @@ for example, `coding` should retain `fast`, `studio` `balanced`, and `vstudio` `
 yields a sample already wins and the remaining steps are skipped. `fast` and `balanced` compare
 latency across contexts and walk the whole ladder.
 
-`--mode` and `--preference` are ordinary Typer options; the other three are handled by the command's
-specialized parser, so `calibrate --help` lists them in the epilog rather than in the generated
-table. The syntax above is the one actually supported.
+All five options are ordinary Typer options and appear in generated `calibrate --help`, so shell
+completion and the TUI composer consume the same public surface. Repeating a singleton option uses
+Click's standard last-occurrence behavior; the preflight always prints the selected value before the
+confirmation.
 
 Trial reserves, written into every record: 0.5 GiB VRAM, 2.0 GiB RAM, 0.125 GiB release tolerance.
 

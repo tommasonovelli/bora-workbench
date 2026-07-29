@@ -7,9 +7,11 @@ from pathlib import Path
 import pytest
 import typer
 from rich.console import Console
+from typer.testing import CliRunner
 
 import bora_workbench._cli_calibration as calibration_cli
 import bora_workbench._cli_pi as pi_cli
+import bora_workbench.cli as cli_module
 from bora_workbench._calibration_run import RunResult
 from bora_workbench._calibration_runner import ModeResult
 from bora_workbench._calibration_types import (
@@ -24,7 +26,6 @@ from bora_workbench._cli_calibration import (
     CalibrationCliInput,
     _preference,
     _validate,
-    parse_calibration_input,
     run_calibrate,
     show_outcome,
 )
@@ -32,6 +33,8 @@ from bora_workbench.calibration import CalibrationError
 from bora_workbench.pi_link import PiInstallation
 from bora_workbench.profiles import load_catalog
 from tests.sample_fixtures import sample
+
+runner = CliRunner()
 
 
 def _output() -> tuple[Console, Console]:
@@ -47,18 +50,66 @@ def test_preference_normalization_and_rejection() -> None:
         _preference("turbo")
 
 
-def test_extras_parse_activation_and_target_context() -> None:
-    """Accept exactly the documented extras and reject anything else before hardware work."""
-    parsed = parse_calibration_input("coding", None, ["--no-activate", "--target-ctx", "65536"])
+def test_calibration_help_declares_every_supported_option() -> None:
+    """Expose the complete composer surface through generated Typer help."""
+    result = runner.invoke(cli_module.app, ["calibrate", "--help"])
 
-    assert (parsed.no_activate, parsed.activate, parsed.target_ctx) == (True, False, 65536)
-    assert parse_calibration_input("coding", None, ["--activate"]).activate is True
-    with pytest.raises(CalibrationError):
-        parse_calibration_input("coding", None, ["--candidate", "safe:8192"])
-    with pytest.raises(CalibrationError):
-        parse_calibration_input("coding", None, ["--target-ctx"])
-    with pytest.raises(CalibrationError):
-        parse_calibration_input("coding", None, ["--target-ctx", "65536", "--target-ctx", "32768"])
+    assert result.exit_code == 0
+    for option in ("--mode", "--preference", "--no-activate", "--activate", "--target-ctx"):
+        assert option in result.stdout
+    assert "Extras are parsed" not in result.stdout
+
+
+def test_declared_options_construct_keyword_input(monkeypatch) -> None:
+    """Accept equals syntax and Click's standard last singleton occurrence."""
+    captured: list[CalibrationCliInput] = []
+    monkeypatch.setattr(
+        cli_module, "run_calibrate", lambda options, stdout, stderr: captured.append(options)
+    )
+
+    result = runner.invoke(
+        cli_module.app,
+        [
+            "calibrate",
+            "--mode",
+            "coding",
+            "--no-activate",
+            "--target-ctx=65536",
+            "--target-ctx",
+            "32768",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert captured == [
+        CalibrationCliInput(
+            mode="coding", preference=None, no_activate=True, activate=False, target_ctx=32768
+        )
+    ]
+
+
+def test_cli_rejects_calibration_input_before_hardware(monkeypatch) -> None:
+    """Reject conflicts, unknown options, malformed values, and unmeasurable targets early."""
+    hardware_calls: list[object] = []
+    monkeypatch.setattr(
+        calibration_cli,
+        "prepare_target",
+        lambda *args, **kwargs: hardware_calls.append((args, kwargs)),
+    )
+    invalid_arguments = (
+        ["--activate", "--target-ctx", "65536"],
+        ["--activate", "--preference", "fast"],
+        ["--activate", "--no-activate"],
+        ["--target-ctx", "16384"],
+        ["--target-ctx", "not-an-integer"],
+        ["--unknown"],
+    )
+
+    for arguments in invalid_arguments:
+        result = runner.invoke(cli_module.app, ["calibrate", "--mode", "coding", *arguments])
+        assert result.exit_code == 2
+        assert "Traceback" not in result.stderr
+    assert hardware_calls == []
 
 
 def test_validation_rejects_conflicts_and_unapproved_context() -> None:

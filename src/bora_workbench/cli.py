@@ -7,7 +7,7 @@ from typing import Annotated
 
 import typer
 
-from bora_workbench._cli_calibration import parse_calibration_input, run_calibrate
+from bora_workbench._cli_calibration import CalibrationCliInput, run_calibrate
 from bora_workbench._cli_diagnostics import (
     EngineInstallOptions,
     run_doctor,
@@ -25,9 +25,8 @@ from bora_workbench._cli_services import (
     run_vstudio,
     show_status,
 )
-from bora_workbench._cli_theme import create_console, print_error
+from bora_workbench._cli_theme import create_console
 from bora_workbench._cli_update import UpdateOptions, run_update
-from bora_workbench.calibration import CalibrationError
 
 app = typer.Typer(
     name="bora-workbench",
@@ -47,12 +46,6 @@ _stdout = create_console()
 _stderr = create_console(stderr=True)
 _MEMORY_GATE_HELP = "Bypass only the default-model total and available RAM gate."
 _MODEL_HELP = "Pinned model to act on. Optional: this distribution pins only 'qwen'."
-_CALIBRATION_EPILOG = (
-    "Extras: --no-activate keeps the measured candidates without replacing the active records; "
-    "--activate promotes candidates measured earlier without measuring again; --target-ctx N "
-    "searches only one of 131072, 98304, 65536, 49152, 32768. "
-    "Extras are parsed strictly after Typer's common options."
-)
 
 
 def package_version() -> str:
@@ -184,12 +177,8 @@ def vstudio(
     run_vstudio(force, _stdout, _stderr)
 
 
-@app.command(
-    context_settings={"allow_extra_args": True, "ignore_unknown_options": True},
-    epilog=_CALIBRATION_EPILOG,
-)
+@app.command()
 def calibrate(
-    context: typer.Context,
     mode: Annotated[str, typer.Option("--mode", help="Packaged mode id or 'all'.")],
     preference: Annotated[
         str | None,
@@ -198,13 +187,29 @@ def calibrate(
             help="Optimization rule to measure: fast, balanced (default), max-context.",
         ),
     ] = None,
+    no_activate: Annotated[
+        bool,
+        typer.Option(
+            "--no-activate", help="Keep measured records as candidates without activating them."
+        ),
+    ] = False,
+    activate: Annotated[
+        bool,
+        typer.Option("--activate", help="Promote existing candidates without measuring again."),
+    ] = False,
+    target_ctx: Annotated[
+        int | None,
+        typer.Option("--target-ctx", help="Measure one approved context-window step only."),
+    ] = None,
 ) -> None:
     """Measure one launch cell for one packaged mode or for all of them."""
-    try:
-        options = parse_calibration_input(mode, preference, context.args)
-    except CalibrationError as error:
-        print_error(_stderr, "Calibration input error", str(error))
-        raise typer.Exit(code=2) from error
+    options = CalibrationCliInput(
+        mode=mode,
+        preference=preference,
+        no_activate=no_activate,
+        activate=activate,
+        target_ctx=target_ctx,
+    )
     run_calibrate(options, _stdout, _stderr)
 
 

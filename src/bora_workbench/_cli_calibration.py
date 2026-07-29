@@ -83,46 +83,6 @@ class CalibrationCliInput:
     preference: str | None = None
 
 
-def _target_ctx(arguments: list[str], index: int) -> int:
-    """Read and parse the mandatory ``--target-ctx`` value."""
-    if index + 1 >= len(arguments) or arguments[index + 1].startswith("--"):
-        raise CalibrationError("--target-ctx requires a value")
-    try:
-        return int(arguments[index + 1])
-    except ValueError as error:
-        raise CalibrationError("--target-ctx must be an integer") from error
-
-
-def parse_calibration_input(
-    mode: str, preference: str | None, extras: list[str]
-) -> CalibrationCliInput:
-    """Parse the documented calibrate extras, rejecting unknown or duplicate options.
-
-    The extras stay outside the Typer callback because the command accepts unknown options in
-    order to reject them here with an actionable message instead of Typer's usage error.
-    """
-    no_activate = False
-    activate = False
-    target_ctx: int | None = None
-    index = 0
-    while index < len(extras):
-        option = extras[index]
-        if option == "--target-ctx":
-            if target_ctx is not None:
-                raise CalibrationError("--target-ctx may be supplied only once")
-            target_ctx = _target_ctx(extras, index)
-            index += 2
-            continue
-        if option == "--no-activate":
-            no_activate = True
-        elif option == "--activate":
-            activate = True
-        else:
-            raise CalibrationError(f"unknown calibrate option {option!r}")
-        index += 1
-    return CalibrationCliInput(mode, no_activate, activate, target_ctx, preference)
-
-
 def _preference(value: str | None) -> Preference:
     """Normalize and validate the requested launch envelope preference."""
     normalized = (value or DEFAULT_PREFERENCE).replace("-", "_")
