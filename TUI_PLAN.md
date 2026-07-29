@@ -1,1081 +1,789 @@
-# bora — command surface, code layout, and interactive front end: the plan for 0.4.0
+# bora TUI — revised decision and execution plan for a proposed 0.4.0
 
-> **Status: execution plan, not authorization.** `IMPLEMENTATION_SPEC.md` remains the only normative
-> plan: it holds the authority, this file holds the steps, and `TUI.md` holds the visual design
-> record. **Step A1 is what authorizes everything else**: until the specification names this file and
-> records the decisions of Appendix A, nothing below should be committed, because specification 6.2
-> forbids side plans.
+> **Status: decision input, not authorization.** `IMPLEMENTATION_SPEC.md` is the only normative
+> plan. No implementation step below starts until section A1 records the maintainer's decisions in
+> that specification. This file supplies execution detail; it cannot authorize itself.
 >
-> Written against `0.3.2` at commit `4088997`. Every `file:line` was verified at that commit.
-> **Match by content, not by number**: a reference whose quoted code still matches is still correct
-> wherever it moved; a reference that no longer matches means this plan is stale, not the code.
+> This revision was checked against `bora-workbench 0.3.2` after the first TUI plan exposed useful
+> ideas and several incorrect assumptions. `TUI.md` remains the visual design source, but it is stale
+> in places and is aligned with the current product only in A1. Match implementation references by
+> content rather than by historical line number.
 
 ---
 
-## 0. What 0.4.0 is
+## 0. Verdict and proposed scope
 
-**`0.4.0` is the release that ships the reorganized command surface, the reorganized package tree,
-and the interactive front end, together.** The version number is not taken until Part B is complete
-and working against the acceptance criteria in Part C; until then the work lives on the branch and
-`pyproject.toml` still says `0.3.2`.
+The useful product is smaller than the previous plan:
 
-Three things happen, in this order, and the order is the plan:
+> **`bora tui` is a read-mostly dashboard, command composer, and teaching surface for the existing
+> CLI. It exits its UI runtime before a real command runs. It is not a second launcher runtime.**
 
-| | Part | Why it comes first |
+A proposed `0.4.0` contains only what that product needs:
+
+1. correctness fixes to the existing CLI surface that a composer must be able to trust;
+2. a shared, structured, read-only view of local state;
+3. one deliberate interaction-stack decision;
+4. `bora tui`, its navigation, command composition, post-UI handoff, and optional motion;
+5. documentation, packaging, offline tests, and explicit manual terminal checks.
+
+The following are **not prerequisites and are removed from this plan**:
+
+- renaming `pull`, `rm`, `update`, `uninstall`, or the bare `pi` action;
+- adding `model`, `self`, or `pi connect` command groups;
+- reorganizing all source and test modules into packages;
+- relaxing the file-length or function-length limits;
+- changing bare `bora` from `no_args_is_help`;
+- writing `config.toml`;
+- clipboard integration, `$EDITOR` launching, or a generic command runner.
+
+Those ideas may be considered independently later. Coupling them to the TUI would enlarge the
+review surface, break command habits, and create import and packaging risk without making the TUI
+more truthful.
+
+The version remains `0.3.2` until the complete release scope passes Part F. This file proposes
+`0.4.0`; it does not authorize a version bump, commit, push, tag, or release.
+
+---
+
+## 1. Findings this revision corrects
+
+The execution steps below are built around facts verified in the current source.
+
+### 1.1 Command facts
+
+- The installed console script already prints `Usage: bora ...`. The `name="bora-workbench"`
+  discrepancy is visible mainly through direct `CliRunner` use, so it is not a release-driving user
+  defect.
+- `--no-activate`, `--activate`, and `--target-ctx` are documented but absent from generated
+  `calibrate --help`; the current hand parser exists because the three-parameter quality limit is
+  absolute.
+- `bora pi --install remove` accepts and ignores `--install`.
+- `bora pi --print --install` accepts two contradictory requests and lets `--print` silently win.
+- `run_validate` and part of `run_doctor` can let an operational exception escape as a traceback.
+- The engine-status difference list can be split between stdout and stderr.
+
+These are corrected without renaming commands.
+
+### 1.2 Read-model facts
+
+- `doctor` computes while it renders; there is no structured snapshot for a second front end.
+- `status_services()` is not read-only: it locks, quarantines corrupt state, and removes stale
+  entries. Opening a side-effect-free dashboard cannot call it.
+- `detect_hardware()` and engine verification execute bounded subprocess probes. Therefore
+  "opening starts no process" is not a truthful contract. The correct rule is that opening starts
+  no managed service or persistent process and performs no mutation.
+- Engine version and help probes each have a 60-second timeout. GPU queries have their own 5-second
+  timeout and may occur more than once. A 5-second total worst-case snapshot budget is false.
+- `locate_copies()` reports files, not complete verified model readiness.
+- `Config` retains resolved values but not whether each came from the environment, TOML, or a
+  default.
+- The pi context-window source is assembled in the CLI presentation module instead of a shared
+  structured service.
+- A passive "published version" field would require network access. It is therefore not part of
+  the opening snapshot; `bora update --check` remains the explicit network action.
+
+### 1.3 Interaction facts
+
+- Rich supplies rendering, not a cross-platform input loop. A Rich-only phase with `q`, `r`, resize,
+  animation, and raw input has already made the hard dependency decision by reimplementing a TUI
+  framework.
+- A dependency decision after two interactive Rich phases is too late. It happens before the first
+  interactive screen.
+- A parent TUI waiting in `subprocess.run()` remains inside the uv tool environment. That is unsafe
+  for deferred `update` and `uninstall` on Windows and makes the claim that the TUI is already gone
+  false.
+- The current uv handoff is correct when the process that schedules it is the process that exits.
+  The revised design therefore ends the UI runtime and dispatches the selected CLI callback in the
+  **same bora process**, instead of creating another Python parent/child layer.
+- Root-only Click parsing does not prove that nested command options are valid. Composer tests must
+  recursively parse through every selected command and group to the leaf without executing it.
+
+### 1.4 Plan and packaging facts
+
+- The former target listed seven help panels while repeatedly calling them six.
+- Five command paths, not four, were proposed for renaming.
+- The proposed package tree had nine top-level directories before `tui/` and ten after it, not eight.
+- Moving `_model_verification.py` below `models/` would cause package initialization to cross the
+  existing `engine`/`models` dependency and was not a mechanical move.
+- Several post-move test paths in the old plan referred to locations that the move itself removed.
+- The former version-bump list omitted `uv.lock`.
+- The current sdist includes `IMPLEMENTATION_SPEC.md` but not `TUI.md` or `TUI_PLAN.md`. If the
+  normative plan points to these design records, the sdist must carry them.
+- `TUI.md` still contains pre-D-078/D-079 statements that bora never downloads weights and that
+  uninstall never offers Hugging Face cache removal. A partial errata table is insufficient.
+
+---
+
+## 2. Non-negotiable contracts
+
+Every implementation review checks these rules.
+
+1. `IMPLEMENTATION_SPEC.md` remains the only normative source.
+2. Bare `bora` continues to show help; the front end is explicit `bora tui`.
+3. Existing command names and meanings stay unchanged in this milestone.
+4. The TUI owns no launch, calibration, removal, or update rule.
+5. Every action displays the exact `bora ...` command before dispatch.
+6. The UI runtime is fully stopped and the terminal restored before dispatch.
+7. A successful returning action may reopen the TUI; a non-zero or interrupted action exits with
+   that exact `0 / 1 / 2 / 130` result.
+8. Opening and refresh perform no network access, hashing of model payloads, directory creation,
+   receipt write, state cleanup, configuration write, or managed-service start.
+9. Opening may run the same bounded, read-only hardware and engine probes that `doctor` runs. They
+   execute in one presentation worker so the first frame and key handling remain responsive.
+10. No two snapshot collections run concurrently.
+11. Settings remain read-only. Configuration provenance is shown from shared configuration data,
+    not reconstructed in the screen.
+12. Model readiness never calls a file "verified" merely because its name exists.
+13. Service inspection never calls stale or corrupt state "empty" and never repairs it while the
+    TUI is open.
+14. No candidate is activated without the user's explicit selection followed by the real CLI
+    confirmation path.
+15. No TUI feature is the only way to perform an operation.
+16. No OS branching is scattered across screens. Any terminal-specific branch lives in the one
+    module named by specification section 4.1.
+17. The TUI is imported only by the `tui` command, never by package import or `bora --version`.
+18. Tests remain offline and use no real network, GPU, model, server, npm, uv replacement, or
+    administrative operation.
+
+### 2.1 Precise meaning of read-only opening
+
+The front end may read files, inspect process identities, and run bounded diagnostic subprocesses.
+It must not:
+
+- create or acquire a lifecycle lock;
+- quarantine, prune, or rewrite service state;
+- create a hash receipt or hash 22 GiB of weights;
+- query GitHub or Hugging Face;
+- launch `llama-server`;
+- change pi's files, the user's config, or a managed root.
+
+Tests assert the prohibited effects. They do not make the untrue assertion that no subprocess ever
+exists.
+
+---
+
+## 3. Decisions required before A1
+
+The questions below deliberately carry no `D-0xx` numbers. The decision table assigns the next free
+numbers only after the maintainer answers them.
+
+| # | Question | Recommendation |
 |---|---|---|
-| **A** | The commands and the tree | The front end is a *second reader* of the command surface. Reorganizing after it exists means reorganizing twice, and the second time with a UI in the way. |
-| **B** | The front end | It sits on the vocabulary Part A defines, and adds exactly one command: `bora tui`. |
-| **C** | The release | `0.4.0`, prepared exactly as `docs/releasing.md` describes. |
+| Q1 | Is the reduced `0.4.0` scope in section 0 approved? | **Yes.** |
+| Q2 | Do command names and the current flat package tree stay unchanged for this milestone? | **Yes.** Review either independently later. |
+| Q3 | Is handoff defined as same-process CLI dispatch after the UI runtime has ended, rather than `subprocess.run()` from a live TUI parent? | **Yes**, subject to the isolated spike and tests in E3/E7. |
+| Q4 | May the project evaluate and, after due diligence, add Textual as the interaction framework before E1? | **Yes.** If the review fails, stop Part E rather than hand-roll a second framework. |
+| Q5 | May the TUI use Textual's event loop and one presentation worker while all core APIs remain synchronous? | **Yes**, as a narrow UI exception to the current no-async/no-speculative-concurrency rule. |
+| Q6 | Do bare `bora` and read-only settings remain permanent decisions for this milestone? | **Yes.** |
+| Q7 | Is motion required for `0.4.0`, or may the functional TUI ship first? | **Recommend optional:** E8 lands only if its measured budget passes. |
+| Q8 | May opening run bounded read-only hardware/engine probes under section 2.1? | **Yes.** Calling it process-free would be inaccurate. |
 
-**What 0.4.0 does not change:** the engine release, the model, `command_contract`,
-`command_contract_sha256`, the calibration protocol, `calibration-record/v6`, the reserves, the
-packaged policy and schemas, the four managed roots, or the exit codes. Every existing record stays
-valid, and no local candidate is activated. Part A touches **no file under
-`src/bora_workbench/resources/`** — it is a core change end to end (`CONTRIBUTING.md:27-34`).
-
-**What a user gains, in one line each:** commands whose names say what they act on; a `--help` that
-is organized instead of alphabetical; a tree a reader can hold in their head; and a front end that
-always knows what this machine should do next and shows the exact command before it runs it.
+A1 records the answers, not merely these recommendations.
 
 ---
 
-## 1. How to read a step
+## 4. Step format and working rule
 
-Every step below declares six fields. A step missing one is not ready to execute.
+Every step below declares:
 
-| Field | Meaning |
-|---|---|
-| **Goal** | the one outcome; if it needs an "and", it is two steps |
-| **Files** | every file the step may touch, and no others |
-| **Change** | precise enough that executing it requires no new design decision |
-| **Decision** | the `D-0xx` entry it records, or `—` when it restores an existing contract |
-| **Verify** | the check that would fail if the step were wrong |
-| **Done when** | the observable condition that ends the step |
+- **Goal** — one observable outcome;
+- **Files** — the allowed files for that step;
+- **Change** — the implementation boundary;
+- **Decision** — the normative decision it applies, or `—` when restoring an existing rule;
+- **Verify** — checks specific to the step, followed by Appendix B;
+- **Done when** — the condition that ends the step.
 
-The standing rules apply unchanged (`AGENTS.md:200-219`, `CONTRIBUTING.md:27-34`): one step per
-commit; Conventional Commits with a body naming the constraints and the checks performed;
-documentation travels with its area in the same commit; core and packaged content never mix; and
-after **every** step, the frozen suite of Appendix C.
-
-Decision numbers `D-083`…`D-088` are **indicative**. Take the next free number in the table at the
-moment the step actually lands: a plan that reserves a block it does not own collides with whatever
-was decided meanwhile (`TUI.md:778-785`).
+One step is one commit. If implementation reveals a new design decision, stop and update the
+normative specification before continuing. Do not silently amend this plan through code.
 
 ---
 
-# Part A — Fix the commands and the tree
+# Part A — Establish authority and align the design record
 
-## A.0 The surface today
+## A1 — Record the approved boundary
 
-Entry point `bora = "bora_workbench.cli:app"` (`pyproject.toml:22-23`), Typer `0.26.8`, Rich
-`15.0.0`. Every command is declared in `src/bora_workbench/cli.py` — 240 lines, no logic — and each
-body delegates to a `run_*` function in one of eight `_cli_*` modules. **Seventeen invocable paths**
-plus `--version`:
-
-| Path | Options | Mutates | Prompts | Long |
-|---|---|---|---|---|
-| `bora validate` | — | no | no | no |
-| `bora doctor` | — | no | no | no |
-| `bora engine status` | — | no | no | no |
-| `bora engine install` | `--force`, `--no-model` | yes | no | **yes** — download, plus a CMake build on Ubuntu CUDA |
-| `bora pull [MODEL]` | — | yes | no | **yes** — about 22 GiB |
-| `bora rm [MODEL]` | `--keep-hf`, `--dry-run` | yes | 1–2 | no |
-| `bora pi` | `--print`, `--install` | pi's `models.json` | 1–2 | no |
-| `bora pi remove` | — | pi's `models.json` | 1 | no |
-| `bora pi uninstall` | — | npm and `models.json` | 2 | no |
-| `bora coding` / `studio` / `vstudio` | `--force` | state and logs | no | **yes** — foreground until `Ctrl-C` |
-| `bora calibrate` | `--mode` (required), `--preference`, **and three undeclared** | yes | 1 | **yes — hours** |
-| `bora status` | — | prunes stale state | no | no |
-| `bora stop` | — | yes | no | no |
-| `bora update` | `--check` | the Python tool | no | moderate |
-| `bora uninstall` | — | yes, including itself | 2 | no |
-
-Exit codes are `0 / 1 / 2 / 130` (specification 5.11, `docs/commands.md:446-457`).
-
-The tree behind it is **45 hand-written modules, 11,799 lines, in one flat namespace**, of which
-**29 are `_`-prefixed satellites of eight areas**:
-
-```
-cli.py          + 7 × _cli_*.py           calibration.py  + 11 × _calibration_*.py
-engine.py       + 2 × _engine_*.py        validation.py   +  4 × _validation_*.py
-models.py       + 2 × _model_*.py         process.py      +  1 × _process_state.py
-benchmark.py, benchmark_quick.py          update.py, uninstall.py + 2 × _tool_*.py
-config.py, hardware.py, paths.py, profiles.py, pi_link.py
-```
-
-The 600-line ceiling is doing its job — no file is a monolith — but its cost is paid in the file
-listing: eleven sibling files that a reader has to reassemble into one area of competence, which is
-the exact failure `AGENTS.md:78-80` warns about ("prefer one readable module per area over a
-constellation of two-function files"). `engine.py` is at **592 of 600 lines**, so that area cannot
-absorb another idea without a split it has been postponing.
-
-## A.1 What is actually wrong
-
-### Six defects
-
-| | Defect | Verified at |
-|---|---|---|
-| **D1** | Help and every usage line print `Usage: bora-workbench …`, while the executable on `PATH` is `bora`. The tool names a command that does not exist. | `cli.py:33` |
-| **D2** | `--no-activate`, `--activate`, and `--target-ctx` are real, documented options that are **not declared**: absent from the generated `--help` table, no shell completion, and no `--target-ctx=N` form, because the hand-written parser reads `arguments[index + 1]`. | `cli.py:187-208`, `_cli_calibration.py:86-123` |
-| **D3** | `bora pi --install remove` parses and **silently discards** `--install`; `bora pi --print --install` discards it too. | `cli.py:130-142`, `_cli_pi.py:174-184` |
-| **D4** | `run_validate` guards nothing, and four calls inside `run_doctor` sit outside every `try`: `validate_resources()`, `load_catalog()`, `_record_lines()`, `engine_status()`. A failure in any of them escapes as a **traceback**, instead of the exit 1 that `docs/commands.md:68-69` promises and the tracebackless failure specification 5.11 requires. | `_cli_diagnostics.py:317-322`, `:452-459` |
-| **D5** | `print_warning` writes to stdout at eleven call sites and to stderr at seven, with three more going through a differently named console, and no rule is stated anywhere; `_print_status` splits *one* list of engine differences across both streams inside a single loop. | `_cli_diagnostics.py:237-242` |
-| **D6** | There is no structured way to read this machine's state. `doctor` computes while it prints, so a second reader would have to scrape its stdout. | `_cli_diagnostics.py:440-470` |
-
-**Why D2 exists, and why it matters beyond `calibrate`.** It is not an oversight.
-`tests/test_code_quality.py:69-78` caps every function in `src/` at three parameters with no
-exception, and `calibrate(context, mode, preference)` is already at three. The three missing options
-were pushed into a hand-written parser **to stay under the ceiling**; `remove_model_command` and the
-`pi` callback sit at exactly three for the same reason. Applied mechanically, a readability limit
-produced the opposite of its purpose: it hid a *published* interface in order to protect an
-*internal* one. A2 fixes the rule before A7 fixes the command.
-
-### Four naming problems
-
-**N1 — Removal is spelled four ways and only one of them names its object.** `bora rm` deletes
-21.9 GiB of weights and does not say so. `bora uninstall` deletes this installation. `bora pi remove`
-deletes an entry from a file belonging to another program. `bora pi uninstall` hands a package back
-to npm. Those are four different objects, which is a good reason for four verbs — and a bad reason
-for two of them to omit the object entirely.
-
-**N2 — The root mixes two kinds of thing.** `coding`, `status`, `stop`, `doctor` are things you do
-in a session. `pull`, `rm`, `update`, `uninstall` are things you do to an installed object. Typer
-prints them as one alphabetical list of fourteen, so nothing in the output says which is which, and
-nothing says that `pull` and `rm` are a pair.
-
-**N3 — `bora pi` means three things.** It is a group, and a command, and a command with flags. That
-overload *is* defect D3: `invoke_without_command=True` is what makes a discarded flag possible.
-
-**N4 — Nothing tells the front end what to call a section.** A front end has to name its rail. If the
-CLI has no vocabulary for "the model" or "this installation", the front end invents one, and an
-invented taxonomy in the UI is exactly the drift that makes two front ends disagree.
-
-### What is *not* wrong, and must survive
-
-- **`coding`, `studio`, `vstudio` at the root.** They are the product ("one Qwen setup, three local
-  experiences", `README.md:8-14`), they are the most typed commands, and they are packaged **mode
-  ids** bound into every `calibration-record/v6`. Renaming them would invalidate records for
-  cosmetics. They stay, spelled exactly as they are.
-- **`doctor`, `validate`, `status`, `stop`, `calibrate`.** Each is a verb with one unambiguous
-  object. Nothing is gained by moving them under a noun.
-- **The command tree stays shallow.** Two levels, never three.
-- **Backward compatibility of *behavior*.** No step changes what a command does. The only observable
-  changes are: four paths are renamed (A.4), two flags are renamed along with the command they live
-  on, three inputs that are silently discarded today become refused, and one input that produced a
-  traceback now produces an actionable error.
-
-## A.2 The organizing rule
-
-> **The root holds verbs about *this session*. A group holds a *thing with a lifecycle* that you
-> installed.**
-
-Everything you install, inspect, and remove is a group: the **engine**, the **model**, the **pi**
-connection, and **this installation** (`self`). Everything you do with the machine right now is a
-root verb: run a mode, look at it, stop it, measure it, diagnose it.
-
-That rule is checkable in one pass, it produces exactly the surface below, and — the reason it is
-worth adopting — **it is also the front end's rail**. One vocabulary, three places: `--help` panels,
-`docs/commands.md` headings, and the TUI sections. When a rule changes, all three change together
-because they are the same words.
-
-## A.3 The target surface
-
-`bora [--version] <command> [options]`, with `--help` on the group and on every command. Panels are
-Typer's `rich_help_panel`, so `bora --help` prints six titled sections instead of one alphabetical
-list.
-
-| Panel | Command | Options | Change |
-|---|---|---|---|
-| **Run a mode** | `bora coding` | `--force` | — |
-| | `bora studio` | `--force` | — |
-| | `bora vstudio` | `--force` | — |
-| **Services** | `bora status` | — | — |
-| | `bora stop` | — | — |
-| **Tune** | `bora calibrate` | `--mode`, `--preference`, `--target-ctx`, `--no-activate`, `--activate` | all five **declared** |
-| **Setup** | `bora engine install` | `--force`, `--no-model` | — |
-| | `bora engine status` | — | — |
-| | `bora model pull [MODEL]` | — | was `bora pull` |
-| | `bora model rm [MODEL]` | `--keep-hf`, `--dry-run` | was `bora rm` |
-| **Connect** | `bora pi connect` | `--dry-run`, `--install` | was `bora pi`; `--print` → `--dry-run` |
-| | `bora pi remove` | — | — |
-| | `bora pi uninstall` | — | — |
-| **Inspect** | `bora doctor` | — | — |
-| | `bora validate` | — | — |
-| | `bora tui` | `--plain` | **new, Part B** |
-| **This installation** | `bora self update` | `--dry-run` | was `bora update --check` |
-| | `bora self uninstall` | — | was `bora uninstall` |
-
-**Seventeen paths before `tui`, exactly as today.** Nothing was added, nothing merged, nothing
-dropped. Appendix D records the regroupings that were considered and rejected.
-
-Why each group name is the honest one:
-
-- **`engine`** — unchanged, already correct.
-- **`model`** — `pull` and `rm` are one pair acting on one object; the group is the object. `pull`
-  keeps its name because it is the universal verb for weights, and `rm` keeps its name because it is
-  the inverse of `pull` in every tool that has both. What changes is that the object is now written
-  down.
-- **`pi`** — `connect` replaces the bare invocation. It is a *verb for what it does* (it does not
-  install pi, it points pi at this machine), and declaring it kills N3 and D3 by construction: a
-  group with no `invoke_without_command` cannot swallow a flag.
-- **`self`** — `uv self update` and `rustup self uninstall` established the word, and it answers the
-  question `bora uninstall` never answered: *uninstall what?* It also puts the two commands that
-  replace or delete the running program next to each other, where a reader can see that they are the
-  same kind of dangerous.
-
-## A.4 What moved, and what happens if you type the old name
-
-| Old | New |
-|---|---|
-| `bora pull` | `bora model pull` |
-| `bora rm` | `bora model rm` |
-| `bora update` | `bora self update` |
-| `bora update --check` | `bora self update --dry-run` |
-| `bora uninstall` | `bora self uninstall` |
-| `bora pi` | `bora pi connect` |
-| `bora pi --print` | `bora pi connect --dry-run` |
-
-**No aliases.** The old spellings become a **moved-name notice**: a `TyperGroup` subclass whose
-`get_command` raises `click.UsageError` for a known old name, printing
-
-```text
-`bora rm` is now `bora model rm`.
-```
-
-and exiting **2** — the contractual code for invalid input, and *nothing runs*. The same notice
-covers `--print` and `--install` on the `pi` group.
-
-This is deliberate and it is not a fallback (`AGENTS.md:132-133`, specification 5.12: "no
-undocumented fallback"). An alias that silently does the work would be a second spelling to keep
-correct forever, and a second thing a front end could compose; a notice teaches the new name once
-and costs about twelve lines. The notice itself is **removed in `0.5.0`**, and that removal is part
-of the decision, not a later judgement call.
-
-The licence for renaming at all is stated by the project itself: `README.md:58-62` — "The `0.3`
-series is **not stable** … The CLI, configuration, record formats, procedures, and performance carry
-no stability guarantee." A rename is exactly the change that boundary exists to permit, and
-`0.4.0` is exactly when to spend it. **Verified: no command string appears in `evidence/` or in
-`src/bora_workbench/resources/`**, so no checksum-bound byte moves and no digest chain is touched.
-
-## A.5 The flag vocabulary
-
-One rule, applied where it costs nothing:
-
-> **`--dry-run` is the one spelling of "show me what you would do, and do nothing."**
-
-| Flag | Command | Meaning | Change |
-|---|---|---|---|
-| `--dry-run` | `model rm` | list both groups and every path, delete nothing, ask nothing | — |
-| `--dry-run` | `pi connect` | print the provider entry, write nothing | was `--print` |
-| `--dry-run` | `self update` | report installed and published version, install nothing | was `--check` |
-| `--force` | `engine install` | reinstall a target that is already active and compatible | — |
-| `--force` | `coding`/`studio`/`vstudio` | bypass **only** the 28 GiB total / 22 GiB available gate of the default model | — |
-| `--no-model` | `engine install` | install the engine without acquiring the weights | — |
-| `--keep-hf` | `model rm` | skip the shared-cache question entirely | — |
-| `--install` | `pi connect` | install pi with npm first, after showing the command and asking | — |
-
-Both flag renames are **free**, because the command they live on is renamed in the same release:
-`bora pi --print` and `bora update --check` are already unreachable spellings once `pi connect` and
-`self update` exist. Renaming a flag whose command did not move would not have been worth it.
-
-`--force` keeps two meanings, and that is a decision, not an omission. Renaming the launch one to
-`--skip-memory-gate` was considered (Appendix D): it is more honest and it is more typing on the one
-escape hatch people need under pressure. Instead, the two meanings get one row each in the table
-above and the front end prints the memory-gate meaning inline next to the key that adds it.
-
-## A.6 The package tree
-
-The listing is what a reader meets first, so it should name the eight areas, not the forty-five
-files.
-
-```text
-src/bora_workbench/
-├── __init__.py                 no imports, no statements — the import-purity contract (4.3)
-├── paths.py                    per-OS roots, no creation                      [may branch on OS]
-├── config.py                   TOML, environment, precedence, validation
-├── hardware.py                 CPU, RAM, NVIDIA, GPU selection                [may branch on OS]
-├── profiles.py                 modes, gates, LaunchPlan
-├── pi_link.py                  the one supported agent integration
-├── snapshot.py                 the read-only picture of this machine, as data   ← new (A9)
-├── resources/                  packaged schemas, content, locks — unchanged
-├── cli/
-│   ├── __init__.py             re-exports `app` for the console script
-│   ├── __main__.py             `python -m bora_workbench.cli`                   ← new (A3)
-│   ├── app.py                  was cli.py — Typer wiring, panels, exit codes
-│   ├── theme.py                was _cli_theme.py — palette, tables, progress
-│   ├── diagnostics.py          was _cli_diagnostics.py
-│   ├── services.py             was _cli_services.py
-│   ├── calibration.py          was _cli_calibration.py
-│   ├── models.py               was _cli_models.py
-│   ├── pi.py                   was _cli_pi.py
-│   └── update.py               was _cli_update.py
-├── engine/                                                                    [may branch on OS]
-│   ├── __init__.py             re-exports today's public surface
-│   ├── lock.py                 engine.lock loading, contracts, command building
-│   ├── resolve.py              executable lookup, model resolution, receipts
-│   ├── status.py               EngineStatus, engine_status(), install facade
-│   ├── assets.py               was _engine_assets.py
-│   └── install.py              was _engine_install.py
-├── models/
-│   ├── __init__.py             was models.py — store, artifacts, copies
-│   ├── removal.py              was _model_removal.py — the confined cache rules
-│   └── verification.py         was _model_verification.py
-├── process/                                                                   [may branch on OS]
-│   ├── __init__.py             was process.py
-│   └── state.py                was _process_state.py
-├── calibration/
-│   ├── __init__.py             was calibration.py — the public facade
-│   ├── types.py  run.py  runner.py  search.py  trial.py  trial_control.py
-│   ├── memory.py  record.py  reuse.py  gguf.py  gpu_evidence.py
-├── benchmark/
-│   ├── __init__.py             was benchmark.py — the benchmark/v1 protocol
-│   └── quick.py                was benchmark_quick.py
-├── validation/
-│   ├── __init__.py             was validation.py
-│   └── calibration.py  calibration_v3.py  engine.py  profiles.py
-├── tool/                       this installation of bora, as uv sees it
-│   ├── __init__.py
-│   ├── handoff.py              was _tool_handoff.py
-│   ├── helper.py               was _tool_helper.py
-│   ├── update.py               was update.py
-│   └── uninstall.py            was uninstall.py
-└── tui/                        Part B only                                     [terminal.py: OS]
-```
-
-Rules this move obeys:
-
-1. **Public import paths do not change.** `calibration.py` → `calibration/__init__.py` keeps
-   `from bora_workbench.calibration import …` working, and the same holds for `engine`, `models`,
-   `process`, `benchmark`, and `validation`. The `_`-prefixed modules are private and their imports
-   are rewritten in the same commit (the highest fan-in are `_calibration_types` at 17 sites and
-   `_calibration_record` at 12).
-2. **Every `__init__.py` is either the module it replaces or a re-export.** No package gets a
-   `__init__.py` that is half facade and half implementation.
-3. **`cli/__main__.py` is required, not optional.** `scripts/verify_wheel.py` runs
-   `python -m bora_workbench.cli` four times; a package without `__main__.py` breaks wheel
-   verification. It also becomes the front end's handoff target (B.5), which is a convergence worth
-   noticing rather than a coincidence.
-4. **Four modules stay flat**, and the reason is the same rule that motivates the move: `paths.py`,
-   `config.py`, `hardware.py`, and `profiles.py` are single coherent modules with no satellites, and
-   wrapping each in a one-file package would be ceremony.
-5. **`pi_link.py` stays flat too, deliberately.** An `integrations/` package would be an extension
-   point with one member, and D-081/D-082 state that no other agent is supported;
-   `AGENTS.md:95-98` forbids exactly that kind of speculative structure.
-6. **`tool/` is named for what it manages, not for how it is spelled at the CLI.** The area is about
-   *the uv tool installation* — `inspect_tool_installation`, `uv tool uninstall` — while the command
-   group is `self` because that is what reads best in a terminal. The mismatch is one sentence in
-   specification 4.1, and it is a better outcome than a package literally named `self`.
-7. **`git mv` only in A3.** No edits inside moved files beyond import lines and the module docstring
-   where it names its own filename. The `engine/` split, which does move code between files, is a
-   separate step (A4) precisely so that A3's diff can be read as pure motion.
-8. **The normative tables move with the tree.** Specification 4.1 and 4.2, `docs/architecture.md`,
-   and `docs/development.md` are updated in the same commit. A layout change that leaves the
-   normative table describing the old tree is a specification violation, not a cosmetic lag.
-
-**Honest cost:** the file count rises from 45 to about 51 (six `__init__.py`, `__main__.py`,
-`snapshot.py`, and the `engine/` split, minus nothing). The number of *things a reader holds in their
-head* falls from 45 to 8. That is the trade, and it is the right one — but it should be stated in the
-commit body rather than discovered by whoever runs `ls`.
-
-**Tests mirror the tree** in the same step, `tests/cli/`, `tests/calibration/`, `tests/engine/`, and
-so on, with an `__init__.py` in each because `tests/` is already a package. `tests/fakes/` and the
-five `*_fixtures.py` modules stay where they are: they are shared by every area.
-
-## A.7 The steps
-
-### A1 — Anchor this plan and answer the six open questions
-
-- **Goal.** Give the work a normative entry, so this file is the detail of an authorized perimeter
-  rather than a side plan (specification 6.2).
-- **Files.** `IMPLEMENTATION_SPEC.md`, `TUI.md`.
+- **Goal.** Make the TUI an authorized backlog item with an exact, reduced perimeter.
+- **Files.** `IMPLEMENTATION_SPEC.md`, `TUI.md`, `TUI_PLAN.md`.
 - **Change.**
-  1. Section 3: add the decisions of Appendix A after D-082 (`:274`), before the closing line
-     (`:276`). Match the density of the existing entries — reasons included, one paragraph each.
-  2. Section 8: add `### Backlog D — Interactive front end` after Backlog C ends (`:794`) and before
-     `### Local 0.2.0 finalization` (`:796`). A few paragraphs: what it is, the handoff constraint,
-     the phases by name, the two file pointers. **Do not copy Part B into it**; two roadmaps that
-     must agree eventually stop agreeing.
-  3. Section 0: add the `0.4.0` scope line to the tracker, and section 1.3 gains the `0.4`
-     boundary paragraph.
-  4. Amend D-077 (`:268`), which left the disposition of `TUI.md` open, with one sentence: the
-     question is answered and the file stays as the design record.
-  5. Apply the `TUI.md` errata of Appendix B.
-- **Decision.** D-083…D-088 (Appendix A). **A decision entry records what the maintainer decided**,
-  so Appendix A needs their assent before this step is written. Until then it is a recommendation and
-  this whole file waits on it.
-- **Verify.** `pytest`; `bora validate`; `TUI.md` no longer claims to be written against `0.2.1`;
-  its screen→command table and the target surface of A.3 name the same commands.
-- **Done when.** The specification names this file, and `TUI.md` describes a surface that exists.
+  1. Add the maintainer's answers from section 3 to the next free decision entries.
+  2. Add `Backlog D — Interactive front end` to specification section 8.
+  3. State the proposed `0.4` boundary without marking it complete or authorizing release actions.
+  4. Keep the engine, model, calibration protocol, `calibration-record/v6`,
+     `command_contract_sha256`, reserves, roots, and candidate lifecycle unchanged.
+  5. Change this file's status from decision input to the execution detail named by the
+     specification.
+  6. Rewrite the stale parts of `TUI.md` as a design record, not as another roadmap:
+     - current D-078 model acquisition and D-079 two-question removal;
+     - current D-081/D-082 pi behavior;
+     - current command names;
+     - no package-tree prerequisite;
+     - same-process post-UI dispatch;
+     - the dependency decision before interactivity;
+     - the canonical record labels of C7;
+     - clipboard and `$EDITOR` explicitly deferred;
+     - all prose in English.
+- **Decision.** The next free entries created from Q1–Q8.
+- **Verify.** Search both TUI documents for obsolete `0.2.1`, "never downloads weights",
+  `bora self`, `bora model`, `pi connect`, and subprocess handoff claims; none remain except clearly
+  labelled rejected alternatives.
+- **Done when.** The specification names this file, and `TUI.md` describes the same product this
+  plan will implement.
 
-### A2 — Make the readability limits deliberate defaults
+## A2 — Ship the design records in the sdist
 
-- **Goal.** Stop a mechanical ceiling from forcing designs worse than the code it rejects, without
-  losing the signal that the ceiling exists.
-- **Files.** `tests/test_code_quality.py`, `AGENTS.md`, `docs/development.md`.
+- **Goal.** Keep every document referenced by the normative plan available in the source
+  distribution.
+- **Files.** `pyproject.toml`.
+- **Change.** Add `TUI.md` and `TUI_PLAN.md` to `tool.uv.build-backend.source-include`; change no
+  wheel resource and no packaged declarative content.
+- **Decision.** The design-record decision from A1.
+- **Verify.** Build an sdist in a temporary output directory and assert that it contains
+  `IMPLEMENTATION_SPEC.md`, `TUI.md`, and `TUI_PLAN.md`.
+- **Done when.** A consumer of the sdist can follow every plan reference without the Git checkout.
+
+---
+
+# Part B — Make the existing CLI composable
+
+## B1 — Permit one published callback to exceed the parameter default
+
+- **Goal.** Let a Typer callback declare its real public option surface without weakening unrelated
+  readability limits.
+- **Files.** `AGENTS.md`, `docs/development.md`, `tests/test_code_quality.py`.
 - **Change.**
-  - Three module-level maps, each from a location to the reason it is accepted:
+  - Keep 600 lines per file, 40 lines per function, nesting depth, and docstrings absolute.
+  - Change only the production-parameter rule to allow a narrowly registered exception map keyed by
+    `path::qualified_name`, with a mandatory reason.
+  - Make the test fail when an unregistered function exceeds three parameters.
+  - Make it also fail when a registered function no longer exceeds the limit, so stale exceptions
+    cannot accumulate.
+  - Add no exception in this step.
+- **Decision.** The parameter-policy decision recorded in A1.
+- **Verify.** A temporary four-parameter production function fails; registering it passes; removing
+  the function while retaining the registration fails.
+- **Done when.** The exception map is empty and all existing source remains unchanged.
 
-    ```python
-    _ACCEPTED_FILE_LENGTH: dict[str, str] = {}       # "src/pkg/module.py"
-    _ACCEPTED_FUNCTION_LENGTH: dict[str, str] = {}   # "src/pkg/module.py::name"
-    _ACCEPTED_PARAMETERS: dict[str, str] = {}        # "src/pkg/module.py::name"
-    ```
+## B2 — Declare the complete calibration surface
 
-    Each size test then fails on **unregistered** breaches — and also fails on an entry that no
-    longer corresponds to a real breach, so the list cannot rot into a permanent exemption. Keys use
-    forward slashes so the tests behave identically on both platforms.
-  - **Nesting stays a hard maximum** and the docstring rule stays absolute. Nesting always has a
-    mechanical fix — extract a helper, invert a condition — so exceeding it is never the honest
-    answer, and a docstring is not a design trade-off.
-  - `AGENTS.md:73-85`: the first three limits become defaults. State the test: exceed one
-    deliberately when splitting would scatter an area of competence or hide a published interface,
-    and register it with its reason. The existing exemptions for fixtures and declarative content are
-    unchanged.
-  - `docs/development.md:99-101`: mirror the wording.
-  - **No change under `src/`.** The limits widen; nothing moves.
-- **Decision.** D-084.
-- **Verify.** Add a throwaway four-parameter function → the test fails. Register it → it passes.
-  Delete the function but keep the entry → it fails again.
-- **Done when.** The three maps are empty, the suite is green, and the three documents agree.
+- **Goal.** Make every supported calibration option visible to help, completion, and the TUI
+  composer.
+- **Files.** `src/bora_workbench/cli.py`, `src/bora_workbench/_cli_calibration.py`,
+  `tests/test_cli_calibration.py`, `tests/test_code_quality.py`, `docs/commands.md`.
+- **Change.**
+  - Declare `--no-activate`, `--activate`, and `--target-ctx` as ordinary Typer options beside
+    `--mode` and `--preference`.
+  - Remove `allow_extra_args`, `ignore_unknown_options`, `_CALIBRATION_EPILOG`, `_target_ctx()`, and
+    `parse_calibration_input()`.
+  - Construct `CalibrationCliInput` with keywords.
+  - Register only `cli.py::calibrate` in the parameter exception map, with the reason that its
+    parameters are the published interface.
+  - Keep `_validate()` as the owner of mutual exclusion and target-domain rules before any process
+    starts.
+  - Accept Click's standard last-occurrence behavior for repeated singleton options as an explicit
+    CLI behavior change. The real preflight still prints the selected value and asks for
+    confirmation. Do not claim byte-for-byte parser compatibility with the removed hand parser.
+- **Decision.** The composable-CLI decision recorded in A1.
+- **Verify.** Generated help lists all five options; `--target-ctx=65536` works;
+  `--activate --target-ctx 65536`, `--activate --preference fast`, unknown options, malformed
+  integers, and unmeasurable targets exit 2 before a process starts.
+- **Done when.** No accepted calibration option is hidden from generated help.
 
-### A3 — Move the tree into packages
+## B3 — Reject contradictory pi options
 
-- **Goal.** Turn a 45-file listing into eight named areas, changing no behavior.
-- **Files.** every module under `src/bora_workbench/` except `resources/`; every test that imports a
-  private module; `IMPLEMENTATION_SPEC.md` (4.1, 4.2), `docs/architecture.md`,
+- **Goal.** Ensure no accepted pi option is silently discarded.
+- **Files.** `src/bora_workbench/cli.py`, `src/bora_workbench/_cli_pi.py`,
+  `tests/test_pi_link.py`, `tests/test_cli.py`, `docs/commands.md`.
+- **Change.**
+  - Keep the current `bora pi`, `bora pi remove`, and `bora pi uninstall` names.
+  - Reject `--print --install` as invalid input with exit 2: print-only promises no write, while
+    install requests an npm mutation.
+  - Reject `--print` or `--install` when a `pi` subcommand is selected instead of discarding it.
+  - Perform these checks before inspecting pi, files, hardware, or services.
+- **Decision.** —; this restores specification section 5.11's invalid-input rule.
+- **Verify.** The three contradictory forms exit 2 with no mocked service call, file read, npm call,
+  or prompt; each valid existing form behaves as before.
+- **Done when.** Every accepted pi option affects the selected action.
+
+## B4 — Guard validation failures
+
+- **Goal.** Prevent expected validation I/O or resource failures from escaping as tracebacks.
+- **Files.** `src/bora_workbench/_cli_diagnostics.py`, `tests/test_cli.py`.
+- **Change.** Wrap `run_validate()` at its presentation boundary, map the actual operational
+  exception types to an actionable stderr message and exit 1, and retain validation-content errors
+  as the existing structured result.
+- **Decision.** —; specification section 5.11 already requires this behavior.
+- **Verify.** A fake resource access failure exits 1, writes only the actionable error to stderr,
+  and emits no traceback.
+- **Done when.** `validate` has no expected failure path outside CLI exit mapping.
+
+## B5 — Keep one engine-status difference list on one stream
+
+- **Goal.** Make redirection of `engine status` deterministic.
+- **Files.** `src/bora_workbench/_cli_diagnostics.py`, `tests/test_cli_engine.py`,
+  `docs/commands.md`.
+- **Change.** Choose the stream once for the complete difference list: informational absence stays
+  in the stdout report; differences that cause exit 1 all go to stderr. Do not reclassify unrelated
+  warning call sites without a demonstrated problem.
+- **Decision.** —; this clarifies the existing exit/report contract.
+- **Verify.** Redirected missing-engine output remains complete; an incompatible engine leaves the
+  table on stdout and every blocking difference on stderr.
+- **Done when.** One status loop never alternates output streams.
+
+---
+
+# Part C — Build one shared, non-mutating read model
+
+## C1 — Preserve configuration provenance
+
+- **Goal.** Report each resolved setting and the layer that supplied it without changing
+  `load_config()` callers.
+- **Files.** `src/bora_workbench/config.py`, `tests/test_config.py`,
+  `docs/configuration.md`.
+- **Change.**
+  - Add frozen, slotted models for a resolved configuration and per-field source.
+  - Add one loader that returns the existing `Config`, the config-file path, and sources
+    `environment`, `config.toml`, or `default` for every field.
+  - Implement `load_config()` through that loader and return only `.config`, preserving its public
+    result and precedence.
+  - Validate the whole TOML before environment overrides exactly as today.
+  - Perform no path creation or file write.
+- **Decision.** The read-only settings decision from A1.
+- **Verify.** Existing config tests remain unchanged and green; new table tests cover every source,
+  including an empty optional path environment override.
+- **Done when.** CLI and TUI can consume the same resolved values, and only the TUI asks for their
+  provenance.
+
+## C2 — Add read-only service inspection
+
+- **Goal.** Inspect live, stale, and unreadable service records without cleaning or quarantining
+  them.
+- **Files.** `src/bora_workbench/_process_state.py`, `src/bora_workbench/process.py`,
+  `tests/test_process_state.py`, `tests/test_process_lifecycle.py`.
+- **Change.**
+  - Keep `status_services()` and `stop_services()` behavior unchanged.
+  - Add a separate inspection path that does not acquire the startup lock, create a root, quarantine
+    corrupt JSON, prune stale entries, or write state.
+  - Return structured live services, stale identities, and warnings/errors; corrupt state is
+    `unreadable`, never silently `empty`.
+  - Continue verifying `pid + create_time`; an unopenable PID follows the existing D-071 identity
+    rule.
+- **Decision.** The read-only opening decision from A1.
+- **Verify.** Snapshot the temporary filesystem before and after live, stale, corrupt, absent, and
+  trial-root inspections; bytes and paths remain identical.
+- **Done when.** The TUI can report service state without performing `status` cleanup.
+
+## C3 — Add receipt-aware model inspection
+
+- **Goal.** Describe model readiness without hashing payloads, writing receipts, or confusing
+  presence with verification.
+- **Files.** `src/bora_workbench/models.py`, `src/bora_workbench/_model_verification.py`,
+  `tests/test_model_store.py`.
+- **Change.**
+  - Add frozen, slotted inspection models for each locked artifact and location.
+  - Distinguish `absent`, `wrong-size`, `receipt-verified`, and `present-unverified`.
+  - Reuse the D-076 receipt identity read-only; do not call `remember()`, compute SHA-256, download,
+    or create the store.
+  - Inspect both the managed store and pinned cache fallback without writing into either.
+  - Represent an explicit custom `model_path` as user-managed and never recommend `bora pull` for
+    that path.
+- **Decision.** The truthful model-status decision from A1.
+- **Verify.** Tests cover every state, both locations, a malformed receipt, and a custom model; mock
+  hashing and writes to fail if called.
+- **Done when.** The dashboard can say exactly what it knows and direct an unverified default
+  artifact to the real `bora pull` verification path.
+
+## C4 — Move pi context selection into shared data
+
+- **Goal.** Let the CLI and TUI report the same D-082 context-window source without one importing
+  the other's presentation module.
+- **Files.** `src/bora_workbench/pi_link.py`, `src/bora_workbench/_cli_pi.py`,
+  `tests/test_pi_link.py`.
+- **Change.**
+  - Move `ContextWindow` and the source-selection rule into `pi_link.py` behind a narrow query model.
+  - Preserve the order: live service on the configured port, compatible active `coding` record,
+    verified baseline with diagnostics.
+  - Let the caller supply already collected hardware, service, and record data so the TUI does not
+    rerun probes.
+  - Make `_cli_pi.py` render the shared result exactly as before.
+- **Decision.** —; D-082 already owns the selection rule.
+- **Verify.** Existing D-082 tests remain green; add a test proving CLI and snapshot receive the
+  same `ContextWindow` object for all three sources.
+- **Done when.** No TUI code imports `_cli_pi.py` and no pi rule is duplicated.
+
+## C5 — Render doctor from a structured snapshot
+
+- **Goal.** Separate the state `doctor` collects from how Rich prints it.
+- **Files.** new `src/bora_workbench/snapshot.py`,
+  `src/bora_workbench/_cli_diagnostics.py`, new `tests/test_snapshot.py`,
+  `tests/test_cli_doctor.py`.
+- **Change.**
+  - Add a frozen, slotted `DoctorSnapshot` containing version, resolved config, hardware, content
+    validation, compatible-profile count, record evaluations, engine status, and the four paths.
+  - Preserve the current collection order, including resolving public roots last.
+  - Move the four formerly unguarded operations into collection and map their real domain failures
+    at `run_doctor()` to exit 1 or 2 as required.
+  - Make `run_doctor()` collect, render, and map the result; it computes nothing while printing.
+  - Keep successful redirected output byte-identical in this step.
+- **Decision.** The structured-snapshot decision from A1.
+- **Verify.** Capture redirected `doctor` output before and after on the same fakes and compare bytes;
+  separately fake each formerly unguarded operation and require an actionable exit without a
+  traceback.
+- **Done when.** `DoctorSnapshot` is fully testable without a console and `doctor` renders only its
+  data.
+
+## C6 — Compose the workbench snapshot
+
+- **Goal.** Build the complete data needed by read-only screens without adding side effects to
+  `doctor`.
+- **Files.** `src/bora_workbench/snapshot.py`, `tests/test_snapshot.py`.
+- **Change.**
+  - Add a frozen, slotted `WorkbenchSnapshot` that contains `DoctorSnapshot`, configuration
+    provenance, read-only service inspection across current service roots, model inspection, and
+    the shared pi context source.
+  - Keep the collector synchronous and independent of any UI framework; E1 decides where it runs.
+  - Collect no published release version and perform no network request.
+  - Expose a structured collection failure with category and actionable detail so the first frame
+    can remain usable even when config, hardware, resources, or paths are broken.
+- **Decision.** The read-model decision from A1.
+- **Verify.** Patch network, hashing, writes, directory creation, lifecycle locks, state cleanup, and
+  service starts to fail if called; every valid snapshot shape still collects.
+- **Done when.** Every read-only screen can be rendered from one object and no screen performs core
+  discovery itself.
+
+## C7 — Use one canonical record vocabulary
+
+- **Goal.** Stop the CLI and TUI from assigning different words to the same record state.
+- **Files.** `src/bora_workbench/_cli_diagnostics.py`, `tests/test_cli_doctor.py`,
+  `docs/commands.md`, `TUI.md`.
+- **Change.** Map the actual `RecordEvaluation` states to these display labels:
+
+  | Core status | Display label |
+  |---|---|
+  | `valid` | `active` |
+  | `missing` | `absent` |
+  | `candidate` | `candidate` |
+  | `superseded` | `superseded` |
+  | `invalid` | `invalid` |
+  | `incompatible` | `incompatible` |
+  | `insufficient-headroom` | `insufficient headroom` |
+
+  A valid or invalid pending candidate remains a secondary fact beside the active-record label.
+  The word `stale` remains available for process state; it is not a calibration-record status.
+- **Decision.** The terminology decision recorded in A1.
+- **Verify.** Table-driven tests cover every primary status and every candidate-status combination.
+- **Done when.** `doctor`, docs, and the future screens use the same seven labels.
+
+---
+
+# Part D — Choose the interaction stack before writing an interaction loop
+
+## D1 — Review and lock the TUI framework
+
+- **Goal.** Make one evidence-based build-versus-dependency decision before E1.
+- **Files.** `IMPLEMENTATION_SPEC.md`, `AGENTS.md`, `pyproject.toml`, `uv.lock`,
   `docs/development.md`.
-- **Change.** The tree of A.6, by `git mv`, one area at a time inside the one commit. Then:
-  - rewrite import lines only; `ruff check --fix` settles the ordering (`I` is enabled) and
-    `ruff format` settles the layout;
-  - add `cli/__init__.py` re-exporting `app`, and `cli/__main__.py` carrying the
-    `if __name__ == "__main__": app()` that `cli.py:239-240` has today;
-  - fix the module docstrings that name their own file or their siblings;
-  - rewrite the module table of specification 4.1 to the new tree, keeping the responsibility column
-    verbatim wherever the responsibility did not change, and extend the OS-branching sentence
-    (`:303`) to name `paths.py`, `process/`, `hardware.py`, `engine/`;
-  - update specification 4.2, `docs/architecture.md:38-63`, and the repository-structure section of
-    `docs/development.md`;
-  - mirror `tests/` onto the same tree.
-- **Decision.** D-086.
-- **Verify.** `pytest` green with no test edited except its import lines and its location;
-  `uv build` plus `scripts/verify_wheel.py` green, which is what proves `__main__.py` and the wheel's
-  resource layout; `git diff -M --stat` shows renames, not rewrites; `bora doctor` output
-  byte-identical.
-- **Done when.** `ls src/bora_workbench` prints eight directories and seven files, and every
-  public import path is what it was.
-
-> **The trap in this step.** `python -m bora_workbench.cli` is used four times by
-> `scripts/verify_wheel.py:50-69` and stops working the moment `cli.py` becomes a package. Add
-> `cli/__main__.py` in the same commit, and run the wheel verification *inside* this step rather
-> than after it.
-
-### A4 — Split `engine/` by responsibility
-
-- **Goal.** Give the largest area room to be read and to grow. This is the one step of Part A that
-  moves code between files.
-- **Files.** `src/bora_workbench/engine/*`, plus the tests that import private helpers.
-- **Change.** `engine.py` (592 of 600 lines) becomes `lock.py`, `resolve.py`, and `status.py` along
-  the seams that already exist in its own imports: lock loading and command building; executable and
-  model resolution with the D-076 receipt; status, differences, and the install facade.
-  `engine/__init__.py` re-exports exactly the names imported elsewhere today — `Backend`,
-  `EngineError`, `EngineStatus`, `InstallProgressEvent`, `InstallResult`, `JsonObject`,
-  `ModelRequest`, `build_command`, `engine_status`, `install_engine`, `load_engine_lock`, `locate`,
-  `resolve_model` — with `__all__`.
-- **Decision.** — (it records no new rule; it applies `AGENTS.md:78-80`).
-- **Verify.** `pytest`; no import outside `engine/` mentions a submodule; `bora engine status` and
-  `bora doctor` byte-identical.
-- **Done when.** No file in `engine/` is above 400 lines and the public surface is unchanged.
-- **Skippable.** If the maintainer wants Part A strictly mechanical, drop this step: nothing else
-  depends on it. The cost of dropping it is that the engine area stays eight lines from its ceiling.
-
-### A5 — Name the program `bora`
-
-- **Goal.** Stop printing a command name that is not installed.
-- **Files.** `cli/app.py`.
-- **Change.** `name="bora-workbench"` → `name="bora"` (`cli.py:33`). Leave every other occurrence
-  alone: the `doctor` table title and the four public roots name the *distribution*, which is
-  correct, and `tests/test_cli.py:100` asserts on that title.
-- **Decision.** — (restores the contract of `pyproject.toml:22-23`).
-- **Verify.** `bora --help` and an unknown command both print `bora` in the usage line.
-- **Done when.** No usage or error line names `bora-workbench`.
-
-### A6 — Reorganize the command surface
-
-- **Goal.** Ship the surface of A.3: two groups added, four paths renamed, six help panels, one
-  moved-name notice, and the `pi` overload removed.
-- **Files.** `cli/app.py`, `cli/pi.py`, `cli/models.py`, `cli/update.py`, `docs/commands.md`,
-  `README.md`, `docs/installation.md`, `docs/operations.md`, `tests/test_cli*.py`.
 - **Change.**
-  - two new `typer.Typer` groups, `model` and `self`, mounted with `add_typer`; the four command
-    bodies move under them unchanged — they still call the same `run_*` functions with the same
-    arguments;
-  - `pi` loses `invoke_without_command=True`; `pi connect` becomes a real command carrying
-    `--dry-run` and `--install`. `PiOptions.print_only` is renamed to `is_dry_run` for the same
-    reason the flag was: the field is the flag (`_cli_pi.py:66-71`);
-  - `update --check` → `self update --dry-run`; `UpdateOptions.is_check_only` follows;
-  - `rich_help_panel` on every command and group, with the six titles of A.3 — **the same six words
-    the front end's rail uses**;
-  - the moved-name notice: a `TyperGroup` subclass on `app`, plus the two refused options on the
-    `pi` group. Both carry the removal date in their docstring: **removed in `0.5.0`**;
-  - `docs/commands.md` is reorganized under the same six headings, its summary table gains the rows
-    for `pi remove` and `pi uninstall` that exist only in the body today, and it gains the two tables
-    of A.4 and A.5 (what moved; the flag vocabulary);
-  - the eleven command occurrences in `README.md`, the seven in `docs/installation.md`, and the
-    fourteen in `docs/operations.md` are updated in this commit.
-- **Decision.** D-085.
-- **Verify.** `bora --help` prints six panels; `bora model pull --help`, `bora self update --help`,
-  `bora pi connect --help` exist; `bora rm` exits **2** naming `bora model rm`; `bora pi --print`
-  exits **2** naming `bora pi connect --dry-run`; `bora pi --install remove` exits **2** instead of
-  discarding a flag (**D3 closed**); every unchanged command behaves exactly as before.
-- **Done when.** No flag combination is accepted and then dropped, and no documented path is
-  unreachable.
-
-### A7 — Declare the three `calibrate` options
-
-- **Goal.** Make the whole of `calibrate` visible to `--help`, to shell completion, and to anything
-  that composes a command line — including the front end.
-- **Files.** `cli/app.py`, `cli/calibration.py`, `docs/commands.md`,
-  `tests/test_cli_calibration.py`, `tests/test_code_quality.py`.
-- **Change.**
-  - `cli/app.py`: delete `_CALIBRATION_EPILOG` (`cli.py:50-55`); drop `context: typer.Context`,
-    `context_settings={"allow_extra_args": …, "ignore_unknown_options": …}`, and `epilog=`
-    (`:187-208`); declare `no_activate`, `activate`, and `target_ctx` as ordinary Typer options;
-    build `CalibrationCliInput` directly and hand it to `run_calibrate`.
-  - The `try`/`except CalibrationError` around parsing (`:203-207`) disappears with the imports of
-    `parse_calibration_input` and `CalibrationError`. This is safe because validation never happened
-    at parse time: `_validate` runs inside `_run` (`_cli_calibration.py:462`) and `run_calibrate`
-    already maps `CalibrationError` to exit 2 (`:499-501`).
-  - `cli/calibration.py`: delete `_target_ctx` (`:86-93`) and `parse_calibration_input` (`:96-123`).
-    `CalibrationCliInput`, `_preference`, `_validate_target_ctx`, and `_validate` are untouched — the
-    mutual-exclusion rules do not change.
-  - one `_ACCEPTED_PARAMETERS` entry for `cli/app.py::calibrate`, reading roughly *a Typer command's
-    parameters are the published CLI surface, not an internal interface*.
-  - `docs/commands.md:373-375` — the paragraph apologising for the epilog — is deleted. The option
-    table at `:343-349` already documents all five.
-  - `tests/test_cli_calibration.py`: six call sites pass the extras as raw arguments; they pass them
-    as options instead.
-- **Decision.** D-085 (same decision as A6; separate commit).
-- **Verify.** `calibrate --help` lists five options in the generated table and has no epilog;
-  `--target-ctx=65536` is accepted (**it is not, today**); `--activate --target-ctx 65536` exits 2;
-  `--pippo` exits 2; `--target-ctx abc` exits 2.
-- **Done when.** No option of `calibrate` is reachable that `--help` does not name.
-
-> The exit-code contract holds across this change, which is why it is safe: every input that exits 2
-> today still exits 2, and only the *wording* moves from a bespoke message to Typer's. That is the
-> trade — a slightly less specific error, for an option surface that is discoverable, completable,
-> and composable.
-
-### A8 — One rule for the two streams
-
-- **Goal.** Make the choice of stream predictable, so redirection means something.
-- **Files.** `cli/diagnostics.py`, `docs/commands.md`.
-- **Change.** State the rule in `docs/commands.md`: **stdout carries the report; stderr carries what
-  explains a non-zero exit or a degradation.** Then fix `_print_status` (`_cli_diagnostics.py:237-242`),
-  which splits one list of engine differences across both streams inside a single loop: the whole
-  list goes to one stream, chosen once, by whether the status is blocking.
-- **Decision.** —
-- **Verify.** `bora engine status > out.txt` on a machine with no engine leaves a complete, readable
-  report in the file; with an incompatible engine, the file holds the table and the terminal holds
-  every difference.
-- **Done when.** No single loop writes to two streams.
-
-### A9 — Render `doctor` from a structured snapshot
-
-- **Goal.** Separate collecting this machine's state from printing it — so the state can be read by
-  something that is not a console, and so every failure inside the collection maps to its
-  contractual exit code.
-- **Files.** new `src/bora_workbench/snapshot.py`, `cli/diagnostics.py`, new
-  `tests/test_snapshot.py`.
-- **Change.**
-  - `snapshot.py` holds one frozen, slotted dataclass and one collector:
-
-    ```python
-    @dataclass(frozen=True, slots=True)
-    class Snapshot:
-        version: str
-        config: Config
-        hardware: HardwareInfo
-        engine: EngineStatus
-        content: ValidationResult
-        compatible_profiles: int
-        records: tuple[tuple[str, RecordEvaluation], ...]
-        locations: tuple[tuple[str, Path], ...]   # config, data, cache, state
-
-    def collect(version: str) -> Snapshot: ...
-    ```
-
-    Dataclass fields are not function parameters, so the A2 limits are untouched: `collect` takes
-    one argument and `run_doctor` keeps its three.
-  - `collect` absorbs everything `run_doctor` computes inline today, **including the four unguarded
-    calls of D4**. `run_doctor` keeps its signature and becomes collect → render → map exit code,
-    with one `try` around the collection. `_doctor_table` and `_record_line` take the snapshot.
-  - `run_validate` (`_cli_diagnostics.py:317-322`) gets the guard it never had.
-  - `tests/test_snapshot.py` exercises the collector **with no console at all**, which is half the
-    value of the refactor.
-- **Decision.** D-087.
-- **Verify.** Capture `bora doctor` stdout before and after: **byte-identical**. Then a fake raising
-  `EngineError` from `engine_status()` produces exit 1 with a message on stderr, not a traceback.
-- **Done when.** `doctor` prints what it printed before, and nothing it needs is computed while it
-  prints.
-
-> **Keep the collection order.** Configuration, hardware, content validation, records, engine status,
-> and the four public roots **last**. Today the roots are resolved during rendering
-> (`_cli_diagnostics.py:354-355`) and the comment above them (`:351-353`) says why: resolving a public
-> root is the only step there that can fail, and *which error a reader meets first is part of the
-> behavior* (specification 5.11). Collecting them earlier silently reorders that. This is the one
-> trap in the step.
-
-> **Scope guard.** The snapshot covers *exactly* what `doctor` renders today. Not services, not the
-> presence of the model, not anything a screen might want later: `AGENTS.md:23-24` forbids code that
-> anticipates a later milestone, and the front end composes this snapshot with the
-> `across_service_roots` sweep `status` already uses (`_cli_services.py:208-224`) without a line of
-> new core code.
-
-### A10 — Make the documented surface and the real surface unable to drift
-
-- **Goal.** Stop the surface and its documentation from diverging silently, now that both were just
-  rewritten.
-- **Files.** new `tests/test_docs_commands.py`.
-- **Change.** Walk `typer.main.get_command(app)`, collect every command path and every option string,
-  and assert each appears somewhere in `docs/commands.md`. Search by presence rather than by
-  heading, because `coding`, `studio`, and `vstudio` share one section. Exclude `--help`, documented
-  once at `docs/commands.md:9`. Offline, deterministic, host-independent. Assert the moved-name map
-  too: every old name in it must appear in the "what moved" table.
-- **Decision.** —
-- **Verify.** Delete a command row from `docs/commands.md` → the test fails. Add a flag without
-  documenting it → the test fails.
-- **Done when.** Documentation kept in sync by discipline alone is no longer the mechanism.
-
-## A.8 What Part A must not become
-
-Not a chance to "improve" an API, merge modules, introduce a `core/` layer, add `Protocol`s, or write
-the front end's data path ahead of the front end. **`compose(state) -> argv` is not written in
-Part A**: it would have no caller, and `AGENTS.md:95-98` forbids unused extension points. What makes
-this CLI composable is A7 — a parser that names every option it accepts — not a helper waiting for a
-user.
+  1. Review the current official Textual release for Python 3.12 and the required Windows/Ubuntu
+     terminal support.
+  2. Record its exact version through `uv.lock`; never commit `latest`.
+  3. Record maintenance activity, licence, known security concerns, and the complete added
+     transitive dependency set in the commit body and development documentation.
+  4. Add Textual to the approved runtime dependencies only if the review passes.
+  5. State the narrow concurrency boundary: Textual owns its UI event loop and one presentation
+     worker may run the synchronous snapshot collector; core modules gain no async API, background
+     scheduler, or general executor.
+  6. If the review fails, record `NO-GO` and stop Part E. Do not replace it with hand-written
+     `termios`/`msvcrt` input.
+- **Decision.** A new durable dependency/concurrency decision following the A1 authorization to
+  evaluate it.
+- **Verify.** `uv lock --check`, frozen sync, dependency-tree review, licence review, and the full
+  offline suite on both release CI platforms.
+- **Done when.** The interaction stack is approved and frozen, or the interactive front end is
+  explicitly stopped.
 
 ---
 
-# Part B — The front end
+# Part E — Implement the front end in vertical slices
 
-`TUI.md` is the design record: the banner, the gust, the sea, the palette, the mockups, and the
-degradation ladder are good and this file does not restate them. What follows is the part `TUI.md`
-does not cover — how it is built, in what order, against which vocabulary, and what "excellent"
-means precisely enough to be checked.
+## E1 — Add a read-only TUI shell
 
-## B.0 What "excellent" means here
+- **Goal.** Paint a usable first frame, collect one snapshot responsively, refresh, and quit.
+- **Files.** `src/bora_workbench/cli.py`, new `src/bora_workbench/tui/__init__.py`, new
+  `src/bora_workbench/tui/app.py`, new `src/bora_workbench/tui/terminal.py`, new
+  `src/bora_workbench/tui/palette.py`, new `tests/test_cli_tui.py`, `tests/test_import.py`.
+- **Change.**
+  - Add `bora tui [--plain]`; bare `bora` remains unchanged.
+  - Refuse a non-TTY with one actionable stderr line and exit 2 before importing Textual.
+  - Import `tui/` only inside the command callback.
+  - Paint static chrome before starting collection.
+  - Run only `collect_workbench_snapshot()` in one framework worker; coalesce repeated `r` presses so
+    two collections never overlap.
+  - Keep `q`, `Ctrl-Q`, and `Esc` available while collection runs.
+  - Render collection failures in the detail pane without a traceback.
+  - `--plain`, `TERM=dumb`, and unsupported encoding select a plain, motion-free rendering. Do not
+    promise automatic raster-font detection; `--plain` is the deterministic escape hatch.
+- **Decision.** The TUI and dependency decisions from A1/D1.
+- **Verify.** Headless UI tests prove first render precedes collector invocation, keys work while a
+  fake collector blocks, refresh is serialized, non-TTY imports no Textual module, and package
+  import remains side-effect-free.
+- **Done when.** `bora tui` is a useful read-only overview even if every later phase is declined.
 
-Ten commitments. Each one is testable, and each one is the reason for at least one design decision
-below.
+## E2 — Add deterministic advice and overview detail
 
-- **U1 — The first frame is instant.** The chrome (banner, rail, key bar) needs no data and is
-  painted before any collection starts; the detail pane fills in when the snapshot arrives.
-  `detect_hardware()` shells out to `nvidia-smi` with a 5-second timeout (specification 5.4), so a
-  front end that collects before it paints can look hung on exactly the machine it exists to serve.
-  No async, no threads — two synchronous paints, in the order a human reads them.
-- **U2 — It always knows the next step, and it is one key away.** A pure function over the snapshot
-  produces one suggestion, always correct, never nagging (B.3). This is the single feature that turns
-  a dashboard into something a person is glad to open.
-- **U3 — The command is always visible, and copyable.** Every screen that can act shows the exact
-  argv it will run, in a fixed place, before it runs it (`TUI.md:166-169`). `y` copies it with an
-  OSC 52 sequence — no dependency, works over SSH — and the line stays on screen so a terminal that
-  ignores OSC 52 loses nothing.
-- **U4 — Read is free, act is deliberate, destroy is typed.** Opening it starts no process, creates
-  no directory, writes no state, touches no config. Actions need an explicit key; destructive ones
-  need a typed word and then still meet the real command's own confirmation.
-- **U5 — The words never change.** A record is `active`, `candidate`, `absent`, `incompatible`,
-  `stale`, `superseded`, or `insufficient headroom` — the seven states `doctor` already
-  distinguishes. The front end must show exactly those words. A "superseded" record is not "old", and
-  "insufficient headroom" is not "won't work".
-- **U6 — Motion is the bora, then stillness.** Gusts, not a breeze; the header settles after about
-  three seconds and returns only while a handoff child is running. It never blocks a keystroke and
-  it never encodes a measurement.
-- **U7 — Nothing is front-end-only.** Everything reachable here is reachable by typing, and the
-  front end's last act for any real operation is to run the command it is showing.
-- **U8 — Degrade by layers, never by failure.** Truecolor+UTF-8+motion → 16 colours → no motion →
-  ASCII → plain banner → the CLI. Each rung is a supported configuration with a test.
-- **U9 — Close the loop.** After every handoff that returns, re-collect and print one line of
-  difference: `engine: not installed → b10011 CUDA active`. The CLI cannot do this; it is the front
-  end's own contribution.
-- **U10 — Honest over comfortable.** It never implies it will do something the project refuses to do.
-  It says "bora never downloads weights you did not ask for" on the screen where that matters, gives
-  the exact pinned revision, and never offers to write `config.toml`.
+- **Goal.** Show one honest next step derived only from the snapshot.
+- **Files.** new `src/bora_workbench/tui/advice.py`, new
+  `src/bora_workbench/tui/screens/__init__.py`, new
+  `src/bora_workbench/tui/screens/overview.py`, `src/bora_workbench/tui/app.py`, new
+  `tests/test_tui_advice.py`, `tests/test_cli_tui.py`.
+- **Change.** Add a pure `next_step(snapshot) -> Suggestion` with this priority:
+  1. collection/config failure: show the remedy, and a command only when one is truthful;
+  2. packaged-content errors: `bora validate`;
+  3. absent or incompatible engine: `bora engine install`;
+  4. missing, wrong-size, or unverified default artifacts: `bora pull`;
+  5. a live service: show mode, port, UI availability, and `bora stop`;
+  6. a valid pending candidate: explicit `bora calibrate --mode <id> --activate`;
+  7. modes without active records: a calm calibration suggestion that states the baseline works;
+  8. complete setup: `bora coding`.
 
-## B.1 The four seams
+  A custom external model never receives a `bora pull` suggestion. The suggestion is visible but
+  cannot execute yet.
+- **Decision.** The advice boundary from A1.
+- **Verify.** A truth table covers every priority and tie in packaged mode order.
+- **Done when.** The overview never infers a fact absent from the snapshot.
 
-The whole architecture is four connections to code that already exists.
+## E3 — Add all read-only screens and navigation
 
-| Seam | What it is | State |
-|---|---|---|
-| **Snapshot** | the read-only picture, as data | **A9 builds it** |
-| **Advice** | `next_step(snapshot) -> Suggestion` — what this machine should do now | B3, pure |
-| **Composer** | `compose(state) -> tuple[str, ...]` — the exact argv the CLI would parse | B4, pure |
-| **Handoff** | restore the terminal, print the command, run it, return or exit with its code | B4 |
+- **Goal.** Make the complete local picture navigable before any command can run.
+- **Files.** new `src/bora_workbench/tui/screens/modes.py`, new
+  `src/bora_workbench/tui/screens/calibration.py`, new
+  `src/bora_workbench/tui/screens/setup.py`, new
+  `src/bora_workbench/tui/screens/pi.py`, new
+  `src/bora_workbench/tui/screens/settings.py`, new
+  `src/bora_workbench/tui/screens/installation.py`, `src/bora_workbench/tui/app.py`,
+  `tests/test_cli_tui.py`.
+- **Change.** Use seven user-facing rail labels, independent of CLI help grouping:
+  `Overview`, `Modes`, `Calibration`, `Setup`, `Pi`, `Settings`, `This installation`.
+  Screens show:
+  - modes and the active cell or baseline they would use;
+  - canonical record and candidate states;
+  - engine and receipt-aware model status;
+  - pi installation/context source;
+  - resolved settings, provenance, config path, and environment names;
+  - installed version, four roots, and precise removal boundary.
 
-No new event system, no plugins, no adapters. If a job is ever hosted in-process — it should not be —
-the port already exists: `RunOptions(progress=…)` takes a `CalibrationProgress`, and both
-`cli/calibration.py` and `cli/diagnostics.py` already branch on `console.is_terminal` to choose live
-versus line-oriented rendering.
+  Services and diagnostics remain in Overview. There is no settings writer, model picker, arbitrary
+  flag editor, published-version lookup, clipboard protocol, or editor launcher.
+- **Decision.** The screen boundary from A1.
+- **Verify.** Headless navigation at 60x20, 80x24, and 120x40 reaches every screen, preserves focus
+  on refresh, and exposes every fact as text rather than colour alone.
+- **Done when.** The front end is complete as a read-only dashboard.
 
-## B.2 What the snapshot does not cover
+## E4 — Compose and dispatch safe returning actions
 
-A9's snapshot is exactly `doctor`'s picture. Two things the front end also shows come from elsewhere,
-and neither needs new core code:
+- **Goal.** Prove post-UI same-process handoff on non-destructive read commands.
+- **Files.** new `src/bora_workbench/tui/actions.py`,
+  `src/bora_workbench/tui/app.py`, `src/bora_workbench/cli.py`,
+  `src/bora_workbench/tui/screens/overview.py`, new `tests/test_tui_actions.py`,
+  `tests/test_cli_tui.py`.
+- **Change.**
+  - Add a frozen `CommandSpec` containing display tokens, CLI argument tokens, and disposition
+    `returning` or `terminal`.
+  - Add pure composers for `doctor`, `validate`, `status`, and `engine status`.
+  - Every actionable screen shows the exact display command before Enter can select it.
+  - The Textual app exits completely and restores the terminal, then the existing root Click/Typer
+    command is invoked in the same process with the composed arguments.
+  - Parse composed argv recursively through every group to the leaf in tests without invoking the
+    callback.
+  - Reopen the TUI only after a returning command exits 0; re-collect and show a concise before/after
+    difference. Exit immediately with any non-zero or 130 result.
+- **Decision.** The handoff decision from A1.
+- **Verify.** Fakes prove the UI teardown precedes dispatch, no subprocess is created, every argv is
+  accepted by the real recursive parser, non-zero codes propagate, and terminal state restoration
+  runs under every exception.
+- **Done when.** A real `doctor` handoff returns to an intact TUI and a failing fake exits with its
+  exact code.
 
-- **live services** — `across_service_roots(status_services)` (`cli/services.py:208-224`), the same
-  sweep `status` and `bora pi` use;
-- **the model on disk** — `locate_copies(lock)` from `models/`, which is what `model rm --dry-run`
-  reports.
+## E5 — Add setup and pi actions
 
-Refresh policy: on entry, on `r`, and after any handoff returns. **Never on a timer.** A dashboard
-that polls `nvidia-smi` in a loop is a dashboard that perturbs what calibration measures.
+- **Goal.** Hand long and mutating setup operations to their existing CLI owners.
+- **Files.** `src/bora_workbench/tui/actions.py`,
+  `src/bora_workbench/tui/screens/overview.py`,
+  `src/bora_workbench/tui/screens/setup.py`,
+  `src/bora_workbench/tui/screens/pi.py`, `tests/test_tui_actions.py`,
+  `tests/test_cli_tui.py`.
+- **Change.** Compose the current command names only:
+  - `bora engine install [--force] [--no-model]`;
+  - `bora pull [qwen]`;
+  - `bora rm [qwen] [--keep-hf] [--dry-run]`;
+  - `bora stop`;
+  - `bora pi [--print] [--install]`;
+  - `bora pi remove`;
+  - `bora pi uninstall`.
 
-## B.3 The advice engine
+  Invalid pi combinations are unreachable. The UI disappears while the command owns inherited
+  terminal I/O and real prompts. Exit 0 returns and refreshes; all other exits propagate.
+- **Decision.** The handoff/action boundary from A1.
+- **Verify.** Table-driven composer tests plus recursive real-parser tests cover every reachable
+  option state. Operational tests use fake callbacks only.
+- **Done when.** No setup rule, prompt, npm action, deletion, or verification is duplicated in
+  `tui/`.
 
-```python
-def next_step(snapshot: Snapshot, services: tuple[ServiceState, ...]) -> Suggestion: ...
-```
+## E6 — Add modes and the calibration wizard
 
-One suggestion, one reason, one command. Deterministic, table-tested, and the first thing the home
-screen prints — above the rail, because most sessions should end after reading one line.
+- **Goal.** Compose the foreground and hours-long operations without hosting them in the UI.
+- **Files.** `src/bora_workbench/tui/actions.py`,
+  `src/bora_workbench/tui/screens/modes.py`,
+  `src/bora_workbench/tui/screens/calibration.py`, `tests/test_tui_actions.py`,
+  `tests/test_cli_tui.py`.
+- **Change.**
+  - Modes compose `bora coding|studio|vstudio [--force]`; the screen states exactly what `--force`
+    bypasses.
+  - The wizard asks mode, preference, activation behavior, optional approved target, and review.
+  - `--activate` removes preference and target choices by construction.
+  - The review screen says that the real preflight and confirmation follow.
+  - Modes and calibration are `terminal`: after UI teardown they do not reopen the TUI and their
+    exact exit code becomes the `bora tui` exit code.
+- **Decision.** The composer and no-embedding decisions from A1.
+- **Verify.** Enumerate every reachable wizard state; every composed argv recursively parses, every
+  forbidden combination is unreachable, and no fake command runs before final review.
+- **Done when.** The TUI can teach every supported calibration form without owning calibration.
 
-| Order | When | Suggestion |
-|---:|---|---|
-| 1 | packaged content has errors | `bora validate` — the installation itself is wrong |
-| 2 | engine absent or incompatible | `bora engine install` |
-| 3 | model artifacts missing | `bora model pull` |
-| 4 | a managed service is running | open the UI, or `bora stop` |
-| 5 | a valid candidate is pending | `bora calibrate --mode <id> --activate` |
-| 6 | no active record for any mode | `bora calibrate --mode all` — *the nudge, once* |
-| 7 | everything is in place | `bora coding` |
+## E7 — Prove update and uninstall handoff
 
-Rule 6 is where tone is decided. `README.md:266-268` is explicit that calibration is *the second
-step, not the entry price*, so the wording nudges and never scolds, and never implies the tool is
-broken before it: "All three modes start on the verified baseline (ctx 8192, n_cpu_moe 48). That
-works — it is not optimized."
+- **Goal.** Make the two self-replacing commands safe with no extra Python parent holding the tool
+  environment open.
+- **Files.** `src/bora_workbench/tui/actions.py`,
+  `src/bora_workbench/tui/screens/installation.py`, `src/bora_workbench/cli.py`,
+  `tests/test_tui_actions.py`, `tests/test_cli_tui.py`, `scripts/verify_uninstall.py`.
+- **Change.**
+  - `bora update --check` is returning; `bora update` is terminal.
+  - `bora uninstall` is terminal and hidden behind typing `remove`; the real CLI still asks its own
+    two independent questions.
+  - Dispatch both in the same process after the UI runtime closes. The existing deferred uv helper
+    therefore watches the one process that will actually exit.
+  - Do not create a subprocess wrapper, suppress a confirmation, or infer uv ownership.
+  - Extend isolated verification so the presence of the TUI command does not break complete
+    uv-tool uninstall; no automated test performs a real update.
+- **Decision.** The self-command handoff decision from A1.
+- **Verify.** Unit tests prove ordering and exact argv; isolated wheel uninstall passes; manual
+  Windows checks confirm the environment is removed only after the command process exits.
+- **Done when.** There is no live TUI parent during uv replacement/removal and no helper race is
+  observed in the supported manual environments.
 
-## B.4 Composer and handoff
+## E8 — Add optional bora motion
 
-**Handoff, not embedding.** `TUI.md:259-295` argues it in full; the short version is that the run
-modes hold the foreground until `Ctrl-C`, calibration runs for hours, `self uninstall` deletes the
-installation that would be running the UI, and the exit codes are a contract — and every one of those
-problems disappears when the front end's last act is to run the command it is showing and get out of
-the way.
+- **Goal.** Add identity without weakening input latency, accessibility, or static usefulness.
+- **Files.** new `src/bora_workbench/tui/motion.py`,
+  `src/bora_workbench/tui/app.py`, `src/bora_workbench/tui/palette.py`, new
+  `tests/test_tui_motion.py`, `tests/test_cli_tui.py`, `docs/configuration.md`.
+- **Change.**
+  - Implement gust and sea as pure functions of time, dimensions, and seed.
+  - Animate only the focused Overview, at no more than 12 fps, and settle after about three
+    seconds instead of looping forever.
+  - Stop on another screen, small terminal, lost focus where available, `--plain`, `NO_COLOR`,
+    `TERM=dumb`, or `BORA_TUI_MOTION=off`.
+  - Accept only the documented TUI-motion environment values; malformed values exit 2.
+  - Keep static text and every action complete when motion is absent.
+  - If measured idle CPU exceeds the accepted budget, do not ship motion in `0.4.0`; keep the
+    functional TUI and record the limitation instead of weakening the budget.
+- **Decision.** Q7's motion decision from A1.
+- **Verify.** Frozen-time/seed tests, headless kill-switch tests, measured frame rate, and manual idle
+  CPU measurements on the maintained Windows and Ubuntu machines.
+- **Done when.** Motion is deterministic in tests, instantly interruptible, and optional in every
+  environment.
 
-Mechanics, identical on both platforms (Windows has no real `exec`):
+## E9 — Document the shipped front end
 
-1. leave the alternate screen and restore the terminal — cursor, colours, mouse, raw mode;
-2. print the exact command line, so it stays in the scrollback;
-3. restore the default `SIGINT` handler;
-4. `subprocess.run(argv, shell=False)` with inherited stdio;
-5. **terminal actions** — `coding`, `studio`, `vstudio`, `calibrate`, `self update`,
-   `self uninstall` — exit with the child's code and do not come back; **returning actions** —
-   `doctor`, `validate`, `engine status`, `engine install`, `model pull`, `model rm`, `status`,
-   `stop`, `pi *` — return, re-collect, and print the U9 difference line.
-
-**What to display and what to execute are different strings.** The screen always shows `bora …`,
-because that is what a human types. The process always runs
-`[sys.executable, "-m", "bora_workbench.cli", *args]`, because that is what works in a development
-checkout, inside `uv run`, and when the console script is not on `PATH`. A3 already adds the
-`cli/__main__.py` this depends on.
-
-The composer is the only piece worth testing heavily, and it is pure:
-
-```python
-def compose(state: ScreenState) -> tuple[str, ...]:
-    """Return the exact argv the CLI would parse for this screen state."""
-```
-
-Two tests carry the whole design. One enumerates every reachable screen state and asserts the argv.
-The other feeds every produced argv to **the real parser** — `typer.main.get_command(app)` plus
-`make_context`, which parses without executing anything — and asserts it is accepted. After A7 the
-Typer app *is* the parser, so a screen that can compose an invalid command fails the suite offline,
-on both platforms.
-
-The wizard's real advantage over the CLI follows from that: `--activate` with `--target-ctx` is an
-input error today, reported after the fact. In the wizard it is **unreachable**, with the reason
-shown inline. That is a genuine improvement, not a reskin.
-
-## B.5 Screens
-
-The rail is the six panels of A.3. Same words, three places.
-
-| Rail | Shows | Acts (all handoffs) |
-|---|---|---|
-| **Overview** | the verdict line, engine, model, content, memory, services, the seven record states | the suggestion of B.3 |
-| **Run a mode** | the three modes, their sampling, the record or baseline each would use, the API/UI URLs | `coding` / `studio` / `vstudio`, `[f]` adds `--force` with its meaning printed inline |
-| **Tune** | per-mode record state, stored `ctx` and `n_cpu_moe`, reserves, record path | the four-step wizard → `calibrate …`; `[a]` on a candidate row → `--activate` |
-| **Setup** | engine release/backend/lock match; the model artifacts, sizes, and where each copy lives | `engine install`, `model pull`, `model rm` (`[d]` previews with `--dry-run`) |
-| **Connect** | whether pi is on `PATH`, the provider entry, and **which of the three sources** the context window would come from | `pi connect`, `pi remove`, `pi uninstall` |
-| **This installation** | version, published version, the four roots, what `uninstall` deletes and what it does not | `self update`; `self uninstall` behind a typed word |
-
-Two screens deserve their exact wording:
-
-**Setup, when weights are missing.** This is where a naive wizard lies. State the boundary on the
-screen where the user meets it — `bora model pull` downloads the pinned artifacts, and nothing else
-is ever fetched — and show the revision, filenames, and byte sizes from the lock, so the project's
-most surprising constraint becomes its clearest moment.
-
-**This installation.** It lists the four roots, states that the model store is inside the data root
-and goes with it, states that the Hugging Face cache is asked about separately and defaults to no,
-and requires the word `remove` to be typed. Then it hands off to `bora self uninstall`, which asks
-its own confirmation. Two deliberate acts for the only irreversible command in the tool — and because
-it is a handoff, the front end is already gone before uv is asked to delete the installation it was
-running from.
-
-**Settings are read-only, permanently.** Show the resolved value, its source (`environment` /
-`config.toml` / `default`), the file path, and the environment variable names. `[o]` opens the file in
-`$EDITOR`. The user's editor writes that file; bora never does (`README.md:316-318`, specification
-5.12).
-
-## B.6 Keymap
-
-| Key | Action |
-|---|---|
-| `↑ ↓` / `k j` | move within the focused list |
-| `← →` / `h l` | move between rail and detail |
-| `Enter` | open, or confirm the focused item |
-| `Esc` | back; at the root, quit |
-| `r` | refresh the snapshot |
-| `y` | copy the visible command (OSC 52) |
-| `?` | help overlay with the full keymap |
-| `q` / `Ctrl-Q` | quit |
-
-Rules that avoid the classic accidents: no destructive action on a single letter at the root;
-confirmation modals default to **No**; `y`/`n` answer a modal only while one is open, and `y` means
-*copy* only while none is; no key that starts a job is adjacent to a navigation key.
-
-## B.7 Motion, palette, identity
-
-Unchanged from `TUI.md` sections 4.1–4.6, with its budget kept as a hard rule: **≤ 12 fps**, idle CPU
-**≤ ~2 %** of one core *measured, not assumed*, motion only on a focused home screen, off entirely
-under `BORA_TUI_MOTION=off`, `NO_COLOR`, `TERM=dumb`, or `--plain`, and **never** in the path of
-`coding`, `studio`, `vstudio`, `calibrate`, `engine install`, `doctor`, `status`, `stop`, `validate`,
-or `self uninstall`. A splash on every invocation would be charming twice and irritating forever.
-
-The palette extends `cli/theme.py:25-34` and does not contradict it: success, warning, error, and
-heading reuse `STYLE_*` verbatim, wind takes `bold white` / `cyan` / `dim cyan`, sea takes `blue` /
-`dim blue`. Built-in Rich style names only, so styles stay valid on a theme-free console. Colour never
-carries meaning alone. No emoji, ever: variable-width glyphs wrap lines and split tokens, which is
-why the existing theme banned them.
-
-## B.8 Degradation and access
-
-| Environment | Behavior |
-|---|---|
-| Windows Terminal, `gnome-terminal`, `kitty`, `alacritty`, VS Code | full; debounce redraws on resize |
-| legacy `conhost.exe` with a raster font | detected → ASCII glyph set, no box drawing |
-| `tmux` / `screen`, SSH | assume the lowest capability reported; 256 colours unless `COLORTERM` says more |
-| `NO_COLOR`, `TERM=dumb`, `--plain` | no colour, no motion, plain banner |
-| no TTY (pipe, CI, redirect) | **no front end**: one line of explanation, exit 2 |
-
-Capability detection is one small named helper in `tui/terminal.py`, not `if os.name` scattered
-through screens. That module is the front end's only OS branch and specification 4.1 names it as
-such in A1 — terminal capability is not platform *logic*, but pretending it is not platform-specific
-would be worse than declaring it.
-
-`docs/tui.md` states plainly that alternate-screen interfaces are hostile to screen readers and that
-**the CLI remains the complete, accessible path**. That sentence is part of the feature, not a
-disclaimer bolted on.
-
-## B.9 Performance budget
-
-| Budget | Value | Why |
-|---|---|---|
-| first paint | < 150 ms | before any collection; chrome only (U1) |
-| full snapshot | < 1.5 s typical, 5 s worst case | bounded by the `nvidia-smi` timeout of specification 5.4 |
-| idle CPU | ≤ ~2 % of one core | measured on both reference machines |
-| frame rate | ≤ 12 fps, motion only | it is a terminal |
-| key latency | never blocked by a frame | motion yields to input, always |
-| `bora --version` | **not one millisecond slower** | the front end is imported only when its command runs |
-
-## B.10 Testing
-
-- `compose()` — table-driven over every reachable state.
-- every composed argv accepted by the real parser, through `make_context`, executing nothing.
-- `next_step()` — a truth table over the seven snapshot shapes.
-- the snapshot collector — with fakes, no console.
-- the capability ladder — a pure function from a capability tuple to a render mode.
-- motion — pure functions of `(t, width, height, seed)` with a frozen clock and a seeded PRNG.
-- `tui/` is walked by `tests/test_code_quality.py` the moment it exists: 600 lines, 40 lines,
-  3 parameters, 3 nesting levels, docstrings everywhere, exceptions registered under A2.
-- **No pixel snapshots.** Keep the logic out of the UI and there is nothing brittle left to test.
-
-## B.11 The steps
-
-| | Step | Content | Useful if you stop here |
-|---|---|---|---|
-| **B1** | `bora tui`, read-only | the command, the TTY refusal, `tui/terminal.py`, the banner, one static frame rendering the A9 snapshot, `r` and `q`. **Rich only.** | the identity plus a genuinely useful overview |
-| **B2** | Motion | gust and sea as pure functions, the budget, the settle, every kill switch | the identity, complete |
-| **B3** | Navigation and advice | rail, detail pane, help overlay, the verdict line and `next_step()` | the reason to open it |
-| **B4** | Composer and handoff | `compose()`, the handoff, the U9 difference line, OSC 52 copy | the whole concept |
-| **B5** | Run, Setup, Connect screens | the three simple action screens | daily use |
-| **B6** | Tune | the four-step calibration wizard and the records pane | the strongest screen in the design |
-| **B7** | This installation | `self update`, and the danger zone behind a typed word | first-run and last-run |
-| **B8** | Polish and docs | empty states, `$EDITOR`, `docs/tui.md`, the acceptance run of C.1 | — |
-
-**The dependency decision happens between B2 and B3**, with B1 and B2 as evidence. Rich is already a
-dependency and gives layout, tables, `Live`, and colour but no keyboard handling. Textual is by the
-same author, builds on Rich, is pure Python, works on Windows Terminal and POSIX, and ships a
-headless test pilot — at the cost of a real dependency addition and a transitive tree to review in a
-project whose identity is a verified supply chain. Deciding it **after** two phases of hand-rolled
-input, following `AGENTS.md:163-174` and amending D-003, is the difference between deciding with
-evidence and deciding by taste. If it is refused, B1–B2 still stand on their own.
-
-## B.12 Contracts the front end must not break
-
-A review checklist, not aspirations:
-
-1. importing the package still performs no I/O; `tui/` is imported only when its command runs;
-2. exit codes stay `0 / 1 / 2 / 130`, produced by the same code as today — the front end adds none;
-3. no TTY, no front end;
-4. `config.toml` is never written;
-5. no new network access, no telemetry, no port; record *paths* are displayed, record *contents* are
-   never shipped anywhere;
-6. preflights and confirmations are never re-implemented, pre-answered, suppressed, or auto-`--yes`ed;
-7. everything reachable here is reachable by typing;
-8. opening it starts no process, creates no directory, writes no state;
-9. platform branching stays in `paths`, `process/`, `hardware`, `engine/`, and the declared
-   `tui/terminal.py`;
-10. no candidate is ever activated on the maintainer's behalf, from any screen.
-
-## B.13 Where the idea is still weak
-
-Kept from `TUI.md:670-733`, because a plan that drops its own objections is a brochure:
-
-- **Opportunity cost is the strongest objection.** Specification section 0 still lists open `0.2`
-  work: the Windows trial adapter, the real `update`/`pull`/`rm`/`pi` runs, the cross-platform
-  release CI. A front end is a new surface on a base with open items. Part A is worth doing either
-  way; Part B should start only when the maintainer decides those items no longer block it — and "not
-  yet" is a legitimate answer for a long time.
-- **A UI is the opposite of reproducible**, and reproducibility is this project's thesis. The answer
-  is U3 and U7: a front end that teaches the CLI is defensible; one that replaces it is not.
-- **Two front ends drift.** The answer is that the front end owns no rules — snapshot in, argv out —
-  and that one test proves every argv it can emit is accepted by the real parser.
-- **Animation is a taste that fades.** The answer is the budget, the settle, the kill switches, and
-  never putting motion in the command path.
-- **Scope creep has a natural home in a UI.** Model pickers, flag editors, profile builders: none of
-  them become reachable because a screen has room. `README.md:37-43` draws that line already.
+- **Goal.** Describe the TUI as an optional path without making any operation TUI-only.
+- **Files.** new `docs/tui.md`, `README.md`, `docs/README.md`, `docs/commands.md`,
+  `docs/architecture.md`, `docs/development.md`, `docs/configuration.md`, `TUI.md`.
+- **Change.**
+  - Document invocation, screens, keymap, handoff, read-only opening, motion controls, and plain
+    mode.
+  - State that alternate-screen interfaces are not the accessible path for every user and that the
+    complete CLI remains supported.
+  - Document that read-only opening may run bounded probes but performs no mutation or network.
+  - State that command selection closes the UI before the existing command owns the terminal.
+  - Keep clipboard integration, editor launching, command aliases, arbitrary model selection, and
+    config writes out of current docs.
+- **Decision.** The documentation/accessibility decision from A1.
+- **Verify.** Every action table names a real current command; every command remains documented
+  independently of the TUI.
+- **Done when.** A reader can ignore `docs/tui.md` and still operate the complete product.
 
 ---
 
-# Part C — Release `0.4.0`
+# Part F — Acceptance and proposed 0.4.0 release
 
-## C.1 Definition of done
+## F1 — Automated definition of done
 
-`0.4.0` is taken only when **all** of these hold. Anything unmet is either fixed or written down as a
-limitation — never described as passed.
+All of the following must pass from a clean checkout:
 
-**Part A**
+- [ ] every authorized step A1–E9 is one reviewed commit with its step-specific checks;
+- [ ] `bora tui` imports no TUI framework before its command runs;
+- [ ] non-TTY invocation exits 2 without side effects;
+- [ ] first chrome renders before snapshot collection starts;
+- [ ] key input remains responsive while a fake collector blocks;
+- [ ] repeated refresh never overlaps collection;
+- [ ] opening and refresh perform no network, hash, write, cleanup, directory creation, or service
+      start;
+- [ ] every composed argv reaches a real leaf parser without execution;
+- [ ] every real preflight and confirmation remains owned by the existing CLI callback;
+- [ ] returning success reopens and refreshes; non-zero and 130 propagate exactly;
+- [ ] update/uninstall have no waiting TUI subprocess parent;
+- [ ] rendering is usable at 60x20, 80x24, and 120x40 in plain and full modes;
+- [ ] `bora --version` and package import do not import `bora_workbench.tui` or Textual;
+- [ ] static mode consumes no periodic refresh; motion, if shipped, stays within its measured
+      budget;
+- [ ] the sdist carries `IMPLEMENTATION_SPEC.md`, `TUI.md`, and `TUI_PLAN.md`;
+- [ ] existing engine, model, calibration, record, and command-contract tests remain unchanged in
+      meaning.
 
-- [ ] every step A1–A10 committed, each with its own green suite;
-- [ ] `bora --help` prints six panels; all seventeen paths behave exactly as `0.3.2` did;
-- [ ] the four old names exit 2 naming their replacement;
-- [ ] `bora doctor` stdout is byte-identical to `0.3.2` on the same machine;
-- [ ] `ls src/bora_workbench` shows eight directories and seven files;
-- [ ] `docs/commands.md` matches the parsed surface, enforced by `tests/test_docs_commands.py`.
+There is no invented total snapshot timeout. The UI exposes collection in progress and remains
+responsive while the existing bounded probes enforce their own limits.
 
-**Part B**
+## F2 — Required manual checks
 
-- [ ] `bora tui` starts with no side effects: no process, no directory, no state, no config write —
-      asserted by a test, not by inspection;
-- [ ] it exits cleanly restoring the terminal, including after `Ctrl-C` and after a handoff;
-- [ ] it renders correctly at 80×24, 120×40, and 60×20; degrades to ASCII without UTF-8; prints one
-      line and exits 2 without a TTY;
-- [ ] every screen action composes an argv the real parser accepts, proven offline;
-- [ ] idle CPU measured under budget on both reference machines, with the number recorded;
-- [ ] `bora --version` is no slower than in `0.3.2`;
-- [ ] **manual**: on Windows Terminal and on legacy `conhost`, and on one Ubuntu terminal, open it,
-      navigate every screen, hand off one returning action and one terminal action, and confirm the
-      terminal is intact afterwards.
+Before a release, perform and report:
 
-**Both**
+### Ubuntu
 
-- [ ] `uv sync --frozen`, `ruff check`, `ruff format --check`, `pytest`, `bora validate`;
-- [ ] `uv build`, `scripts/verify_wheel.py`, `scripts/verify_uninstall.py`;
-- [ ] `docs/tui.md` exists and every other page still works, because nothing became front-end-only.
+- one supported terminal at 60x20 and 120x40;
+- plain mode and full mode;
+- refresh during a deliberately slow fake or unavailable `nvidia-smi` probe;
+- one returning command and one terminal foreground mode;
+- `Ctrl-C` from the foreground mode leaves the terminal intact and exits 130.
 
-## C.2 The version bump
+### Windows 11
 
-Eleven files carry `0.3.2` today. Change them in one commit, at the end, never earlier:
+- Windows Terminal in PowerShell and cmd;
+- legacy console only as far as the environment is actually available; use `--plain` rather than
+  claiming undetectable raster-font support;
+- one returning command and one terminal foreground mode;
+- isolated `bora uninstall` through the TUI handoff;
+- verify that no live TUI parent blocks uv deletion;
+- resize, `Ctrl-C`, and terminal restoration.
 
-| File | What |
-|---|---|
-| `pyproject.toml` | `version = "0.4.0"` |
-| `src/bora_workbench/cli/app.py` | the `package_version()` source-checkout fallback |
-| `scripts/verify_wheel.py` | the installed-version assertion |
-| `tests/test_cli.py` | `test_version` |
-| `CHANGELOG.md` | a new `## [0.4.0]` section: Added / Changed / Removed, in the existing voice |
-| `README.md` | badge, both installation blocks, the status paragraph |
-| `docs/README.md` | current status and preceding public release |
-| `docs/installation.md` | the pinned version in the install commands |
-| `docs/operations.md` | version-bearing examples |
-| `docs/releasing.md` | a new `### Release 0.4.0` section describing what shipped and what stayed a limitation |
-| `IMPLEMENTATION_SPEC.md` | section 0 tracker, section 1.3 boundary |
+If a check is unavailable, record it as a limitation. Do not call it passed and do not call this a
+calibration Gate.
 
-The changelog needs three honest headings: **Added** (`bora tui`, `bora model`, `bora self`,
-`bora pi connect`, the declared `calibrate` options, the structured snapshot), **Changed** (the tree,
-the panels, the flag vocabulary, the stream rule), **Removed** (the epilog parser; the old spellings,
-with the note that the moved-name notice goes in `0.5.0`).
+## F3 — Version finalization
 
-## C.3 The procedure
+Only after F1 and the available F2 checks:
 
-Exactly `docs/releasing.md:26-58`: clean checkout, required uv, the five frozen checks, `dist/`
-deleted, `uv build`, `verify_wheel.py`, `verify_uninstall.py`, then the artifact checks. Any change
-made after the build invalidates the artifacts: remove `dist/`, repeat every check, rebuild.
+1. search the checkout for every current `0.3.2` release-bearing value;
+2. change only current-version fields to `0.4.0`, preserving historical prose;
+3. update `pyproject.toml` **and `uv.lock` together**;
+4. update version fallbacks, tests, install examples, current-status docs, changelog, and release
+   documentation found by the search;
+5. record exactly which manual checks ran and which did not;
+6. keep GitHub Releases as the only distribution channel.
 
-Then, and only with explicit authorization in the session where each happens: the commit; the push;
-the tag `v0.4.0`; and the GitHub Release created **from that tag's green release workflow's exact
-bundle**. Distribution stays GitHub Releases only (D-070); no registry, no rebuild of a published
-artifact.
+Do not rely on a fixed file count: the source hierarchy and search results are the authority.
 
-## C.4 What must not be claimed
+## F4 — Release procedure
 
-- not a passed Gate — calibration coverage stays `GATE-PARTIAL`;
-- no local candidate is activated by this release, or by any screen in it;
-- manual checks that were not run are listed as limitations, with the platform named;
-- the front end is not described as an improvement over the CLI for accessibility, because it is not.
-
----
-
-# Appendix A — Decisions to record in A1
-
-Proposed text is one paragraph each, in the voice of the existing table. Numbers are indicative.
-
-| | Subject |
-|---|---|
-| **D-083** | `0.4.0` scope: the reorganized command surface, the reorganized package tree, and the interactive front end are released together as `0.4.0`. Records the six answers below. Nothing about the engine, model, calibration protocol, record format, or `command_contract_sha256` changes, so every existing `calibration-record/v6` stays valid. |
-| **D-084** | The file, function, and parameter limits become registered defaults with a reason; nesting and docstrings stay absolute. Records why: the mechanical ceiling hid a published CLI interface in order to protect an internal one. |
-| **D-085** | The command surface: `model` and `self` groups, `pi connect`, the six help panels, `--dry-run` as the single "show and stop" spelling, the three declared `calibrate` options, the moved-name notice and its removal in `0.5.0`. Names the licence: `0.3` carries no interface stability guarantee, and no command string is checksum-bound. |
-| **D-086** | The package tree: eight areas, public import paths preserved, `cli/__main__.py`, tests mirrored, specification 4.1/4.2 rewritten, `tui/terminal.py` added to the modules allowed to branch on the operating system. |
-| **D-087** | `doctor` renders a structured snapshot instead of computing while it prints; `validate` and the four unguarded calls gain the guard that specification 5.11 already required. |
-| **D-088** | The interactive front end as Backlog D: `bora tui`, **handoff not embedding**, read-only settings, bare `bora` unchanged, Rich for phases 1–2, and the dependency question deferred to the phase-3 decision point with phases 1–2 as evidence. |
-
-**The six questions of `TUI.md:787-794`, answered:**
-
-| | Question | Answer |
-|---|---|---|
-| **Q1** | Is the package reorganization approved as an independent step? | **Yes, and first** — A3/A4, ahead of the front end and worth doing even if the front end is never built. |
-| **Q2** | Is an interactive front end accepted at all? | **Yes**, as Backlog D, released in `0.4.0` when Part C's criteria are met. |
-| **Q3** | Handoff or embedded execution? | **Handoff.** It leaves exit codes, signal handling, and process lifetime with the code that already owns them. |
-| **Q4** | Rich only, or is `textual` approved? | **Deferred**, to the decision point between B2 and B3, with evidence. D-003 unchanged for now. |
-| **Q5** | Does bare `bora` stay `no_args_is_help`? | **Yes.** The front end ships as `bora tui`. Changing what a bare invocation does is a contract change with no upside. |
-| **Q6** | Is the settings pane read-only forever? | **Read-only.** It follows a rule that is already normative: the launcher never rewrites `config.toml`. |
-
-# Appendix B — `TUI.md` errata, applied by A1
-
-| Where | Now says | Should say |
-|---|---|---|
-| status block `:1-14` | proposal written against `0.2.1`, disposition open | design record for Backlog D, written against `0.3.2`, pointing at this file for the steps |
-| `:49-60` | 26 modules, 21 `_`-prefixed, five areas | 45 modules, 29 `_`-prefixed, eight areas; the target tree is A.6 of this file |
-| Part I `:45-156` | "code layout first", with its own tree | superseded by A.6 and A3/A4 |
-| `:186-196` | screen→command table | the six panels of A.3, including `model pull`/`model rm`, `pi connect`, `self update`/`self uninstall`, and `engine install --no-model` |
-| `:40-41` | a quotation in Italian | English (`AGENTS.md:46-47`) |
-| `:334`, `:469` and mockups | `workbench 0.2.1` | the version the release carries |
-
-# Appendix C — Verification
-
-After **every** step (`AGENTS.md:176-198`):
+Run, in order:
 
 ```bash
 uv sync --frozen
@@ -1083,9 +791,81 @@ uv run --frozen ruff check .
 uv run --frozen ruff format --check .
 uv run --frozen pytest
 uv run --frozen bora validate
+rm -rf dist
+uv build
+uv run --frozen python scripts/verify_wheel.py
+uv run --frozen python scripts/verify_uninstall.py
+git diff --check
 ```
 
-After A3, A4, and before the release, additionally:
+Inspect the sdist contents for the three design/plan documents and inspect the wheel for the TUI
+Python modules and any non-Python UI assets. Any edit after the build invalidates `dist/` and requires
+all checks and the build again.
+
+A local version commit does not authorize a push, tag, GitHub Release, remote setting, candidate
+activation, or registry publication. Each remote action still requires explicit authorization in
+that session.
+
+## F5 — Claims that remain forbidden
+
+A `0.4.0` release is not:
+
+- a passed calibration Gate;
+- broader hardware evidence;
+- a new engine, model, protocol, record format, or command contract;
+- a generic model manager or settings editor;
+- an accessibility replacement for the CLI;
+- proof for a manual platform check that was not performed.
+
+No local candidate is activated by implementation, testing, or release preparation.
+
+---
+
+# Appendix A — Action matrix
+
+The exact existing CLI vocabulary is the source. UI labels do not rename it.
+
+| Screen | Displayed command | Disposition |
+|---|---|---|
+| Overview | `bora doctor` | returning |
+| Overview | `bora validate` | returning |
+| Overview | `bora status` | returning |
+| Overview | `bora stop` | returning |
+| Modes | `bora coding [--force]` | terminal |
+| Modes | `bora studio [--force]` | terminal |
+| Modes | `bora vstudio [--force]` | terminal |
+| Calibration | `bora calibrate ...` | terminal |
+| Calibration | `bora calibrate --mode ID --activate` | terminal |
+| Setup | `bora engine status` | returning |
+| Setup | `bora engine install [--force] [--no-model]` | returning on 0 |
+| Setup | `bora pull [qwen]` | returning on 0 |
+| Setup | `bora rm [qwen] [--keep-hf] [--dry-run]` | returning on 0 |
+| Pi | `bora pi [--print] [--install]` | returning on 0 |
+| Pi | `bora pi remove` | returning on 0 |
+| Pi | `bora pi uninstall` | returning on 0 |
+| This installation | `bora update --check` | returning |
+| This installation | `bora update` | terminal |
+| This installation | `bora uninstall` | terminal |
+
+"Returning on 0" means any non-zero or interrupted result exits the TUI command with that exact
+code. The TUI never swallows a failed operation and later reports shell success.
+
+---
+
+# Appendix B — Verification after every implementation step
+
+The repository checks are mandatory after every step once A1 authorizes implementation:
+
+```bash
+uv sync --frozen
+uv run --frozen ruff check .
+uv run --frozen ruff format --check .
+uv run --frozen pytest
+uv run --frozen bora validate
+git diff --check
+```
+
+When package metadata, dependencies, source inclusion, or TUI package files change, also run:
 
 ```bash
 rm -rf dist
@@ -1094,39 +874,30 @@ uv run --frozen python scripts/verify_wheel.py
 uv run --frozen python scripts/verify_uninstall.py
 ```
 
-Three per-step checks carry most of the weight:
+Before each commit:
 
-- **A3** — `git diff -M --stat` shows renames, and the wheel verification passes. A move that changed
-  a byte inside a file is not a move.
-- **A9** — `bora doctor` stdout byte-identical before and after. A refactor that changes output is
-  not a refactor.
-- **B4** — every argv the composer can emit is accepted by the real parser. A screen that can produce
-  a command the CLI rejects is a screen that lies.
+- inspect `git diff` and `git diff --check`;
+- verify the staged set contains only the declared files;
+- use a concrete Conventional Commit subject and a body naming constraints and checks;
+- report unavailable platform checks instead of implying success.
 
-If a tool or a platform is unavailable, report that limitation. Do not claim the check passed.
+---
 
-# Appendix D — Considered and rejected
+# Appendix C — Explicitly deferred ideas
 
-- **A third level, `bora service status` / `bora service stop`.** Rejected: `status` and `stop` are
-  the second and third most typed commands, and the object is already unambiguous — there is only one
-  kind of managed service.
-- **`bora run coding` with `bora coding` kept as a shortcut.** Rejected: two spellings of the most
-  used command, forever, to gain a grouping that `rich_help_panel` already provides for free.
-- **Renaming `vstudio`.** Rejected: mode ids are packaged content bound into every
-  `calibration-record/v6`. Renaming one invalidates records for cosmetics.
-- **Renaming the launch `--force` to `--skip-memory-gate`.** Rejected: more honest, more typing on
-  the one escape hatch needed under pressure. The two meanings get a documented row each instead, and
-  the front end prints the meaning inline.
-- **Deprecated aliases that still work.** Rejected: a second spelling to keep correct forever, and a
-  second thing a front end could compose. A notice that exits 2 teaches the new name once
-  (`AGENTS.md:132-133`).
-- **`bora model status`, `bora records show`.** Rejected: new capability. `doctor` is the aggregate
-  view, and Part A adds nothing a user could not do in `0.3.2`.
-- **`doctor --json` as the front end's data source.** Rejected: it would make a public output
-  contract out of an internal need. The snapshot is an in-process API; a JSON contract is a separate
-  decision with its own compatibility obligations.
-- **Reading the CLI's stdout to build the dashboard.** Rejected: scraping your own tool is how two
-  front ends drift apart.
-- **A front end that runs everything in-process.** Rejected: `TUI.md:259-295` and B.4.
-- **A web UI.** Rejected: it would open a port, and this project's security posture is built on
-  `127.0.0.1`-only services with a verified lifecycle.
+These are not hidden phases of `0.4.0`.
+
+- command groups `model`, `self`, or `pi connect`;
+- moved-name notices or aliases;
+- full source/test package reorganization;
+- splitting `engine.py` solely to create room for unrelated work;
+- editable settings or generated TOML;
+- `$EDITOR` process parsing;
+- OSC 52 clipboard claims across SSH/tmux/screen;
+- automatic legacy-console raster-font detection;
+- passive release-network checks;
+- background polling of GPU, model, service, or release state;
+- embedded calibration, launch, update, uninstall, npm, or uv execution inside the UI event loop;
+- model pickers, arbitrary flags, profiles, plugins, or additional integrations.
+
+Each requires its own demonstrated need and normative decision.
