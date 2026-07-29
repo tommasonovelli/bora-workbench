@@ -51,16 +51,18 @@ def test_engine_status_is_zero_when_absent(monkeypatch) -> None:
     assert "not installed" in result.stdout
 
 
-def test_engine_status_returns_one_for_corrupt_manifest(monkeypatch) -> None:
-    """Expose manifest corruption and use the expected operational failure exit code."""
-    corrupt = EngineStatus(False, None, None, None, False, ("manifest is invalid",))
+def test_engine_status_keeps_every_blocking_difference_on_stderr(monkeypatch) -> None:
+    """Keep a redirected blocking difference list complete on one error stream."""
+    differences = ("manifest is invalid", "active release does not match engine.lock")
+    corrupt = EngineStatus(False, None, None, None, False, differences)
     monkeypatch.setattr(diagnostics_cli, "engine_status", lambda: corrupt)
 
     result = runner.invoke(app, ["engine", "status"])
 
     assert result.exit_code == 1
-    assert "manifest is invalid" in result.stderr
-    assert "manifest is invalid" not in result.stdout
+    for difference in differences:
+        assert difference in result.stderr
+        assert difference not in result.stdout
     assert "Traceback" not in result.stderr
 
 

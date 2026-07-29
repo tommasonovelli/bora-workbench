@@ -75,8 +75,9 @@ bora engine status
 ```
 
 Shows the active manifest, release, backend, executable, and compatibility with `engine.lock`. A
-missing engine is an informational state and exits with 0; an installation that is present but
-incompatible exits with 1.
+missing engine is an informational state and exits with 0, with its complete difference report on
+stdout. An installation that is present but incompatible exits with 1; its table stays on stdout and
+every blocking difference is written to stderr as one redirectable list.
 
 ## `engine install`
 
