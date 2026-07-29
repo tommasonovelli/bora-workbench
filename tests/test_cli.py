@@ -3,6 +3,7 @@
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
 from typer.testing import CliRunner
 
 import bora_workbench._calibration_record as record_module
@@ -10,8 +11,11 @@ import bora_workbench._cli_diagnostics as diagnostics_cli
 import bora_workbench._cli_services as service_cli
 import bora_workbench.config as config_module
 import bora_workbench.paths as paths_module
+import bora_workbench.snapshot as snapshot_module
 from bora_workbench.cli import app
+from bora_workbench.engine import EngineError
 from bora_workbench.hardware import HardwareError, HardwareInfo
+from bora_workbench.profiles import ContentError
 from bora_workbench.validation import ValidationIssue, ValidationResult
 
 runner = CliRunner()
@@ -28,8 +32,7 @@ def patch_directories(tmp_path, monkeypatch):
     monkeypatch.setattr(config_module, "config_dir", lambda: directories["config_dir"])
     for name, path in directories.items():
         monkeypatch.setattr(paths_module, name, lambda path=path: path)
-        # Doctor binds the four path helpers at import time, so its lookups are patched directly.
-        monkeypatch.setattr(diagnostics_cli, name, lambda path=path: path)
+        monkeypatch.setattr(snapshot_module, name, lambda path=path: path)
     # The record module binds data_dir at import time, so its lookup is patched directly.
     monkeypatch.setattr(record_module, "data_dir", lambda: directories["data_dir"])
     absent_engine = SimpleNamespace(
@@ -40,7 +43,7 @@ def patch_directories(tmp_path, monkeypatch):
         is_compatible=False,
         differences=("not installed",),
     )
-    monkeypatch.setattr(diagnostics_cli, "engine_status", lambda: absent_engine)
+    monkeypatch.setattr(snapshot_module, "engine_status", lambda: absent_engine)
     return directories
 
 
@@ -108,7 +111,7 @@ def test_validate_maps_resource_io_failure_without_a_traceback(monkeypatch) -> N
 def test_doctor_is_read_only_and_reports_hardware(tmp_path, monkeypatch) -> None:
     """Describe hardware and empty profiles without creating directories."""
     patch_directories(tmp_path, monkeypatch)
-    monkeypatch.setattr(diagnostics_cli, "detect_hardware", fake_hardware)
+    monkeypatch.setattr(snapshot_module, "detect_hardware", fake_hardware)
 
     result = runner.invoke(app, ["doctor"])
 
@@ -123,7 +126,7 @@ def test_doctor_is_read_only_and_reports_hardware(tmp_path, monkeypatch) -> None
 def test_doctor_prints_markup_like_configuration_literally(tmp_path, monkeypatch) -> None:
     """Treat brackets in valid user configuration as data and never raise a Rich traceback."""
     patch_directories(tmp_path, monkeypatch)
-    monkeypatch.setattr(diagnostics_cli, "detect_hardware", fake_hardware)
+    monkeypatch.setattr(snapshot_module, "detect_hardware", fake_hardware)
     monkeypatch.setenv("BORA_MODEL", "[/red]")
 
     result = runner.invoke(app, ["doctor"])
@@ -150,13 +153,37 @@ def test_doctor_maps_hardware_failure_to_exit_1(tmp_path, monkeypatch) -> None:
     """Map missing required hardware facts to an actionable operational error."""
     patch_directories(tmp_path, monkeypatch)
     failure = HardwareError("cannot determine logical CPU cores")
-    monkeypatch.setattr(diagnostics_cli, "detect_hardware", lambda: (_ for _ in ()).throw(failure))
+    monkeypatch.setattr(snapshot_module, "detect_hardware", lambda: (_ for _ in ()).throw(failure))
 
     result = runner.invoke(app, ["doctor"])
 
     assert result.exit_code == 1
     assert "Hardware error" in result.stderr
     assert "logical CPU cores" in result.stderr
+
+
+@pytest.mark.parametrize(
+    ("operation", "failure"),
+    (
+        ("validate_resources", OSError("packaged content cannot be read")),
+        ("load_catalog", ContentError("catalog cannot be loaded")),
+        ("engine_status", EngineError("engine manifest cannot be read")),
+        ("config_dir", OSError("public path cannot be resolved")),
+    ),
+)
+def test_doctor_maps_operational_snapshot_failures(
+    tmp_path, monkeypatch, operation, failure
+) -> None:
+    """Map each formerly unguarded doctor operation without leaking a traceback."""
+    patch_directories(tmp_path, monkeypatch)
+    monkeypatch.setattr(snapshot_module, "detect_hardware", fake_hardware)
+    monkeypatch.setattr(snapshot_module, operation, lambda: (_ for _ in ()).throw(failure))
+
+    result = runner.invoke(app, ["doctor"])
+
+    assert result.exit_code == 1
+    assert str(failure).split()[0] in result.stderr
+    assert "Traceback" not in result.stderr
 
 
 def test_coding_maps_invalid_configuration_to_exit_2(monkeypatch) -> None:

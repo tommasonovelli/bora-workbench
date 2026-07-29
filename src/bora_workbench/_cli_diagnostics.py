@@ -20,7 +20,7 @@ from rich.progress import Progress, TaskID
 from rich.table import Table
 from rich.text import Text
 
-from bora_workbench._calibration_reuse import RecordEvaluation, ReuseQuery, evaluate_record
+from bora_workbench._calibration_reuse import RecordEvaluation
 from bora_workbench._cli_models import pull_model
 from bora_workbench._cli_theme import (
     format_bytes,
@@ -34,7 +34,7 @@ from bora_workbench._cli_theme import (
     progress_columns,
     status_table,
 )
-from bora_workbench.config import Config, ConfigError, load_config
+from bora_workbench.config import ConfigError
 from bora_workbench.engine import (
     Backend,
     EngineError,
@@ -46,8 +46,8 @@ from bora_workbench.engine import (
     load_engine_lock,
 )
 from bora_workbench.hardware import HardwareError, HardwareInfo, detect_hardware
-from bora_workbench.paths import cache_dir, config_dir, data_dir, state_dir
-from bora_workbench.profiles import load_catalog
+from bora_workbench.profiles import ContentError
+from bora_workbench.snapshot import DoctorSnapshot, SnapshotError, collect_doctor_snapshot
 from bora_workbench.validation import ValidationIssue, ValidationResult, validate_resources
 
 
@@ -326,17 +326,6 @@ def run_validate(stdout: Console, stderr: Console) -> None:
         raise typer.Exit(code=1)
 
 
-@dataclass(frozen=True, slots=True)
-class DoctorData:
-    """Group the read-only values doctor collects before rendering them."""
-
-    config: Config
-    hardware: HardwareInfo
-    compatible_profiles: int
-    version: str
-    engine: EngineStatus
-
-
 def _gib(value: float | None) -> str:
     """Format an exact GiB measurement for human diagnostics."""
     return "not applicable" if value is None else f"{value:.2f} GiB"
@@ -349,14 +338,10 @@ def _gpu_label(hardware: HardwareInfo) -> str:
     return f"{hardware.gpu_name} (index {hardware.gpu_index}, detected {hardware.gpu_count})"
 
 
-def _doctor_table(data: DoctorData) -> Table:
-    """Build the read-only diagnostics table from already collected service values."""
-    config, hardware = data.config, data.hardware
-    # Resolving a public directory is the only step here that can fail, so it stays ahead of the
-    # rendering, exactly where the caller used to compute it: which error a reader sees first is
-    # part of the behavior (specification section 5.11).
-    config_path, data_path = config_dir(), data_dir()
-    cache_path, state_path = cache_dir(), state_dir()
+def _doctor_table(data: DoctorSnapshot) -> Table:
+    """Build the diagnostics table exclusively from one collected snapshot."""
+    config, hardware = data.configuration.config, data.hardware
+    paths = data.paths
     table = status_table("bora-workbench diagnostics")
     table.add_column("Item")
     table.add_column("Value")
@@ -379,10 +364,10 @@ def _doctor_table(data: DoctorData) -> Table:
         ("Engine backend", data.engine.backend or "none"),
         ("Engine compatible", "yes" if data.engine.is_compatible else "no"),
         ("Engine executable", str(data.engine.executable) if data.engine.executable else "none"),
-        ("Config directory", str(config_path)),
-        ("Data directory", str(data_path)),
-        ("Cache directory", str(cache_path)),
-        ("State directory", str(state_path)),
+        ("Config directory", str(paths.config)),
+        ("Data directory", str(paths.data)),
+        ("Cache directory", str(paths.cache)),
+        ("State directory", str(paths.state)),
     ]
     for label, value in rows:
         table.add_row(label, Text(value))
@@ -431,44 +416,31 @@ def _record_line(mode_id: str, evaluation: RecordEvaluation) -> str:
     return f"[yellow]Calibration[/yellow] {mode_id}: active record is {label}: {detail}{suffix}"
 
 
-def _record_lines(config: Config, hardware: HardwareInfo) -> tuple[str, ...]:
-    """Evaluate every packaged mode's local record against the current machine."""
-    lock = load_engine_lock()
-    lines = []
-    for mode in load_catalog().modes:
-        evaluation = evaluate_record(ReuseQuery(config, mode, hardware, lock))
-        lines.append(_record_line(mode.id, evaluation))
-    return tuple(lines)
-
-
-def run_doctor(version: str, stdout: Console, stderr: Console) -> None:
-    """Describe configuration, hardware, content, records, and paths without modifying anything."""
+def _collect_doctor(version: str, stderr: Console) -> DoctorSnapshot:
+    """Collect doctor data and map expected domain failures to contractual exits."""
     try:
-        config = load_config()
+        return collect_doctor_snapshot(version)
     except ConfigError as error:
         print_error(stderr, "Configuration error", str(error))
         raise typer.Exit(code=2) from error
-    try:
-        hardware = detect_hardware()
     except HardwareError as error:
         print_error(stderr, "Hardware error", str(error))
         raise typer.Exit(code=1) from error
-    validation = validate_resources()
-    compatible_profiles = 0
-    record_lines: tuple[str, ...] = ()
-    if not validation.errors:
-        catalog = load_catalog()
-        compatible_profiles = sum(profile.is_engine_compatible for profile in catalog.profiles)
-        record_lines = _record_lines(config, hardware)
-    managed_engine = engine_status()
-    data = DoctorData(config, hardware, compatible_profiles, version, managed_engine)
+    except (ContentError, EngineError, OSError, SnapshotError) as error:
+        print_error(stderr, "Doctor error", str(error))
+        raise typer.Exit(code=1) from error
+
+
+def run_doctor(version: str, stdout: Console, stderr: Console) -> None:
+    """Render one structured doctor snapshot without computing during presentation."""
+    data = _collect_doctor(version, stderr)
     stdout.print(_doctor_table(data))
-    for warning in hardware.warnings:
+    for warning in data.hardware.warnings:
         print_warning(stdout, warning)
-    for line in record_lines:
-        stdout.print(line)
-    for difference in managed_engine.differences:
+    for record in data.records:
+        stdout.print(_record_line(record.mode_id, record.evaluation))
+    for difference in data.engine.differences:
         print_warning(stdout, f"Engine: {difference}")
-    show_validation(validation, stdout, stderr)
-    if validation.errors:
+    show_validation(data.validation, stdout, stderr)
+    if data.validation.errors:
         raise typer.Exit(code=1)
