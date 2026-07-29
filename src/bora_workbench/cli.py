@@ -113,9 +113,14 @@ def tui(
     ),
 ) -> None:
     """Open the read-only terminal workbench in an interactive terminal."""
+    from bora_workbench.tui.motion import MotionConfigurationError
     from bora_workbench.tui.terminal import inspect_terminal
 
-    terminal_mode = inspect_terminal(plain)
+    try:
+        terminal_mode = inspect_terminal(plain)
+    except MotionConfigurationError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(2) from None
     if not terminal_mode.is_interactive:
         typer.echo("bora tui requires interactive stdin and stdout terminals.", err=True)
         raise typer.Exit(2)

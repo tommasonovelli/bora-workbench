@@ -4,13 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from time import monotonic
 from typing import ClassVar, Protocol, runtime_checkable
 
-from textual import work
+from textual import events, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.message import Message
+from textual.timer import Timer
 from textual.widgets import Static
 
 from bora_workbench.snapshot import (
@@ -20,6 +22,13 @@ from bora_workbench.snapshot import (
     collect_workbench_snapshot,
 )
 from bora_workbench.tui.actions import CommandSpec, TuiResult, snapshot_changes
+from bora_workbench.tui.motion import (
+    FRAME_INTERVAL_SECONDS,
+    SETTLE_SECONDS,
+    MotionDimensions,
+    render_motion_frame,
+    supports_motion_size,
+)
 from bora_workbench.tui.palette import stylesheet
 from bora_workbench.tui.screens.calibration import CalibrationView
 from bora_workbench.tui.screens.installation import InstallationView
@@ -121,6 +130,7 @@ class WorkbenchApp(App[TuiResult]):
 #views { width: 1fr; height: 1fr; }
 #content { height: auto; }
 #overview { height: auto; }
+#motion { height: 3; padding: 0 2; }
 .section-view { width: 100%; height: auto; padding: 1 2; }
 .section-title { height: 2; text-style: bold; }
 .section-body { height: auto; }
@@ -156,6 +166,10 @@ class WorkbenchApp(App[TuiResult]):
         self._status_text = "Waiting to inspect this machine."
         self._latest_snapshot: WorkbenchSnapshot | None = None
         self._comparison_snapshot: WorkbenchSnapshot | None = None
+        self._motion_timer: Timer | None = None
+        self._motion_elapsed = 0.0
+        self._motion_started_at: float | None = None
+        self._has_app_focus = True
 
     def compose(self) -> ComposeResult:
         """Paint complete static chrome and all read-only views before collection starts."""
@@ -170,6 +184,7 @@ class WorkbenchApp(App[TuiResult]):
                     id="rail",
                 ),
                 VerticalScroll(
+                    Static("", id="motion", markup=False),
                     OverviewView(),
                     ModesView(),
                     CalibrationView(),
@@ -219,6 +234,91 @@ class WorkbenchApp(App[TuiResult]):
             view.display = index == self._selected_index
         self.query_one("#selected-view", Static).update(self._rail_text())
         self.query_one("#views", VerticalScroll).scroll_home(animate=False)
+        self._sync_motion()
+
+    def _motion_dimensions(self) -> MotionDimensions:
+        """Return current terminal cells for pure motion rendering and size gating."""
+        return MotionDimensions(self.size.width, self.size.height)
+
+    def _can_run_motion(self) -> bool:
+        """Require every runtime capability before scheduling a decorative frame."""
+        return (
+            self._terminal_mode.is_motion_enabled
+            and not self._terminal_mode.is_plain
+            and self._selected_index == 0
+            and self._has_app_focus
+            and supports_motion_size(self._motion_dimensions())
+        )
+
+    def _current_motion_elapsed(self) -> float:
+        """Return active animation time without counting periods where it was stopped."""
+        if self._motion_started_at is None:
+            return self._motion_elapsed
+        return min(
+            SETTLE_SECONDS,
+            self._motion_elapsed + monotonic() - self._motion_started_at,
+        )
+
+    def _stop_motion_timer(self) -> None:
+        """Remove periodic wakeups immediately when motion cannot continue."""
+        if self._motion_timer is not None:
+            self._motion_timer.stop()
+            self._motion_timer = None
+
+    def _pause_motion(self) -> None:
+        """Retain active elapsed time, stop its timer, and hide decorative rows."""
+        self._motion_elapsed = self._current_motion_elapsed()
+        self._motion_started_at = None
+        self._stop_motion_timer()
+        self.query_one("#motion", Static).display = False
+
+    def _render_motion(self, elapsed_seconds: float) -> None:
+        """Render one deterministic frame whose text carries no operational meaning."""
+        motion = self.query_one("#motion", Static)
+        motion.update(render_motion_frame(elapsed_seconds, self._motion_dimensions(), 41))
+        motion.display = True
+
+    def _sync_motion(self) -> None:
+        """Start, settle, or stop the sole optional presentation timer."""
+        if not self._can_run_motion():
+            self._pause_motion()
+            return
+        if self._motion_elapsed >= SETTLE_SECONDS:
+            self._render_motion(SETTLE_SECONDS)
+            return
+        if self._motion_started_at is None:
+            self._motion_started_at = monotonic()
+        self._render_motion(self._current_motion_elapsed())
+        if self._motion_timer is None:
+            self._motion_timer = self.set_interval(
+                FRAME_INTERVAL_SECONDS, self._advance_motion, name="bora-motion"
+            )
+
+    def _advance_motion(self) -> None:
+        """Render at most one scheduled frame and remove the timer after settlement."""
+        if not self._can_run_motion():
+            self._pause_motion()
+            return
+        elapsed = self._current_motion_elapsed()
+        self._render_motion(elapsed)
+        if elapsed >= SETTLE_SECONDS:
+            self._motion_elapsed = SETTLE_SECONDS
+            self._motion_started_at = None
+            self._stop_motion_timer()
+
+    def on_app_blur(self, event: events.AppBlur) -> None:
+        """Stop animation when Textual reports that its terminal lost focus."""
+        self._has_app_focus = False
+        self._sync_motion()
+
+    def on_app_focus(self, event: events.AppFocus) -> None:
+        """Resume any unfinished animation when Textual reports restored focus."""
+        self._has_app_focus = True
+        self._sync_motion()
+
+    def on_resize(self, event: events.Resize) -> None:
+        """Apply the small-terminal kill switch immediately after a resize."""
+        self._sync_motion()
 
     def _set_status(self, text: str) -> None:
         """Update Overview and the global keybar with the same collection truth."""

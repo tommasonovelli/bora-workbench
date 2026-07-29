@@ -48,6 +48,7 @@ def _rules(palette: Palette, selector: str, border: str) -> str:
 {selector} #selected-view {{ background: {palette.raised}; color: {palette.accent}; }}
 {selector} #view-title {{ color: {palette.accent}; }}
 {selector} #snapshot-status {{ color: {palette.muted}; }}
+{selector} #motion {{ color: {palette.muted}; }}
 {selector} #keybar {{ background: {palette.raised}; color: {palette.muted}; }}
 """
 

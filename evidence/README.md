@@ -5,7 +5,8 @@ distributed contracts. It is not user documentation and it is not a collection o
 
 - `engine/spike-0.*` and `engine/spike-0/`: the selection and real matrix of `llama.cpp b10011`;
 - `engine/kv-q8-*`: the evidence backing the Q8 K/V cache with mmap on the CUDA branch;
-- `calibration/windows-11-rtx-2060-super-v3/`: the checksum-bound sources of the public v3 report.
+- `calibration/windows-11-rtx-2060-super-v3/`: the checksum-bound sources of the public v3 report;
+- `tui/ubuntu-motion.json`: the local Ubuntu pseudo-terminal CPU observation for optional motion.
 
 Raw files covered by a manifest must be preserved byte for byte. Some accepted documents contain
 references to historical paths under `docs/`: those references are part of the hashed bytes and are

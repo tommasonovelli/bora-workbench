@@ -1,0 +1,93 @@
+{
+  "schema": "bora-tui-motion-observation/v1",
+  "date": "2026-07-29",
+  "platform": "Linux-7.0.0-28-generic-x86_64-with-glibc2.39",
+  "python": "3.12.13",
+  "terminal": "local pseudo-terminal",
+  "terminal_cells": [
+    120,
+    40
+  ],
+  "configured_frames_per_second": 8.0,
+  "method": {
+    "sequence": "three alternating off/auto pairs",
+    "process_scope": "bora process CPU time; descendant probe processes excluded",
+    "warmup_seconds": 0.5,
+    "active_window_seconds": 3.0,
+    "settled_window_seconds": 2.0,
+    "cpu_percent_basis": "one logical core",
+    "exit_input": "q"
+  },
+  "trials": [
+    {
+      "mode": "off",
+      "active_cpu_seconds": 0.28,
+      "active_percent_one_core": 9.333,
+      "settled_cpu_seconds": 0.0,
+      "settled_percent_one_core": 0.0,
+      "terminal_output_bytes": 57511,
+      "return_code": 0
+    },
+    {
+      "mode": "auto",
+      "active_cpu_seconds": 0.42,
+      "active_percent_one_core": 14.0,
+      "settled_cpu_seconds": 0.0,
+      "settled_percent_one_core": 0.0,
+      "terminal_output_bytes": 73074,
+      "return_code": 0
+    },
+    {
+      "mode": "off",
+      "active_cpu_seconds": 0.29,
+      "active_percent_one_core": 9.667,
+      "settled_cpu_seconds": 0.0,
+      "settled_percent_one_core": 0.0,
+      "terminal_output_bytes": 57511,
+      "return_code": 0
+    },
+    {
+      "mode": "auto",
+      "active_cpu_seconds": 0.37,
+      "active_percent_one_core": 12.333,
+      "settled_cpu_seconds": 0.0,
+      "settled_percent_one_core": 0.0,
+      "terminal_output_bytes": 73074,
+      "return_code": 0
+    },
+    {
+      "mode": "off",
+      "active_cpu_seconds": 0.3,
+      "active_percent_one_core": 10.0,
+      "settled_cpu_seconds": 0.0,
+      "settled_percent_one_core": 0.0,
+      "terminal_output_bytes": 57511,
+      "return_code": 0
+    },
+    {
+      "mode": "auto",
+      "active_cpu_seconds": 0.37,
+      "active_percent_one_core": 12.333,
+      "settled_cpu_seconds": 0.01,
+      "settled_percent_one_core": 0.5,
+      "terminal_output_bytes": 73078,
+      "return_code": 0
+    }
+  ],
+  "summary": {
+    "off": {
+      "active_percent_one_core_median": 9.667,
+      "settled_percent_one_core_median": 0.0
+    },
+    "auto": {
+      "active_percent_one_core_median": 12.333,
+      "settled_percent_one_core_median": 0.0
+    },
+    "auto_minus_off_active_percentage_points": 2.666
+  },
+  "limitations": [
+    "This pseudo-terminal observation is not a manual visual terminal check.",
+    "No Windows motion CPU observation was performed.",
+    "The result applies only to this process, machine, terminal size, and measurement run."
+  ]
+}

@@ -52,6 +52,24 @@ against the filesystem while the configuration alone is being loaded.
 No keys other than these five are accepted; endpoints, bind addresses, mmproj, and arbitrary
 `llama.cpp` flags are not configurable.
 
+## Terminal UI motion
+
+`BORA_TUI_MOTION` is a presentation-only environment control, not a `config.toml` key. It accepts
+exactly `auto` (the default) or `off`; an empty, differently cased, or unknown value exits with
+invalid-input status 2. `off` removes every animation timer while leaving the complete static TUI
+and all commands available.
+
+Automatic motion is decorative and carries no unique information. It runs only on the focused
+Overview at 80x24 or larger, updates at no more than 12 frames per second, settles after about three
+seconds, and then removes its timer. It is also disabled by `--plain`, `NO_COLOR`, `TERM=dumb`, a
+limited output encoding, a smaller terminal, another screen, or detectable terminal focus loss.
+
+The accepted Ubuntu pseudo-terminal observation is recorded in
+`evidence/tui/ubuntu-motion.json`: at 120x40 the final 8 fps animation added 2.666 percentage points
+of median one-core CPU during its three-second active window, and both automatic and disabled modes
+measured 0.0% median in the two-second settled window. This is one local observation, not a portable
+performance claim; the Windows motion measurement was not performed.
+
 ## Model identity and path
 
 `model` is a declarative identity used by locks, records, and state. `model_path` is the physical

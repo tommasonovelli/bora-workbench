@@ -286,12 +286,62 @@ def test_terminal_limitations_select_plain_mode(monkeypatch, term, has_encoding,
     """Use the monochrome layout when the environment cannot support normal chrome."""
     monkeypatch.setattr(terminal_module, "_has_interactive_streams", lambda: True)
     monkeypatch.setattr(terminal_module, "_has_layout_encoding", lambda: has_encoding)
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.delenv("BORA_TUI_MOTION", raising=False)
     monkeypatch.setenv("TERM", term)
 
     selected = terminal_module.inspect_terminal(False)
 
     assert selected.is_interactive is True and selected.is_plain is True
+    assert selected.is_motion_enabled is False
     assert selected.plain_reason is not None and reason in selected.plain_reason
+
+
+def test_no_color_selects_plain_motion_free_presentation(monkeypatch) -> None:
+    """Honor the standard accessibility kill switch before Textual starts."""
+    monkeypatch.setattr(terminal_module, "_has_interactive_streams", lambda: True)
+    monkeypatch.setattr(terminal_module, "_has_layout_encoding", lambda: True)
+    monkeypatch.setenv("TERM", "xterm-256color")
+    monkeypatch.setenv("NO_COLOR", "")
+    monkeypatch.delenv("BORA_TUI_MOTION", raising=False)
+
+    selected = terminal_module.inspect_terminal(False)
+
+    assert selected.is_plain is True
+    assert selected.is_motion_enabled is False
+    assert selected.plain_reason == "NO_COLOR is set"
+
+
+def test_explicit_motion_off_keeps_normal_static_presentation(monkeypatch) -> None:
+    """Disable only decoration when the terminal otherwise supports normal styling."""
+    monkeypatch.setattr(terminal_module, "_has_interactive_streams", lambda: True)
+    monkeypatch.setattr(terminal_module, "_has_layout_encoding", lambda: True)
+    monkeypatch.setenv("TERM", "xterm-256color")
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setenv("BORA_TUI_MOTION", "off")
+
+    selected = terminal_module.inspect_terminal(False)
+
+    assert selected.is_plain is False
+    assert selected.is_motion_enabled is False
+    assert selected.motion_reason == "BORA_TUI_MOTION=off"
+
+
+def test_malformed_motion_value_exits_two_before_textual_run(monkeypatch) -> None:
+    """Map presentation configuration errors to invalid CLI input without a traceback."""
+    monkeypatch.setattr(terminal_module, "_has_interactive_streams", lambda: True)
+    monkeypatch.setattr(terminal_module, "_has_layout_encoding", lambda: True)
+    monkeypatch.setenv("TERM", "xterm-256color")
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.setenv("BORA_TUI_MOTION", "sometimes")
+    monkeypatch.setattr(tui_app, "run_tui", lambda *args: pytest.fail("Textual started"))
+
+    result = runner.invoke(app, ["tui"])
+
+    assert result.exit_code == 2
+    assert "BORA_TUI_MOTION must be one of: auto, off" in result.stderr
+    assert result.exception is not None
+    assert "Traceback" not in result.stderr
 
 
 def test_first_shell_stays_responsive_while_snapshot_is_blocked() -> None:
