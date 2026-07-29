@@ -72,7 +72,9 @@ For hand-written Python in `src/`, `tests/`, and `scripts/`:
 
 - file: maximum 600 lines;
 - function or method: maximum 40 lines;
-- production function parameters: maximum 3, excluding `self`/`cls`;
+- production function parameters: maximum 3, excluding `self`/`cls`; a published CLI callback may
+  exceed this only through the narrow `path::qualified_name` registry in `tests/test_code_quality.py`,
+  with a mandatory reason, and the test rejects stale registrations;
 - nesting: maximum 3 levels; prefer guard clauses and early returns.
 
 Split code by responsibility before exceeding a limit. The file limit is a ceiling, not a target: a

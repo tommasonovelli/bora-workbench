@@ -18,6 +18,40 @@ _NESTING_NODES = (
     ast.Try,
     ast.Match,
 )
+_PARAMETER_EXCEPTIONS: dict[str, str] = {}
+
+
+class _QualifiedDefinitionVisitor(ast.NodeVisitor):
+    """Collect functions with their class or enclosing-function qualification."""
+
+    def __init__(self) -> None:
+        """Create one visitor with no collected definitions."""
+        self.definitions: list[tuple[str, ast.FunctionDef | ast.AsyncFunctionDef]] = []
+        self._names: list[str] = []
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+        """Include a class name while visiting its methods."""
+        self._visit_named(node)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+        """Record a synchronous function and visit nested definitions."""
+        self._visit_function(node)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+        """Record an asynchronous function and visit nested definitions."""
+        self._visit_function(node)
+
+    def _visit_function(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
+        """Record one qualified function before descending into it."""
+        qualified_name = ".".join([*self._names, node.name])
+        self.definitions.append((qualified_name, node))
+        self._visit_named(node)
+
+    def _visit_named(self, node: ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef) -> None:
+        """Visit one named scope while maintaining its qualification stack."""
+        self._names.append(node.name)
+        self.generic_visit(node)
+        self._names.pop()
 
 
 def _python_files() -> Iterator[Path]:
@@ -28,9 +62,44 @@ def _python_files() -> Iterator[Path]:
 
 def _definitions(tree: ast.AST) -> Iterator[ast.FunctionDef | ast.AsyncFunctionDef]:
     """Yield every function and method, including nested test helpers."""
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            yield node
+    visitor = _QualifiedDefinitionVisitor()
+    visitor.visit(tree)
+    for _, node in visitor.definitions:
+        yield node
+
+
+def _qualified_definitions(
+    tree: ast.AST,
+) -> Iterator[tuple[str, ast.FunctionDef | ast.AsyncFunctionDef]]:
+    """Yield every function with its stable source qualification."""
+    visitor = _QualifiedDefinitionVisitor()
+    visitor.visit(tree)
+    yield from visitor.definitions
+
+
+def _parameter_count(node: ast.FunctionDef | ast.AsyncFunctionDef) -> int:
+    """Count explicit production parameters except the method receiver."""
+    parameters = [*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs]
+    count = sum(parameter.arg not in {"self", "cls"} for parameter in parameters)
+    return count + int(node.args.vararg is not None) + int(node.args.kwarg is not None)
+
+
+def _parameter_failures(sources: dict[str, str], exceptions: dict[str, str]) -> list[str]:
+    """Return over-limit, malformed-exception, and stale-exception failures."""
+    failures = [f"{key} has no reason" for key, reason in exceptions.items() if not reason.strip()]
+    used: set[str] = set()
+    for relative, source in sources.items():
+        for qualified_name, node in _qualified_definitions(ast.parse(source)):
+            count = _parameter_count(node)
+            if count <= 3:
+                continue
+            key = f"{relative}::{qualified_name}"
+            if key in exceptions:
+                used.add(key)
+            else:
+                failures.append(f"{relative}:{node.lineno} has {count} parameters")
+    failures.extend(f"{key} is stale" for key in sorted(exceptions.keys() - used))
+    return failures
 
 
 def _nesting_depth(node: ast.AST, current: int = 0) -> int:
@@ -67,15 +136,23 @@ def test_python_files_and_functions_stay_within_size_limits() -> None:
 
 
 def test_production_functions_have_at_most_three_parameters() -> None:
-    """Limit production interfaces while allowing explicit test fixture injection."""
-    failures: list[str] = []
-    for path in (_ROOT / "src").rglob("*.py"):
-        for node in _definitions(ast.parse(path.read_text(encoding="utf-8"))):
-            parameters = [*node.args.posonlyargs, *node.args.args, *node.args.kwonlyargs]
-            count = sum(parameter.arg not in {"self", "cls"} for parameter in parameters)
-            if count > 3:
-                failures.append(f"{path.relative_to(_ROOT)}:{node.lineno} has {count} parameters")
-    assert failures == []
+    """Limit production interfaces except for narrow, justified registrations."""
+    sources = {
+        path.relative_to(_ROOT).as_posix(): path.read_text(encoding="utf-8")
+        for path in (_ROOT / "src").rglob("*.py")
+    }
+    assert _parameter_failures(sources, _PARAMETER_EXCEPTIONS) == []
+
+
+def test_parameter_exceptions_must_be_necessary_and_explained() -> None:
+    """Reject missing, unexplained, and stale parameter-limit registrations."""
+    source = "def publish(one, two, three, four):\n    return one\n"
+    key = "src/example.py::publish"
+    assert _parameter_failures({"src/example.py": source}, {})
+    assert _parameter_failures({"src/example.py": source}, {key: "published callback"}) == []
+    stale_source = "def publish(one, two, three):\n    return one\n"
+    assert _parameter_failures({"src/example.py": stale_source}, {key: "published callback"})
+    assert _parameter_failures({"src/example.py": source}, {key: ""})
 
 
 def test_functions_have_at_most_three_control_flow_levels() -> None:

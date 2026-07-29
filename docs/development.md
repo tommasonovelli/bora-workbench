@@ -98,7 +98,9 @@ consume it. Avoid renames, refactors, or formatting unrelated to the purpose.
 The code favors readability and narrow responsibilities:
 
 - at most 600 lines per file and 40 per function in hand-written code;
-- at most three production parameters, excluding `self`/`cls`;
+- at most three production parameters, excluding `self`/`cls`; a published callback can exceed this
+  only through the justified `path::qualified_name` registry enforced by `test_code_quality.py`,
+  which also rejects stale entries;
 - at most three nesting levels;
 - small functions, precise types, and frozen/slotted dataclasses for runtime models;
 - docstrings for modules, classes, and functions;
