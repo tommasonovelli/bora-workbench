@@ -95,6 +95,26 @@ def doctor() -> None:
     run_doctor(package_version(), _stdout, _stderr)
 
 
+@app.command()
+def tui(
+    plain: bool = typer.Option(
+        False, "--plain", help="Use the reduced monochrome terminal presentation."
+    ),
+) -> None:
+    """Open the read-only terminal workbench in an interactive terminal."""
+    from bora_workbench.tui.terminal import inspect_terminal
+
+    terminal_mode = inspect_terminal(plain)
+    if not terminal_mode.is_interactive:
+        typer.echo("bora tui requires interactive stdin and stdout terminals.", err=True)
+        raise typer.Exit(2)
+
+    # Textual stays outside non-TTY and ordinary CLI startup paths by design (D-086).
+    from bora_workbench.tui.app import run_tui
+
+    run_tui(package_version(), terminal_mode)
+
+
 @engine_app.command("install")
 def engine_install_command(
     force: bool = typer.Option(False, "--force", help="Reinstall an already compatible target."),

@@ -18,3 +18,16 @@ def test_import_has_no_filesystem_side_effects(tmp_path) -> None:
         check=True,
     )
     assert not any(tmp_path.iterdir())
+
+
+def test_ordinary_import_does_not_load_textual() -> None:
+    """Keep the optional presentation framework outside the package import boundary."""
+    source_root = Path(__file__).parents[1] / "src"
+    environment = os.environ.copy()
+    environment["PYTHONPATH"] = str(source_root)
+    command = (
+        "import sys; import bora_workbench; "
+        "assert not any(name == 'textual' or name.startswith('textual.') for name in sys.modules)"
+    )
+
+    subprocess.run([sys.executable, "-c", command], env=environment, check=True)
