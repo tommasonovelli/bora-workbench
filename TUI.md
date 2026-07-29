@@ -1,9 +1,9 @@
-# bora TUI — approved design record
+# bora TUI — implemented design record
 
-> **Status: approved boundary, not an implementation plan.** D-083–D-085 in
-> `IMPLEMENTATION_SPEC.md` authorize the reduced interactive-front-end milestone. `TUI_PLAN.md` is
-> the step-by-step execution detail. If this document, that plan, and the specification disagree,
-> the specification wins.
+> **Status: implemented current design.** D-083–D-087 in `IMPLEMENTATION_SPEC.md` authorize the
+> reduced interactive-front-end milestone and its Ubuntu-only motion acceptance. `TUI_PLAN.md`
+> retains the step-by-step execution and release checks. If this document, that plan, and the
+> specification disagree, the specification wins; user operation is documented in `docs/tui.md`.
 
 ---
 
@@ -29,7 +29,7 @@ available only through the TUI.
 - exact composition of current commands;
 - a calibration wizard that can produce only valid option combinations;
 - post-UI command dispatch with normal terminal I/O and existing confirmations;
-- optional, budgeted bora wind/sea motion if it passes measurement.
+- bounded bora wind/sea motion with static and accessibility kill switches.
 
 ### 1.2 Excluded
 
@@ -177,6 +177,7 @@ that exact result. A terminal action never reopens.
 | Overview | `bora doctor` | returning |
 | Overview | `bora validate` | returning |
 | Overview | `bora status` | returning |
+| Overview | `bora engine status` | returning |
 | Overview | `bora stop` | returning |
 | Modes | `bora coding [--force]` | terminal |
 | Modes | `bora studio [--force]` | terminal |
@@ -272,18 +273,20 @@ agent, editor, or provider appears.
 
 ## 9. Interaction and terminal behavior
 
-The preferred interaction stack is Textual, subject to the dependency review and lock step required
-by D-085. The project does not first build a Rich raw-input loop and then decide whether to replace
-it. If the review fails, interactive implementation stops instead of adding handwritten
+The interaction stack is the accepted Textual `8.2.8` dependency from D-086. Textual owns only the
+presentation event loop, one snapshot thread worker, and the finite motion timer; core APIs remain
+synchronous. The implementation contains no parallel Rich raw-input loop or handwritten
 `termios`/`msvcrt` behavior.
 
 Expected navigation:
 
 | Key | Action |
 |---|---|
-| arrows or `j`/`k` | move selection |
-| `Enter` | open or choose the focused action |
-| `Esc` | back; at root, quit |
+| arrows or `j`/`k` | move between screens |
+| `Tab` / `Shift-Tab` | move between visible action choices |
+| `Enter` | accept a wizard choice or select the marked action |
+| `PageUp` / `PageDown` | scroll long detail |
+| `Esc` | quit; during review, cancel without dispatching |
 | `r` | request one serialized refresh |
 | `?` | key help |
 | `q` / `Ctrl-Q` | quit |
@@ -292,26 +295,30 @@ Destructive actions are never root single-letter shortcuts. Confirmation default
 terminals scroll or simplify instead of hiding an operation.
 
 A non-TTY invocation prints one actionable line and exits 2 before importing Textual. `--plain`,
-`TERM=dumb`, unsupported output encoding, and the documented motion controls select deterministic
-plain rendering. Automatic legacy raster-font detection is not promised.
+`NO_COLOR`, `TERM=dumb`, and unsupported output encoding select deterministic plain rendering.
+`BORA_TUI_MOTION=off` retains normal static styling when every other capability is available.
+Automatic legacy raster-font detection is not promised.
 
 ---
 
 ## 10. Bora identity and optional motion
 
-The static identity is sufficient for `0.4.0`. Motion is an optional enhancement, not a release
-blocker.
-
-If shipped:
+The static identity remains complete without motion. The optional enhancement ships under D-087:
 
 - gust and sea are pure functions of time, dimensions, and seed;
-- motion runs only on focused Overview, at no more than 12 fps;
+- motion runs only on focused Overview, at 8 fps under a 12 fps ceiling;
 - it settles after about three seconds and does not loop forever;
 - it stops on small terminals, other screens, lost focus where detectable, `--plain`, `NO_COLOR`,
   `TERM=dumb`, or `BORA_TUI_MOTION=off`;
 - malformed motion configuration is invalid CLI input;
 - static text contains the full meaning and every action;
-- measured idle CPU must meet the accepted budget or motion is omitted.
+- `BORA_TUI_MOTION` accepts exactly `auto` or `off`; every other value exits 2;
+- the timer is absent after settlement, so static mode has no periodic wakeup.
+
+The accepted local Ubuntu 120x40 pseudo-terminal observation measured a 2.666 percentage-point
+median one-core CPU delta during the three-second active window and 0.0% median for both modes in
+the settled window. Its raw values and limitations are in `evidence/tui/ubuntu-motion.json`. The
+Windows motion measurement was not performed and is not called passed.
 
 No animation appears in normal CLI commands, launch, calibration, setup, update, or uninstall.
 

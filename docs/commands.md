@@ -16,6 +16,7 @@ bora [--version] <command> [options]
 | `--version` | shows the installed version | no |
 | `validate` | validates the installed resources | no |
 | `doctor` | describes configuration, hardware, engine, and records | no |
+| `tui` | opens the optional read-only dashboard and exact command composer | no |
 | `engine status` | inspects the managed engine | no |
 | `engine install` | installs the engine from the lock and downloads the model | yes |
 | `pull` | downloads and verifies the pinned model | yes |
@@ -71,6 +72,40 @@ for process state; it is not a calibration-record status.
 
 The command creates no directories and fixes no problem automatically. An invalid configuration
 exits with 2; a hardware or content error with 1; diagnostic warnings with 0.
+
+## `tui`
+
+```bash
+bora tui
+bora tui --plain
+```
+
+Opens seven read-only screens—Overview, Modes, Calibration, Setup, Pi, Settings, and This
+installation—and shows exact current commands before they can be selected. `--plain` keeps all
+screens and actions in a reduced monochrome presentation. Interactive stdin and stdout are required;
+redirected invocation exits 2 before Textual is imported.
+
+Opening and `r` refreshes make no network request or mutation. They may read local files, inspect
+process identities, and run bounded hardware and engine probes in one presentation worker; they do
+not hash model payloads, write receipts, repair service state, create directories, start services,
+or poll in the background. A slow probe leaves navigation and quitting responsive, and repeated
+refresh requests are serialized.
+
+Arrows or `j`/`k` move screens, `Tab` changes the visible action, `Enter` accepts it, page keys
+scroll detail, `?` expands help, and `q`, `Ctrl-Q`, or `Esc` quits. Settings are presentation-only.
+The calibration composer creates only valid current option combinations, and uninstall requires
+typing `remove` before selection.
+
+After selection the TUI fully restores the terminal, then invokes the existing Click/Typer callback
+in the same process. That callback retains its real preflight, confirmations, network, writes, and
+exit mapping. Successful diagnostics, setup, pi actions, and `update --check` return to a freshly
+collected TUI; modes, calibration, update, and uninstall are terminal and never reopen. Failures and
+interruptions propagate unchanged.
+
+Optional Overview motion carries no information, settles after about three seconds, and obeys
+`--plain`, `NO_COLOR`, `TERM=dumb`, terminal-size/focus checks, and `BORA_TUI_MOTION=auto|off`.
+Malformed motion values exit 2. Full screen, action, accessibility, and handoff details are in
+[Terminal workbench](tui.md).
 
 ## `engine status`
 

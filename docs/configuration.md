@@ -65,7 +65,8 @@ seconds, and then removes its timer. It is also disabled by `--plain`, `NO_COLOR
 limited output encoding, a smaller terminal, another screen, or detectable terminal focus loss.
 
 The accepted Ubuntu pseudo-terminal observation is recorded in
-`evidence/tui/ubuntu-motion.json`: at 120x40 the final 8 fps animation added 2.666 percentage points
+[`evidence/tui/ubuntu-motion.json`](../evidence/tui/ubuntu-motion.json): at 120x40 the final 8 fps
+animation added 2.666 percentage points
 of median one-core CPU during its three-second active window, and both automatic and disabled modes
 measured 0.0% median in the two-second settled window. This is one local observation, not a portable
 performance claim; the Windows motion measurement was not performed.

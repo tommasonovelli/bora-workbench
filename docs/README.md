@@ -19,6 +19,11 @@ The recommended reading order is linear:
    contributions;
 8. [Releasing](releasing.md) — building, publishing, and the status of the public artifacts.
 
+[Terminal workbench](tui.md) is an optional guide to `bora tui`, its seven screens, keymap, command
+handoff, and motion controls. It is not part of the required reading sequence: Commands documents
+every operation independently, so the complete product remains usable without an alternate-screen
+interface.
+
 For a short overview and a quick start, see the [main README](../README.md).
 
 ## Which source to consult
@@ -51,8 +56,9 @@ remain unchanged and must not be rebuilt or relabelled.
 - backends: CPU, or a single NVIDIA CUDA GPU;
 - CUDA on multi-GPU hosts is blocked;
 - the default model and `llama.cpp` are pinned to exact identities;
-- weights and mmproj are neither redistributed nor downloaded automatically;
+- weights and mmproj are not redistributed and are acquired only by explicit `engine install` or
+  `pull` commands;
 - the empirical calibration evidence is still `GATE-PARTIAL` because it covers a single real machine;
-- no interface stability guarantee for the 0.2 series.
+- no interface stability guarantee for the 0.3 series.
 
 **Next:** [Installation and first run](installation.md)

@@ -9,6 +9,7 @@
 
 | Command | What you get |
 |---|---|
+| `bora tui` | an optional read-only dashboard and exact composer for the same CLI commands |
 | `bora coding` | a local OpenAI-compatible API for editors, scripts, and agents |
 | `bora studio` | browser-based local chat in the built-in `llama.cpp` UI |
 | `bora vstudio` | the same UI with the pinned vision projector, for multimodal chat |
@@ -48,10 +49,11 @@ If this is your first time opening the project, the simplest path is:
 
 1. check the [requirements](#requirements);
 2. [install the release](#installation);
-3. run `bora engine install`, which installs the engine and downloads the [model](#model);
-4. start `coding`, `studio`, or `vstudio`;
-5. once that works, [calibrate the machine](#calibration-is-the-second-step-not-the-entry-price);
-6. use the [full documentation](docs/README.md) when you want configuration and details.
+3. optionally open `bora tui` to inspect the machine and see the truthful next step;
+4. run `bora engine install`, which installs the engine and downloads the [model](#model);
+5. start `coding`, `studio`, or `vstudio`;
+6. once that works, [calibrate the machine](#calibration-is-the-second-step-not-the-entry-price);
+7. use the [full documentation](docs/README.md) when you want configuration and details.
 
 ## Project status
 
@@ -162,6 +164,20 @@ bora doctor
 If `bora` is not found, close and reopen the shell once so it reloads the user PATH. See
 [Installation and first run](docs/installation.md) for requirements, engine setup, model placement,
 and removal.
+
+### Optional terminal dashboard
+
+```bash
+bora tui
+bora tui --plain
+```
+
+The TUI shows seven read-only screens, deterministic next-step advice, and exact current commands.
+Opening and `r` refreshes may run bounded local hardware and engine probes, but perform no mutation,
+model hashing, or network request. Selecting an action closes and restores the TUI before the
+existing CLI callback owns normal terminal I/O, prompts, and exit codes. The complete CLI remains
+the accessible and scriptable path; see [Terminal workbench](docs/tui.md) for keys, motion controls,
+and handoff details.
 
 ### Updating
 
@@ -335,7 +351,7 @@ variables, and the record layout.
 
 The [full documentation](docs/README.md) follows a path for readers starting from scratch:
 installation → commands → configuration → architecture → calibration → operations → development →
-releasing.
+releasing. The [terminal workbench](docs/tui.md) is an optional guide beside that complete CLI path.
 
 Work that is not implemented yet lives only in [IMPLEMENTATION_SPEC.md](IMPLEMENTATION_SPEC.md).
 The measured evidence behind the locks and reports is kept separately in

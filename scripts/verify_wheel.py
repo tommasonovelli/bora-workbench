@@ -150,33 +150,37 @@ def _install_locked_wheel(uv: str, python: Path, wheel: Path) -> None:
     )
 
 
+_REQUIRED_SDIST_PATHS = (
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "IMPLEMENTATION_SPEC.md",
+    "TUI.md",
+    "TUI_PLAN.md",
+    "WEBUI_PLAN.md",
+    "docs/README.md",
+    "docs/architecture.md",
+    "docs/calibration.md",
+    "docs/commands.md",
+    "docs/configuration.md",
+    "docs/development.md",
+    "docs/installation.md",
+    "docs/operations.md",
+    "docs/releasing.md",
+    "docs/tui.md",
+    "evidence/README.md",
+    "evidence/tui/ubuntu-motion.json",
+    "evidence/calibration/windows-11-rtx-2060-super-v3/SHA256SUMS",
+    "install.ps1",
+    "install.sh",
+)
+
+
 def _verify_sdist() -> bool:
     """Require one sdist containing installers, current documentation, and evidence."""
     archives = list(Path("dist").glob("*.tar.gz"))
     if len(archives) != 1:
         print(f"expected exactly one sdist in dist/, found {len(archives)}", file=sys.stderr)
         return False
-    required = (
-        "CHANGELOG.md",
-        "CONTRIBUTING.md",
-        "IMPLEMENTATION_SPEC.md",
-        "TUI.md",
-        "TUI_PLAN.md",
-        "WEBUI_PLAN.md",
-        "docs/README.md",
-        "docs/architecture.md",
-        "docs/calibration.md",
-        "docs/commands.md",
-        "docs/configuration.md",
-        "docs/development.md",
-        "docs/installation.md",
-        "docs/operations.md",
-        "docs/releasing.md",
-        "evidence/README.md",
-        "evidence/calibration/windows-11-rtx-2060-super-v3/SHA256SUMS",
-        "install.ps1",
-        "install.sh",
-    )
     try:
         with tarfile.open(archives[0], "r:gz") as archive:
             members = archive.getmembers()
@@ -184,7 +188,11 @@ def _verify_sdist() -> bool:
         print(f"could not inspect sdist: {error}", file=sys.stderr)
         return False
     names = tuple(member.name for member in members)
-    missing = [path for path in required if not any(name.endswith(f"/{path}") for name in names)]
+    missing = [
+        path
+        for path in _REQUIRED_SDIST_PATHS
+        if not any(name.endswith(f"/{path}") for name in names)
+    ]
     if missing:
         print(f"sdist is missing: {', '.join(missing)}", file=sys.stderr)
         return False

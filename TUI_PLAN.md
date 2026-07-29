@@ -829,6 +829,7 @@ The exact existing CLI vocabulary is the source. UI labels do not rename it.
 | Overview | `bora doctor` | returning |
 | Overview | `bora validate` | returning |
 | Overview | `bora status` | returning |
+| Overview | `bora engine status` | returning |
 | Overview | `bora stop` | returning |
 | Modes | `bora coding [--force]` | terminal |
 | Modes | `bora studio [--force]` | terminal |

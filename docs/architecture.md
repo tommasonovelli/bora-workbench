@@ -35,11 +35,38 @@ CLI
 An error stops the flow at the point where it is detected. There are no silent fallbacks to
 different models, releases, flags, ports, or assets.
 
+## Optional terminal-front-end flow
+
+`bora tui` adds presentation around the same command tree without entering the launch flow itself:
+
+```text
+interactive terminal capability check
+ └─ static Textual chrome
+     └─ one thread worker calls the synchronous read-only snapshot collector
+         └─ seven snapshot-backed views and exact command composers
+             └─ Textual exits and restores the terminal
+                 └─ existing Click/Typer leaf callback runs in the same bora process
+```
+
+Opening and refresh never call a mutating CLI presenter such as `status`; they use structured
+read-only inspections instead. The snapshot may run bounded hardware and engine probes, but performs
+no network request, payload hash, receipt write, state cleanup, directory creation, or service
+start. There is no background snapshot poll: only opening and a serialized explicit refresh collect
+again.
+
+Textual owns only its presentation event loop, an optional finite motion timer, and one thread worker
+for the synchronous collector. No core module gains an async API, scheduler, executor, or knowledge
+of the UI. A selected command returns from Textual first; using the existing parser afterwards keeps
+all validation, confirmation, lifecycle, and exit-code ownership in the real callback and leaves no
+TUI parent around update or uninstall.
+
 ## Repository components
 
 | Area | Current responsibility |
 |---|---|
 | `cli.py`, `_cli_*` | Typer input, Rich presentation, confirmations, and exit codes |
+| `snapshot.py` | structured, synchronous, non-mutating facts shared by diagnostics and the TUI |
+| `tui/` | Textual presentation, pure advice/command composition/motion, and seven screens |
 | `paths.py` | computing the four per-OS roots, without creating them |
 | `config.py` | TOML, environment, precedence, and types |
 | `hardware.py` | CPU/RAM, NVIDIA, GPU processes, and telemetry |
@@ -222,7 +249,9 @@ The algorithm, record lifecycle, and empirical limits are described in
 ## Security boundaries and side effects
 
 Importing `bora_workbench` uses no network, creates no directories, writes no state, and starts no
-processes. Every side effect belongs to the operation that requires it.
+processes. It does not import `bora_workbench.tui` or Textual; the framework enters only after the
+interactive `tui` command passes its terminal and motion-configuration checks. Every side effect
+belongs to the operation that requires it.
 
 The main invariants:
 

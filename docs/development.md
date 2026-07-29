@@ -16,6 +16,8 @@ src/bora_workbench/       Python package
 ├── calibration.py       main calibration API
 ├── benchmark.py         benchmark/v1
 ├── validation.py        content validation
+├── snapshot.py          structured non-mutating diagnostic read model
+├── tui/                 Textual app, pure presentation logic, and seven screens
 ├── _*.py                extracted internal responsibilities
 └── resources/           data included in the wheel
 
@@ -204,7 +206,8 @@ nearest-match.
 
 - the `llama.cpp b10011` contract and the functional matrix;
 - the choice of the Q8 KV cache on CUDA;
-- the public calibration report and its digests.
+- the public calibration report and its digests;
+- the bounded local Ubuntu observation for optional TUI motion.
 
 Files covered by a manifest, or referenced by a report, must be treated as immutable. If a path has
 to change, update the references and manifests without altering the source bytes; if the bytes
@@ -239,6 +242,25 @@ addition is Textual plus MIT-licensed `linkify-it-py 2.1.0`, `mdit-py-plugins 0.
 Textual owns only its presentation event loop and one thread worker that calls the synchronous
 snapshot collector. Core modules remain synchronous and gain no scheduler, executor, or general
 background-work API.
+
+### TUI development boundary
+
+The TUI imports lazily after interactive terminal checks. Its app may schedule only the finite
+presentation motion timer and one Textual thread worker around `collect_workbench_snapshot()`.
+Opening and refresh must remain network-free and non-mutating: do not reuse a CLI presenter that
+cleans state, hash model payloads, write receipts, create roots, or start a service.
+
+Advice, command composition, capability decisions, and motion frames stay pure and deterministic.
+Headless Pilot tests cover navigation, blocked collectors, serialized refresh, exact recursive parser
+acceptance, teardown-before-dispatch, terminal versus returning actions, kill switches, and settled
+static behavior. Real network, model, server, npm, uv update, and administrative work remains behind
+fakes or isolated package smoke tests.
+
+The accepted E8 observation in `evidence/tui/ubuntu-motion.json` used a local Ubuntu 120x40
+pseudo-terminal, three alternating disabled/automatic pairs, and the final 8 fps setting. It is not
+a manual visual check or portable benchmark. Windows motion CPU was not measured under D-087, and
+that absence is a limitation rather than a pass. The remaining real-terminal and Windows checks in
+`TUI_PLAN.md` Part F still require explicit reporting before finalization.
 
 Before adding another dependency:
 
