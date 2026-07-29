@@ -17,9 +17,10 @@ from bora_workbench._process_state import (
     ServiceState,
     StartLockError,
     acquire_start_lock,
+    inspect_state,
     write_state,
 )
-from bora_workbench.process import status_services, stop_services
+from bora_workbench.process import inspect_services, status_services, stop_services
 
 
 def service_for(process: subprocess.Popen[str], root: Path, *, create_time: float | None = None):
@@ -49,6 +50,103 @@ def service_for(process: subprocess.Popen[str], root: Path, *, create_time: floa
 def sleeper() -> subprocess.Popen[str]:
     """Start a test-only Python child that performs no network or administrative work."""
     return subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], text=True)
+
+
+def tree_bytes(root: Path) -> dict[str, bytes | None]:
+    """Capture names and file bytes so a read-only operation cannot hide a mutation."""
+    if not root.exists():
+        return {}
+    return {
+        path.relative_to(root).as_posix(): path.read_bytes() if path.is_file() else None
+        for path in sorted(root.rglob("*"))
+    }
+
+
+def test_read_only_inspection_does_not_create_an_absent_trial_root(tmp_path) -> None:
+    """Treat any service root as absent without creating its trial runtime hierarchy."""
+    root = tmp_path / "calibration" / "trials" / "runtime"
+
+    report = inspect_services(root)
+
+    assert report.services == report.stale_services == ()
+    assert report.errors == ()
+    assert not root.exists()
+
+
+def test_read_only_inspection_preserves_corrupt_state_bytes(tmp_path) -> None:
+    """Report unreadable state without quarantining, replacing, or deleting its bytes."""
+    root = tmp_path / "state"
+    root.mkdir()
+    path = root / "services.json"
+    path.write_bytes(b"{broken")
+    before = tree_bytes(root)
+
+    state = inspect_state(root)
+    report = inspect_services(root)
+
+    assert state.error is not None and "Unreadable service state" in state.error
+    assert report.services == ()
+    assert "Unreadable service state" in report.errors[0]
+    assert tree_bytes(root) == before
+
+
+def test_read_only_inspection_separates_live_and_stale_identity(tmp_path, monkeypatch) -> None:
+    """Verify pid plus create time while preserving the exact state tree."""
+
+    def reject_lock(root):
+        """Fail if inspection enters the mutating lifecycle lock path."""
+        raise AssertionError(f"inspection acquired the lifecycle lock for {root}")
+
+    monkeypatch.setattr(lifecycle, "acquire_start_lock", reject_lock)
+    process = sleeper()
+    try:
+        live = service_for(process, tmp_path)
+        stale = service_for(process, tmp_path, create_time=0.0)
+        write_state(tmp_path, (live, stale))
+        before = tree_bytes(tmp_path)
+
+        report = inspect_services(tmp_path)
+
+        assert report.services == (live,)
+        assert report.stale_services == (stale,)
+        assert "Stale state" in report.warnings[0]
+        assert report.errors == ()
+        assert tree_bytes(tmp_path) == before
+        assert process.poll() is None
+    finally:
+        process.terminate()
+        process.wait(timeout=5)
+
+
+def test_read_only_inspection_treats_unopenable_pid_as_stale(tmp_path, monkeypatch) -> None:
+    """Apply D-071 to inspection because launcher children share the same account."""
+    state = ServiceState(
+        "llama-server",
+        4321,
+        1.0,
+        sys.executable,
+        8080,
+        "2026-07-16T00:00:00Z",
+        str(tmp_path / "server.log"),
+        "coding",
+        "owner/model:file",
+        "b10011",
+        None,
+        8192,
+        None,
+        "cpu",
+        None,
+    )
+    write_state(tmp_path, (state,))
+    monkeypatch.setattr(
+        lifecycle.psutil, "Process", lambda pid: (_ for _ in ()).throw(psutil.AccessDenied(pid))
+    )
+
+    report = inspect_services(tmp_path)
+
+    assert report.services == ()
+    assert report.stale_services == (state,)
+    assert report.errors == ()
 
 
 def test_status_and_stop_without_services_are_read_only_and_idempotent(tmp_path) -> None:

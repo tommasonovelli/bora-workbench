@@ -30,6 +30,8 @@ from bora_workbench._process_state import (
     acquire_start_lock,
     clean_state,
     find_verified_process,
+    inspect_state,
+    is_same_process,
     remove_service,
     write_state,
 )
@@ -106,6 +108,16 @@ class ServiceReport:
     services: tuple[ServiceState, ...]
     warnings: tuple[str, ...] = ()
     stopped: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ServiceInspection:
+    """Describe live, stale, and unreadable state without repairing it (D-084)."""
+
+    services: tuple[ServiceState, ...]
+    stale_services: tuple[ServiceState, ...] = ()
+    warnings: tuple[str, ...] = ()
+    errors: tuple[str, ...] = ()
 
 
 def port_is_available(port: int) -> bool:
@@ -307,6 +319,25 @@ def start_service(request: StartRequest, root: Path | None = None) -> RunningSer
         return running
     except BaseException as error:
         _raise_start_failure(selected_root, attempt, error)
+
+
+def inspect_services(root: Path | None = None) -> ServiceInspection:
+    """Inspect process identities without lock acquisition, cleanup, quarantine, or writes."""
+    selected_root = state_dir() if root is None else root
+    snapshot = inspect_state(selected_root)
+    if snapshot.error is not None:
+        return ServiceInspection((), errors=(snapshot.error,))
+    live: list[ServiceState] = []
+    stale: list[ServiceState] = []
+    errors: list[str] = []
+    for service in snapshot.services:
+        try:
+            collection = live if is_same_process(service) else stale
+            collection.append(service)
+        except StateError as error:
+            errors.append(str(error))
+    warnings = tuple(f"Stale state for {item.label} PID {item.pid}." for item in stale)
+    return ServiceInspection(tuple(live), tuple(stale), warnings, tuple(errors))
 
 
 def status_services(root: Path | None = None) -> ServiceReport:

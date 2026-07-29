@@ -56,6 +56,14 @@ class StateSnapshot:
     warnings: tuple[str, ...] = ()
 
 
+@dataclass(frozen=True, slots=True)
+class StateInspection:
+    """Return decoded state or one read error without mutating its source (D-084)."""
+
+    services: tuple[ServiceState, ...]
+    error: str | None = None
+
+
 def find_verified_process(pid: int, create_time: float) -> psutil.Process | None:
     """Return the live process only when pid and create_time both match, or None otherwise.
 
@@ -134,20 +142,39 @@ def _quarantine(path: Path) -> Path:
     return destination
 
 
+_STATE_READ_ERRORS = (OSError, UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError)
+
+
+def _read_services(path: Path) -> tuple[ServiceState, ...]:
+    """Decode one complete version-1 state file without applying a recovery policy."""
+    value = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(value, dict) or value.get("version") != 1:
+        raise ValueError("state version must equal 1")
+    services = value.get("services")
+    if not isinstance(services, list):
+        raise ValueError("services must be an array")
+    return tuple(_decode_service(item) for item in services)
+
+
+def inspect_state(root: Path) -> StateInspection:
+    """Read state without locks, quarantine, cleanup, directory creation, or writes."""
+    path = _state_path(root)
+    try:
+        if not path.exists():
+            return StateInspection(())
+        return StateInspection(_read_services(path))
+    except _STATE_READ_ERRORS as error:
+        return StateInspection((), f"Unreadable service state at {path}: {error}")
+
+
 def load_state(root: Path) -> StateSnapshot:
     """Read state, quarantining malformed JSON and reconstructing an empty snapshot."""
     path = _state_path(root)
     if not path.exists():
         return StateSnapshot(())
     try:
-        value = json.loads(path.read_text(encoding="utf-8"))
-        if not isinstance(value, dict) or value.get("version") != 1:
-            raise ValueError("state version must equal 1")
-        services = value.get("services")
-        if not isinstance(services, list):
-            raise ValueError("services must be an array")
-        return StateSnapshot(tuple(_decode_service(item) for item in services))
-    except (OSError, UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as error:
+        return StateSnapshot(_read_services(path))
+    except _STATE_READ_ERRORS as error:
         quarantined = _quarantine(path)
         warning = f"Corrupt service state was moved to {quarantined}: {error}"
         return StateSnapshot((), (warning,))
