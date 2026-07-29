@@ -30,10 +30,26 @@ from bora_workbench.snapshot import (
     WorkbenchCollectionError,
     WorkbenchSnapshot,
 )
+from bora_workbench.tui.screens.calibration import CalibrationView
+from bora_workbench.tui.screens.installation import InstallationView
+from bora_workbench.tui.screens.modes import ModesView
+from bora_workbench.tui.screens.overview import OverviewView
+from bora_workbench.tui.screens.pi import PiView
+from bora_workbench.tui.screens.settings import SettingsView
+from bora_workbench.tui.screens.setup import SetupView
 from bora_workbench.tui.terminal import TerminalMode
 from bora_workbench.validation import ValidationResult
 
 runner = CliRunner()
+_VIEW_CASES = (
+    (OverviewView, "Suggested command: bora engine install"),
+    (ModesView, "verified baseline: ctx 8192"),
+    (CalibrationView, "Active record: absent"),
+    (SetupView, "Compatible: no"),
+    (PiView, "Source: test baseline"),
+    (SettingsView, "model [BORA_MODEL]"),
+    (InstallationView, "Pinned Hugging Face cache copies require a second"),
+)
 
 
 def _doctor() -> DoctorSnapshot:
@@ -71,6 +87,27 @@ def _overview_text(workbench: tui_app.WorkbenchApp) -> str:
     """Return the plain content held by the markup-disabled overview widget."""
     overview = workbench.query_one("#overview")
     return str(overview.render())
+
+
+def _long_snapshot() -> WorkbenchSnapshot:
+    """Extend the fake snapshot with enough diagnostics to require small-screen scrolling."""
+    snapshot = _snapshot()
+    diagnostics = tuple(f"diagnostic line {index}" for index in range(30))
+    return WorkbenchSnapshot(
+        snapshot.doctor,
+        snapshot.service_roots,
+        snapshot.model,
+        snapshot.pi_installation,
+        snapshot.pi_context,
+        diagnostics,
+    )
+
+
+def _view_text(workbench: tui_app.WorkbenchApp, view_type: type) -> str:
+    """Return the literal body text for one mounted read-only view."""
+    view = workbench.query_one(view_type)
+    selector = "#overview" if view_type is OverviewView else ".section-body"
+    return str(view.query_one(selector).render())
 
 
 def _blocked_snapshot(
@@ -242,6 +279,106 @@ def test_quit_keys_work_while_snapshot_is_blocked(key) -> None:
         asyncio.run(exercise())
     finally:
         release.set()
+
+
+@pytest.mark.parametrize("size", ((60, 20), (80, 24), (120, 40)))
+def test_navigation_reaches_every_read_only_view_at_supported_sizes(size) -> None:
+    """Reach all seven text-complete screens with the persistent rail at each test size."""
+
+    async def exercise() -> None:
+        """Walk the rail in order and assert one non-colour fact from every screen."""
+        workbench = tui_app.WorkbenchApp(
+            "0.test", TerminalMode(True, False), lambda version: _snapshot()
+        )
+        async with workbench.run_test(size=size) as pilot:
+            await pilot.pause(0.1)
+            for index, (view_type, expected) in enumerate(_VIEW_CASES):
+                if index:
+                    await pilot.press("down")
+                assert workbench.query_one(view_type).display is True
+                assert expected in _view_text(workbench, view_type)
+            assert "> This installation" in str(workbench.query_one("#selected-view").render())
+            await pilot.press("down")
+            assert workbench.query_one(OverviewView).display is True
+            await pilot.press("q")
+
+    asyncio.run(exercise())
+
+
+def test_small_terminal_detail_can_scroll_without_changing_view() -> None:
+    """Reserve page keys for long detail while arrows continue to own rail navigation."""
+
+    async def exercise() -> None:
+        """Scroll a long Overview in the smallest required headless terminal."""
+        workbench = tui_app.WorkbenchApp(
+            "0.test", TerminalMode(True, False), lambda version: _long_snapshot()
+        )
+        async with workbench.run_test(size=(60, 20)) as pilot:
+            await pilot.pause(0.1)
+            scroller = workbench.query_one("#views")
+            assert scroller.max_scroll_y > 0 and scroller.scroll_y == 0
+            await pilot.press("pagedown")
+            assert scroller.scroll_y > 0
+            assert workbench.query_one(OverviewView).display is True
+            await pilot.press("q")
+
+    asyncio.run(exercise())
+
+
+def test_navigation_keys_help_and_refresh_preserve_selected_view() -> None:
+    """Support arrows and j/k while a refresh leaves the selected screen intact."""
+    calls = []
+
+    def collect(version: str) -> WorkbenchSnapshot:
+        """Count complete immediate snapshots without touching the host."""
+        calls.append(version)
+        return _snapshot()
+
+    async def exercise() -> None:
+        """Select Settings with mixed keys, refresh it, and inspect expanded key help."""
+        workbench = tui_app.WorkbenchApp("0.test", TerminalMode(True, False), collect)
+        async with workbench.run_test() as pilot:
+            await pilot.pause(0.1)
+            await pilot.press("right", "j", "down", "j", "right")
+            assert workbench.query_one(SettingsView).display is True
+            await pilot.press("r")
+            await pilot.pause(0.1)
+            assert workbench.query_one(SettingsView).display is True and len(calls) == 2
+            await pilot.press("question_mark")
+            assert "Close help" in str(workbench.query_one("#keybar").render())
+            await pilot.press("left", "k")
+            assert workbench.query_one(SetupView).display is True
+            await pilot.press("q")
+
+    asyncio.run(exercise())
+
+
+def test_collection_failure_remains_visible_on_selected_detail_view() -> None:
+    """Keep navigation focus while replacing stale detail with failed refresh truth."""
+    calls = {"count": 0}
+    failure = SnapshotFailure("services", "state became unreadable", 1)
+
+    def collect(version: str) -> WorkbenchSnapshot:
+        """Return one snapshot and fail the selected-screen refresh that follows."""
+        calls["count"] += 1
+        if calls["count"] == 1:
+            return _snapshot()
+        raise WorkbenchCollectionError(failure)
+
+    async def exercise() -> None:
+        """Select Pi, refresh, and assert the same view owns the failure text."""
+        workbench = tui_app.WorkbenchApp("0.test", TerminalMode(True, False), collect)
+        async with workbench.run_test() as pilot:
+            await pilot.pause(0.1)
+            await pilot.press("down", "down", "down", "down")
+            assert workbench.query_one(PiView).display is True
+            await pilot.press("r")
+            await pilot.pause(0.1)
+            assert workbench.query_one(PiView).display is True
+            assert "state became unreadable" in _view_text(workbench, PiView)
+            await pilot.press("q")
+
+    asyncio.run(exercise())
 
 
 def test_collection_failure_is_rendered_without_traceback() -> None:
