@@ -16,7 +16,13 @@ from bora_workbench._cli_diagnostics import (
     show_engine_status,
 )
 from bora_workbench._cli_models import RemoveOptions, run_pull, run_remove_model
-from bora_workbench._cli_pi import PiOptions, run_pi, run_pi_removal, run_pi_uninstall
+from bora_workbench._cli_pi import (
+    PiOptions,
+    run_pi,
+    run_pi_removal,
+    run_pi_uninstall,
+    validate_pi_options,
+)
 from bora_workbench._cli_services import (
     run_coding,
     run_stop,
@@ -131,8 +137,10 @@ def pi(
     ),
 ) -> None:
     """Point the pi coding agent at this machine's bora service."""
+    options = PiOptions(print_only, install)
+    validate_pi_options(options, context.invoked_subcommand)
     if context.invoked_subcommand is None:
-        run_pi(PiOptions(print_only, install), _stdout, _stderr)
+        run_pi(options, _stdout, _stderr)
 
 
 @pi_app.command("remove")

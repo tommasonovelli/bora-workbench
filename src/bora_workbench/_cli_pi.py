@@ -80,6 +80,14 @@ class ContextWindow:
     diagnostics: tuple[str, ...] = ()
 
 
+def validate_pi_options(options: PiOptions, subcommand: str | None) -> None:
+    """Reject group options that would be contradictory or silently ignored."""
+    if subcommand is not None and (options.print_only or options.install):
+        raise typer.BadParameter("--print and --install cannot be used with a pi subcommand")
+    if options.print_only and options.install:
+        raise typer.BadParameter("--print and --install are mutually exclusive")
+
+
 def _live_window(port: int) -> ContextWindow | None:
     """Return the window of a managed service already serving the configured port."""
     report = across_service_roots(status_services)

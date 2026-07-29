@@ -216,7 +216,10 @@ preserved; a file that cannot be parsed is reported rather than overwritten.
 OpenAI-compatible client by hand. `--install` runs
 `npm install -g --ignore-scripts @earendil-works/pi-coding-agent` after showing the command and
 asking: this project pins no digest for pi and does not claim to verify it. Without `--install`, an
-absent pi is reported with the vendor's instructions for Ubuntu and Windows.
+absent pi is reported with the vendor's instructions for Ubuntu and Windows. `--print` and
+`--install` are mutually exclusive, because one promises no write while the other requests an npm
+mutation. Neither group option can accompany `pi remove` or `pi uninstall`; such combinations are
+input errors rather than silently ignored flags.
 
 Afterwards, with `bora coding` running:
 

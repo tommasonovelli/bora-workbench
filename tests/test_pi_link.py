@@ -11,6 +11,7 @@ from rich.console import Console
 from typer.testing import CliRunner
 
 import bora_workbench._cli_pi as pi_cli
+import bora_workbench.cli as cli_module
 from bora_workbench import pi_link
 from bora_workbench._calibration_reuse import RecordEvaluation
 from bora_workbench._cli_pi import ContextWindow, _context_window
@@ -193,6 +194,28 @@ def test_the_baseline_window_carries_the_reason_it_was_used(monkeypatch) -> None
 
     assert window.tokens == FALLBACK_CTX
     assert window.diagnostics == (diagnostic,)
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    (
+        ["pi", "--print", "--install"],
+        ["pi", "--install", "remove"],
+        ["pi", "--print", "uninstall"],
+    ),
+)
+def test_contradictory_pi_options_exit_before_any_action(arguments, monkeypatch) -> None:
+    """Reject every option combination that the selected pi action would discard."""
+    calls: list[str] = []
+    monkeypatch.setattr(cli_module, "run_pi", lambda *args: calls.append("connect"))
+    monkeypatch.setattr(cli_module, "run_pi_removal", lambda *args: calls.append("remove"))
+    monkeypatch.setattr(cli_module, "run_pi_uninstall", lambda *args: calls.append("uninstall"))
+
+    result = runner.invoke(app, arguments)
+
+    assert result.exit_code == 2
+    assert "cannot be used" in result.stderr or "mutually exclusive" in result.stderr
+    assert calls == []
 
 
 def test_print_writes_nothing_and_needs_no_installed_pi(tmp_path, monkeypatch) -> None:
