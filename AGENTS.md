@@ -164,9 +164,9 @@ A TODO must include date and context, for example:
 
 ## Dependencies
 
-The approved 0.1 runtime dependencies are `typer`, `rich`, `psutil`, `httpx`, and `jsonschema`; the
-development dependencies are `pytest` and `ruff`. Add a dependency only when the active step requires
-it and the normative plan permits it. In that case:
+The current runtime dependencies are `typer`, `rich`, `psutil`, `httpx`, `jsonschema`, and Textual
+(D-086); the development dependencies are `pytest` and `ruff`. Add a dependency only when the active
+step requires it and the normative plan permits it. In that case:
 
 1. explain why a small standard-library implementation is insufficient;
 2. verify maintenance, licensing, security, and transitive cost;

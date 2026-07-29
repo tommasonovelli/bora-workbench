@@ -92,6 +92,8 @@ Updated on 29 July 2026.
 - [x] On 29 July 2026 the maintainer selected the reduced `0.4.0` TUI scope and its current-command,
   read-only, post-UI handoff boundary (D-083–D-085). This authorizes local implementation and local
   commits only; it does not authorize release operations or Open WebUI work.
+- [x] The TUI dependency gate accepted MIT-licensed Textual `8.2.8` under the narrow presentation
+  concurrency boundary, with the exact dependency graph frozen in `uv.lock` (D-086).
 
 ### Open work
 
@@ -292,6 +294,7 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-083 | On 29 July 2026 the maintainer selects the reduced `0.4.0` scope in `TUI_PLAN.md`: keep every current CLI name and the flat package tree, keep bare `bora` as help, keep settings read-only, and add the explicit `bora tui` dashboard, command composer, and teaching surface. The TUI owns no launch, calibration, setup, pi, update, removal, or confirmation rule. Clipboard integration, editor launching, configuration writes, command aliases, generic model management, package reorganization, and Open WebUI integration remain outside this milestone. This authorizes local implementation and the step-scoped local commits, but no push, tag, release, upload, remote setting, candidate activation, or Gate claim. |
 | D-084 | The TUI opening and refresh are non-mutating: no network, model hashing, receipt write, state cleanup or quarantine, directory creation, configuration write, managed-service start, or background polling. They may perform the same bounded read-only hardware and engine subprocess probes as `doctor`, from one presentation worker, because calling the current diagnostics process-free would be false. A shared synchronous snapshot reports corrupt state as unreadable, model artifacts as receipt-verified only when the D-076 identity matches, and configuration provenance without changing existing callers. |
 | D-085 | Every selected command is displayed exactly and runs only after the UI runtime has ended and restored the terminal. Dispatch invokes the existing Click/Typer command in the same bora process rather than leaving a TUI parent waiting in `subprocess.run`; returning actions reopen only after exit 0, while failures, invalid input, and interruption propagate `1`, `2`, and `130`. The project may review and add Textual before the first interaction loop; if accepted, Textual alone owns the UI event loop and one presentation worker, while core APIs remain synchronous and no general concurrency facility is added. Motion is optional for `0.4.0` and is omitted if its measured budget fails. |
+| D-086 | The TUI dependency gate is `GO` with Textual `8.2.8`, resolved exactly by `uv.lock`. Its MIT licence, Python 3.12 support, documented Linux and Windows support, maintained release history, Worker API, and headless Pilot tests meet the milestone's needs. The 29 July 2026 review found no published PyPI or GitHub advisory for Textual and the frozen dependency audit found no known vulnerability; upstream's lack of a published security policy remains a recorded limitation. Textual owns only the presentation event loop and one thread worker for the synchronous snapshot collector. Core modules gain no async API, scheduler, executor, or other concurrency. |
 
 A new durable decision updates this table in the same step that authorizes it.
 
@@ -361,6 +364,8 @@ not break.
 - The wheel carries every resource; the sdist carries the installers, documentation, plan, and
   evidence.
 - Third-party GitHub Actions pinned to a full SHA.
+- Textual `8.2.8` is the approved TUI framework and is resolved exactly by `uv.lock` (D-086).
+  Its event loop and one snapshot presentation worker are the only 0.4 concurrency exception.
 
 ### 5.2 Configuration and paths
 

@@ -212,10 +212,35 @@ change, repeat the verification and declare new evidence instead of rewriting th
 
 ## Dependencies
 
-The current runtime dependencies are `typer`, `rich`, `psutil`, `httpx`, and `jsonschema`; the
-development ones are `pytest` and `ruff`.
+The current runtime dependencies are `typer`, `rich`, `psutil`, `httpx`, `jsonschema`, and
+`textual`; the development ones are `pytest` and `ruff`.
 
-Before adding one:
+### Textual dependency gate
+
+D-086 accepted Textual `8.2.8`, resolved exactly in `uv.lock`, for the interactive terminal layer.
+A standard-library replacement would have to duplicate cross-platform terminal setup and teardown,
+input, resize handling, event dispatch, worker coordination, and a headless interaction harness.
+That is a larger and less testable security and maintenance surface than this focused dependency.
+
+The review on 29 July 2026 found:
+
+- MIT licensing, Python `>=3.9,<4.0`, and official Linux and Windows support;
+- active maintenance, with `8.2.8` released on 30 June 2026;
+- official thread-worker and headless Pilot APIs needed by the approved design;
+- no published PyPI or GitHub security advisory and no finding from the frozen dependency audit;
+- no upstream security policy, which remains a known reporting-process limitation.
+
+The locked Textual branch depends on `markdown-it-py[linkify] 4.2.0`, `mdit-py-plugins 0.6.1`,
+`platformdirs 4.11.0`, `pygments 2.20.0`, `rich 15.0.0`, and `typing-extensions 4.16.0`.
+`markdown-it-py`, `pygments`, `rich`, and `typing-extensions` were already in the graph. The complete
+addition is Textual plus MIT-licensed `linkify-it-py 2.1.0`, `mdit-py-plugins 0.6.1`,
+`platformdirs 4.11.0`, and `uc-micro-py 2.0.0`.
+
+Textual owns only its presentation event loop and one thread worker that calls the synchronous
+snapshot collector. Core modules remain synchronous and gain no scheduler, executor, or general
+background-work API.
+
+Before adding another dependency:
 
 1. show why the standard library is not enough;
 2. verify maintenance, licensing, security, and transitive cost;

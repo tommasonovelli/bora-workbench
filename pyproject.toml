@@ -16,6 +16,7 @@ dependencies = [
     "jsonschema",
     "psutil",
     "rich",
+    "textual>=8.2.8",
     "typer",
 ]
 
