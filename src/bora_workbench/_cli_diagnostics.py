@@ -315,8 +315,12 @@ def show_validation(result: ValidationResult, stdout: Console, stderr: Console) 
 
 
 def run_validate(stdout: Console, stderr: Console) -> None:
-    """Validate the installed modes, policy, and reference calibration content."""
-    result = validate_resources()
+    """Validate packaged content and map inaccessible resources without a traceback."""
+    try:
+        result = validate_resources()
+    except OSError as error:
+        print_error(stderr, "Validation error", f"could not read packaged resources: {error}")
+        raise typer.Exit(code=1) from error
     show_validation(result, stdout, stderr)
     if result.errors:
         raise typer.Exit(code=1)

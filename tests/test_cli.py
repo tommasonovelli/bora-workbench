@@ -89,6 +89,22 @@ def test_validate_maps_errors_to_exit_1(monkeypatch) -> None:
     assert "mode.json:$.id: bad id" in result.stderr
 
 
+def test_validate_maps_resource_io_failure_without_a_traceback(monkeypatch) -> None:
+    """Turn an inaccessible installed resource into one actionable operational error."""
+    failure = OSError("wheel resource is unavailable")
+    monkeypatch.setattr(
+        diagnostics_cli, "validate_resources", lambda: (_ for _ in ()).throw(failure)
+    )
+
+    result = runner.invoke(app, ["validate"])
+
+    assert result.exit_code == 1
+    assert result.stdout == ""
+    assert "could not read packaged resources" in result.stderr
+    assert "wheel resource" in result.stderr and "unavailable" in result.stderr
+    assert "Traceback" not in result.stderr
+
+
 def test_doctor_is_read_only_and_reports_hardware(tmp_path, monkeypatch) -> None:
     """Describe hardware and empty profiles without creating directories."""
     patch_directories(tmp_path, monkeypatch)
