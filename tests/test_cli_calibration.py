@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import typer
 from rich.console import Console
+from rich.text import Text
 from typer.testing import CliRunner
 
 import bora_workbench._cli_calibration as calibration_cli
@@ -55,9 +56,10 @@ def test_calibration_help_declares_every_supported_option() -> None:
     result = runner.invoke(cli_module.app, ["calibrate", "--help"], color=False)
 
     assert result.exit_code == 0
+    help_text = Text.from_ansi(result.stdout).plain
     for option in ("--mode", "--preference", "--no-activate", "--activate", "--target-ctx"):
-        assert option in result.stdout
-    assert "Extras are parsed" not in result.stdout
+        assert option in help_text
+    assert "Extras are parsed" not in help_text
 
 
 def test_declared_options_construct_keyword_input(monkeypatch) -> None:
