@@ -42,6 +42,8 @@ from bora_workbench.models import display_name
 from bora_workbench.pi_link import (
     PACKAGE_NAME,
     PROVIDER_NAME,
+    ContextWindow,
+    ContextWindowQuery,
     PiInstallation,
     current_entry,
     document_without_provider,
@@ -51,11 +53,12 @@ from bora_workbench.pi_link import (
     provider_entry,
     read_document,
     render,
+    resolve_context_window,
     uninstall_command,
     write_document,
 )
 from bora_workbench.process import ProcessError, status_services
-from bora_workbench.profiles import FALLBACK_CTX, PlanError, load_catalog
+from bora_workbench.profiles import PlanError, load_catalog
 
 # Both lines stay ASCII and short enough not to wrap: a wrapped install command cannot be copied,
 # and a legacy Windows code page cannot encode the punctuation that would join them (D-071).
@@ -71,15 +74,6 @@ class PiOptions:
     install: bool = False
 
 
-@dataclass(frozen=True, slots=True)
-class ContextWindow:
-    """Pair the window pi is told about with where that number came from and why."""
-
-    tokens: int
-    source: str
-    diagnostics: tuple[str, ...] = ()
-
-
 def validate_pi_options(options: PiOptions, subcommand: str | None) -> None:
     """Reject group options that would be contradictory or silently ignored."""
     if subcommand is not None and (options.print_only or options.install):
@@ -88,34 +82,21 @@ def validate_pi_options(options: PiOptions, subcommand: str | None) -> None:
         raise typer.BadParameter("--print and --install are mutually exclusive")
 
 
-def _live_window(port: int) -> ContextWindow | None:
-    """Return the window of a managed service already serving the configured port."""
-    report = across_service_roots(status_services)
-    serving = next((service for service in report.services if service.port == port), None)
-    if serving is None:
-        return None
-    return ContextWindow(serving.ctx, f"running {serving.mode} service on port {port}")
-
-
-def _record_window(config: Config, lock: JsonObject) -> ContextWindow:
-    """Return the window `coding` would launch with: its local record's, or the baseline.
-
-    pi needs a number, and an invented one would misreport the model. The record is the same
-    source the launcher itself uses, so the two agree by construction (specification section 5.5).
-    """
+def _context_query(config: Config, lock: JsonObject) -> ContextWindowQuery:
+    """Collect the CLI facts consumed by the shared D-082 selection rule."""
+    services = across_service_roots(status_services).services
+    if any(service.port == config.llama_port for service in services):
+        return ContextWindowQuery(config.llama_port, services, None)
     mode = load_catalog().mode("coding")
     if mode is None:
         raise EngineError("the packaged mode catalog has no coding mode")
     evaluation = evaluate_record(ReuseQuery(config, mode, detect_hardware(), lock))
-    if evaluation.status == "valid" and evaluation.ctx is not None:
-        return ContextWindow(int(evaluation.ctx), "local coding calibration record")
-    return ContextWindow(FALLBACK_CTX, "verified non-optimized baseline", evaluation.diagnostics)
+    return ContextWindowQuery(config.llama_port, services, evaluation)
 
 
 def _context_window(config: Config, lock: JsonObject) -> ContextWindow:
-    """Resolve the window pi will be given, preferring what a live service already serves."""
-    live = _live_window(config.llama_port)
-    return _record_window(config, lock) if live is None else live
+    """Resolve the pi window through the shared structured selection service."""
+    return resolve_context_window(_context_query(config, lock))
 
 
 def _show_window(window: ContextWindow, stdout: Console) -> None:

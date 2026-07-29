@@ -14,10 +14,11 @@ import bora_workbench._cli_pi as pi_cli
 import bora_workbench.cli as cli_module
 from bora_workbench import pi_link
 from bora_workbench._calibration_reuse import RecordEvaluation
-from bora_workbench._cli_pi import ContextWindow, _context_window
+from bora_workbench._cli_pi import _context_window
 from bora_workbench.cli import app
-from bora_workbench.config import load_config
+from bora_workbench.config import Config, load_config
 from bora_workbench.engine import EngineError, load_engine_lock
+from bora_workbench.pi_link import ContextWindow, ContextWindowQuery, resolve_context_window
 from bora_workbench.process import ServiceReport, ServiceState
 from bora_workbench.profiles import FALLBACK_CTX
 
@@ -147,6 +148,35 @@ def test_writing_keeps_the_previous_content_beside_the_new_one(tmp_path) -> None
     assert json.loads(path.read_text(encoding="utf-8"))["providers"]["bora"]["api"]
     assert path.with_suffix(".json.bak").read_text(encoding="utf-8") == '{"providers": {}}'
     assert [item.name for item in tmp_path.iterdir() if item.suffix == ".tmp"] == []
+
+
+def test_shared_context_selection_covers_all_three_d082_sources() -> None:
+    """Keep live, record, and baseline selection in one pure shared service."""
+    valid = RecordEvaluation("valid", 49152, 33, ())
+    missing = RecordEvaluation("missing", None, None, ("no active coding record",))
+    cases = (
+        (ContextWindowQuery(8080, (_service(8080, 65536),), None), 65536, "running"),
+        (ContextWindowQuery(8080, (), valid), 49152, "local coding"),
+        (ContextWindowQuery(8080, (), missing), FALLBACK_CTX, "baseline"),
+    )
+
+    for query, tokens, source in cases:
+        result = resolve_context_window(query)
+        assert result.tokens == tokens
+        assert source in result.source
+    assert resolve_context_window(cases[-1][0]).diagnostics == ("no active coding record",)
+
+
+def test_cli_context_resolution_returns_the_shared_result(monkeypatch) -> None:
+    """Delegate presentation collection to pi_link without copying its source order."""
+    query = ContextWindowQuery(8080, (), RecordEvaluation("missing", None, None, ()))
+    expected = ContextWindow(FALLBACK_CTX, "shared test result")
+    monkeypatch.setattr(pi_cli, "_context_query", lambda config, lock: query)
+    monkeypatch.setattr(pi_cli, "resolve_context_window", lambda selected: expected)
+
+    result = _context_window(Config(), load_engine_lock())
+
+    assert result is expected
 
 
 def test_a_running_service_reports_the_window_it_is_actually_serving(monkeypatch) -> None:

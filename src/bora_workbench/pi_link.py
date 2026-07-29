@@ -26,8 +26,11 @@ from pathlib import Path
 from typing import cast
 from uuid import uuid4
 
+from bora_workbench._calibration_reuse import RecordEvaluation
 from bora_workbench.engine import EngineError, JsonObject
 from bora_workbench.models import display_name
+from bora_workbench.process import ServiceState
+from bora_workbench.profiles import FALLBACK_CTX
 
 PROVIDER_NAME = "bora"
 PACKAGE_NAME = "@earendil-works/pi-coding-agent"
@@ -51,6 +54,38 @@ class PiInstallation:
     def is_installed(self) -> bool:
         """Return whether a pi executable was found on PATH."""
         return self.executable is not None
+
+
+@dataclass(frozen=True, slots=True)
+class ContextWindow:
+    """Pair the window pi receives with its source and fallback diagnostics."""
+
+    tokens: int
+    source: str
+    diagnostics: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class ContextWindowQuery:
+    """Group already collected service and record facts for D-082 selection."""
+
+    port: int
+    services: tuple[ServiceState, ...]
+    coding_record: RecordEvaluation | None
+
+
+def resolve_context_window(query: ContextWindowQuery) -> ContextWindow:
+    """Select live service, active coding record, then verified baseline in that order."""
+    serving = next((item for item in query.services if item.port == query.port), None)
+    if serving is not None:
+        source = f"running {serving.mode} service on port {query.port}"
+        return ContextWindow(serving.ctx, source)
+    record = query.coding_record
+    if record is None:
+        raise EngineError("coding record evaluation is required when no service is running")
+    if record.status == "valid" and record.ctx is not None:
+        return ContextWindow(int(record.ctx), "local coding calibration record")
+    return ContextWindow(FALLBACK_CTX, "verified non-optimized baseline", record.diagnostics)
 
 
 def agent_dir() -> Path:
