@@ -36,6 +36,8 @@ source-include = [
     "CHANGELOG.md",
     "CONTRIBUTING.md",
     "IMPLEMENTATION_SPEC.md",
+    "TUI.md",
+    "TUI_PLAN.md",
     "WEBUI_PLAN.md",
     "docs/**",
     "evidence/**",
