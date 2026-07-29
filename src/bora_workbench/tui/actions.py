@@ -64,9 +64,112 @@ def compose_engine_status() -> CommandSpec:
     return _command("engine", "status")
 
 
+def compose_engine_install(is_force: bool = False, is_model_skipped: bool = False) -> CommandSpec:
+    """Compose engine installation with only its two current optional flags."""
+    arguments = ["engine", "install"]
+    if is_force:
+        arguments.append("--force")
+    if is_model_skipped:
+        arguments.append("--no-model")
+    return _command(*arguments)
+
+
+def _locked_model(model: Literal["qwen"] | None) -> tuple[str, ...]:
+    """Return the optional sole pinned handle without admitting arbitrary model names."""
+    if model not in (None, "qwen"):
+        raise ValueError("this distribution composes only the pinned 'qwen' model")
+    return () if model is None else (model,)
+
+
+def compose_pull(model: Literal["qwen"] | None = None) -> CommandSpec:
+    """Compose pinned-model acquisition with its optional explicit handle."""
+    return _command("pull", *_locked_model(model))
+
+
+def compose_remove_model(
+    model: Literal["qwen"] | None = None,
+    is_cache_kept: bool = False,
+    is_dry_run: bool = False,
+) -> CommandSpec:
+    """Compose pinned-model removal while retaining every real CLI prompt."""
+    arguments = ["rm", *_locked_model(model)]
+    if is_cache_kept:
+        arguments.append("--keep-hf")
+    if is_dry_run:
+        arguments.append("--dry-run")
+    return _command(*arguments)
+
+
+def compose_stop() -> CommandSpec:
+    """Compose the existing verified managed-service stop command."""
+    return _command("stop")
+
+
+def compose_pi(is_printed: bool = False, is_installed: bool = False) -> CommandSpec:
+    """Compose one valid bare pi action and reject the contradictory pair by construction."""
+    if is_printed and is_installed:
+        raise ValueError("pi print-only and installation cannot be selected together")
+    arguments = ["pi"]
+    if is_printed:
+        arguments.append("--print")
+    if is_installed:
+        arguments.append("--install")
+    return _command(*arguments)
+
+
+def compose_pi_remove() -> CommandSpec:
+    """Compose removal of only bora's pi provider entry."""
+    return _command("pi", "remove")
+
+
+def compose_pi_uninstall() -> CommandSpec:
+    """Compose npm removal of pi with the existing separate provider prompt."""
+    return _command("pi", "uninstall")
+
+
 def overview_commands() -> tuple[CommandSpec, ...]:
     """Return the four E4 diagnostic actions in their stable presentation order."""
     return (compose_doctor(), compose_validate(), compose_status(), compose_engine_status())
+
+
+def setup_commands() -> tuple[CommandSpec, ...]:
+    """Enumerate every reachable setup flag state without an arbitrary argument editor."""
+    engine = tuple(
+        compose_engine_install(is_force, is_model_skipped)
+        for is_force in (False, True)
+        for is_model_skipped in (False, True)
+    )
+    pull = (compose_pull(), compose_pull("qwen"))
+    removal = tuple(
+        compose_remove_model(model, is_cache_kept, is_dry_run)
+        for model in (None, "qwen")
+        for is_cache_kept in (False, True)
+        for is_dry_run in (False, True)
+    )
+    return (compose_engine_status(), *engine, *pull, *removal)
+
+
+def pi_commands() -> tuple[CommandSpec, ...]:
+    """Return every valid current pi action and no contradictory option combination."""
+    return (
+        compose_pi(),
+        compose_pi(is_printed=True),
+        compose_pi(is_installed=True),
+        compose_pi_remove(),
+        compose_pi_uninstall(),
+    )
+
+
+def render_command_menu(
+    commands: tuple[CommandSpec, ...], selected_index: int, heading: str
+) -> str:
+    """Render exact commands with a text marker before Enter can select one."""
+    lines = [heading]
+    lines.extend(
+        f"{'>' if index == selected_index else ' '} {command.display}"
+        for index, command in enumerate(commands)
+    )
+    return "\n".join(lines)
 
 
 def _model_state(snapshot: WorkbenchSnapshot) -> str:

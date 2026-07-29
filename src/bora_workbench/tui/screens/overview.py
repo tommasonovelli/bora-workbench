@@ -7,10 +7,15 @@ from textual.containers import Vertical
 from textual.widgets import Static
 
 from bora_workbench.snapshot import SnapshotFailure, WorkbenchSnapshot, record_display_label
-from bora_workbench.tui.actions import CommandSpec, overview_commands
+from bora_workbench.tui.actions import (
+    CommandSpec,
+    compose_stop,
+    overview_commands,
+    render_command_menu,
+)
 from bora_workbench.tui.advice import Suggestion, next_step
 
-_ACTIONS = overview_commands()
+_ACTIONS = (*overview_commands(), compose_stop())
 
 
 def _engine_label(snapshot: WorkbenchSnapshot) -> str:
@@ -115,12 +120,8 @@ def render_snapshot(snapshot: WorkbenchSnapshot) -> str:
 
 def render_action_menu(selected_index: int) -> str:
     """Show exact returning commands with a text marker on the Enter selection."""
-    lines = ["Returning diagnostics (Tab selects; Enter runs after the TUI closes)"]
-    lines.extend(
-        f"{'>' if index == selected_index else ' '} {command.display}"
-        for index, command in enumerate(_ACTIONS)
-    )
-    return "\n".join(lines)
+    heading = "Returning diagnostics (Tab selects; Enter runs after the TUI closes)"
+    return render_command_menu(_ACTIONS, selected_index, heading)
 
 
 def render_failure(failure: SnapshotFailure | None, unexpected_detail: str | None) -> str:

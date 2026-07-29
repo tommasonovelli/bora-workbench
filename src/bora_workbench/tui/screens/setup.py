@@ -8,6 +8,10 @@ from textual.widgets import Static
 
 from bora_workbench.models import ArtifactInspection
 from bora_workbench.snapshot import WorkbenchSnapshot
+from bora_workbench.tui.actions import CommandSpec, render_command_menu, setup_commands
+
+_ACTIONS = setup_commands()
+_HEADING = "Setup actions (Tab selects; Enter closes the TUI before running)"
 
 
 def _engine_lines(snapshot: WorkbenchSnapshot) -> tuple[str, ...]:
@@ -57,6 +61,9 @@ def render_setup(snapshot: WorkbenchSnapshot) -> str:
     note = (
         "Opening this screen never downloads or hashes model payloads.",
         "bora pull applies only to artifacts pinned by engine.lock, not custom model paths.",
+        "--force reinstalls a compatible engine; --no-model skips pinned model acquisition.",
+        "--keep-hf leaves shared-cache copies; --dry-run deletes nothing.",
+        "The TUI closes before existing downloads, verification, and confirmations begin.",
         "",
     )
     return "\n".join((*note, *_engine_lines(snapshot), *_model_lines(snapshot)))
@@ -68,11 +75,27 @@ class SetupView(Vertical):
     def __init__(self) -> None:
         """Create the hidden-until-selected setup region."""
         super().__init__(classes="section-view")
+        self._action_index = 0
 
     def compose(self) -> ComposeResult:
-        """Yield the static title and literal detail body."""
+        """Yield the title, exact setup commands, and literal detail body."""
         yield Static("Setup", classes="section-title", markup=False)
+        yield Static(
+            render_command_menu(_ACTIONS, self._action_index, _HEADING),
+            classes="section-actions",
+            markup=False,
+        )
         yield Static("Waiting for the local snapshot...", classes="section-body", markup=False)
+
+    def move_action(self, offset: int) -> None:
+        """Move the text marker through every reachable setup option state."""
+        self._action_index = (self._action_index + offset) % len(_ACTIONS)
+        content = render_command_menu(_ACTIONS, self._action_index, _HEADING)
+        self.query_one(".section-actions", Static).update(content)
+
+    def selected_action(self) -> CommandSpec:
+        """Return the exact setup command currently marked in visible text."""
+        return _ACTIONS[self._action_index]
 
     def show_snapshot(self, snapshot: WorkbenchSnapshot) -> None:
         """Replace the body with receipt-aware setup details."""
