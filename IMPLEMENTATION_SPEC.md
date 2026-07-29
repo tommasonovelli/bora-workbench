@@ -741,9 +741,18 @@ compatibility.
 
 ### Backlog B — Managed Open WebUI and sync
 
-**Precondition:** the maintainer approves a precise version after a real spike on Python, CPU-only
-dependencies, command, health, Functions, prompts, and environment variables. The spike produces
-`resources/open-webui.lock` and separate evidence.
+**Precondition:** the maintainer approves a precise version after a real spike on Python,
+dependencies, command, health, environment variables, user creation, and provisioning. The spike
+produces `resources/open-webui.lock` and separate evidence.
+
+[`WEBUI_PLAN.md`](WEBUI_PLAN.md) expands this entry against the upstream source at tag `v0.11.0`. It
+is a decision input only, on the terms D-077 set for `TUI.md`: it carries no `D-0xx`, nothing in it
+is approved or scheduled, and its first step is the one that would fold its answers into this
+document. Its open questions are numbered `W1`–`W10` for that reason, and its steps `B1`–`B9`. The
+summary below is what this specification asserts today; where the two disagree, this document wins.
+On 29 July 2026 the maintainer explicitly deferred this backlog while the TUI milestone is active.
+The current machine is available for a later real spike, but no Open WebUI installation, process, or
+measurement starts without that separate request.
 
 Installation:
 
@@ -755,24 +764,47 @@ Installation:
 - a failure leaves the previous manifest and version intact;
 - cleanup of inactive managed environments only.
 
+An installation is immutable only while the frontmatter dependency installation is disabled: upstream
+runs `pip install` at startup for the requirements a stored Tool or Function declares, which would
+mutate a managed environment without a digest.
+
 Future configuration: `webui_port=8081` and `BORA_WEBUI_PORT`; port 1–65535 and different from
-`llama_port`.
+`llama_port`, whose default `8080` is also the upstream service's own default.
 
 A minimal environment, only after the lock has been verified: a dedicated data dir, host
-`127.0.0.1`, persistent config disabled, authentication disabled for the local service only, Ollama
-off, the local OpenAI endpoint, and a placeholder key. The user is told that UI changes do not
-persist.
+`127.0.0.1` passed explicitly because the upstream default binds every interface, a stable secret
+key held by the launcher, Ollama off, the local OpenAI endpoint, and a placeholder key. Three
+further choices are open rather than settled, because each has a user-visible cost: whether
+authentication is disabled — which makes upstream create a fixed local account by itself and cannot
+be undone in the same data directory — whether environment values override the stored configuration
+forever or seed it once, and whether the default embedding model, the version check, and the title,
+tag and follow-up generation stay on.
+
+READY is the upstream readiness endpoint, which answers only after startup completes, not the
+liveness endpoint, which answers before it.
+
+Running a second managed service contradicts the single-service rule of section 5.9 and the guard
+that enforces it. The state format already holds a list, so the work is a service role, an ordered
+stop, one startup lock over the pair, and a per-role health timeout; it is its own step.
 
 Fallback: if llama-server is READY but the WebUI fails, keep it running, show the log, and open the
 built-in UI when allowed. If the mode requires a UI and none is available, stop the services and
 exit 1.
 
-`sync` generates the function, prompts, and import instructions under `data_dir()/sync-out/`. A
-static Python template; rules and content serialized as JSON data, never interpolated as code. No
-API writes in this step.
+`sync` provisions the display name, system prompt, skills, and prompts that only the upstream
+database can hold, because no environment variable reaches them. It writes data, never code: no
+Function, Pipe, or Filter, which would be the plugin surface section 1.1 excludes. It runs only
+after READY, against the managed instance, is idempotent, preserves content the user changed, never
+deletes, and has a mode that prints the exact payloads and writes nothing. Its content is packaged
+declarative resources with their own schema.
 
-Tests: valid/partial/failed installation, manifest, port configuration, environment, health,
-fallback, multi-service state, hostile content, and reproducible output.
+Upstream now ships its own skills mechanism, so whether the Backlog A router survives, and where it
+would run, is an open question and not a dependency of this entry.
+
+Tests: valid/partial/failed installation, manifest, port configuration, the loopback host on every
+path, the secret key absent from every output, environment, readiness against liveness, fallback,
+stop order, multi-service state, idempotent provisioning, preserved user edits, hostile content, and
+reproducible output.
 
 ### Backlog C — Standalone benchmark and final doctor
 
@@ -857,7 +889,8 @@ remote-setting changes, and candidate activation are not authorized.
 - Open WebUI environment: <https://docs.openwebui.com/reference/env-configuration/>
 
 For `llama.cpp`, the lock and evidence of the pinned release prevail, not moving links to the
-current branch.
+current branch. For Open WebUI no lock exists yet, so rule 6 of section 2 applies and the tagged
+upstream source outranks that documentation page until `resources/open-webui.lock` exists.
 
 ---
 

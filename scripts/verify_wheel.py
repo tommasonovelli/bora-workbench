@@ -160,6 +160,7 @@ def _verify_sdist() -> bool:
         "CHANGELOG.md",
         "CONTRIBUTING.md",
         "IMPLEMENTATION_SPEC.md",
+        "WEBUI_PLAN.md",
         "docs/README.md",
         "docs/architecture.md",
         "docs/calibration.md",
