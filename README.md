@@ -172,12 +172,13 @@ bora tui
 bora tui --plain
 ```
 
-The TUI shows seven read-only screens, deterministic next-step advice, and exact current commands.
-Opening and `r` refreshes may run bounded local hardware and engine probes, but perform no mutation,
-model hashing, or network request. Selecting an action closes and restores the TUI before the
-existing CLI callback owns normal terminal I/O, prompts, and exit codes. The complete CLI remains
-the accessible and scriptable path; see [Terminal workbench](docs/tui.md) for keys, motion controls,
-and handoff details.
+The TUI opens on a central menu that carries a one-line state summary per entry, the one deterministic
+next step, and seven read-only sections that `Enter` opens as full windows. It draws on the terminal's
+own background. Opening and `r` refreshes may run bounded local hardware and engine probes, but
+perform no mutation, model hashing, or network request. Selecting an action closes and restores the
+TUI before the existing CLI callback owns normal terminal I/O, prompts, and exit codes. The complete
+CLI remains the accessible and scriptable path; see [Terminal workbench](docs/tui.md) for keys,
+motion controls, and handoff details.
 
 ### Updating
 

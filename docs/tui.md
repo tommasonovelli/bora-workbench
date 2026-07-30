@@ -31,14 +31,42 @@ A slow probe does not block navigation or quitting. Pressing `r` during collecti
 follow-up refresh, so collectors never overlap. A failed collection is shown as current diagnostic
 text without a traceback and prevents command selection until a later refresh succeeds.
 
-## Screens
+## The central menu
 
-| Screen | Read-only information and choices |
+Opening the workbench shows one screen: the identity, the single deterministic next step, and a
+central menu. The workbench draws on the terminal's own background, so it inherits the colours of
+the surrounding shell instead of painting a window inside it.
+
+Each menu row carries a one-line summary of that area, so the state of the machine is readable
+without opening anything:
+
+```text
+                        B O R A   W O R K B E N C H
+                     0.4.0 · AMD Ryzen 9 · 64.0 GiB · cuda
+
+                       The pinned engine is not active.
+                             bora engine install
+
+     ╭──────────────────────────────────────────────────────────────╮
+     │  ▸ Run                 verified baseline                     │
+     │    Calibration         no active record                      │
+     │    Setup               engine not active                     │
+     │    Diagnostics         no blocking error                     │
+     │    Pi                  not found on PATH                     │
+     │    Settings            all defaults                          │
+     │    This installation   version 0.4.0                         │
+     ╰──────────────────────────────────────────────────────────────╯
+```
+
+`Enter` opens the marked entry as a full window and `Esc` returns to the menu, so a section is never
+navigated at the same time as the menu.
+
+| Entry | Read-only information and choices |
 |---|---|
-| **Overview** | machine diagnosis, memory, engine, model receipt state, services, records, pi, validation, and deterministic next-step advice |
-| **Modes** | the active calibrated cell or verified baseline for each mode, plus exact foreground launch commands |
+| **Run** | the three foreground modes with the active calibrated cell or verified baseline each would use |
 | **Calibration** | active and candidate record states, plus a staged composer for measurement or candidate activation |
 | **Setup** | engine compatibility and receipt-aware pinned-model state, plus existing install, pull, and removal commands |
+| **Diagnostics** | the full local report — memory, engine, model receipt state, services, records, pi, validation — and the returning diagnostic commands |
 | **Pi** | pi availability and the selected context-window source, plus valid current pi commands |
 | **Settings** | resolved values, environment names, winning source, and config path; no editing |
 | **This installation** | installed version, managed roots, update choices, and the exact uninstall boundary |
@@ -51,38 +79,60 @@ calibration record is shown as a working but non-optimized baseline rather than 
 
 | Key | Action |
 |---|---|
-| arrows or `j` / `k` | move through the seven screens |
-| `Tab` / `Shift-Tab` | move through the selected screen's visible command choices |
-| `Enter` | accept a wizard choice or select the exact marked command |
-| `PageUp` / `PageDown` | scroll long detail without changing screens |
+| arrows or `j` / `k` | move the marker of whichever surface is open |
+| `Enter` or `Right` | open the marked entry, accept a wizard answer, or select the exact shown command |
+| `Esc` or `Left` | return to the central menu; on the menu it quits |
+| a bracketed letter | switch that flag of the marked action, for example `f` for `--force` |
+| `PageUp` / `PageDown` | scroll long detail without leaving the section |
 | `r` | request one serialized snapshot refresh |
 | `?` | expand or collapse key help |
-| `q`, `Ctrl-Q`, or `Esc` | quit; during review, cancel without running the command |
+| `q` or `Ctrl-Q` | quit without running anything |
 
-Selection and commands are marked in text, not by colour alone. At 60x20 the detail remains
-scrollable; decorative motion is omitted below 80x24.
+A section shows a short list of actions rather than one row per flag combination. The flags of the
+marked action appear as toggles under it, and the exact command below them changes as they are
+switched:
+
+```text
+  ▸ install engine
+    download pinned model
+    remove pinned model
+    engine status
+
+    [f] force on   [n] no-model off
+
+  bora engine install --force
+```
+
+Each action keeps its own flags while the marker visits another action. Selection, flag state, and
+commands are all marked in text, never by colour alone. At 60x20 the detail remains scrollable;
+decorative motion is omitted below 80x24.
 
 ## Commands and handoff
 
 Every selectable command is displayed before `Enter` can choose it:
 
-| Screen | Composed current command | After success |
+| Section | Composed current command | After success |
 |---|---|---|
-| Overview | `bora doctor`, `bora validate`, `bora status`, `bora engine status`, `bora stop` | return and refresh |
-| Modes | `bora coding|studio|vstudio [--force]` | terminal; do not reopen |
+| Run | `bora coding|studio|vstudio [--force]` | terminal; do not reopen |
 | Calibration | `bora calibrate --mode ...` with only valid current options | terminal; do not reopen |
-| Setup | `bora engine status`, `bora engine install [--force] [--no-model]`, `bora pull [qwen]`, `bora rm [qwen] [--keep-hf] [--dry-run]` | return and refresh |
+| Setup | `bora engine status`, `bora engine install [--force] [--no-model]`, `bora pull`, `bora rm [--keep-hf] [--dry-run]` | return and refresh |
+| Diagnostics | `bora doctor`, `bora validate`, `bora status`, `bora engine status`, `bora stop` | return and refresh |
 | Pi | `bora pi [--print]`, `bora pi --install`, `bora pi remove`, `bora pi uninstall` | return and refresh |
 | This installation | `bora update --check` | return and refresh |
 | This installation | `bora update`, `bora uninstall` | terminal; do not reopen |
+
+The workbench composes `bora pull` and `bora rm` without the optional `qwen` handle, because this
+distribution pins exactly one model and the bare form does the same work. The handle remains valid
+on the command line.
 
 On selection, Textual ends first and restores the alternate screen, cursor, styles, input, and signal
 handling. The displayed arguments then enter the existing recursive Click/Typer parser in the same
 `bora` process. The real callback owns every preflight, prompt, network request, subprocess, write,
 and exit code.
 
-Returning actions reopen only after exit 0 and show concise differences between the before and after
-snapshots. Exit 1, 2, or 130 propagates without reopening. Foreground modes, calibration, update, and
+Returning actions reopen only after exit 0. The status line then counts the differences between the
+before and after snapshots, and Diagnostics lists them above the local report. Exit 1, 2, or 130
+propagates without reopening. Foreground modes, calibration, update, and
 uninstall are terminal even after success. In particular, update and uninstall have no live TUI
 parent holding the uv environment open while their deferred helper waits for the command process to
 exit.
@@ -96,15 +146,18 @@ separate `bora calibrate --mode <id> --activate` route with no preference, targe
 
 ### Uninstall review
 
-Selecting uninstall first requires typing `remove` exactly. This is only TUI friction: after the TUI
-closes, `bora uninstall` still shows its scope and asks the real managed-root question. The confined
-Hugging Face cache offer remains a second, separate question and still defaults to no.
+Selecting uninstall first requires typing `remove` exactly. While that phrase field has focus, the
+single-letter keys stop acting as shortcuts and go into the field. This is only TUI friction: after
+the TUI closes, `bora uninstall` still shows its scope and asks the real managed-root question. The
+confined Hugging Face cache offer remains a second, separate question and still defaults to no.
 
 ## Optional motion
 
-Normal presentation shows deterministic wind and sea decoration on the focused Overview only. It
-updates at 8 fps, below the 12 fps ceiling, and removes its timer after about three active seconds.
-It carries no status or action information.
+Normal presentation frames the central menu with deterministic decoration: two wind gusts anchored to
+the top-left and top-right corners, whose long side alternates between the rows so they complete each
+other without mirroring, and two sea rows under the menu whose crests flatten as they settle. It runs
+on the focused menu only, updates at 8 fps, below the 12 fps ceiling, and removes its timer after
+about three active seconds. It carries no status or action information.
 
 `BORA_TUI_MOTION` accepts exactly:
 
@@ -114,7 +167,7 @@ It carries no status or action information.
 | `off` | retain normal static presentation with no animation timer |
 
 An empty, differently cased, or unknown value exits 2. Motion is also disabled by `--plain`,
-`NO_COLOR`, `TERM=dumb`, limited output encoding, a terminal smaller than 80x24, another screen, or
+`NO_COLOR`, `TERM=dumb`, limited output encoding, a terminal smaller than 80x24, an open section, or
 detectable terminal focus loss.
 
 The accepted Ubuntu 120x40 pseudo-terminal observation is stored in

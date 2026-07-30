@@ -24,9 +24,9 @@ available only through the TUI.
 ### 1.1 Included
 
 - a responsive local-state overview;
-- seven read-only sections;
+- one central menu that opens seven read-only sections as full windows;
 - deterministic next-step advice;
-- exact composition of current commands;
+- exact composition of current commands, with per-action flag toggles;
 - a calibration wizard that can produce only valid option combinations;
 - post-UI command dispatch with normal terminal I/O and existing confirmations;
 - bounded bora wind/sea motion with static and accessibility kill switches.
@@ -87,24 +87,34 @@ The snapshot distinguishes facts that the earlier proposal conflated:
 
 ## 3. Information architecture
 
-The persistent rail uses seven user-facing labels. They are not CLI help groups and do not rename
-commands.
+The workbench opens on one home surface: the identity, the verdict, and a central menu of seven
+user-facing entries. They are not CLI help groups and do not rename commands. `Enter` opens the
+marked entry as a full window; `Esc` returns. Only one surface is navigable at a time, so the
+keyboard never carries two simultaneous axes of movement.
 
-| Section | Purpose |
+| Entry | Purpose |
 |---|---|
-| **Overview** | machine verdict, memory, services, diagnostics, and next step |
-| **Modes** | `coding`, `studio`, and `vstudio`, including the active cell or baseline |
+| **Run** | `coding`, `studio`, and `vstudio`, including the active cell or baseline |
 | **Calibration** | record/candidate states and a command-composing wizard |
 | **Setup** | engine and receipt-aware pinned-model readiness |
+| **Diagnostics** | memory, services, the full local report, and the returning diagnostic commands |
 | **Pi** | installation state, provider state, and D-082 context-window source |
 | **Settings** | resolved values, provenance, config path, and environment names; read-only |
 | **This installation** | installed version, four roots, update, and precise removal boundary |
 
-There is no first-run marker and no automatic onboarding state file. Missing prerequisites are
-visible through Overview advice and Setup. The dashboard does not imply that baseline launch is
-broken merely because calibration is absent.
+Run comes first because launching a mode is the reason the workbench exists. The Overview section is
+split: its verdict and identity live on the home surface, where they are read on every visit, and its
+full report and diagnostic commands live under Diagnostics.
 
-### 3.1 Overview wording
+Every menu row carries a one-line summary derived from the snapshot, so the state of the machine is
+readable without opening anything. Those summaries are the dashboard: a section holds detail, not a
+restatement of what the menu already showed.
+
+There is no first-run marker and no automatic onboarding state file. Missing prerequisites are
+visible through the home verdict, the menu summaries, and Setup. The dashboard does not imply that
+baseline launch is broken merely because calibration is absent.
+
+### 3.1 Home wording
 
 The first useful sentence is a diagnosis, not a greeting. Examples:
 
@@ -155,6 +165,13 @@ locally optimized.
 
 Every actionable screen shows the exact command before selection. The UI owns only composition.
 
+A section lists its actions once and switches their optional flags in place, each flag bound to the
+single letter shown in brackets beside it. Enumerating one menu row per flag combination produced
+twenty Setup rows for four operations, which is unreadable; the toggles keep every reachable argv
+available while the list stays the length of the operations it offers. Each action retains its own
+flags while the marker visits another action, and a flag pair that the CLI rejects — pi's `--print`
+with `--install` — excludes itself so the invalid pair stays unreachable.
+
 When a command is selected:
 
 1. the TUI exits its alternate screen;
@@ -174,20 +191,20 @@ that exact result. A terminal action never reopens.
 
 | Section | Current command | Disposition |
 |---|---|---|
-| Overview | `bora doctor` | returning |
-| Overview | `bora validate` | returning |
-| Overview | `bora status` | returning |
-| Overview | `bora engine status` | returning |
-| Overview | `bora stop` | returning |
-| Modes | `bora coding [--force]` | terminal |
-| Modes | `bora studio [--force]` | terminal |
-| Modes | `bora vstudio [--force]` | terminal |
+| Run | `bora coding [--force]` | terminal |
+| Run | `bora studio [--force]` | terminal |
+| Run | `bora vstudio [--force]` | terminal |
 | Calibration | `bora calibrate ...` | terminal |
 | Calibration | `bora calibrate --mode ID --activate` | terminal |
 | Setup | `bora engine status` | returning |
 | Setup | `bora engine install [--force] [--no-model]` | returning on success |
-| Setup | `bora pull [qwen]` | returning on success |
-| Setup | `bora rm [qwen] [--keep-hf] [--dry-run]` | returning on success |
+| Setup | `bora pull` | returning on success |
+| Setup | `bora rm [--keep-hf] [--dry-run]` | returning on success |
+| Diagnostics | `bora doctor` | returning |
+| Diagnostics | `bora validate` | returning |
+| Diagnostics | `bora status` | returning |
+| Diagnostics | `bora engine status` | returning |
+| Diagnostics | `bora stop` | returning |
 | Pi | `bora pi [--print] [--install]` | returning on success |
 | Pi | `bora pi remove` | returning on success |
 | Pi | `bora pi uninstall` | returning on success |
@@ -195,8 +212,13 @@ that exact result. A terminal action never reopens.
 | This installation | `bora update` | terminal |
 | This installation | `bora uninstall` | terminal |
 
+`bora pull` and `bora rm` are composed without the optional `qwen` handle. This distribution pins one
+model, so the handle names what the bare form already does; the CLI still accepts it.
+
 Every reachable argv is tested through the real recursive Click parser to its leaf without executing
-the callback. Root-only parsing is insufficient for nested options.
+the callback. The enumeration is derived from each section's own action and flag declarations, so a
+form the UI can reach cannot escape the parser check. Root-only parsing is insufficient for nested
+options.
 
 ---
 
@@ -282,14 +304,21 @@ Expected navigation:
 
 | Key | Action |
 |---|---|
-| arrows or `j`/`k` | move between screens |
-| `Tab` / `Shift-Tab` | move between visible action choices |
-| `Enter` | accept a wizard choice or select the marked action |
+| arrows or `j`/`k` | move the marker of whichever surface is open |
+| `Enter` / `Right` | open the marked entry, accept a wizard answer, or select the marked action |
+| `Esc` / `Left` | return to the menu; on the menu it quits; during review it cancels |
+| a bracketed letter | switch that flag of the marked action |
 | `PageUp` / `PageDown` | scroll long detail |
-| `Esc` | quit; during review, cancel without dispatching |
 | `r` | request one serialized refresh |
 | `?` | key help |
 | `q` / `Ctrl-Q` | quit |
+
+One marker moves at a time. The earlier design moved between screens with the arrows and between a
+screen's actions with `Tab`, which forced the reader to hold two positions at once; opening a section
+as a full window removes the second axis instead of documenting it.
+
+While the typed removal phrase has focus, every single-letter binding is released to the field
+instead of being intercepted, so the confirmation behaves like an ordinary text input.
 
 Destructive actions are never root single-letter shortcuts. Confirmation defaults to no. Small
 terminals scroll or simplify instead of hiding an operation.
@@ -303,13 +332,21 @@ Automatic legacy raster-font detection is not promised.
 
 ## 10. Bora identity and optional motion
 
+The workbench asks for the terminal's default background rather than painting one, so it inherits the
+surrounding shell's colours and the text sits directly on the user's own theme. Colour is used only
+for the brand, the marker, and the composed command; the body text keeps the terminal's foreground.
+
 The static identity remains complete without motion. The optional enhancement ships under D-087:
 
+- two wind gusts anchor the top-left and top-right corners, and the long side alternates between
+  their two rows so they complete each other without mirroring;
+- two sea rows sit under the central menu and flatten as they settle;
 - gust and sea are pure functions of time, dimensions, and seed;
-- motion runs only on focused Overview, at 8 fps under a 12 fps ceiling;
+- motion runs only on the focused central menu, at 8 fps under a 12 fps ceiling;
 - it settles after about three seconds and does not loop forever;
-- it stops on small terminals, other screens, lost focus where detectable, `--plain`, `NO_COLOR`,
+- it stops on small terminals, an open section, lost focus where detectable, `--plain`, `NO_COLOR`,
   `TERM=dumb`, or `BORA_TUI_MOTION=off`;
+- it also stops when Textual unmounts the tree, so no frame can outlive the widgets it draws into;
 - malformed motion configuration is invalid CLI input;
 - static text contains the full meaning and every action;
 - `BORA_TUI_MOTION` accepts exactly `auto` or `off`; every other value exits 2;
@@ -337,7 +374,8 @@ Tests focus on semantics rather than pixel snapshots:
 - no mutation or network during opening and refresh;
 - first frame before collection and input during a blocked fake collector;
 - no overlapping refresh;
-- navigation at 60x20, 80x24, and 120x40;
+- opening every section from the central menu at 60x20, 80x24, and 120x40;
+- menu summaries, action markers, and flag toggles as pure state;
 - every reachable command accepted by the real recursive parser;
 - teardown before dispatch and exact exit propagation;
 - lazy imports and side-effect-free package import.
