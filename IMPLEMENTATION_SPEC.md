@@ -103,6 +103,8 @@ Updated on 30 July 2026.
   release-workflow bundle under D-091; no registry publication or Gate claim is made.
 - [x] On 30 July 2026 the maintainer selected the unified blue-and-white workbench, bare-`bora`
   entry, readable post-command acknowledgement, and `0.4.3` release boundary in D-092.
+- [x] On 30 July 2026 the maintainer directed the shared wind/sea graphic to keep animating on every
+  workbench page instead of freezing in a section, and selected `0.4.4` as its release (D-093).
 
 ### Open work
 
@@ -125,9 +127,10 @@ Updated on 30 July 2026.
   state root: the window came from a registered `coding` service, from the baseline with its
   diagnostic when no record existed, and `pi remove` deleted only the `bora` provider while keeping
   the backup. The npm removal and `bora pi launch` were never run for real, on either platform.
-- [ ] Repeat the visual and one-core CPU observation for D-090's continuous 6 fps home decoration on
-  Ubuntu and Windows. D-087 measured the superseded finite 8 fps effect and is not evidence for the
-  continuous timer.
+- [ ] Repeat the visual and one-core CPU observation for the continuous 6 fps decoration on Ubuntu
+  and Windows. D-087 measured the superseded finite 8 fps effect and is not evidence for the
+  continuous timer, which D-093 also keeps running while a section is open, so the observation is no
+  longer bounded to the central menu.
 - [ ] Router, managed Open WebUI, sync, and standalone benchmark remain deferred post-0.2 backlog.
 
 No local candidate is activated. Backlog D is complete; Backlogs A–C remain deferred without
@@ -222,6 +225,14 @@ blue/white hierarchy. A successful returning action waits for acknowledgement in
 terminal before Textual can replace its output. Core callbacks, snapshot collection, command
 composition, same-process dispatch, exit codes, and every engine/model/calibration/record contract
 remain unchanged.
+
+`0.4.4` applies D-093 to optional TUI motion only. The shared wind/sea graphic keeps animating on
+whichever page is visible, so an open section no longer freezes the identity every page displays. One
+6 fps timer under the 12 fps ceiling serves home and sections alike, navigation neither restarts nor
+duplicates it, and stopped periods still never count as elapsed animation time. Every plain, colour,
+encoding, size, focus, environment, and unmount kill switch keeps its exact behaviour and remains the
+only way to obtain a static frame. No snapshot, callback, prompt, network, write, service, engine,
+model, calibration, record, dispatch, or exit-code contract changes.
 
 ---
 
@@ -333,6 +344,7 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-090 | On 30 July 2026 the maintainer requests one direct agent shortcut and a richer home identity. `bora pi launch` invokes the pi executable already on PATH with its documented `--provider bora --model <id>` flags, where `<id>` is always `model_alias_contract.alias` from `engine.lock` (`Qwen 3.6` in the current lock). It uses no shell, inherits the current working directory and terminal I/O, starts no bora service, installs nothing, and changes neither `models.json` nor any managed root; the operator first connects with `bora pi` and runs `bora coding` separately. An absent pi or ordinary child failure is operational exit 1 and interruption is 130. The same request supersedes only D-087/D-089's current finite, low-colour decoration: the focused central menu now carries three continuously travelling Unicode wind rows and a three-row sea made from fractional, shaded, and full block cells, both with multiple foreground colours at 6 fps under the existing 12 fps ceiling. The timer stops and the bands disappear on every existing section, focus, size, plain, colour, environment, and unmount kill switch; colour and motion still carry no status or action information. D-087's Ubuntu evidence measures the superseded finite 8 fps implementation, so it is retained as history and is not claimed as a CPU measurement of this continuous effect; a new Ubuntu observation and every Windows visual/CPU check remain open. This authorizes local implementation only, not a version, commit, push, tag, release, upload, remote change, candidate activation, Open WebUI work, or Gate claim. |
 | D-091 | On 30 July 2026 the maintainer directs release of `0.4.2` for D-090. After the complete frozen local suite, packaged-content validation, build, isolated wheel verification, complete uv-tool uninstall, and diff inspection pass, this authorizes the `0.4.2` finalization commit, push to `main`, and tag `v0.4.2`. The GitHub Release is authorized only after that tag's Ubuntu/Windows release workflow is green and only from its exact `bora-workbench-release-bundle`; GitHub Releases remains the sole distribution channel. A real `bora pi launch`, a new Ubuntu visual/one-core CPU observation for the continuous effect, and all Windows visual/CPU observations are explicitly waived for this release and remain follow-up checks, not passed checks or a Gate. No registry upload, remote-setting change, candidate activation, Open WebUI work, engine/model/calibration/record change, or Gate claim is authorized. |
 | D-092 | On 30 July 2026 the maintainer directs a unified workbench presentation and release as `0.4.3`. Bare `bora` becomes the only TUI entry; the `tui` command is removed, `bora --plain` replaces its presentation flag, and explicit subcommands remain the complete scriptable CLI. Every screen retains the close-set `Bora Workbench` title, entirely blue, and the wind/sea graphic: motion remains 6 fps only on the focused home, while sections and `BORA_TUI_MOTION=off` retain a static frame with no timer; plain, encoding, size, focus, and unmount kill switches remain. Sections are centred at a wider responsive measure than home, with bordered action/command/detail panels, concise action guidance, blue commands and labels, and high-contrast white prose; shared Rich CLI status output follows the same blue/white identity while warnings and errors remain text-labelled. After any successful returning action, the restored terminal waits for Enter before Textual reopens, so print-only output cannot disappear immediately; non-zero results and terminal actions still never reopen. This changes no snapshot, callback, prompt, network, write, service, engine, model, calibration, record, or same-process dispatch contract. After the complete frozen suite, validation, build, isolated wheel/uninstall checks, and diff inspection pass, the maintainer authorizes the `0.4.3` finalization commit, push to `main`, and tag `v0.4.3`; the GitHub Release is authorized only after the tagged Ubuntu/Windows workflow is green and only from its exact bundle. Existing manual visual/CPU, real foreground, and Windows terminal observations remain unavailable follow-up checks, not passed checks or a Gate. GitHub Releases remains the only distribution channel; no registry upload, remote setting, candidate activation, Open WebUI work, or Gate claim is authorized. |
+| D-093 | On 30 July 2026 the maintainer directs the optional wind/sea graphic to keep moving on every workbench page and releases that change as `0.4.4`. `0.4.3` animated only the focused central menu and froze the frame as soon as a section opened, so the identity D-092 gives every page stopped moving on six of its seven pages. One 6 fps timer, still under the 12 fps ceiling, now serves whichever page is visible; opening or leaving a section keeps that same timer instead of freezing, restarting, or duplicating it, and elapsed animation time still excludes every stopped period so the graphic resumes rather than jumping. The frame functions remain pure in time, dimensions, and seed, decoration still carries no state, and the plain, `NO_COLOR`, `TERM=dumb`, encoding, 80x24 size, focus, `BORA_TUI_MOTION=off`, and unmount switches keep their exact behaviour as the only routes to a static frame or no timer. This changes no snapshot, callback, prompt, network, write, service, engine, model, calibration, record, dispatch, or exit-code contract, so existing `calibration-record/v6` files remain valid. Motion now runs while a section is read, so its cost is no longer bounded by staying on the central menu and the manual Ubuntu and Windows visual/one-core CPU observation remains an unavailable follow-up check rather than a passed check or a Gate. After the complete frozen suite, validation, build, isolated wheel/uninstall verification, and diff inspection pass, this authorizes the `0.4.4` finalization commit, push to `main`, and tag `v0.4.4`; the GitHub Release is authorized only after the tagged Ubuntu/Windows workflow is green and only from its exact bundle. GitHub Releases remains the only distribution channel; no registry upload, remote setting, candidate activation, Open WebUI work, or Gate claim is authorized. |
 
 A new durable decision updates this table in the same step that authorizes it.
 
@@ -988,8 +1000,11 @@ remote-setting changes, and candidate activation are not authorized.
 - [x] D-091 authorizes `0.4.2` finalization, tag, and GitHub-only release after green local and tagged
   automation, while explicitly waiving rather than passing the new manual observations.
 - [x] D-092 makes bare `bora` the only workbench entry, unifies every screen under the blue/white
-  identity and static section graphics, preserves returning output until acknowledgement, and
+  identity and shared wind/sea graphics, preserves returning output until acknowledgement, and
   authorizes `0.4.3` through the same exact green GitHub-only release path.
+- [x] D-093 keeps that shared graphic animating on every page from one 6 fps timer, leaves every kill
+  switch and core contract untouched, and authorizes `0.4.4` through the same release path while the
+  manual visual/CPU observation stays open.
 - [~] The `0.4.1` presentation checks are programmatic pseudo-terminal runs at 60x20, 80x24, and
   100x32; manual visual and Windows terminal checks were not performed and are not called passed.
 - [x] Backlog B and its real Open WebUI spike remain deferred until a separate request.

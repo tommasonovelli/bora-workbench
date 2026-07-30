@@ -246,22 +246,24 @@ background-work API.
 ### TUI development boundary
 
 Bare `bora` imports the TUI lazily after interactive terminal checks; there is no `tui` subcommand.
-Its app may schedule only the optional focused-home presentation timer and one Textual thread worker
-around `collect_workbench_snapshot()`. Open sections retain a static graphic with no timer.
+Its app may schedule only one optional presentation timer, shared by home and every open section,
+and one Textual thread worker around `collect_workbench_snapshot()`. A disabled or hidden graphic
+owns no timer at all.
 Opening and refresh must remain network-free and non-mutating: do not reuse a CLI presenter that
 cleans state, hash model payloads, write receipts, create roots, or start a service.
 
 Advice, command composition, capability decisions, and motion frames stay pure and deterministic.
 Headless Pilot tests cover navigation, blocked collectors, serialized refresh, exact recursive parser
 acceptance, teardown-before-dispatch, terminal versus returning actions, output acknowledgement,
-kill switches, continuous home frames, static section graphics, and absence of disabled timers. Real
+kill switches, continuous frames on home and inside a section, and absence of disabled timers. Real
 network, model, server, npm, uv update, and administrative work remains behind fakes or isolated
 package smoke tests.
 
 The E8 observation in `evidence/tui/ubuntu-motion.json` used a local Ubuntu 120x40 pseudo-terminal,
 three alternating disabled/automatic pairs, and the superseded finite 8 fps setting. It is not a
-manual visual check, portable benchmark, or CPU result for D-090's continuous 6 fps effect. A new
-Ubuntu observation and the Windows visual/CPU checks remain unavailable rather than passed.
+manual visual check, portable benchmark, or CPU result for D-090's continuous 6 fps effect, which
+D-093 also keeps running while a section is open. A new Ubuntu observation and the Windows
+visual/CPU checks remain unavailable rather than passed.
 
 Before adding another dependency:
 

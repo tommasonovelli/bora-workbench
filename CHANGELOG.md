@@ -3,6 +3,33 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
+## [0.4.4] - 2026-07-30
+
+### Changed
+
+- The optional wind and sea now keep travelling on every workbench page instead of freezing when a
+  section is opened (D-093). One 6 fps timer, still under the 12 fps ceiling, serves whichever
+  surface is visible, and moving between the central menu and a section neither restarts nor
+  duplicates it. Elapsed animation time continues to exclude every period in which the timer was
+  stopped, so the graphic never jumps forward after a pause.
+- Every existing kill switch keeps its exact behaviour and is now the only way to obtain a static
+  frame: `BORA_TUI_MOTION=off` renders one deterministic frame with no timer, while `bora --plain`,
+  `NO_COLOR`, `TERM=dumb`, a limited output encoding, a terminal smaller than 80x24, lost focus, and
+  unmount hide the bands or release the timer. Decoration still carries no state, and the frame
+  functions remain pure in time, dimensions, and seed.
+
+### Verification limits
+
+- Automated tests cover the surviving single timer across section navigation, advancing frames
+  behind an open section, the unchanged focus and small-terminal switches, and the static
+  `BORA_TUI_MOTION=off` path on both home and sections. The complete frozen suite, validation,
+  build, isolated wheel, and complete uv-tool uninstall checks are release requirements under D-093.
+- Motion now runs while a section is read, so its cost is no longer bounded by staying on the
+  central menu. The manual visual and one-core CPU observation for the continuous effect remains
+  unavailable on Ubuntu and Windows and is not called passed or a Gate. The engine, model,
+  calibration protocol, record format, command contract, reserves, and candidate lifecycle are
+  unchanged; no candidate is activated and coverage remains `GATE-PARTIAL`.
+
 ## [0.4.3] - 2026-07-30
 
 ### Changed

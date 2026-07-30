@@ -196,6 +196,6 @@ def _sea_row(frame: _BandFrame, row: int) -> Row:
 
 
 def sea(elapsed_seconds: float, dimensions: MotionDimensions, seed: int) -> Text:
-    """Return a layered fractional-block sea that keeps moving while the home is focused."""
+    """Return a layered fractional-block sea that keeps moving on every focused surface."""
     frame = _BandFrame(_band_width(dimensions), max(0.0, elapsed_seconds), seed)
     return _styled_band(tuple(_sea_row(frame, row) for row in range(SEA_ROWS)))

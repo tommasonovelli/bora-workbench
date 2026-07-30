@@ -101,8 +101,8 @@ process. Successful returning actions keep their output visible behind a `Press 
 acknowledgement, then reopen and refresh. Modes, calibration, update, and uninstall are terminal;
 failures and interruptions never reopen and propagate unchanged.
 
-Home motion carries no information. Wind and sea animate at 6 fps under the 12 fps ceiling, then
-freeze without a timer in sections. `BORA_TUI_MOTION=off` retains the static graphic; plain, colour,
+Motion carries no information. Wind and sea animate at 6 fps under the 12 fps ceiling on every page,
+sections included, from one shared timer. `BORA_TUI_MOTION=off` retains the static graphic; plain, colour,
 encoding, terminal-size, focus, and unmount switches remain enforced. Full details are in
 [Terminal workbench](tui.md).
 

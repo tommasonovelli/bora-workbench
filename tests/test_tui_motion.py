@@ -96,12 +96,12 @@ def test_motion_size_boundary_keeps_small_layout_static() -> None:
     assert supports_motion_size(MotionDimensions(80, 23)) is False
 
 
-def test_motion_timer_is_capped_and_stops_on_navigation_and_focus_loss() -> None:
-    """Stay below 12 fps on the central menu and stop immediately on runtime switches."""
+def test_motion_timer_is_capped_and_survives_navigation_but_not_focus_loss() -> None:
+    """Keep one capped timer across sections (D-093) and drop it when the terminal loses focus."""
     intervals: list[float] = []
 
     async def exercise() -> None:
-        """Capture timer requests while driving home navigation and focus events."""
+        """Capture timer requests while driving section navigation and focus events."""
         workbench = WorkbenchApp("0.test", _motion_terminal(), _failed_collection)
         original = workbench.set_interval
 
@@ -119,18 +119,38 @@ def test_motion_timer_is_capped_and_stops_on_navigation_and_focus_loss() -> None
             assert workbench.query_one("#wind").display is True
             assert workbench.query_one("#sea").display is True
             await pilot.press("enter")
-            assert workbench._motion_timer is None
+            assert workbench._motion_timer is not None
             assert workbench.query_one("#wind").display is True
             assert workbench.query_one("#sea").display is True
-            frozen = str(workbench.query_one("#sea").render())
-            await pilot.pause(FRAME_INTERVAL_SECONDS * 1.5)
-            assert str(workbench.query_one("#sea").render()) == frozen
             await pilot.press("escape")
-            assert intervals == [FRAME_INTERVAL_SECONDS, FRAME_INTERVAL_SECONDS]
+            assert intervals == [FRAME_INTERVAL_SECONDS]
             workbench.on_app_blur(events.AppBlur())
             assert workbench._motion_timer is None
             workbench.on_app_focus(events.AppFocus())
-            assert len(intervals) == 3
+            assert intervals == [FRAME_INTERVAL_SECONDS, FRAME_INTERVAL_SECONDS]
+            await pilot.press("q")
+
+    asyncio.run(exercise())
+
+
+def test_motion_continues_inside_an_open_section(monkeypatch) -> None:
+    """Keep both bands travelling behind an opened section, which D-093 requires."""
+    clock = {"now": 0.0}
+    monkeypatch.setattr(app_module, "monotonic", lambda: clock["now"])
+
+    async def exercise() -> None:
+        """Open the first section and advance the fake clock behind its panels."""
+        workbench = WorkbenchApp("0.test", _motion_terminal(), _failed_collection)
+        async with workbench.run_test(size=(120, 40)) as pilot:
+            await pilot.pause(0.05)
+            await pilot.press("enter")
+            wind_frame = str(workbench.query_one("#wind").render())
+            sea_frame = str(workbench.query_one("#sea").render())
+            clock["now"] = 4.0
+            workbench._advance_motion()
+            assert workbench._motion_timer is not None
+            assert str(workbench.query_one("#wind").render()) != wind_frame
+            assert str(workbench.query_one("#sea").render()) != sea_frame
             await pilot.press("q")
 
     asyncio.run(exercise())

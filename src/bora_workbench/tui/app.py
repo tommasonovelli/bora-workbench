@@ -198,7 +198,7 @@ class WorkbenchApp(App[TuiResult]):
         return MotionDimensions(self.size.width, self.size.height)
 
     def _can_show_decoration(self) -> bool:
-        """Require colour, focus, and enough cells before either static band is visible."""
+        """Require colour, focus, and enough cells before either band is visible."""
         return (
             not self._terminal_mode.is_plain
             and self._has_app_focus
@@ -206,12 +206,8 @@ class WorkbenchApp(App[TuiResult]):
         )
 
     def _can_run_motion(self) -> bool:
-        """Animate only on home while keeping the same graphic static in sections."""
-        return (
-            self._can_show_decoration()
-            and self._terminal_mode.is_motion_enabled
-            and self._open_index is None
-        )
+        """Animate every visible surface, because D-093 no longer freezes an open section."""
+        return self._can_show_decoration() and self._terminal_mode.is_motion_enabled
 
     def _current_motion_elapsed(self) -> float:
         """Return active animation time without counting periods where it was stopped."""
@@ -226,7 +222,7 @@ class WorkbenchApp(App[TuiResult]):
             self._motion_timer = None
 
     def _freeze_motion(self) -> None:
-        """Retain elapsed time and stop periodic work while preserving one visible frame."""
+        """Keep one visible frame without periodic work while motion itself is disabled."""
         self._motion_elapsed = self._current_motion_elapsed()
         self._motion_started_at = None
         self._stop_motion_timer()
@@ -249,7 +245,7 @@ class WorkbenchApp(App[TuiResult]):
             widget.display = True
 
     def _sync_motion(self) -> None:
-        """Animate home or retain the shared static frame without unnecessary wakeups."""
+        """Animate the shared bands or retain a static frame without unnecessary wakeups."""
         if not self._can_show_decoration():
             self._hide_decoration()
             return
@@ -277,7 +273,7 @@ class WorkbenchApp(App[TuiResult]):
         self._sync_motion()
 
     def on_app_focus(self, event: events.AppFocus) -> None:
-        """Resume any unfinished animation when Textual reports restored focus."""
+        """Resume animation on whichever surface is visible when focus returns."""
         self._has_app_focus = True
         self._sync_motion()
 

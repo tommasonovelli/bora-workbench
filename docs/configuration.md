@@ -60,18 +60,19 @@ invalid-input status 2. `off` removes every animation timer while leaving the co
 and all commands available.
 
 Automatic motion is decorative and carries no unique information. Three blue-to-white Unicode wind
-rows and a layered blue sea update at 6 frames per second while focused home remains visible at
-80x24 or larger, below the 12 fps ceiling. Opening a section or setting `BORA_TUI_MOTION=off` removes
-the timer but retains a static frame around the shared `Bora Workbench` title. Losing detectable
-focus, shrinking the terminal, selecting root `--plain`, setting `NO_COLOR`, using `TERM=dumb` or
-limited encoding, or unmounting removes the timer immediately; capability switches also hide the
-bands.
+rows and a layered blue sea update at 6 frames per second on whichever focused page is visible at
+80x24 or larger, below the 12 fps ceiling. Home and an open section share that one timer, so moving
+between them neither restarts nor duplicates it. `BORA_TUI_MOTION=off` removes the timer but retains
+a static frame around the shared `Bora Workbench` title. Losing detectable focus, shrinking the
+terminal, selecting root `--plain`, setting `NO_COLOR`, using `TERM=dumb` or limited encoding, or
+unmounting removes the timer immediately; capability switches also hide the bands.
 
 The existing observation in
 [`evidence/tui/ubuntu-motion.json`](../evidence/tui/ubuntu-motion.json) measured the superseded
 finite 8 fps implementation. Its 2.666 percentage-point active-window result and static settled
-window are retained as history, not claimed for the current continuous effect. A new Ubuntu
-observation and the Windows visual/CPU checks have not been performed.
+window are retained as history, not claimed for the current continuous effect, which now also runs
+while a section is read. A new Ubuntu observation and the Windows visual/CPU checks have not been
+performed.
 
 ## Model identity and path
 

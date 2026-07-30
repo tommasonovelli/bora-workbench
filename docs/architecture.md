@@ -55,9 +55,10 @@ no network request, payload hash, receipt write, state cleanup, directory creati
 start. There is no background snapshot poll: only opening and a serialized explicit refresh collect
 again.
 
-Textual owns only its presentation event loop, the optional focused-home motion timer, and one
-thread worker for the synchronous collector. Sections retain a static copy of the shared wind/sea
-frame without a timer. No core module gains an async API, scheduler, executor, or UI knowledge. A
+Textual owns only its presentation event loop, one optional motion timer shared by every page, and
+one thread worker for the synchronous collector. Sections animate the same wind/sea frame as home
+rather than freezing a copy of it. No core module gains an async API, scheduler, executor, or UI
+knowledge. A
 selected command returns from Textual first; using the existing parser afterwards keeps all
 validation, confirmation, lifecycle, and exit-code ownership in the real callback and leaves no TUI
 parent around update or uninstall. Successful returning callbacks wait for terminal acknowledgement

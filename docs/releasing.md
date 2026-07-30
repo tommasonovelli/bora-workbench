@@ -5,8 +5,8 @@ requires explicit human authorization for the push, tag, and GitHub Release.
 
 ## Public status
 
-- release described by this branch: `bora-workbench 0.4.3`;
-- preceding public version: `bora-workbench 0.4.2` on GitHub Releases;
+- release described by this branch: `bora-workbench 0.4.4`;
+- preceding public version: `bora-workbench 0.4.3` on GitHub Releases;
 - historical versions `0.1.0` through `0.1.6` remain immutable under their original
   `qwen-launcher` artifact identity;
 - every published bundle comes from its green Ubuntu/Windows release workflow and contains the
@@ -56,6 +56,37 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.4.4
+
+`0.4.4` distributes D-093 and changes only optional TUI motion.
+
+`0.4.3` animated the wind and sea on the central menu and froze them the moment a section opened, so
+the identity that every page shares stopped moving on six of seven pages. One 6 fps timer now serves
+whichever page is visible, still under the 12 fps ceiling. Opening or leaving a section keeps that
+same timer instead of freezing, restarting, or duplicating it, and elapsed animation time still
+excludes every stopped period, so the graphic resumes instead of jumping forward.
+
+Every kill switch is unchanged and is now the only route to a static frame: `BORA_TUI_MOTION=off`
+renders one deterministic frame with no timer, while root `--plain`, `NO_COLOR`, `TERM=dumb`, limited
+encoding, a terminal below 80x24, focus loss, and unmount hide the bands or release the timer. The
+frame functions remain pure in time, dimensions, and seed, and decoration still carries no status.
+
+Nothing else moves. The snapshot boundary, command composition, same-process handoff, output
+acknowledgement, exit codes, engine, model, calibration protocol, record format,
+`command_contract_sha256`, reserves, and candidate lifecycle are unchanged, so existing
+`calibration-record/v6` files remain valid.
+
+Release checks for this version are the complete frozen local suite, packaged-content validation,
+build, isolated wheel verification, complete uv-tool uninstall, diff inspection, and the green tagged
+Ubuntu/Windows workflow. Because motion now runs while a section is read, its cost is no longer
+bounded by staying on the central menu; the manual visual and one-core CPU observation on Ubuntu and
+Windows remains unavailable follow-up verification, not a passed check or a Gate, and
+`evidence/tui/ubuntu-motion.json` still measures the superseded finite 8 fps effect. D-093 authorizes
+the finalization commit, push to `main`, and tag `v0.4.4` after the local checks pass; the GitHub
+Release is authorized only after that tag's workflow is green and only from its exact
+`bora-workbench-release-bundle`. Publication remains GitHub Releases only, no candidate is activated,
+and coverage remains `GATE-PARTIAL`.
 
 ### Release 0.4.3
 
@@ -416,7 +447,8 @@ additional manual Ubuntu/Windows and hardware calibration runs before publicatio
 path between two published releases is likewise follow-up verification. D-091 waives the `0.4.2`
 manual pi-launch and continuous-motion observations while keeping them open. D-092 carries those
 open checks into `0.4.3` and also leaves the revised cross-screen presentation without a manual
-Windows observation. The automated release matrix remains required; no waiver is a passed Gate,
+Windows observation. D-093 carries the same open motion observation into `0.4.4`, where it now covers
+sections as well. The automated release matrix remains required; no waiver is a passed Gate,
 and the maintainer will perform platform checks after release.
 
 ## Version, tag, and commit

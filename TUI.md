@@ -31,8 +31,8 @@ available only through the TUI.
 - exact composition of current commands, with per-action flag toggles;
 - a calibration wizard that can produce only valid option combinations;
 - post-UI command dispatch with normal terminal I/O and existing confirmations;
-- one blue/white visual identity, wider centred sections, and motion-free static section graphics;
-- continuous multicolour Unicode wind/sea motion on home with accessibility kill switches.
+- one blue/white visual identity and wider centred sections sharing the same wind/sea graphic;
+- continuous multicolour Unicode wind/sea motion on every page with accessibility kill switches.
 
 ### 1.2 Excluded
 
@@ -307,7 +307,7 @@ agent, editor, or provider appears.
 ## 9. Interaction and terminal behavior
 
 The interaction stack is the accepted Textual `8.2.8` dependency from D-086. Textual owns only the
-presentation event loop, one snapshot thread worker, and the optional home motion timer; core APIs remain
+presentation event loop, one snapshot thread worker, and the optional motion timer; core APIs remain
 synchronous. The implementation contains no parallel Rich raw-input loop or handwritten
 `termios`/`msvcrt` behavior.
 
@@ -349,13 +349,14 @@ headings, labels, marker, and exact commands; high-contrast white body prose; an
 secondary facts. Shared Rich CLI helpers use the same identity while retaining explicit warning and
 error labels. Colour and decoration carry no state.
 
-D-092 refines D-090's visual effect without changing its home animation rate:
+D-092 refines D-090's visual effect and D-093 extends it to every page without changing its rate:
 
 - three wind rows use sparse `·`, `╌`, `╍`, and `━` ribbons through blue-to-white sky colours;
 - a fractional-block wave surface sits over two blue shaded/full-cell water rows;
 - gust and sea remain pure functions of time, dimensions, and seed;
-- motion continues only on focused home, at 6 fps under a 12 fps ceiling;
-- an open section freezes and retains the current frame while removing the timer;
+- motion continues on whichever focused page is visible, at 6 fps under a 12 fps ceiling;
+- opening or leaving a section keeps the one existing timer instead of freezing, restarting, or
+  duplicating it, and stopped periods never count as elapsed animation time;
 - `BORA_TUI_MOTION=off` renders a deterministic static frame with no timer;
 - small terminals, lost focus, `bora --plain`, `NO_COLOR`, `TERM=dumb`, and limited encoding hide
   both bands and own no timer;
@@ -363,8 +364,9 @@ D-092 refines D-090's visual effect without changing its home animation rate:
   the full meaning and every action.
 
 The raw observation in `evidence/tui/ubuntu-motion.json` measured the superseded finite 8 fps effect.
-It remains historical evidence and is not a CPU result for the continuous implementation. A new
-Ubuntu observation and the Windows visual/CPU checks have not been performed.
+It remains historical evidence and is not a CPU result for the continuous implementation, whose cost
+is no longer bounded by staying on the central menu. A new Ubuntu observation and the Windows
+visual/CPU checks have not been performed.
 
 No animation appears in normal CLI commands, launch, calibration, setup, update, or uninstall.
 

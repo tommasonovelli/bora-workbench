@@ -41,8 +41,8 @@ Every page retains the same close-set, entirely blue title:
                               Bora Workbench
 ```
 
-On a capable terminal, three wind rows frame the top and a layered sea frames the bottom. Home uses
-the 6 fps continuous effect; an open section freezes the current frame and stops its timer. Content
+On a capable terminal, three wind rows frame the top and a layered sea frames the bottom. Every page
+uses the same 6 fps continuous effect, including an open section, from one shared timer. Content
 uses blue headings, labels, markers, commands, and borders against high-contrast white prose, while
 the terminal's own background remains untouched. Colour never carries status by itself.
 
@@ -56,7 +56,7 @@ Home shows the machine identity, one deterministic next step, and seven summary 
 
 ```text
                          ▰  Bora Workbench  ▰
-                   0.4.3 · AMD Ryzen 9 · 64.0 GiB · cuda
+                   0.4.4 · AMD Ryzen 9 · 64.0 GiB · cuda
 
                        The pinned engine is not active.
                              bora engine install
@@ -68,7 +68,7 @@ Home shows the machine identity, one deterministic next step, and seven summary 
      │    Diagnostics         no blocking error                     │
      │    Pi                  not found on PATH                     │
      │    Settings            all defaults                          │
-     │    This installation   version 0.4.3                         │
+     │    This installation   version 0.4.4                         │
      ╰──────────────────────────────────────────────────────────────╯
 ```
 
@@ -168,16 +168,20 @@ Hugging Face cache removal with a default of no.
 
 | Value | Effect |
 |---|---|
-| `auto` | animate home when every capability permits; freeze the frame in sections |
+| `auto` | animate every page, home and sections alike, when every capability permits |
 | `off` | retain static title/wind/sea graphics with no animation timer |
 
 Unknown, empty, or differently cased values exit 2. Plain mode, `NO_COLOR`, `TERM=dumb`, limited
 encoding, a terminal below 80x24, or detectable focus loss hides the bands and owns no timer.
 Unmount always releases the timer. Decoration communicates no status or action.
 
+Moving between the menu and a section neither restarts nor duplicates the timer, and time spent with
+motion stopped is not counted, so the graphic resumes where it left off rather than jumping.
+
 [`evidence/tui/ubuntu-motion.json`](../evidence/tui/ubuntu-motion.json) measured the superseded finite
-8 fps implementation, not the current continuous 6 fps effect. A new Ubuntu observation and Windows
-visual/CPU checks remain unavailable follow-up work, not passed checks.
+8 fps implementation, not the current continuous 6 fps effect, which now also runs while a section is
+read. A new Ubuntu observation and Windows visual/CPU checks remain unavailable follow-up work, not
+passed checks.
 
 ## Complete CLI path
 
