@@ -42,7 +42,7 @@ without opening anything:
 
 ```text
                         B O R A   W O R K B E N C H
-                     0.4.0 · AMD Ryzen 9 · 64.0 GiB · cuda
+                     0.4.1 · AMD Ryzen 9 · 64.0 GiB · cuda
 
                        The pinned engine is not active.
                              bora engine install
@@ -54,7 +54,7 @@ without opening anything:
      │    Diagnostics         no blocking error                     │
      │    Pi                  not found on PATH                     │
      │    Settings            all defaults                          │
-     │    This installation   version 0.4.0                         │
+     │    This installation   version 0.4.1                         │
      ╰──────────────────────────────────────────────────────────────╯
 ```
 

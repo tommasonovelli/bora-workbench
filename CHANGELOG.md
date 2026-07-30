@@ -3,6 +3,49 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
+## [0.4.1] - 2026-07-30
+
+### Changed
+
+- `bora tui` presents its seven read-only sections through one central menu instead of a persistent
+  rail (D-089). The home surface carries the identity, the single deterministic next step, and seven
+  menu rows that each hold a one-line summary derived from the snapshot, so local state is readable
+  without opening a section. `Enter` opens an entry as a full window and `Esc` returns, so one marker
+  moves at a time; the previous arrows-for-screens and `Tab`-for-actions split is removed and `Tab` is
+  no longer bound.
+- The workbench draws on the terminal's own background. The application runs in ANSI colour mode and
+  every surface requests the default background, so the surrounding theme shows through; colour is
+  applied only to the brand, the selection marker, and the composed command. Plain presentation stays
+  monochrome and pure ASCII.
+- Sections list their actions once and switch the optional flags of the marked action in place, each
+  bound to the single letter shown beside it. Every reachable argv remains available and the parser
+  check is derived from those same declarations, so `Setup` presents four actions rather than twenty
+  enumerated flag combinations. Mutually exclusive `pi` flags exclude each other by construction.
+- Optional decoration follows the new layout: two wind gusts anchor the top corners with the long
+  side alternating between their rows, and two sea rows sit beneath the central menu. Purity, the
+  12 fps ceiling, finite settlement, and every accessibility, size, focus, terminal, and environment
+  kill switch are unchanged.
+- The TUI composes `bora pull` and `bora rm` without the optional `qwen` handle. This distribution
+  pins one model, so the handle named what the bare form already did; the CLI still accepts it.
+
+### Fixed
+
+- The optional motion timer is released when Textual unmounts the widget tree, so a scheduled frame
+  can no longer outlive the widgets it draws into and raise during teardown.
+- Single-letter key bindings are released to the uninstall phrase field while it has focus, replacing
+  the bespoke interception that only covered `r`.
+
+### Verification limits
+
+- Automated tests and local pseudo-terminal runs at 60x20, 80x24, and 100x32 cover plain and full
+  presentation, menu navigation, section opening, flag toggles, refresh, quit, alternate-screen exit,
+  and absence of both explicit background colours and tracebacks. They are programmatic checks, not
+  manual visual checks; no Windows terminal check was performed, and none is described as passed or
+  as a calibration Gate.
+- The engine, model, calibration protocol, record format, command contract, reserves, managed roots,
+  and candidate lifecycle are unchanged; no candidate is activated and coverage remains
+  `GATE-PARTIAL`.
+
 ## [0.4.0] - 2026-07-29
 
 ### Added

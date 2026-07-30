@@ -17,9 +17,9 @@ CUDA on a machine with more than one GPU is detected, but startup is blocked: ph
 only been verified on single-GPU hosts. If `nvidia-smi` is missing, fails, or produces unreadable
 data, the launcher uses the CPU backend and shows why.
 
-## 2. Installing bora-workbench 0.4.0
+## 2. Installing bora-workbench 0.4.1
 
-`bora-workbench` is distributed through GitHub Releases. These commands download the `v0.4.0`
+`bora-workbench` is distributed through GitHub Releases. These commands download the `v0.4.1`
 manifest, verify the installer and wheel, and install with pinned uv `0.11.28` and CPython
 `3.12.13`. They require no administrator privileges.
 
@@ -28,7 +28,7 @@ manifest, verify the installer and wheel, and install with pinned uv `0.11.28` a
 Open a terminal in a new directory and copy the complete block:
 
 ```bash
-version="0.4.0"
+version="0.4.1"
 base="https://github.com/tommasonovelli/bora-workbench/releases/download/v${version}"
 wheel="bora_workbench-${version}-py3-none-any.whl"
 
@@ -52,7 +52,7 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 Open PowerShell in a new directory and copy the complete block:
 
 ```powershell
-$Version = "0.4.0"
+$Version = "0.4.1"
 $Base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v$Version"
 $Wheel = "bora_workbench-$Version-py3-none-any.whl"
 
@@ -101,7 +101,7 @@ testing an exact repository revision and never follows a branch or tag implicitl
 
 ## 3. Verifying the tool
 
-For `0.4.0`:
+For `0.4.1`:
 
 ```bash
 bora --version

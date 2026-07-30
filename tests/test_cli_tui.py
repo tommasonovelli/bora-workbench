@@ -189,7 +189,7 @@ def test_cli_plain_mode_reaches_tui_after_capability_check(monkeypatch) -> None:
     result = runner.invoke(app, ["tui", "--plain"])
 
     assert result.exit_code == 0
-    assert calls == [("0.4.0", selected, None)]
+    assert calls == [("0.4.1", selected, None)]
 
 
 def test_returning_action_dispatches_after_teardown_then_reopens(monkeypatch) -> None:
@@ -277,7 +277,7 @@ def test_same_process_dispatch_invokes_real_typer_leaf_and_maps_interrupt(monkey
     )
 
     assert cli_module._dispatch_tui_arguments(("doctor",)) == 0
-    assert calls == ["0.4.0"]
+    assert calls == ["0.4.1"]
 
     def interrupt(version, stdout, stderr):
         """Raise the interruption the Typer root maps to contractual exit 130."""

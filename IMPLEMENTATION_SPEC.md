@@ -193,6 +193,13 @@ This boundary changes no engine release, model identity, calibration protocol, r
 command contract, reserve, managed root, or candidate lifecycle. Open WebUI remains separately
 deferred and is not represented by placeholder TUI rows, actions, or service roles.
 
+`0.4.1` redesigns that front end's presentation under D-089 and changes nothing else. The workbench
+draws on the terminal's own background, opens on one central menu whose rows summarize local state,
+and gives each section a full window reached with `Enter` and left with `Esc`; a section switches the
+optional flags of its marked action in place rather than listing every flag combination. The
+read-only boundary, the non-mutating snapshot, the post-teardown handoff, and the motion budget stay
+exactly as D-084–D-087 fixed them.
+
 ---
 
 ## 2. Hierarchy of sources of truth
@@ -298,6 +305,8 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-086 | The TUI dependency gate is `GO` with Textual `8.2.8`, resolved exactly by `uv.lock`. Its MIT licence, Python 3.12 support, documented Linux and Windows support, maintained release history, Worker API, and headless Pilot tests meet the milestone's needs. The 29 July 2026 review found no published PyPI or GitHub advisory for Textual and the frozen dependency audit found no known vulnerability; upstream's lack of a published security policy remains a recorded limitation. Textual owns only the presentation event loop and one thread worker for the synchronous snapshot collector. Core modules gain no async API, scheduler, executor, or other concurrency. |
 | D-087 | On 29 July 2026 the maintainer accepts the available Ubuntu-only E8 motion check and directs implementation to continue through E9 while the Windows motion measurement is recorded as unavailable. This is scoped to optional TUI motion and does not turn any other unavailable Windows acceptance check into a pass. The final local 120x40 pseudo-terminal observation used three alternating static/automatic pairs at 8 fps: automatic motion added 2.666 percentage points of median one-core CPU during its three-second active window, both modes measured 0.0% median in the two-second settled window, and every run exited 0. Motion therefore ships with the 12 fps ceiling, finite settlement, and all kill switches from D-085; the raw observation and its limits live in `evidence/tui/ubuntu-motion.json`. This authorizes neither `0.4.0` finalization nor a push, tag, release, upload, remote change, candidate activation, or Gate claim. |
 | D-088 | On 29 July 2026, after E9 and the available Ubuntu pseudo-terminal acceptance checks, the maintainer directs release of `0.4.0` if the TUI checks remain green. The 60x20 and 120x40 plain/full presentation runs, explicit refresh/navigation/quit sequence, returning `doctor` handoff, terminal `coding` preflight handoff, alternate-screen exit, zero isolated-root writes, and no-traceback checks passed; their raw observation is `evidence/tui/ubuntu-acceptance.json`. They are programmatic pseudo-terminal checks, not manual visual checks. A real foreground model process and its `Ctrl-C` restoration were unavailable because the isolated roots held no engine or model; Windows TUI checks were not performed under D-087. Neither is called passed. After the complete frozen local suite is green, this decision authorizes the `0.4.0` finalization commit, push to `main`, and tag `v0.4.0`; the GitHub Release is authorized only after that tag's release workflow is green and only from its exact bundle. GitHub Releases remains the only distribution channel; no registry upload, remote-setting change, candidate activation, Open WebUI work, or Gate claim is authorized. |
+
+| D-089 | On 30 July 2026 the maintainer rejects the shipped `0.4.0` presentation and directs its redesign and release as `0.4.1`. The dashboard painted its own background inside the terminal, split movement between arrows for screens and `Tab` for a screen's actions, and enumerated one menu row per flag combination, so `Setup` listed twenty rows for four operations and the explanatory text stopped being read. The workbench therefore requests the terminal's default background and spends colour only on the brand, the marker, and the composed command; it opens on one central menu whose rows each carry a snapshot-derived summary, with `Run` first; `Enter` opens an entry as a full window and `Esc` returns, so one marker moves at a time and `Tab` is unbound; and each section lists its actions once while switching the marked action's flags in place. This is a presentation decision only: the read-only boundary, the non-mutating snapshot, the post-teardown same-process handoff, the dispositions, the calibration wizard's valid-only combinations, and the motion budget of D-084–D-087 are unchanged, and the flag toggles keep every reachable argv available under the same recursive parser check. The TUI composes `bora pull` and `bora rm` without the optional `qwen` handle because this distribution pins one model; the CLI still accepts it. After the complete frozen local suite is green, this decision authorizes the `0.4.1` finalization commit, push to `main`, and tag `v0.4.1`; the GitHub Release is authorized only after that tag's release workflow is green and only from its exact bundle. The local pseudo-terminal runs are programmatic, not manual visual checks, no Windows terminal check was performed, and neither is called passed. GitHub Releases remains the only distribution channel; no registry upload, remote-setting change, candidate activation, Open WebUI work, or Gate claim is authorized. |
 
 A new durable decision updates this table in the same step that authorizes it.
 
@@ -940,6 +949,11 @@ remote-setting changes, and candidate activation are not authorized.
   real foreground `Ctrl-C`, and all Windows TUI checks were unavailable and are not called passed.
 - [x] `0.4.0` finalization follows automated acceptance; D-088 authorizes the push, tag, and GitHub
   Release from the exact green workflow bundle.
+- [x] `0.4.1` redesigns the front end's presentation only — terminal background, central menu,
+  full-window sections, per-action flag toggles — leaving the read-only boundary, snapshot, handoff,
+  and motion budget of D-084–D-087 unchanged (D-089).
+- [~] The `0.4.1` presentation checks are programmatic pseudo-terminal runs at 60x20, 80x24, and
+  100x32; manual visual and Windows terminal checks were not performed and are not called passed.
 - [x] Backlog B and its real Open WebUI spike remain deferred until a separate request.
 
 ---

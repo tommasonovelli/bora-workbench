@@ -5,8 +5,8 @@ requires explicit human authorization for the push, tag, and GitHub Release.
 
 ## Public status
 
-- release described by this branch: `bora-workbench 0.4.0`;
-- preceding public version: `bora-workbench 0.3.2` on GitHub Releases;
+- release described by this branch: `bora-workbench 0.4.1`;
+- preceding public version: `bora-workbench 0.4.0` on GitHub Releases;
 - historical versions `0.1.0` through `0.1.6` remain immutable under their original
   `qwen-launcher` artifact identity;
 - every published bundle comes from its green Ubuntu/Windows release workflow and contains the
@@ -56,6 +56,44 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.4.1
+
+`0.4.1` redesigns the presentation of `bora tui` and changes nothing else (D-089).
+
+`0.4.0` shipped a dashboard that painted its own background inside the terminal, moved between
+screens with the arrows while moving between a screen's actions with `Tab`, and listed one menu row
+per flag combination. Two markers had to be tracked at once, `Setup` showed twenty rows for four
+operations, and the explanatory text was long enough that it stopped being read.
+
+The workbench now requests the terminal's default background, so the surrounding theme shows through
+and colour is spent only on the brand, the selection marker, and the composed command. It opens on
+one central menu, `Run` first, whose seven rows each carry a one-line summary derived from the
+snapshot; `Enter` opens an entry as a full window and `Esc` returns, so one marker moves at a time
+and `Tab` is unbound. A section lists its actions once and switches the marked action's optional
+flags in place, each bound to the single letter shown beside it, so every reachable argv stays
+available without a row per combination. Optional decoration follows the layout: two wind gusts
+anchor the top corners with the long side alternating between their rows, and two sea rows sit under
+the menu.
+
+The read-only boundary, the non-mutating snapshot, the post-teardown same-process handoff, the
+returning and terminal dispositions, the calibration wizard's valid-only combinations, and the
+motion budget of D-084–D-087 are unchanged. Two defects are fixed: the motion timer is released when
+Textual unmounts the tree, so no scheduled frame can outlive the widgets it draws into, and every
+single-letter binding is released to the uninstall phrase field while it has focus. The TUI composes
+`bora pull` and `bora rm` without the optional `qwen` handle, which the CLI still accepts.
+
+Release checks for this version: the local suite, build, wheel and uninstall verification, and
+pseudo-terminal runs at 60x20, 80x24, and 100x32 in plain and full presentation, each entering and
+leaving the alternate screen, exiting 0, and emitting no explicit background colour and no traceback.
+These are programmatic checks, not manual visual checks; no Windows terminal check was performed and
+neither is a passed Gate. The engine release, model identity, calibration protocol, record format,
+command contract, `command_contract_sha256`, reserves, policy, and schemas are unchanged, so existing
+`calibration-record/v6` files remain valid. No local candidate is activated, calibration coverage
+remains `GATE-PARTIAL`, and publication remains GitHub Releases only. D-089 authorizes the
+finalization, push, and `v0.4.1` tag after the complete local suite is green. The GitHub Release is
+authorized only after that tag's Ubuntu/Windows release workflow succeeds and must use its exact
+bundle.
 
 ### Release 0.4.0
 
