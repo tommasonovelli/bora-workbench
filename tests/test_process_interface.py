@@ -8,6 +8,7 @@ each may run, readiness comes from `/ready`, and stop takes the interface down f
 
 from __future__ import annotations
 
+import os
 import socket
 import sys
 from dataclasses import replace
@@ -50,10 +51,14 @@ def interface_request(
 
     Only the deadline is shortened, and it is shortened on the request rather than on a module
     constant, so every rule the contract states is the one production uses.
+
+    The environment inherits the parent's, exactly as `launch_environment` does. An empty mapping
+    would be a fiction: Windows cannot start a process without `SystemRoot`, so the child would die
+    immediately for a reason that has nothing to do with what is being tested.
     """
     command = (sys.executable, str(_FAKE_SERVER), "--port", str(port), "--health-mode", mode)
     readiness = replace(readiness_contract(port), timeout_seconds=timeout)
-    return lifecycle.InterfaceRequest(command, {}, port, "studio", readiness)
+    return lifecycle.InterfaceRequest(command, dict(os.environ), port, "studio", readiness)
 
 
 def test_the_engine_and_the_interface_run_beside_each_other(tmp_path, monkeypatch) -> None:

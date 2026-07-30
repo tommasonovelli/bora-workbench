@@ -225,3 +225,19 @@ def test_install_without_uv_names_the_missing_tool(tmp_path, monkeypatch) -> Non
 
     with pytest.raises(WebuiError, match="uv is required"):
         install_webui(tmp_path)
+
+
+def test_the_environment_inherits_the_parent_so_the_child_can_start(monkeypatch) -> None:
+    """Add the managed settings to the inherited environment instead of replacing it.
+
+    A process needs more than the variables bora chooses: Windows cannot start one at all without
+    `SystemRoot`, and the interpreter needs `PATH` to find its own runtime. Replacing the
+    environment would kill the child immediately, for a reason unrelated to any setting here.
+    """
+    monkeypatch.setenv("BORA_TEST_INHERITED", "kept")
+
+    environment = launch_environment(_launch())
+
+    assert environment["BORA_TEST_INHERITED"] == "kept"
+    # `WEBUI_NAME` is the one inherited variable deliberately dropped, for the licence clause.
+    assert set(os.environ) - {"WEBUI_NAME"} <= set(environment)
