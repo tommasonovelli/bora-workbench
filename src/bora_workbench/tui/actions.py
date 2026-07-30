@@ -99,15 +99,6 @@ def compose_calibration_activation(mode: ModeId) -> CommandSpec:
     return _terminal_command("calibrate", "--mode", mode, "--activate")
 
 
-def mode_commands() -> tuple[CommandSpec, ...]:
-    """Return every current foreground mode with and without its memory override."""
-    return tuple(
-        compose_mode(mode, is_force)
-        for mode in ("coding", "studio", "vstudio")
-        for is_force in (False, True)
-    )
-
-
 def compose_doctor() -> CommandSpec:
     """Compose the existing non-mutating doctor command."""
     return _command("doctor")
@@ -138,25 +129,14 @@ def compose_engine_install(is_force: bool = False, is_model_skipped: bool = Fals
     return _command(*arguments)
 
 
-def _locked_model(model: Literal["qwen"] | None) -> tuple[str, ...]:
-    """Return the optional sole pinned handle without admitting arbitrary model names."""
-    if model not in (None, "qwen"):
-        raise ValueError("this distribution composes only the pinned 'qwen' model")
-    return () if model is None else (model,)
+def compose_pull() -> CommandSpec:
+    """Compose acquisition of the sole pinned model, which needs no model handle here."""
+    return _command("pull")
 
 
-def compose_pull(model: Literal["qwen"] | None = None) -> CommandSpec:
-    """Compose pinned-model acquisition with its optional explicit handle."""
-    return _command("pull", *_locked_model(model))
-
-
-def compose_remove_model(
-    model: Literal["qwen"] | None = None,
-    is_cache_kept: bool = False,
-    is_dry_run: bool = False,
-) -> CommandSpec:
+def compose_remove_model(is_cache_kept: bool = False, is_dry_run: bool = False) -> CommandSpec:
     """Compose pinned-model removal while retaining every real CLI prompt."""
-    arguments = ["rm", *_locked_model(model)]
+    arguments = ["rm"]
     if is_cache_kept:
         arguments.append("--keep-hf")
     if is_dry_run:
@@ -204,56 +184,6 @@ def compose_update() -> CommandSpec:
 def compose_uninstall() -> CommandSpec:
     """Compose self-removal as terminal while retaining every real CLI confirmation."""
     return _terminal_command("uninstall")
-
-
-def installation_commands() -> tuple[CommandSpec, ...]:
-    """Return explicit update check, terminal replacement, then terminal removal."""
-    return (compose_update_check(), compose_update(), compose_uninstall())
-
-
-def overview_commands() -> tuple[CommandSpec, ...]:
-    """Return the four E4 diagnostic actions in their stable presentation order."""
-    return (compose_doctor(), compose_validate(), compose_status(), compose_engine_status())
-
-
-def setup_commands() -> tuple[CommandSpec, ...]:
-    """Enumerate every reachable setup flag state without an arbitrary argument editor."""
-    engine = tuple(
-        compose_engine_install(is_force, is_model_skipped)
-        for is_force in (False, True)
-        for is_model_skipped in (False, True)
-    )
-    pull = (compose_pull(), compose_pull("qwen"))
-    removal = tuple(
-        compose_remove_model(model, is_cache_kept, is_dry_run)
-        for model in (None, "qwen")
-        for is_cache_kept in (False, True)
-        for is_dry_run in (False, True)
-    )
-    return (compose_engine_status(), *engine, *pull, *removal)
-
-
-def pi_commands() -> tuple[CommandSpec, ...]:
-    """Return every valid current pi action and no contradictory option combination."""
-    return (
-        compose_pi(),
-        compose_pi(is_printed=True),
-        compose_pi(is_installed=True),
-        compose_pi_remove(),
-        compose_pi_uninstall(),
-    )
-
-
-def render_command_menu(
-    commands: tuple[CommandSpec, ...], selected_index: int, heading: str
-) -> str:
-    """Render exact commands with a text marker before Enter can select one."""
-    lines = [heading]
-    lines.extend(
-        f"{'>' if index == selected_index else ' '} {command.display}"
-        for index, command in enumerate(commands)
-    )
-    return "\n".join(lines)
 
 
 def _model_state(snapshot: WorkbenchSnapshot) -> str:

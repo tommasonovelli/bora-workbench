@@ -12,12 +12,13 @@ from bora_workbench.tui.app import WorkbenchApp
 from bora_workbench.tui.motion import (
     FRAME_INTERVAL_SECONDS,
     MAX_FRAMES_PER_SECOND,
+    SEA_ROWS,
     SETTLE_SECONDS,
+    WIND_ROWS,
     MotionConfigurationError,
     MotionDimensions,
     decide_motion,
     gust,
-    render_motion_frame,
     sea,
     supports_motion_size,
 )
@@ -38,15 +39,27 @@ def test_gust_and_sea_are_deterministic_pure_functions() -> None:
     """Bind decorative output only to elapsed time, dimensions, and seed."""
     dimensions = MotionDimensions(120, 40)
 
-    assert gust(0.75, dimensions, 41) == gust(0.75, dimensions, 41)
-    assert sea(0.75, dimensions, 41) == sea(0.75, dimensions, 41)
-    assert render_motion_frame(0.75, dimensions, 41) != render_motion_frame(1.75, dimensions, 41)
-    assert render_motion_frame(SETTLE_SECONDS, dimensions, 41) == render_motion_frame(
-        SETTLE_SECONDS + 100.0, dimensions, 41
-    )
-    assert render_motion_frame(0.75, dimensions, 41) != render_motion_frame(
-        0.75, MotionDimensions(100, 30), 42
-    )
+    for band in (gust, sea):
+        assert band(0.75, dimensions, 41) == band(0.75, dimensions, 41)
+        assert band(0.75, dimensions, 41) != band(1.75, dimensions, 41)
+        assert band(SETTLE_SECONDS, dimensions, 41) == band(SETTLE_SECONDS + 100.0, dimensions, 41)
+        assert band(0.75, dimensions, 41) != band(0.75, MotionDimensions(100, 30), 42)
+
+
+def test_wind_rows_anchor_opposite_edges_without_mirroring() -> None:
+    """Frame the title with two gusts whose long side alternates between the rows."""
+    dimensions = MotionDimensions(120, 40)
+
+    rows = gust(0.75, dimensions, 41).split("\n")
+
+    assert len(rows) == WIND_ROWS
+    assert len(sea(0.75, dimensions, 41).split("\n")) == SEA_ROWS
+    width = max(len(row) for row in rows)
+    padded = [row.ljust(width) for row in rows]
+    left = tuple(sum(glyph != " " for glyph in row[: width // 2]) for row in padded)
+    right = tuple(sum(glyph != " " for glyph in row[width // 2 :]) for row in padded)
+    assert left[0] > left[1] and right[1] > right[0]
+    assert all(row.strip() for row in rows)
 
 
 @pytest.mark.parametrize(
@@ -80,7 +93,7 @@ def test_motion_size_boundary_keeps_small_layout_static() -> None:
 
 
 def test_motion_timer_is_capped_and_stops_on_navigation_and_focus_loss() -> None:
-    """Stay below 12 fps on Overview and stop immediately on two runtime switches."""
+    """Stay below 12 fps on the central menu and stop immediately on two runtime switches."""
     intervals: list[float] = []
 
     async def exercise() -> None:
@@ -98,11 +111,13 @@ def test_motion_timer_is_capped_and_stops_on_navigation_and_focus_loss() -> None
             await pilot.pause(0.05)
             assert intervals == [FRAME_INTERVAL_SECONDS]
             assert intervals[0] >= 1.0 / MAX_FRAMES_PER_SECOND
-            assert workbench.query_one("#motion").display is True
-            await pilot.press("down")
+            assert workbench.query_one("#wind").display is True
+            assert workbench.query_one("#sea").display is True
+            await pilot.press("enter")
             assert workbench._motion_timer is None
-            assert workbench.query_one("#motion").display is False
-            await pilot.press("up")
+            assert workbench.query_one("#wind").display is False
+            assert workbench.query_one("#sea").display is False
+            await pilot.press("escape")
             assert intervals == [FRAME_INTERVAL_SECONDS, FRAME_INTERVAL_SECONDS]
             workbench.on_app_blur(events.AppBlur())
             assert workbench._motion_timer is None
@@ -126,12 +141,12 @@ def test_motion_settles_once_without_periodic_wakeups(monkeypatch) -> None:
             assert workbench._motion_timer is not None
             clock["now"] = SETTLE_SECONDS + 0.1
             workbench._advance_motion()
-            settled = str(workbench.query_one("#motion").render())
+            settled = str(workbench.query_one("#sea").render())
             assert workbench._motion_timer is None
             clock["now"] = 100.0
             await pilot.pause(0.15)
             assert workbench._motion_timer is None
-            assert str(workbench.query_one("#motion").render()) == settled
+            assert str(workbench.query_one("#sea").render()) == settled
             await pilot.press("q")
 
     asyncio.run(exercise())
@@ -146,7 +161,8 @@ def test_small_terminal_never_creates_motion_timer() -> None:
         async with workbench.run_test(size=(60, 20)) as pilot:
             await pilot.pause(0.1)
             assert workbench._motion_timer is None
-            assert workbench.query_one("#motion").display is False
+            assert workbench.query_one("#wind").display is False
+            assert workbench.query_one("#sea").display is False
             await pilot.press("q")
 
     asyncio.run(exercise())

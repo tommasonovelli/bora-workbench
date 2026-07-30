@@ -50,14 +50,15 @@ from bora_workbench.tui.terminal import TerminalMode
 from bora_workbench.validation import ValidationResult
 
 runner = CliRunner()
+# One non-colour fact per section, in the order of the central menu.
 _VIEW_CASES = (
-    (OverviewView, "Suggested command: bora engine install"),
-    (ModesView, "verified baseline: ctx 8192"),
-    (CalibrationView, "Active record: absent"),
-    (SetupView, "Compatible: no"),
-    (PiView, "Source: test baseline"),
+    (ModesView, "verified baseline, ctx 8192"),
+    (CalibrationView, "active absent, pending absent"),
+    (SetupView, "does not match engine.lock"),
+    (OverviewView, "backend       cpu"),
+    (PiView, "8192 tokens from test baseline"),
     (SettingsView, "model [BORA_MODEL]"),
-    (InstallationView, "Pinned Hugging Face cache copies require a second"),
+    (InstallationView, "Pinned Hugging Face cache copies need a"),
 )
 
 
@@ -93,9 +94,19 @@ def _snapshot() -> WorkbenchSnapshot:
 
 
 def _overview_text(workbench: tui_app.WorkbenchApp) -> str:
-    """Return the plain content held by the markup-disabled overview widget."""
-    overview = workbench.query_one("#overview")
-    return str(overview.render())
+    """Return the plain local report held by the Diagnostics section body."""
+    return _view_text(workbench, OverviewView)
+
+
+def _menu_text(workbench: tui_app.WorkbenchApp) -> str:
+    """Return the plain rows of the central menu with their live state summaries."""
+    return str(workbench.query_one("#menu-rows").render())
+
+
+def _verdict_text(workbench: tui_app.WorkbenchApp) -> str:
+    """Return the two home lines that carry the one deterministic next step."""
+    verdict = str(workbench.query_one("#verdict").render())
+    return f"{verdict}\n{workbench.query_one('#hint').render()}"
 
 
 def _long_snapshot() -> WorkbenchSnapshot:
@@ -113,10 +124,8 @@ def _long_snapshot() -> WorkbenchSnapshot:
 
 
 def _view_text(workbench: tui_app.WorkbenchApp, view_type: type) -> str:
-    """Return the literal body text for one mounted read-only view."""
-    view = workbench.query_one(view_type)
-    selector = "#overview" if view_type is OverviewView else ".section-body"
-    return str(view.query_one(selector).render())
+    """Return the literal body text for one mounted read-only section."""
+    return str(workbench.query_one(view_type).query_one(".section-body").render())
 
 
 def _blocked_snapshot(
@@ -361,10 +370,11 @@ def test_first_shell_stays_responsive_while_snapshot_is_blocked() -> None:
         async with workbench.run_test() as pilot:
             await pilot.pause(0.05)
             assert started.is_set()
-            assert "BORA WORKBENCH" in str(workbench.query_one("#brand").render())
-            assert "Local facts will appear here" in _overview_text(workbench)
+            assert "B O R A   W O R K B E N C H" in str(workbench.query_one("#brand").render())
+            assert "Run" in _menu_text(workbench)
+            assert "Waiting for the local snapshot" in _overview_text(workbench)
             await pilot.press("r")
-            assert "Refresh queued" in str(workbench.query_one("#snapshot-status").render())
+            assert "Refresh queued" in str(workbench.query_one("#status").render())
             release.set()
             await pilot.pause(0.1)
             await pilot.press("q")
@@ -399,8 +409,9 @@ def test_repeated_refreshes_never_overlap_collectors() -> None:
             assert starts[1].is_set() and state["calls"] == 2
             releases[1].set()
             await pilot.pause(0.1)
-            assert "Version: 0.test" in _overview_text(workbench)
-            assert "Suggested command: bora engine install" in _overview_text(workbench)
+            assert "backend       cpu" in _overview_text(workbench)
+            assert "bora engine install" in _verdict_text(workbench)
+            assert "engine not active" in _menu_text(workbench)
             assert state["maximum"] == 1 and state["calls"] == 2
             await pilot.press("q")
 
@@ -440,11 +451,11 @@ def test_quit_keys_work_while_snapshot_is_blocked(key) -> None:
 
 
 @pytest.mark.parametrize("size", ((60, 20), (80, 24), (120, 40)))
-def test_navigation_reaches_every_read_only_view_at_supported_sizes(size) -> None:
-    """Reach all seven text-complete screens with the persistent rail at each test size."""
+def test_menu_opens_every_read_only_section_at_supported_sizes(size) -> None:
+    """Open all seven text-complete sections from the central menu at each test size."""
 
     async def exercise() -> None:
-        """Walk the rail in order and assert one non-colour fact from every screen."""
+        """Open each entry in turn and assert one non-colour fact from every section."""
         workbench = tui_app.WorkbenchApp(
             "0.test", TerminalMode(True, False), lambda version: _snapshot()
         )
@@ -453,27 +464,32 @@ def test_navigation_reaches_every_read_only_view_at_supported_sizes(size) -> Non
             for index, (view_type, expected) in enumerate(_VIEW_CASES):
                 if index:
                     await pilot.press("down")
+                await pilot.press("enter")
                 assert workbench.query_one(view_type).display is True
                 assert expected in _view_text(workbench, view_type)
-            assert "> This installation" in str(workbench.query_one("#selected-view").render())
+                await pilot.press("escape")
+                assert workbench.query_one(view_type).display is False
+            assert "This installation" in _menu_text(workbench)
             await pilot.press("down")
-            assert workbench.query_one(OverviewView).display is True
+            await pilot.press("enter")
+            assert workbench.query_one(ModesView).display is True
             await pilot.press("q")
 
     asyncio.run(exercise())
 
 
-def test_small_terminal_detail_can_scroll_without_changing_view() -> None:
-    """Reserve page keys for long detail while arrows continue to own rail navigation."""
+def test_small_terminal_detail_can_scroll_without_leaving_the_section() -> None:
+    """Reserve page keys for long detail while arrows continue to own the marker."""
 
     async def exercise() -> None:
-        """Scroll a long Overview in the smallest required headless terminal."""
+        """Scroll a long Diagnostics section in the smallest required headless terminal."""
         workbench = tui_app.WorkbenchApp(
             "0.test", TerminalMode(True, False), lambda version: _long_snapshot()
         )
         async with workbench.run_test(size=(60, 20)) as pilot:
             await pilot.pause(0.1)
-            scroller = workbench.query_one("#views")
+            await pilot.press("down", "down", "down", "enter")
+            scroller = workbench.query_one("#sections")
             assert scroller.max_scroll_y > 0 and scroller.scroll_y == 0
             await pilot.press("pagedown")
             assert scroller.scroll_y > 0
@@ -483,8 +499,8 @@ def test_small_terminal_detail_can_scroll_without_changing_view() -> None:
     asyncio.run(exercise())
 
 
-def test_navigation_keys_help_and_refresh_preserve_selected_view() -> None:
-    """Support arrows and j/k while a refresh leaves the selected screen intact."""
+def test_refresh_and_help_preserve_the_open_section() -> None:
+    """Support arrows and j/k while a refresh leaves the open section intact."""
     calls = []
 
     def collect(version: str) -> WorkbenchSnapshot:
@@ -493,18 +509,18 @@ def test_navigation_keys_help_and_refresh_preserve_selected_view() -> None:
         return _snapshot()
 
     async def exercise() -> None:
-        """Select Settings with mixed keys, refresh it, and inspect expanded key help."""
+        """Open Settings with mixed keys, refresh it, and inspect expanded key help."""
         workbench = tui_app.WorkbenchApp("0.test", TerminalMode(True, False), collect)
         async with workbench.run_test() as pilot:
             await pilot.pause(0.1)
-            await pilot.press("right", "j", "down", "j", "right")
+            await pilot.press("j", "down", "j", "j", "down", "right")
             assert workbench.query_one(SettingsView).display is True
             await pilot.press("r")
             await pilot.pause(0.1)
             assert workbench.query_one(SettingsView).display is True and len(calls) == 2
             await pilot.press("question_mark")
-            assert "Close help" in str(workbench.query_one("#keybar").render())
-            await pilot.press("left", "k")
+            assert "Esc leaves a section" in str(workbench.query_one("#keybar").render())
+            await pilot.press("question_mark", "escape", "up", "k", "up", "enter")
             assert workbench.query_one(SetupView).display is True
             await pilot.press("q")
 
@@ -524,11 +540,11 @@ def test_collection_failure_remains_visible_on_selected_detail_view() -> None:
         raise WorkbenchCollectionError(failure)
 
     async def exercise() -> None:
-        """Select Pi, refresh, and assert the same view owns the failure text."""
+        """Open Pi, refresh, and assert the same section owns the failure text."""
         workbench = tui_app.WorkbenchApp("0.test", TerminalMode(True, False), collect)
         async with workbench.run_test() as pilot:
             await pilot.pause(0.1)
-            await pilot.press("down", "down", "down", "down")
+            await pilot.press("down", "down", "down", "down", "enter")
             assert workbench.query_one(PiView).display is True
             await pilot.press("r")
             await pilot.pause(0.1)
@@ -557,6 +573,8 @@ def test_collection_failure_is_rendered_without_traceback() -> None:
             assert "Configuration error" in content
             assert "llama_port must be positive" in content
             assert "Traceback" not in content
+            assert "Configuration error" in _verdict_text(workbench)
+            assert "unavailable" in _menu_text(workbench)
             await pilot.press("q")
 
     asyncio.run(exercise())

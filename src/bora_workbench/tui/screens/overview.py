@@ -1,21 +1,27 @@
-"""Render snapshot facts and deterministic advice in the read-only Overview view."""
+"""Render the full local report and the returning diagnostic commands."""
 
 from __future__ import annotations
 
-from textual.app import ComposeResult
-from textual.containers import Vertical
-from textual.widgets import Static
-
 from bora_workbench.snapshot import SnapshotFailure, WorkbenchSnapshot, record_display_label
 from bora_workbench.tui.actions import (
-    CommandSpec,
+    compose_doctor,
+    compose_engine_status,
+    compose_status,
     compose_stop,
-    overview_commands,
-    render_command_menu,
+    compose_validate,
 )
-from bora_workbench.tui.advice import Suggestion, next_step
+from bora_workbench.tui.advice import next_step
+from bora_workbench.tui.choices import Choice, ChoiceList
+from bora_workbench.tui.palette import Palette
+from bora_workbench.tui.section import Section
 
-_ACTIONS = (*overview_commands(), compose_stop())
+CHOICES: tuple[Choice, ...] = (
+    Choice("full report", lambda flags: compose_doctor()),
+    Choice("packaged content", lambda flags: compose_validate()),
+    Choice("managed services", lambda flags: compose_status()),
+    Choice("managed engine", lambda flags: compose_engine_status()),
+    Choice("stop services", lambda flags: compose_stop()),
+)
 
 
 def _engine_label(snapshot: WorkbenchSnapshot) -> str:
@@ -23,9 +29,7 @@ def _engine_label(snapshot: WorkbenchSnapshot) -> str:
     engine = snapshot.doctor.engine
     if engine.is_compatible:
         return f"compatible {engine.release or 'managed release'} ({engine.backend or 'unknown'})"
-    if engine.is_active:
-        return "active but incompatible"
-    return "not active"
+    return "active but incompatible" if engine.is_active else "not active"
 
 
 def _model_label(snapshot: WorkbenchSnapshot) -> str:
@@ -50,19 +54,11 @@ def _record_label(snapshot: WorkbenchSnapshot) -> str:
     return ", ".join(labels)
 
 
-def _validation_label(snapshot: WorkbenchSnapshot) -> str:
-    """Summarize installed-resource validation without treating warnings as errors."""
-    validation = snapshot.doctor.validation
-    if validation.errors:
-        return f"{len(validation.errors)} error(s)"
-    return f"valid with {len(validation.warnings)} warning(s)"
-
-
 def _service_label(snapshot: WorkbenchSnapshot) -> str:
-    """Keep live, stale, and unreadable service state distinct in Overview text."""
+    """Keep live, stale, and unreadable service state distinct in one line."""
     stale = sum(len(root.inspection.stale_services) for root in snapshot.service_roots)
     errors = sum(len(root.inspection.errors) for root in snapshot.service_roots)
-    return f"{len(snapshot.services)} running; {stale} stale; {errors} unreadable"
+    return f"{len(snapshot.services)} running, {stale} stale, {errors} unreadable"
 
 
 def _diagnostic_lines(snapshot: WorkbenchSnapshot) -> tuple[str, ...]:
@@ -84,99 +80,73 @@ def _diagnostic_lines(snapshot: WorkbenchSnapshot) -> tuple[str, ...]:
     return tuple(lines)
 
 
-def _advice_lines(suggestion: Suggestion) -> tuple[str, ...]:
-    """Render advice as text with its exact but not-yet-selectable command."""
-    lines = (suggestion.headline, suggestion.detail)
-    if suggestion.command is None:
-        return lines
-    return (*lines, f"Suggested command: {suggestion.command}")
-
-
-def render_snapshot(snapshot: WorkbenchSnapshot) -> str:
-    """Render the diagnosis first and then compact supporting local facts."""
-    doctor = snapshot.doctor
-    hardware = doctor.hardware
-    pi_state = "installed" if snapshot.pi_installation.is_installed else "not found on PATH"
+def _facts(snapshot: WorkbenchSnapshot) -> tuple[str, ...]:
+    """Render the compact local facts a reader checks before running anything."""
+    hardware = snapshot.doctor.hardware
     context = (
         "unavailable" if snapshot.pi_context is None else f"{snapshot.pi_context.tokens} tokens"
     )
-    facts = (
-        f"Version: {doctor.version}",
-        f"Hardware: {hardware.cpu_name} / {hardware.ram_total_gib:.2f} GiB RAM",
-        f"Selected backend: {hardware.backend}",
-        f"Engine: {_engine_label(snapshot)}",
-        f"Services: {_service_label(snapshot)}",
-        f"Model: {_model_label(snapshot)}",
-        f"Calibration: {_record_label(snapshot)}",
-        f"pi: {pi_state}; context: {context}",
-        f"Packaged content: {_validation_label(snapshot)}",
+    validation = snapshot.doctor.validation
+    return (
+        f"hardware      {hardware.cpu_name}, {hardware.ram_total_gib:.2f} GiB RAM",
+        f"backend       {hardware.backend}",
+        f"engine        {_engine_label(snapshot)}",
+        f"services      {_service_label(snapshot)}",
+        f"model         {_model_label(snapshot)}",
+        f"calibration   {_record_label(snapshot)}",
+        f"pi            {'installed' if snapshot.pi_installation.is_installed else 'not installed'}"
+        f", context {context}",
+        f"content       {len(validation.errors)} error(s), {len(validation.warnings)} warning(s)",
     )
+
+
+def render_snapshot(snapshot: WorkbenchSnapshot) -> str:
+    """Render compact local facts followed by every collected diagnostic."""
     diagnostics = _diagnostic_lines(snapshot)
-    sections = (*_advice_lines(next_step(snapshot)), "", "Local snapshot", *facts)
+    sections = _facts(snapshot)
     if diagnostics:
-        sections = (*sections, "", "Diagnostics", *(f"- {item}" for item in diagnostics))
+        sections = (*sections, "", "Notes", *(f"- {item}" for item in diagnostics))
     return "\n".join(sections)
-
-
-def render_action_menu(selected_index: int) -> str:
-    """Show exact returning commands with a text marker on the Enter selection."""
-    heading = "Returning diagnostics (Tab selects; Enter runs after the TUI closes)"
-    return render_command_menu(_ACTIONS, selected_index, heading)
 
 
 def render_failure(failure: SnapshotFailure | None, unexpected_detail: str | None) -> str:
     """Render failed collection truth and deterministic remediation when one is known."""
-    if failure is not None:
-        suggestion = next_step(failure)
-        lines = (
-            "Snapshot unavailable",
-            *_advice_lines(suggestion),
-            "",
-            "No local state was changed.",
-        )
-        return "\n".join(lines)
-    detail = unexpected_detail or "unknown failure"
-    return f"Snapshot collection failed.\n{detail}\n\nNo local state was changed."
+    if failure is None:
+        detail = unexpected_detail or "unknown failure"
+        return f"Snapshot collection failed.\n{detail}\n\nNo local state was changed."
+    suggestion = next_step(failure)
+    lines = (
+        "Snapshot unavailable",
+        suggestion.headline,
+        suggestion.detail,
+        "",
+        "No local state was changed.",
+    )
+    return "\n".join(lines)
 
 
-class OverviewView(Vertical):
-    """Own Overview widgets while the application owns collection and navigation."""
+class OverviewView(Section):
+    """Show the whole local report without running any of the diagnostics it names."""
 
-    def __init__(self) -> None:
-        """Create the fixed content region without collecting any machine facts."""
-        super().__init__(id="content")
-        self._action_index = 0
-
-    def compose(self) -> ComposeResult:
-        """Yield title, status, exact returning actions, comparison, and detail text."""
-        yield Static("Overview", id="view-title", markup=False)
-        yield Static("Waiting to inspect this machine...", id="snapshot-status", markup=False)
-        yield Static(render_action_menu(self._action_index), id="overview-actions", markup=False)
-        yield Static("", id="changes", markup=False)
-        yield Static("Local facts will appear here.", id="overview", markup=False)
-
-    def update_status(self, text: str) -> None:
-        """Replace the bounded collector-state line with literal text."""
-        self.query_one("#snapshot-status", Static).update(text)
-
-    def move_action(self, offset: int) -> None:
-        """Move the text-marked action selection without running a callback."""
-        self._action_index = (self._action_index + offset) % len(_ACTIONS)
-        self.query_one("#overview-actions", Static).update(render_action_menu(self._action_index))
-
-    def selected_action(self) -> CommandSpec:
-        """Return the command already visible beside the current text marker."""
-        return _ACTIONS[self._action_index]
-
-    def show_snapshot(self, snapshot: WorkbenchSnapshot) -> None:
-        """Replace the detail pane with current immutable facts and advice."""
-        self.query_one("#overview", Static).update(render_snapshot(snapshot))
+    def __init__(self, palette: Palette) -> None:
+        """Create the hidden-until-opened Diagnostics section with no comparison yet."""
+        super().__init__("Diagnostics", ChoiceList(CHOICES), palette)
+        self._changes: tuple[str, ...] = ()
 
     def show_changes(self, changes: tuple[str, ...]) -> None:
-        """Show concise recollected differences after one returning command."""
-        content = "Since the returning command\n" + "\n".join(f"- {item}" for item in changes)
-        self.query_one("#changes", Static).update(content)
+        """Keep concise recollected differences until the next successful collection."""
+        self._changes = changes
+
+    def show_snapshot(self, snapshot: WorkbenchSnapshot) -> None:
+        """Replace the body with current immutable facts and any pending comparison."""
+        report = render_snapshot(snapshot)
+        if not self._changes:
+            self.show_body(report)
+            return
+        changed = "\n".join(f"- {item}" for item in self._changes)
+        self.show_body(f"Since the returning command\n{changed}\n\n{report}")
 
     def show_failure(self, failure: SnapshotFailure | None, detail: str | None) -> None:
         """Replace stale detail with the current failed-attempt diagnosis."""
-        self.query_one("#overview", Static).update(render_failure(failure, detail))
+        self._changes = ()
+        self.show_body(render_failure(failure, detail))

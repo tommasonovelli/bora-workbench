@@ -1,21 +1,27 @@
-"""Render installed version, managed roots, and the exact current removal boundary."""
+"""Offer update and removal beside this installation's version and managed roots."""
 
 from __future__ import annotations
 
 from textual.app import ComposeResult
-from textual.containers import Vertical
 from textual.widgets import Input, Static
 
 from bora_workbench.snapshot import WorkbenchSnapshot
 from bora_workbench.tui.actions import (
     CommandSpec,
     compose_uninstall,
-    installation_commands,
-    render_command_menu,
+    compose_update,
+    compose_update_check,
 )
+from bora_workbench.tui.choices import Choice, ChoiceList
+from bora_workbench.tui.palette import Palette
+from bora_workbench.tui.section import Section
 
-_ACTIONS = installation_commands()
-_HEADING = "Installation actions (Tab selects; Enter closes the TUI before running)"
+_PHRASE = "remove"
+CHOICES: tuple[Choice, ...] = (
+    Choice("check for a published release", lambda flags: compose_update_check()),
+    Choice("update this installation", lambda flags: compose_update()),
+    Choice("uninstall bora", lambda flags: compose_uninstall()),
+)
 
 
 def render_installation(snapshot: WorkbenchSnapshot) -> str:
@@ -23,95 +29,78 @@ def render_installation(snapshot: WorkbenchSnapshot) -> str:
     doctor = snapshot.doctor
     paths = doctor.paths
     lines = (
-        f"Installed version: {doctor.version}",
-        "Published version: not queried; bora update --check is the explicit network action.",
-        "The TUI closes before update performs network or uv work.",
-        "Update and uninstall are terminal; update --check returns on success.",
+        f"version       {doctor.version} installed; the published version is not queried.",
         "",
         "Managed roots",
-        f"Configuration: {paths.config}",
-        f"Data: {paths.data}",
-        f"Cache: {paths.cache}",
-        f"State: {paths.state}",
+        f"config        {paths.config}",
+        f"data          {paths.data}",
+        f"cache         {paths.cache}",
+        f"state         {paths.state}",
         "",
         "Removal boundary",
-        "bora uninstall confirms these roots and removes the Python tool only when uv-managed.",
-        "The data root includes bora's managed model store.",
-        "Typing remove only leaves this TUI; the real CLI still asks its root confirmation.",
-        "Pinned Hugging Face cache copies require a second, separate confirmation.",
-        "uv itself, pi, unrelated cache content, and user-managed model paths stay untouched.",
+        "uninstall removes these four roots, including the managed model store, and removes",
+        "the Python tool only when it is uv-managed. Pinned Hugging Face cache copies need a",
+        "second, separate confirmation. uv itself, pi, and user-managed model paths stay.",
+        "Typing remove only leaves this workbench; the real CLI still asks its questions.",
     )
     return "\n".join(lines)
 
 
-class InstallationView(Vertical):
+class InstallationView(Section):
     """Show this package and its managed roots without running update or uninstall."""
 
-    def __init__(self) -> None:
-        """Create installation actions with uninstall confirmation initially inactive."""
-        super().__init__(classes="section-view")
-        self._action_index = 0
+    def __init__(self, palette: Palette) -> None:
+        """Create installation actions with the removal confirmation initially inactive."""
+        super().__init__("This installation", ChoiceList(CHOICES), palette)
         self._is_confirming = False
 
     def compose(self) -> ComposeResult:
-        """Yield title, exact commands, typed friction, and literal installation detail."""
-        phrase = Input(placeholder="Type remove to continue", id="removal-phrase")
+        """Yield the shared section chrome plus the typed friction that guards removal."""
+        yield from super().compose()
+        phrase = Input(placeholder=f"Type {_PHRASE} to continue", id="removal-phrase")
         phrase.display = False
-        yield Static("This installation", classes="section-title", markup=False)
-        yield Static(
-            render_command_menu(_ACTIONS, self._action_index, _HEADING),
-            classes="section-actions",
-            markup=False,
-        )
         yield Static("", id="removal-message", markup=False)
         yield phrase
-        yield Static("Waiting for the local snapshot...", classes="section-body", markup=False)
 
-    def move_action(self, offset: int) -> None:
-        """Move through check, update, and uninstall while confirmation is inactive."""
-        if self._is_confirming:
-            return
-        self._action_index = (self._action_index + offset) % len(_ACTIONS)
-        content = render_command_menu(_ACTIONS, self._action_index, _HEADING)
-        self.query_one(".section-actions", Static).update(content)
+    def move(self, offset: int) -> None:
+        """Keep the marker still while the typed removal confirmation owns the keyboard."""
+        if not self._is_confirming:
+            super().move(offset)
 
-    def selected_action(self) -> CommandSpec:
-        """Return the exact installation command currently marked in visible text."""
-        return _ACTIONS[self._action_index]
-
-    def _begin_uninstall_confirmation(self) -> None:
+    def _begin_confirmation(self) -> None:
         """Reveal and focus the typed phrase without satisfying the real CLI prompts."""
         self._is_confirming = True
         phrase = self.query_one("#removal-phrase", Input)
         phrase.display = True
         phrase.focus()
-        message = "Type remove exactly, then press Enter; Esc or Ctrl+Q cancels the TUI."
+        message = f"Type {_PHRASE} exactly, then press Enter; Esc returns to the menu."
         self.query_one("#removal-message", Static).update(message)
 
-    def review_action(self) -> CommandSpec | None:
-        """Require exact typed friction before returning terminal uninstall."""
-        command = self.selected_action()
+    def is_confirming_removal(self) -> bool:
+        """Report whether the phrase input currently owns every printable key."""
+        return self._is_confirming
+
+    def cancel_confirmation(self) -> None:
+        """Hide the typed friction again when the reader leaves this section."""
+        self._is_confirming = False
+        self.query_one("#removal-phrase", Input).display = False
+        self.query_one("#removal-message", Static).update("")
+
+    def activate(self) -> CommandSpec | None:
+        """Require exact typed friction before returning the terminal uninstall command."""
+        command = super().activate()
         if command != compose_uninstall():
             return command
         if not self._is_confirming:
-            self._begin_uninstall_confirmation()
+            self._begin_confirmation()
             return None
-        phrase = self.query_one("#removal-phrase", Input).value
-        if phrase != "remove":
+        if self.query_one("#removal-phrase", Input).value != _PHRASE:
             self.query_one("#removal-message", Static).update(
-                "Phrase does not match; type remove exactly or cancel."
+                f"Phrase does not match; type {_PHRASE} exactly or press Esc."
             )
             return None
         return command
 
-    def accept_bound_key(self, key: str) -> bool:
-        """Insert r into the focused phrase instead of triggering a snapshot refresh."""
-        phrase = self.query_one("#removal-phrase", Input)
-        if not self._is_confirming or not phrase.has_focus:
-            return False
-        phrase.insert_text_at_cursor(key)
-        return True
-
     def show_snapshot(self, snapshot: WorkbenchSnapshot) -> None:
         """Replace the body with version, roots, and precise exclusions."""
-        self.query_one(".section-body", Static).update(render_installation(snapshot))
+        self.show_body(render_installation(snapshot))

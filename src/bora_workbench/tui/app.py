@@ -5,12 +5,12 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from time import monotonic
-from typing import ClassVar, Protocol, runtime_checkable
+from typing import ClassVar
 
 from textual import events, work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.containers import Vertical, VerticalScroll
 from textual.message import Message
 from textual.timer import Timer
 from textual.widgets import Static
@@ -21,15 +21,20 @@ from bora_workbench.snapshot import (
     WorkbenchSnapshot,
     collect_workbench_snapshot,
 )
-from bora_workbench.tui.actions import CommandSpec, TuiResult, snapshot_changes
+from bora_workbench.tui.actions import TuiResult, snapshot_changes
+from bora_workbench.tui.home import HomeView
 from bora_workbench.tui.motion import (
     FRAME_INTERVAL_SECONDS,
     SETTLE_SECONDS,
     MotionDimensions,
-    render_motion_frame,
+    gust,
+    sea,
     supports_motion_size,
 )
-from bora_workbench.tui.palette import stylesheet
+from bora_workbench.tui.palette import palette_for, stylesheet
+from bora_workbench.tui.screens import modes as modes_screen
+from bora_workbench.tui.screens import pi as pi_screen
+from bora_workbench.tui.screens import setup as setup_screen
 from bora_workbench.tui.screens.calibration import CalibrationView
 from bora_workbench.tui.screens.installation import InstallationView
 from bora_workbench.tui.screens.modes import ModesView
@@ -37,59 +42,33 @@ from bora_workbench.tui.screens.overview import OverviewView, render_failure
 from bora_workbench.tui.screens.pi import PiView
 from bora_workbench.tui.screens.settings import SettingsView
 from bora_workbench.tui.screens.setup import SetupView
+from bora_workbench.tui.section import Section
 from bora_workbench.tui.terminal import TerminalMode
 
 SnapshotCollector = Callable[[str], WorkbenchSnapshot]
-ReadOnlyView = (
-    OverviewView
-    | ModesView
-    | CalibrationView
-    | SetupView
-    | PiView
-    | SettingsView
-    | InstallationView
-)
-_VIEW_TYPES: tuple[type[ReadOnlyView], ...] = (
-    OverviewView,
+# The section order matches the central menu in bora_workbench.tui.menu.
+_VIEW_TYPES: tuple[type[Section], ...] = (
     ModesView,
     CalibrationView,
     SetupView,
+    OverviewView,
     PiView,
     SettingsView,
     InstallationView,
 )
-_VIEW_LABELS = ("Overview", "Modes", "Calibration", "Setup", "Pi", "Settings", "This installation")
-
-
-@runtime_checkable
-class ActionView(Protocol):
-    """Describe the narrow selection surface shared by actionable read-only views."""
-
-    def move_action(self, offset: int) -> None:
-        """Move the visible command marker without dispatching."""
-        ...
-
-    def selected_action(self) -> CommandSpec:
-        """Return the exact command already marked in the view."""
-        ...
-
-
-@runtime_checkable
-class ReviewingActionView(Protocol):
-    """Allow a wizard view to consume Enter for review before returning a command."""
-
-    def review_action(self) -> CommandSpec | None:
-        """Advance review or return the command after final review."""
-        ...
-
-
-@runtime_checkable
-class BoundKeyInputView(Protocol):
-    """Let a focused confirmation consume a printable key otherwise bound by the app."""
-
-    def accept_bound_key(self, key: str) -> bool:
-        """Insert one bound key and report whether refresh should be suppressed."""
-        ...
+# Flag keys are read back from the screens that declare them, so a new flag cannot be added
+# without also gaining the binding that switches it.
+_FLAGGED_CHOICES = (*modes_screen.CHOICES, *setup_screen.CHOICES, *pi_screen.CHOICES)
+_TOGGLE_KEYS = tuple(
+    dict.fromkeys(flag.key for choice in _FLAGGED_CHOICES for flag in choice.flags)
+)
+_LETTER_ACTIONS = frozenset(("refresh_snapshot", "toggle_help", "quit_workbench", "toggle_flag"))
+_HOME_KEYS = "up/down move  enter open  r refresh  ? help  q quit"
+_SECTION_KEYS = "up/down move  enter select  esc menu  r refresh  q quit"
+_HELP_TEXT = (
+    "Enter opens the marked entry and selects the shown command; a bracketed letter "
+    "switches that command's flag; Esc leaves a section without running anything."
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,47 +100,37 @@ def _collect(collector: SnapshotCollector, version: str) -> _CollectionResult:
 
 
 class WorkbenchApp(App[TuiResult]):
-    """Present seven read-only views while serializing one snapshot worker."""
+    """Present one central menu and seven full-window sections over a shared snapshot."""
 
-    CSS = (
-        stylesheet()
-        + """
-#selected-view { height: 1fr; background: transparent; }
-#views { width: 1fr; height: 1fr; }
-#content { height: auto; }
-#overview { height: auto; }
-#motion { height: 3; padding: 0 2; }
-.section-view { width: 100%; height: auto; padding: 1 2; }
-.section-title { height: 2; text-style: bold; }
-.section-body { height: auto; }
-"""
-    )
+    CSS = stylesheet()
     BINDINGS: ClassVar[list[Binding]] = [
-        Binding("up,k,left", "previous_view", "Previous", priority=True),
-        Binding("down,j,right", "next_view", "Next", priority=True),
+        Binding("up,k", "move(-1)", "Up", priority=True),
+        Binding("down,j", "move(1)", "Down", priority=True),
+        Binding("enter,right", "activate", "Open", priority=True),
+        Binding("escape,left", "leave_section", "Menu", priority=True),
+        Binding("pageup", "scroll_detail(-1)", "Scroll up", priority=True, show=False),
+        Binding("pagedown", "scroll_detail(1)", "Scroll down", priority=True, show=False),
         Binding("question_mark", "toggle_help", "Help", priority=True),
-        Binding("tab", "next_action", "Next action", priority=True, show=False),
-        Binding("shift+tab", "previous_action", "Previous action", priority=True, show=False),
-        Binding("enter", "select_action", "Select", priority=True, show=False),
-        Binding("pageup", "scroll_detail_up", "Scroll up", priority=True, show=False),
-        Binding("pagedown", "scroll_detail_down", "Scroll down", priority=True, show=False),
-        Binding("q", "exit_workbench", "Quit", priority=True),
-        Binding("ctrl+q", "exit_workbench", "Quit", priority=True, show=False),
-        Binding("escape", "exit_workbench", "Quit", priority=True, show=False),
         Binding("r", "refresh_snapshot", "Refresh", priority=True),
+        Binding("q,ctrl+q", "quit_workbench", "Quit", priority=True),
+        *(
+            Binding(key, f"toggle_flag('{key}')", "Flag", priority=True, show=False)
+            for key in _TOGGLE_KEYS
+        ),
     ]
 
     def __init__(
         self, version: str, terminal_mode: TerminalMode, collector: SnapshotCollector
     ) -> None:
         """Create static presentation state without collecting or mutating machine facts."""
-        super().__init__()
+        super().__init__(ansi_color=True)
         self._version = version
         self._terminal_mode = terminal_mode
         self._collector = collector
+        self._palette = palette_for(terminal_mode.is_plain)
         self._is_collecting = False
         self._is_refresh_pending = False
-        self._selected_index = 0
+        self._open_index: int | None = None
         self._is_help_visible = False
         self._status_text = "Waiting to inspect this machine."
         self._latest_snapshot: WorkbenchSnapshot | None = None
@@ -172,68 +141,49 @@ class WorkbenchApp(App[TuiResult]):
         self._has_app_focus = True
 
     def compose(self) -> ComposeResult:
-        """Paint complete static chrome and all read-only views before collection starts."""
+        """Paint complete static chrome and every surface before collection starts."""
         display_class = "plain" if self._terminal_mode.is_plain else "normal"
-        mode_label = " [plain]" if self._terminal_mode.is_plain else ""
         yield Vertical(
-            Static(f"BORA WORKBENCH{mode_label}", id="brand", markup=False),
-            Horizontal(
-                Vertical(
-                    Static("WORKBENCH", id="rail-label", markup=False),
-                    Static(self._rail_text(), id="selected-view", markup=False),
-                    id="rail",
-                ),
-                VerticalScroll(
-                    Static("", id="motion", markup=False),
-                    OverviewView(),
-                    ModesView(),
-                    CalibrationView(),
-                    SetupView(),
-                    PiView(),
-                    SettingsView(),
-                    InstallationView(),
-                    id="views",
-                ),
-                id="body",
-            ),
+            HomeView(self._palette),
+            VerticalScroll(*(view_type(self._palette) for view_type in _VIEW_TYPES), id="sections"),
+            Static(self._status_text, id="status", markup=False),
             Static(self._keybar_text(), id="keybar", markup=False),
             id="shell",
             classes=display_class,
         )
 
     def on_mount(self) -> None:
-        """Select Overview and delay collection until after the initial refresh."""
-        self._show_selected_view()
+        """Show the central menu and delay collection until after the initial refresh."""
+        self._show_surface()
         self.call_after_refresh(self._request_snapshot)
 
-    def _views(self) -> tuple[ReadOnlyView, ...]:
-        """Return the seven mounted views in persistent rail order."""
+    def _home(self) -> HomeView:
+        """Return the single mounted central-menu surface."""
+        return self.query_one(HomeView)
+
+    def _views(self) -> tuple[Section, ...]:
+        """Return the seven mounted sections in persistent menu order."""
         return tuple(self.query_one(view_type) for view_type in _VIEW_TYPES)
 
-    def _rail_text(self) -> str:
-        """Mark the selected label in text so selection never depends on colour."""
-        return "\n".join(
-            f"{'>' if index == self._selected_index else ' '} {label}"
-            for index, label in enumerate(_VIEW_LABELS)
-        )
+    def _open_view(self) -> Section | None:
+        """Return the section currently filling the window, or None on the menu."""
+        return None if self._open_index is None else self._views()[self._open_index]
 
     def _keybar_text(self) -> str:
-        """Render compact or expanded key help beside the current collection state."""
+        """Render the keys that the currently visible surface actually uses."""
         if self._is_help_visible:
-            keys = (
-                "Arrows/j/k Navigate | Tab Action | Enter Select | r Refresh | "
-                "q/Esc Quit | ? Close help"
-            )
-        else:
-            keys = "Arrows/j/k Navigate | Tab Action | Enter Select | r Refresh | ? Help | q Quit"
-        return f"{keys}\n{self._status_text}"
+            return _HELP_TEXT
+        return _HOME_KEYS if self._open_index is None else _SECTION_KEYS
 
-    def _show_selected_view(self) -> None:
-        """Switch visible detail without discarding any collected screen text."""
+    def _show_surface(self) -> None:
+        """Switch between the central menu and one full-window section."""
+        open_index = self._open_index
+        self._home().display = open_index is None
+        self.query_one("#sections", VerticalScroll).display = open_index is not None
         for index, view in enumerate(self._views()):
-            view.display = index == self._selected_index
-        self.query_one("#selected-view", Static).update(self._rail_text())
-        self.query_one("#views", VerticalScroll).scroll_home(animate=False)
+            view.display = index == open_index
+        self.query_one("#sections", VerticalScroll).scroll_home(animate=False)
+        self.query_one("#keybar", Static).update(self._keybar_text())
         self._sync_motion()
 
     def _motion_dimensions(self) -> MotionDimensions:
@@ -245,7 +195,7 @@ class WorkbenchApp(App[TuiResult]):
         return (
             self._terminal_mode.is_motion_enabled
             and not self._terminal_mode.is_plain
-            and self._selected_index == 0
+            and self._open_index is None
             and self._has_app_focus
             and supports_motion_size(self._motion_dimensions())
         )
@@ -254,10 +204,7 @@ class WorkbenchApp(App[TuiResult]):
         """Return active animation time without counting periods where it was stopped."""
         if self._motion_started_at is None:
             return self._motion_elapsed
-        return min(
-            SETTLE_SECONDS,
-            self._motion_elapsed + monotonic() - self._motion_started_at,
-        )
+        return min(SETTLE_SECONDS, self._motion_elapsed + monotonic() - self._motion_started_at)
 
     def _stop_motion_timer(self) -> None:
         """Remove periodic wakeups immediately when motion cannot continue."""
@@ -266,17 +213,20 @@ class WorkbenchApp(App[TuiResult]):
             self._motion_timer = None
 
     def _pause_motion(self) -> None:
-        """Retain active elapsed time, stop its timer, and hide decorative rows."""
+        """Retain active elapsed time, stop its timer, and hide the decorative bands."""
         self._motion_elapsed = self._current_motion_elapsed()
         self._motion_started_at = None
         self._stop_motion_timer()
-        self.query_one("#motion", Static).display = False
+        for band in ("#wind", "#sea"):
+            self.query_one(band, Static).display = False
 
     def _render_motion(self, elapsed_seconds: float) -> None:
         """Render one deterministic frame whose text carries no operational meaning."""
-        motion = self.query_one("#motion", Static)
-        motion.update(render_motion_frame(elapsed_seconds, self._motion_dimensions(), 41))
-        motion.display = True
+        dimensions = self._motion_dimensions()
+        for band, render in (("#wind", gust), ("#sea", sea)):
+            widget = self.query_one(band, Static)
+            widget.update(render(elapsed_seconds, dimensions, 41))
+            widget.display = True
 
     def _sync_motion(self) -> None:
         """Start, settle, or stop the sole optional presentation timer."""
@@ -320,11 +270,14 @@ class WorkbenchApp(App[TuiResult]):
         """Apply the small-terminal kill switch immediately after a resize."""
         self._sync_motion()
 
+    def on_unmount(self) -> None:
+        """Release the frame timer so no scheduled frame can outlive the widget tree."""
+        self._stop_motion_timer()
+
     def _set_status(self, text: str) -> None:
-        """Update Overview and the global keybar with the same collection truth."""
+        """Update the single shared collection-state line."""
         self._status_text = text
-        self.query_one(OverviewView).update_status(text)
-        self.query_one("#keybar", Static).update(self._keybar_text())
+        self.query_one("#status", Static).update(text)
 
     def set_comparison_snapshot(self, snapshot: WorkbenchSnapshot | None) -> None:
         """Provide one pre-command snapshot for the next successful collection to compare."""
@@ -346,97 +299,115 @@ class WorkbenchApp(App[TuiResult]):
         result = _collect(self._collector, self._version)
         self.post_message(SnapshotCollected(result))
 
+    def _show_failure(self, result: _CollectionResult) -> None:
+        """Replace every stale surface with the current failed-attempt diagnosis."""
+        self._latest_snapshot = None
+        self._set_status("Inspection failed; details are current for this attempt.")
+        self._home().show_failure(result.failure, result.unexpected_detail)
+        self.query_one(OverviewView).show_failure(result.failure, result.unexpected_detail)
+        content = render_failure(result.failure, result.unexpected_detail)
+        for view in self._views():
+            if not isinstance(view, OverviewView):
+                view.show_body(content)
+
+    def _show_collected(self, snapshot: WorkbenchSnapshot) -> None:
+        """Replace every surface with the facts of one successful collection."""
+        self._latest_snapshot = snapshot
+        changes: tuple[str, ...] = ()
+        if self._comparison_snapshot is not None:
+            changes = snapshot_changes(self._comparison_snapshot, snapshot)
+            self.query_one(OverviewView).show_changes(changes)
+            self._comparison_snapshot = None
+        self._home().show_snapshot(snapshot)
+        for view in self._views():
+            view.show_snapshot(snapshot)
+        ready = "Local snapshot ready."
+        self._set_status(
+            ready if not changes else f"{ready} {len(changes)} change(s) listed in Diagnostics."
+        )
+
     def on_snapshot_collected(self, event: SnapshotCollected) -> None:
         """Render one worker result and then honor at most one coalesced refresh."""
         self._is_collecting = False
-        overview = self.query_one(OverviewView)
         if event.result.snapshot is None:
-            self._latest_snapshot = None
-            self._set_status("Inspection failed; details are current for this attempt.")
-            overview.show_failure(event.result.failure, event.result.unexpected_detail)
-            content = render_failure(event.result.failure, event.result.unexpected_detail)
-            for view in self._views()[1:]:
-                view.query_one(".section-body", Static).update(content)
+            self._show_failure(event.result)
         else:
-            self._latest_snapshot = event.result.snapshot
-            self._set_status("Local snapshot ready.")
-            for view in self._views():
-                view.show_snapshot(event.result.snapshot)
-            if self._comparison_snapshot is not None:
-                overview.show_changes(
-                    snapshot_changes(self._comparison_snapshot, event.result.snapshot)
-                )
-                self._comparison_snapshot = None
+            self._show_collected(event.result.snapshot)
         if self._is_refresh_pending:
             self._is_refresh_pending = False
             self.call_after_refresh(self._request_snapshot)
 
-    def _move_selection(self, offset: int) -> None:
-        """Move through the fixed rail with wraparound and no snapshot recollection."""
-        self._selected_index = (self._selected_index + offset) % len(_VIEW_LABELS)
-        self._show_selected_view()
+    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
+        """Release single-letter bindings while the typed removal phrase owns the keyboard."""
+        view = self._open_view()
+        is_typing = isinstance(view, InstallationView) and view.is_confirming_removal()
+        return not (is_typing and action in _LETTER_ACTIONS)
 
-    def action_previous_view(self) -> None:
-        """Select the previous read-only screen from arrows or k."""
-        self._move_selection(-1)
-
-    def action_next_view(self) -> None:
-        """Select the next read-only screen from arrows or j."""
-        self._move_selection(1)
-
-    def action_toggle_help(self) -> None:
-        """Toggle expanded text key help without opening another modal surface."""
-        self._is_help_visible = not self._is_help_visible
-        self.query_one("#keybar", Static).update(self._keybar_text())
-
-    def _action_view(self) -> ActionView | None:
-        """Return the selected view only when it exposes exact visible command selection."""
-        view = self._views()[self._selected_index]
-        return view if isinstance(view, ActionView) else None
-
-    def action_next_action(self) -> None:
-        """Move the selected screen's command marker forward without dispatching."""
-        if view := self._action_view():
-            view.move_action(1)
-
-    def action_previous_action(self) -> None:
-        """Move the selected screen's command marker backward without dispatching."""
-        if view := self._action_view():
-            view.move_action(-1)
-
-    def action_select_action(self) -> None:
-        """Stop Textual with a visible action only after a complete current snapshot."""
-        view = self._action_view()
+    def action_move(self, offset: int) -> None:
+        """Move the marker of whichever surface is currently visible."""
+        view = self._open_view()
         if view is None:
-            self._set_status("This read-only screen has no selectable action yet.")
+            self._home().move(offset)
+            return
+        view.move(offset)
+
+    def action_activate(self) -> None:
+        """Open the marked menu entry, or select the command the open section shows."""
+        if self._open_index is None:
+            self._open_index = self._home().selected_index
+            self._show_surface()
+            return
+        self._select_command()
+
+    def _select_command(self) -> None:
+        """Stop Textual with a visible action only after a complete current snapshot."""
+        view = self._open_view()
+        if view is None or not view.shows_actions():
+            self._set_status("This read-only screen has no selectable action.")
             return
         if self._is_collecting or self._latest_snapshot is None:
             self._set_status("Wait for a successful local snapshot before selecting an action.")
             return
-        command = (
-            view.review_action()
-            if isinstance(view, ReviewingActionView)
-            else view.selected_action()
-        )
+        command = view.activate()
         if command is not None:
             self.exit(TuiResult(command, self._latest_snapshot))
 
-    def action_scroll_detail_up(self) -> None:
-        """Scroll a long selected view by one page in small terminals."""
-        self.query_one("#views", VerticalScroll).scroll_page_up(animate=False)
+    def action_leave_section(self) -> None:
+        """Return to the central menu, or quit when the menu is already visible."""
+        view = self._open_view()
+        if view is None:
+            self.action_quit_workbench()
+            return
+        if isinstance(view, InstallationView):
+            view.cancel_confirmation()
+        self._open_index = None
+        self._show_surface()
 
-    def action_scroll_detail_down(self) -> None:
-        """Scroll a long selected view by one page in small terminals."""
-        self.query_one("#views", VerticalScroll).scroll_page_down(animate=False)
+    def action_toggle_flag(self, key: str) -> None:
+        """Switch one flag of the open section's marked action, if it binds that key."""
+        view = self._open_view()
+        if view is not None and view.toggle(key):
+            return
+        self._set_status("That key switches no flag on the marked action.")
+
+    def action_toggle_help(self) -> None:
+        """Toggle one expanded help line without opening another modal surface."""
+        self._is_help_visible = not self._is_help_visible
+        self.query_one("#keybar", Static).update(self._keybar_text())
+
+    def action_scroll_detail(self, direction: int) -> None:
+        """Scroll a long open section by one page in small terminals."""
+        detail = self.query_one("#sections", VerticalScroll)
+        if direction < 0:
+            detail.scroll_page_up(animate=False)
+            return
+        detail.scroll_page_down(animate=False)
 
     def action_refresh_snapshot(self) -> None:
-        """Request refresh unless the selected confirmation is consuming the r key."""
-        view = self._views()[self._selected_index]
-        if isinstance(view, BoundKeyInputView) and view.accept_bound_key("r"):
-            return
+        """Request one serialized refresh of the shared snapshot."""
         self._request_snapshot()
 
-    def action_exit_workbench(self) -> None:
+    def action_quit_workbench(self) -> None:
         """Leave the presentation loop without selecting a command."""
         self.exit(TuiResult(None, self._latest_snapshot))
 

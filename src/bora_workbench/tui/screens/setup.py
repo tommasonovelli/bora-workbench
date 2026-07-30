@@ -1,46 +1,63 @@
-"""Render managed-engine and receipt-aware model setup without installing or verifying."""
+"""Offer managed-engine and pinned-model setup without installing or verifying anything."""
 
 from __future__ import annotations
 
-from textual.app import ComposeResult
-from textual.containers import Vertical
-from textual.widgets import Static
-
 from bora_workbench.models import ArtifactInspection
 from bora_workbench.snapshot import WorkbenchSnapshot
-from bora_workbench.tui.actions import CommandSpec, render_command_menu, setup_commands
+from bora_workbench.tui.actions import (
+    compose_engine_install,
+    compose_engine_status,
+    compose_pull,
+    compose_remove_model,
+)
+from bora_workbench.tui.choices import Choice, ChoiceList, Flag
+from bora_workbench.tui.palette import Palette
+from bora_workbench.tui.section import Section
 
-_ACTIONS = setup_commands()
-_HEADING = "Setup actions (Tab selects; Enter closes the TUI before running)"
+_FORCE = "force"
+_NO_MODEL = "no-model"
+_KEEP_CACHE = "keep-cache"
+_DRY_RUN = "dry-run"
+_NOTE = (
+    "Opening this screen never downloads or hashes model payloads.",
+    "keep-cache leaves shared Hugging Face copies; dry-run deletes nothing.",
+    "Downloads, verification, and confirmations begin only after the workbench closes.",
+)
+CHOICES: tuple[Choice, ...] = (
+    Choice(
+        "install engine",
+        lambda flags: compose_engine_install(_FORCE in flags, _NO_MODEL in flags),
+        (Flag("f", _FORCE), Flag("n", _NO_MODEL)),
+    ),
+    Choice("download pinned model", lambda flags: compose_pull()),
+    Choice(
+        "remove pinned model",
+        lambda flags: compose_remove_model(_KEEP_CACHE in flags, _DRY_RUN in flags),
+        (Flag("c", _KEEP_CACHE), Flag("d", _DRY_RUN)),
+    ),
+    Choice("engine status", lambda flags: compose_engine_status()),
+)
 
 
 def _engine_lines(snapshot: WorkbenchSnapshot) -> tuple[str, ...]:
     """Describe the active engine and every collected lock difference as text."""
     engine = snapshot.doctor.engine
+    state = "active" if engine.is_active else "not active"
+    compatibility = "matches engine.lock" if engine.is_compatible else "does not match engine.lock"
     lines = (
         "Engine",
-        f"Active: {'yes' if engine.is_active else 'no'}",
-        f"Compatible: {'yes' if engine.is_compatible else 'no'}",
-        f"Release: {engine.release or 'none'}",
-        f"Backend: {engine.backend or 'none'}",
-        f"Executable: {engine.executable or 'none'}",
+        f"state         {state}, {compatibility}",
+        f"release       {engine.release or 'none'} ({engine.backend or 'no backend'})",
+        f"executable    {engine.executable or 'none'}",
     )
-    differences = tuple(f"Difference: {item}" for item in engine.differences)
-    return (*lines, *differences)
+    return (*lines, *(f"difference    {item}" for item in engine.differences))
 
 
 def _artifact_line(artifact: ArtifactInspection) -> str:
-    """Render one artifact's receipt status, location, size, and literal path."""
+    """Render one artifact's receipt status, location, and literal path."""
     size = "absent" if artifact.size_bytes is None else f"{artifact.size_bytes} bytes"
-    expected = (
-        "not locked"
-        if artifact.expected_size_bytes is None
-        else f"{artifact.expected_size_bytes} bytes"
-    )
-    return (
-        f"{artifact.label}: {artifact.status}; {artifact.location}; size {size}; "
-        f"expected {expected}; path {artifact.path}"
-    )
+    state = f"{artifact.status}, {artifact.location}, {size}"
+    return f"{artifact.label.ljust(14)}{state}\n{'':14}{artifact.path}"
 
 
 def _model_lines(snapshot: WorkbenchSnapshot) -> tuple[str, ...]:
@@ -49,54 +66,24 @@ def _model_lines(snapshot: WorkbenchSnapshot) -> tuple[str, ...]:
     if model is None:
         return ("", "Model", "Inspection unavailable until packaged content validates.")
     ownership = "locked managed model" if model.is_managed else "user-managed external model"
-    verified = "yes" if model.is_verified else "no"
-    lines = ("", "Model", f"Identity: {model.model}", f"Ownership: {ownership}")
-    lines = (*lines, f"Receipt verified: {verified}")
+    verified = "receipt verified" if model.is_verified else "receipt not verified"
+    lines = ("", "Model", f"identity      {model.model}", f"ownership     {ownership}, {verified}")
     lines = (*lines, *(_artifact_line(artifact) for artifact in model.artifacts))
-    return (*lines, *(f"Diagnostic: {item}" for item in model.diagnostics))
+    return (*lines, *(f"diagnostic    {item}" for item in model.diagnostics))
 
 
 def render_setup(snapshot: WorkbenchSnapshot) -> str:
     """Render setup facts while keeping acquisition and digest work in existing CLI owners."""
-    note = (
-        "Opening this screen never downloads or hashes model payloads.",
-        "bora pull applies only to artifacts pinned by engine.lock, not custom model paths.",
-        "--force reinstalls a compatible engine; --no-model skips pinned model acquisition.",
-        "--keep-hf leaves shared-cache copies; --dry-run deletes nothing.",
-        "The TUI closes before existing downloads, verification, and confirmations begin.",
-        "",
-    )
-    return "\n".join((*note, *_engine_lines(snapshot), *_model_lines(snapshot)))
+    return "\n".join((*_engine_lines(snapshot), *_model_lines(snapshot), "", *_NOTE))
 
 
-class SetupView(Vertical):
+class SetupView(Section):
     """Show engine and model setup facts without exposing an embedded installer."""
 
-    def __init__(self) -> None:
-        """Create the hidden-until-selected setup region."""
-        super().__init__(classes="section-view")
-        self._action_index = 0
-
-    def compose(self) -> ComposeResult:
-        """Yield the title, exact setup commands, and literal detail body."""
-        yield Static("Setup", classes="section-title", markup=False)
-        yield Static(
-            render_command_menu(_ACTIONS, self._action_index, _HEADING),
-            classes="section-actions",
-            markup=False,
-        )
-        yield Static("Waiting for the local snapshot...", classes="section-body", markup=False)
-
-    def move_action(self, offset: int) -> None:
-        """Move the text marker through every reachable setup option state."""
-        self._action_index = (self._action_index + offset) % len(_ACTIONS)
-        content = render_command_menu(_ACTIONS, self._action_index, _HEADING)
-        self.query_one(".section-actions", Static).update(content)
-
-    def selected_action(self) -> CommandSpec:
-        """Return the exact setup command currently marked in visible text."""
-        return _ACTIONS[self._action_index]
+    def __init__(self, palette: Palette) -> None:
+        """Create the hidden-until-opened setup section marked on engine installation."""
+        super().__init__("Setup", ChoiceList(CHOICES), palette)
 
     def show_snapshot(self, snapshot: WorkbenchSnapshot) -> None:
         """Replace the body with receipt-aware setup details."""
-        self.query_one(".section-body", Static).update(render_setup(snapshot))
+        self.show_body(render_setup(snapshot))

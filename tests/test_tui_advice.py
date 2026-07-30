@@ -159,7 +159,7 @@ def test_unreadable_service_state_outranks_other_snapshot_facts() -> None:
     assert suggestion.command is None
     assert "could not be read safely" in suggestion.headline
     assert "services.json is unreadable" in suggestion.detail
-    assert "0 running; 0 stale; 1 unreadable" in render_snapshot(snapshot)
+    assert "0 running, 0 stale, 1 unreadable" in render_snapshot(snapshot)
 
 
 def test_content_errors_outrank_every_derived_setup_fact() -> None:
