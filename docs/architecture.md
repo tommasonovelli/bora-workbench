@@ -37,7 +37,8 @@ different models, releases, flags, ports, or assets.
 
 ## Optional terminal-front-end flow
 
-`bora tui` adds presentation around the same command tree without entering the launch flow itself:
+Bare `bora` adds presentation around the same explicit command tree without entering the launch
+flow itself; there is no `tui` subcommand:
 
 ```text
 interactive terminal capability check
@@ -54,11 +55,13 @@ no network request, payload hash, receipt write, state cleanup, directory creati
 start. There is no background snapshot poll: only opening and a serialized explicit refresh collect
 again.
 
-Textual owns only its presentation event loop, the optional focused-home motion timer, and one thread
-worker for the synchronous collector. No core module gains an async API, scheduler, executor, or knowledge
-of the UI. A selected command returns from Textual first; using the existing parser afterwards keeps
-all validation, confirmation, lifecycle, and exit-code ownership in the real callback and leaves no
-TUI parent around update or uninstall.
+Textual owns only its presentation event loop, the optional focused-home motion timer, and one
+thread worker for the synchronous collector. Sections retain a static copy of the shared wind/sea
+frame without a timer. No core module gains an async API, scheduler, executor, or UI knowledge. A
+selected command returns from Textual first; using the existing parser afterwards keeps all
+validation, confirmation, lifecycle, and exit-code ownership in the real callback and leaves no TUI
+parent around update or uninstall. Successful returning callbacks wait for terminal acknowledgement
+before another Textual lifetime begins, so their output remains readable.
 
 ## Repository components
 
@@ -249,8 +252,8 @@ The algorithm, record lifecycle, and empirical limits are described in
 ## Security boundaries and side effects
 
 Importing `bora_workbench` uses no network, creates no directories, writes no state, and starts no
-processes. It does not import `bora_workbench.tui` or Textual; the framework enters only after the
-interactive `tui` command passes its terminal and motion-configuration checks. Every side effect
+processes. It does not import `bora_workbench.tui` or Textual; the framework enters only after bare
+`bora` passes its terminal and motion-configuration checks. Every side effect
 belongs to the operation that requires it.
 
 The main invariants:

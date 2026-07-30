@@ -1,4 +1,4 @@
-"""Lay out one full-window section with its actions, its exact command, and short facts."""
+"""Lay out one centred section with actions, an exact command, and styled local facts."""
 
 from __future__ import annotations
 
@@ -14,11 +14,71 @@ from bora_workbench.tui.palette import Palette
 _WAITING = "Waiting for the local snapshot..."
 
 
+def _column_parts(line: str) -> tuple[str, str, str] | None:
+    """Split a deliberately aligned label and value while retaining their spacing."""
+    for index in range(1, len(line) - 1):
+        if line[index : index + 2] != "  ":
+            continue
+        end = index + 2
+        while end < len(line) and line[end] == " ":
+            end += 1
+        label, value = line[:index].rstrip(), line[end:]
+        if label and value:
+            return label, line[len(label) : end], value
+    return None
+
+
+def _is_heading(line: str) -> bool:
+    """Recognize short prose headings without interpreting dynamic values as markup."""
+    punctuation = ".:,;=/\\()[]"
+    return bool(line and len(line) <= 36 and not any(item in line for item in punctuation))
+
+
+def _append_inline(text: Text, value: str, palette: Palette) -> None:
+    """Accent literal backtick-delimited commands while keeping every value safe."""
+    parts = value.split("`")
+    for index, part in enumerate(parts):
+        style = palette.command_style if index % 2 else palette.body_style
+        text.append(part, style=style)
+
+
+def _append_detail_line(text: Text, line: str, palette: Palette) -> None:
+    """Style one heading, bullet, aligned fact, or explanation with explicit contrast."""
+    if not line:
+        return
+    if _is_heading(line):
+        text.append(line, style=palette.accent_style)
+        return
+    if line.startswith("- "):
+        text.append("- ", style=palette.accent_style)
+        _append_inline(text, line[2:], palette)
+        return
+    columns = _column_parts(line)
+    if columns is None:
+        _append_inline(text, line, palette)
+        return
+    label, spacing, value = columns
+    text.append(label, style=palette.accent_style)
+    text.append(spacing)
+    _append_inline(text, value, palette)
+
+
+def styled_details(content: str, palette: Palette) -> Text:
+    """Turn literal screen text into blue labels, white prose, and bold inline commands."""
+    text = Text()
+    lines = content.splitlines()
+    for index, line in enumerate(lines):
+        _append_detail_line(text, line, palette)
+        if index < len(lines) - 1:
+            text.append("\n")
+    return text
+
+
 class Section(Vertical):
-    """Own the chrome every section shares so screens only supply their own facts."""
+    """Own the wider shared section chrome so screens supply only actions and facts."""
 
     def __init__(self, title: str, choices: ChoiceList, palette: Palette) -> None:
-        """Create one hidden-until-opened section around its already-built action list."""
+        """Create one hidden-until-opened section around an already-built action list."""
         super().__init__(classes="section-view")
         self._title = title
         self._choices = choices
@@ -29,46 +89,57 @@ class Section(Vertical):
         return not self._choices.is_empty
 
     def compose(self) -> ComposeResult:
-        """Yield the title, the action rows, the exact command, and the literal detail body."""
+        """Yield a centred title and bordered action, command, and local-state panels."""
         yield Static(self._title, classes="section-title", markup=False)
         if self.shows_actions():
             yield Static(self._action_text(), classes="section-actions")
             yield Static(self._preview_text(), classes="section-preview")
-        yield Static(_WAITING, classes="section-body", markup=False)
+        yield Static(styled_details(_WAITING, self._palette), classes="section-body")
 
     def _action_text(self) -> Text:
-        """Render action rows with a text marker so selection never depends on colour."""
+        """Render actions, guidance, and toggles with text-visible selection."""
         text = Text()
         rows = self._choices.rows()
         for position, (label, is_marked) in enumerate(rows):
             marker = f"{self._palette.marker} " if is_marked else "  "
-            style = self._palette.selected_style if is_marked else ""
+            style = self._palette.selected_style if is_marked else self._palette.body_style
             text.append(f"{marker}{label}", style=style)
             if position < len(rows) - 1:
                 text.append("\n")
-        flags = self._choices.flag_row()
-        if flags:
-            text.append(f"\n\n  {flags}", style=self._palette.muted_style)
+        self._append_action_guidance(text)
         return text
 
+    def _append_action_guidance(self, text: Text) -> None:
+        """Add concise help and current flag states beneath the selectable rows."""
+        description = self._choices.description()
+        flags = self._choices.flag_row()
+        if description:
+            text.append("\n\nAbout  ", style=self._palette.accent_style)
+            text.append(description, style=self._palette.body_style)
+        if flags:
+            text.append("\nFlags  ", style=self._palette.accent_style)
+            text.append(flags, style=self._palette.muted_style)
+
     def _preview_text(self) -> Text:
-        """Render the exact command that Enter would select for the marked action."""
-        return Text(f"  {self._choices.command().display}", style=self._palette.accent_style)
+        """Render the exact command in blue with a high-contrast panel label."""
+        text = Text("Command  ", style=self._palette.accent_style)
+        text.append(self._choices.command().display, style=self._palette.command_style)
+        return text
 
     def refresh_actions(self) -> None:
-        """Repaint the action rows and the command preview after a move or a toggle."""
+        """Repaint action and command panels after a move or flag toggle."""
         if not self.shows_actions():
             return
         self.query_one(".section-actions", Static).update(self._action_text())
         self.query_one(".section-preview", Static).update(self._preview_text())
 
     def move(self, offset: int) -> None:
-        """Move this section's own marker without dispatching anything."""
+        """Move this section's marker without dispatching anything."""
         self._choices.move(offset)
         self.refresh_actions()
 
     def toggle(self, key: str) -> bool:
-        """Switch one flag of the marked action and report whether the key belonged here."""
+        """Switch one marked-action flag and report whether the key belonged here."""
         if not self._choices.toggle(key):
             return False
         self.refresh_actions()
@@ -79,5 +150,5 @@ class Section(Vertical):
         return None if self._choices.is_empty else self._choices.command()
 
     def show_body(self, content: str) -> None:
-        """Replace the literal detail body with already collected local facts."""
-        self.query_one(".section-body", Static).update(content)
+        """Replace the local-state panel with safely styled already-collected facts."""
+        self.query_one(".section-body", Static).update(styled_details(content, self._palette))

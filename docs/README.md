@@ -19,10 +19,10 @@ The recommended reading order is linear:
    contributions;
 8. [Releasing](releasing.md) — building, publishing, and the status of the public artifacts.
 
-[Terminal workbench](tui.md) is an optional guide to `bora tui`, its seven screens, keymap, command
-handoff, and motion controls. It is not part of the required reading sequence: Commands documents
-every operation independently, so the complete product remains usable without an alternate-screen
-interface.
+[Terminal workbench](tui.md) is an optional guide to bare `bora`, its seven sections, keymap,
+command handoff, and motion controls. It is not part of the required reading sequence: Commands
+documents every operation independently, so the complete product remains usable without an
+alternate-screen interface.
 
 For a short overview and a quick start, see the [main README](../README.md).
 
@@ -43,10 +43,10 @@ of the launcher.
 
 ## Current status
 
-This branch defines the `bora-workbench 0.4.2` release, package `bora_workbench`, and command
+This branch defines the `bora-workbench 0.4.3` release, package `bora_workbench`, and command
 `bora`, distributed exclusively through GitHub Releases.
 
-The preceding public release is `bora-workbench 0.4.1`. Historical `qwen-launcher 0.1.6` is now
+The preceding public release is `bora-workbench 0.4.2`. Historical `qwen-launcher 0.1.6` is now
 hosted under the renamed repository URL; its package, command, wheel names, and verified artifacts
 remain unchanged and must not be rebuilt or relabelled.
 

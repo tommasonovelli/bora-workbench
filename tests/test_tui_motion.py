@@ -120,14 +120,38 @@ def test_motion_timer_is_capped_and_stops_on_navigation_and_focus_loss() -> None
             assert workbench.query_one("#sea").display is True
             await pilot.press("enter")
             assert workbench._motion_timer is None
-            assert workbench.query_one("#wind").display is False
-            assert workbench.query_one("#sea").display is False
+            assert workbench.query_one("#wind").display is True
+            assert workbench.query_one("#sea").display is True
+            frozen = str(workbench.query_one("#sea").render())
+            await pilot.pause(FRAME_INTERVAL_SECONDS * 1.5)
+            assert str(workbench.query_one("#sea").render()) == frozen
             await pilot.press("escape")
             assert intervals == [FRAME_INTERVAL_SECONDS, FRAME_INTERVAL_SECONDS]
             workbench.on_app_blur(events.AppBlur())
             assert workbench._motion_timer is None
             workbench.on_app_focus(events.AppFocus())
             assert len(intervals) == 3
+            await pilot.press("q")
+
+    asyncio.run(exercise())
+
+
+def test_motion_off_retains_static_graphics_on_home_and_sections() -> None:
+    """Keep the requested visual identity while removing every periodic wakeup."""
+
+    async def exercise() -> None:
+        """Open one section and require the same static decorative frame around it."""
+        terminal = TerminalMode(True, False, None, False, "BORA_TUI_MOTION=off")
+        workbench = WorkbenchApp("0.test", terminal, _failed_collection)
+        async with workbench.run_test(size=(120, 40)) as pilot:
+            await pilot.pause(0.05)
+            initial = str(workbench.query_one("#sea").render())
+            assert workbench._motion_timer is None
+            assert workbench.query_one("#wind").display is True
+            assert workbench.query_one("#sea").display is True
+            await pilot.press("enter")
+            assert workbench._motion_timer is None
+            assert str(workbench.query_one("#sea").render()) == initial
             await pilot.press("q")
 
     asyncio.run(exercise())

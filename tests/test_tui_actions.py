@@ -288,7 +288,7 @@ def test_opened_section_enter_returns_the_exact_visible_action_after_collection(
             await pilot.pause(0.1)
             await pilot.press("down", "down", "down", "enter")
             actions = workbench.query_one(OverviewView).query_one(".section-actions")
-            assert "full report" in str(actions.render())
+            assert "full system report" in str(actions.render())
             await pilot.press("down", "down", "enter")
             assert workbench.is_running is False
             assert workbench.return_value is not None

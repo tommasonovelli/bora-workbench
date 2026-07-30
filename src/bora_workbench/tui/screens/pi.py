@@ -16,20 +16,33 @@ from bora_workbench.tui.section import Section
 _PRINT = "print-only"
 _INSTALL = "install-pi"
 _NOTE = (
-    "Provider-file contents are not changed or inferred by this screen.",
-    "Launch selects bora and the locked model alias; start `bora coding` elsewhere first.",
-    "print-only and install-pi exclude each other, so no invalid pair is reachable.",
-    "pi, npm, file, backup, and confirmation behavior begins after the workbench closes.",
+    "- Provider-file contents are not changed or inferred by this screen.",
+    "- Launch selects bora and the locked alias; start `bora coding` elsewhere first.",
+    "- `print-only` and `install-pi` exclude each other; no invalid pair is reachable.",
+    "- pi, npm, file, backup, and confirmation behavior starts after this closes.",
 )
 CHOICES: tuple[Choice, ...] = (
-    Choice("launch pi with bora", lambda flags: compose_pi_launch()),
+    Choice(
+        "launch pi with bora",
+        lambda flags: compose_pi_launch(),
+        description="Open pi in this terminal with the bora provider and locked alias.",
+    ),
     Choice(
         "link the bora provider",
         lambda flags: compose_pi(_PRINT in flags, _INSTALL in flags),
         (Flag("p", _PRINT, _INSTALL), Flag("i", _INSTALL, _PRINT)),
+        "Review or write the provider entry with the context this machine serves.",
     ),
-    Choice("remove the bora provider", lambda flags: compose_pi_remove()),
-    Choice("uninstall pi itself", lambda flags: compose_pi_uninstall()),
+    Choice(
+        "remove the bora provider",
+        lambda flags: compose_pi_remove(),
+        description="Delete only bora's entry while preserving pi and other providers.",
+    ),
+    Choice(
+        "uninstall pi itself",
+        lambda flags: compose_pi_uninstall(),
+        description="Ask npm to remove pi, then separately offer provider removal.",
+    ),
 )
 
 
@@ -47,7 +60,7 @@ def render_pi(snapshot: WorkbenchSnapshot) -> str:
     else:
         lines.append(f"context       {context.tokens} tokens from {context.source}")
         lines.extend(f"diagnostic    {item}" for item in context.diagnostics)
-    return "\n".join((*lines, "", *_NOTE))
+    return "\n".join(("Connection", *lines, "", "Boundaries", *_NOTE))
 
 
 class PiView(Section):

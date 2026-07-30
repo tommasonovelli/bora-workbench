@@ -18,9 +18,21 @@ from bora_workbench.tui.section import Section
 
 _PHRASE = "remove"
 CHOICES: tuple[Choice, ...] = (
-    Choice("check for a published release", lambda flags: compose_update_check()),
-    Choice("update this installation", lambda flags: compose_update()),
-    Choice("uninstall bora", lambda flags: compose_uninstall()),
+    Choice(
+        "check for a published release",
+        lambda flags: compose_update_check(),
+        description="Query GitHub Releases without installing or replacing anything.",
+    ),
+    Choice(
+        "update this installation",
+        lambda flags: compose_update(),
+        description="Verify the newest wheel and schedule uv replacement after exit.",
+    ),
+    Choice(
+        "uninstall Bora Workbench",
+        lambda flags: compose_uninstall(),
+        description="Review four managed roots before the real independent confirmations.",
+    ),
 )
 
 
@@ -29,6 +41,7 @@ def render_installation(snapshot: WorkbenchSnapshot) -> str:
     doctor = snapshot.doctor
     paths = doctor.paths
     lines = (
+        "Installed release",
         f"version       {doctor.version} installed; the published version is not queried.",
         "",
         "Managed roots",
@@ -38,10 +51,11 @@ def render_installation(snapshot: WorkbenchSnapshot) -> str:
         f"state         {paths.state}",
         "",
         "Removal boundary",
-        "uninstall removes these four roots, including the managed model store, and removes",
-        "the Python tool only when it is uv-managed. Pinned Hugging Face cache copies need a",
-        "second, separate confirmation. uv itself, pi, and user-managed model paths stay.",
-        "Typing remove only leaves this workbench; the real CLI still asks its questions.",
+        "- `bora uninstall` removes these roots, including the managed model store.",
+        "- The Python tool is removed only when uv owns this installation.",
+        "- Pinned Hugging Face copies require a second, separate confirmation.",
+        "- uv, pi, and user-managed model paths remain outside the boundary.",
+        "- Typing `remove` only leaves this workbench; the real CLI still asks.",
     )
     return "\n".join(lines)
 

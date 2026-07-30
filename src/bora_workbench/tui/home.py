@@ -1,4 +1,4 @@
-"""Render the central menu, its one-line verdict, and the decorative wind and sea bands."""
+"""Render the centred home verdict and menu inside the shared workbench chrome."""
 
 from __future__ import annotations
 
@@ -12,13 +12,20 @@ from bora_workbench.tui.advice import next_step
 from bora_workbench.tui.menu import ENTRIES, PENDING_SUMMARY, summaries
 from bora_workbench.tui.palette import Palette
 
-_BRAND = "B O R A   W O R K B E N C H"
+_BRAND = "Bora Workbench"
 _BRAND_CAP = "▰"
 _LABEL_WIDTH = 20
 
 
+def brand_text(palette: Palette) -> Text:
+    """Render the close-set title in blue, with a pure-ASCII plain fallback."""
+    if palette.is_plain:
+        return Text(_BRAND, style="bold")
+    return Text(f"{_BRAND_CAP}  {_BRAND}  {_BRAND_CAP}", style=palette.accent_style)
+
+
 def tagline(snapshot: WorkbenchSnapshot, divider: str) -> str:
-    """Compose the one compact fact line shown under the brand."""
+    """Compose the compact machine identity shown beneath the shared title."""
     hardware = snapshot.doctor.hardware
     parts = (
         snapshot.doctor.version,
@@ -30,7 +37,7 @@ def tagline(snapshot: WorkbenchSnapshot, divider: str) -> str:
 
 
 class HomeView(Vertical):
-    """Own the home surface so the application only routes keys and snapshots to it."""
+    """Own the home verdict and menu while the application owns universal chrome."""
 
     def __init__(self, palette: Palette) -> None:
         """Create the central menu marked on its first entry with no facts collected yet."""
@@ -40,10 +47,8 @@ class HomeView(Vertical):
         self._summaries = (PENDING_SUMMARY,) * len(ENTRIES)
 
     def compose(self) -> ComposeResult:
-        """Yield the wind band, the centred identity and menu, and the sea band."""
-        yield Static("", id="wind", markup=False)
+        """Yield the centred machine identity, verdict, and compact menu."""
         yield Vertical(
-            Static(self._brand_text(), id="brand", markup=False),
             Static("inspecting this machine...", id="tagline", markup=False),
             Static("Waiting to inspect this machine.", id="verdict", markup=False),
             Static("", id="hint", markup=False),
@@ -52,19 +57,6 @@ class HomeView(Vertical):
             ),
             id="home-centre",
         )
-        yield Static("", id="sea", markup=False)
-
-    def _brand_text(self) -> Text:
-        """Render a multitone Unicode identity while keeping plain mode strictly ASCII."""
-        if self._palette.is_plain:
-            return Text(_BRAND, style="bold")
-        brand = Text()
-        brand.append(f"{_BRAND_CAP}  ", style="#35acc1")
-        brand.append("B O R A", style="bold #5fd7a7")
-        brand.append("   ", style=self._palette.muted_style)
-        brand.append("W O R K B E N C H", style="bold #77b7cf")
-        brand.append(f"  {_BRAND_CAP}", style="#35acc1")
-        return brand
 
     @property
     def selected_index(self) -> int:
@@ -72,12 +64,12 @@ class HomeView(Vertical):
         return self._index
 
     def _menu_text(self) -> Text:
-        """Render menu rows with a text marker and a right-hand state summary."""
+        """Render menu rows with a marker, clear label, and right-hand state summary."""
         text = Text()
         for position, entry in enumerate(ENTRIES):
             is_marked = position == self._index
             marker = f"{self._palette.marker} " if is_marked else "  "
-            style = self._palette.selected_style if is_marked else ""
+            style = self._palette.selected_style if is_marked else self._palette.body_style
             text.append(f"{marker}{entry.label.ljust(_LABEL_WIDTH)}", style=style)
             text.append(self._summaries[position], style=self._palette.muted_style)
             if position < len(ENTRIES) - 1:
@@ -90,15 +82,15 @@ class HomeView(Vertical):
         self.query_one("#menu-rows", Static).update(self._menu_text())
 
     def _show_advice(self, headline: str, hint: str) -> None:
-        """Replace the two-line verdict and accent an exact suggested command."""
-        self.query_one("#verdict", Static).update(Text(headline, style="bold"))
+        """Replace the verdict and render an exact suggested command in blue."""
+        self.query_one("#verdict", Static).update(Text(headline, style=self._palette.body_style))
         style = (
-            self._palette.accent_style if hint.startswith("bora ") else self._palette.muted_style
+            self._palette.command_style if hint.startswith("bora ") else self._palette.muted_style
         )
         self.query_one("#hint", Static).update(Text(hint, style=style))
 
     def show_snapshot(self, snapshot: WorkbenchSnapshot) -> None:
-        """Replace the facts, the verdict, and every menu summary from one snapshot."""
+        """Replace facts, verdict, and menu summaries from one immutable snapshot."""
         self.query_one("#tagline", Static).update(tagline(snapshot, self._palette.divider))
         suggestion = next_step(snapshot)
         self._show_advice(suggestion.headline, suggestion.command or suggestion.detail)

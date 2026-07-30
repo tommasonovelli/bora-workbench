@@ -5,8 +5,8 @@ requires explicit human authorization for the push, tag, and GitHub Release.
 
 ## Public status
 
-- release described by this branch: `bora-workbench 0.4.2`;
-- preceding public version: `bora-workbench 0.4.1` on GitHub Releases;
+- release described by this branch: `bora-workbench 0.4.3`;
+- preceding public version: `bora-workbench 0.4.2` on GitHub Releases;
 - historical versions `0.1.0` through `0.1.6` remain immutable under their original
   `qwen-launcher` artifact identity;
 - every published bundle comes from its green Ubuntu/Windows release workflow and contains the
@@ -56,6 +56,34 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.4.3
+
+`0.4.3` distributes D-092's unified workbench entry, presentation, and readable returning-command
+handoff. Bare `bora` is now the sole dashboard entry and `bora tui` is removed; reduced presentation
+moves to root `bora --plain`, while every explicit subcommand remains available for scripts and
+redirection.
+
+Every surface shares one close-set blue `Bora Workbench` title and the existing wind/sea identity.
+Home continues to animate at 6 fps; sections freeze and retain the current frame with no timer, and
+`BORA_TUI_MOTION=off` renders a deterministic static frame. Plain, encoding, size, focus, and
+unmount switches remain. Sections are centred at a wider responsive measure than home and use
+separate blue-bordered action, command, and detail panels. Blue labels and bold commands structure
+high-contrast white prose, each action gains concise guidance, and the shared Rich CLI palette uses
+the same blue/white identity while keeping warning and error text explicit.
+
+The same-process handoff remains exact. After a successful returning callback, the restored terminal
+now waits for Enter before Textual reopens, so report-only output remains visible. Terminal actions,
+non-zero exits, preflights, confirmations, writes, network, and callback ownership are unchanged.
+
+D-092 authorizes the finalization commit, push, and `v0.4.3` tag after the complete frozen suite,
+packaged validation, build, isolated wheel/uninstall checks, and diff inspection pass. The GitHub
+Release is authorized only after the tag's Ubuntu/Windows workflow is green and only from its exact
+`bora-workbench-release-bundle`. Current manual visual/CPU, real foreground, and Windows terminal
+observations remain unavailable follow-up checks, not passed checks or a Gate. The engine, model,
+calibration protocol, record format, command contract, reserves, and candidate lifecycle are
+unchanged; no candidate is activated, coverage remains `GATE-PARTIAL`, publication remains GitHub
+Releases only, and no registry upload is authorized.
 
 ### Release 0.4.2
 
@@ -385,10 +413,11 @@ Limits and checks that were not run must be explicit. `0.1.3` was authorized for
 and GitHub Release before the real spike; this does not amount to a Gate, and PyPI remains excluded.
 For `0.2.2`, `0.2.3`, and `0.2.4`, D-072, D-073, and D-077 carry forward the explicit waiver of
 additional manual Ubuntu/Windows and hardware calibration runs before publication; the real update
-path between two published releases is likewise follow-up verification. D-091 similarly waives the
-new `0.4.2` manual pi-launch and continuous-motion observations while keeping them open. The
-automated release matrix remains required; no waiver is a passed Gate, and the maintainer will
-perform platform checks after release.
+path between two published releases is likewise follow-up verification. D-091 waives the `0.4.2`
+manual pi-launch and continuous-motion observations while keeping them open. D-092 carries those
+open checks into `0.4.3` and also leaves the revised cross-screen presentation without a manual
+Windows observation. The automated release matrix remains required; no waiver is a passed Gate,
+and the maintainer will perform platform checks after release.
 
 ## Version, tag, and commit
 

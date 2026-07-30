@@ -245,16 +245,18 @@ background-work API.
 
 ### TUI development boundary
 
-The TUI imports lazily after interactive terminal checks. Its app may schedule only the optional
-focused-home presentation timer and one Textual thread worker around `collect_workbench_snapshot()`.
+Bare `bora` imports the TUI lazily after interactive terminal checks; there is no `tui` subcommand.
+Its app may schedule only the optional focused-home presentation timer and one Textual thread worker
+around `collect_workbench_snapshot()`. Open sections retain a static graphic with no timer.
 Opening and refresh must remain network-free and non-mutating: do not reuse a CLI presenter that
 cleans state, hash model payloads, write receipts, create roots, or start a service.
 
 Advice, command composition, capability decisions, and motion frames stay pure and deterministic.
 Headless Pilot tests cover navigation, blocked collectors, serialized refresh, exact recursive parser
-acceptance, teardown-before-dispatch, terminal versus returning actions, kill switches, continuous
-frame changes, and the absence of timers whenever motion is disabled or hidden. Real network, model,
-server, npm, uv update, and administrative work remains behind fakes or isolated package smoke tests.
+acceptance, teardown-before-dispatch, terminal versus returning actions, output acknowledgement,
+kill switches, continuous home frames, static section graphics, and absence of disabled timers. Real
+network, model, server, npm, uv update, and administrative work remains behind fakes or isolated
+package smoke tests.
 
 The E8 observation in `evidence/tui/ubuntu-motion.json` used a local Ubuntu 120x40 pseudo-terminal,
 three alternating disabled/automatic pairs, and the superseded finite 8 fps setting. It is not a

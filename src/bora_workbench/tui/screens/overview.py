@@ -16,11 +16,31 @@ from bora_workbench.tui.palette import Palette
 from bora_workbench.tui.section import Section
 
 CHOICES: tuple[Choice, ...] = (
-    Choice("full report", lambda flags: compose_doctor()),
-    Choice("packaged content", lambda flags: compose_validate()),
-    Choice("managed services", lambda flags: compose_status()),
-    Choice("managed engine", lambda flags: compose_engine_status()),
-    Choice("stop services", lambda flags: compose_stop()),
+    Choice(
+        "full system report",
+        lambda flags: compose_doctor(),
+        description="Print configuration, hardware, engine, records, paths, and validation.",
+    ),
+    Choice(
+        "validate packaged content",
+        lambda flags: compose_validate(),
+        description="Check schemas, references, digests, and cross-cutting contracts.",
+    ),
+    Choice(
+        "inspect managed services",
+        lambda flags: compose_status(),
+        description="Show verified live services and clean stale process state.",
+    ),
+    Choice(
+        "inspect managed engine",
+        lambda flags: compose_engine_status(),
+        description="Compare the active engine with the exact packaged lock.",
+    ),
+    Choice(
+        "stop managed services",
+        lambda flags: compose_stop(),
+        description="Stop only services whose process identity still verifies.",
+    ),
 )
 
 
@@ -103,7 +123,7 @@ def _facts(snapshot: WorkbenchSnapshot) -> tuple[str, ...]:
 def render_snapshot(snapshot: WorkbenchSnapshot) -> str:
     """Render compact local facts followed by every collected diagnostic."""
     diagnostics = _diagnostic_lines(snapshot)
-    sections = _facts(snapshot)
+    sections = ("System overview", *_facts(snapshot))
     if diagnostics:
         sections = (*sections, "", "Notes", *(f"- {item}" for item in diagnostics))
     return "\n".join(sections)

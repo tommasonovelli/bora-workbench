@@ -60,10 +60,10 @@ def render_calibration(snapshot: WorkbenchSnapshot) -> str:
         return "Calibration details are unavailable until packaged mode content validates."
     lines = [_record_line(record) for record in snapshot.doctor.records]
     note = (
-        "Calibration measures one requested preference cell per selected mode.",
-        "A candidate is never active until the real CLI confirmation promotes it.",
+        "- Calibration measures one requested preference cell per selected mode.",
+        "- A candidate is never active until the real CLI confirmation promotes it.",
     )
-    return "\n".join((*lines, "", *note))
+    return "\n".join(("Record lifecycle", *lines, "", "How it works", *note))
 
 
 class CalibrationView(Section):
@@ -113,15 +113,21 @@ class CalibrationView(Section):
         text = Text()
         if self._stage == "review":
             text.append("Review the exact command", style=self._palette.selected_style)
-            text.append("\n\n  The real CLI preflight and confirmation follow after this closes.")
+            text.append("\n\nNext  ", style=self._palette.accent_style)
+            text.append(
+                "The real CLI preflight and confirmation follow after this closes.",
+                style=self._palette.body_style,
+            )
             return text
         number = _STAGE_NUMBERS[self._stage]
-        text.append(f"Step {number}/4: {_STAGE_QUESTIONS[self._stage]}\n\n")
+        text.append(f"Step {number}/4  ", style=self._palette.accent_style)
+        text.append(_STAGE_QUESTIONS[self._stage], style=self._palette.body_style)
+        text.append("\n\n")
         stage_choices = self._choices_for_stage()
         for position, choice in enumerate(stage_choices):
             is_marked = position == self._choice_index
             marker = f"{self._palette.marker} " if is_marked else "  "
-            style = self._palette.selected_style if is_marked else ""
+            style = self._palette.selected_style if is_marked else self._palette.body_style
             text.append(f"{marker}{choice}", style=style)
             if position < len(stage_choices) - 1:
                 text.append("\n")
@@ -130,8 +136,10 @@ class CalibrationView(Section):
     def _preview_text(self) -> Text:
         """Show the exact command only once every question has been answered."""
         if self._stage != "review":
-            return Text("  Enter accepts the marked answer.", style=self._palette.muted_style)
-        return Text(f"  {self._selected_command().display}", style=self._palette.accent_style)
+            return Text("Enter accepts the marked answer.", style=self._palette.muted_style)
+        text = Text("Command  ", style=self._palette.accent_style)
+        text.append(self._selected_command().display, style=self._palette.command_style)
+        return text
 
     def move(self, offset: int) -> None:
         """Move only within the current valid wizard choices."""

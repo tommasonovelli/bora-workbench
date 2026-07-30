@@ -55,10 +55,10 @@ def _run(command: list[str], environment: dict[str, str], *, input_text: str | N
         raise RuntimeError(f"command failed with exit {result.returncode}: {command}\n{detail}")
 
 
-def _verify_tui_entry(command: Path, environment: dict[str, str]) -> None:
-    """Require the installed TUI command to reject redirected use before self-uninstall."""
+def _verify_bare_tui_entry(command: Path, environment: dict[str, str]) -> None:
+    """Require installed bare bora to reject redirected use before self-uninstall."""
     result = subprocess.run(
-        [str(command), "tui"],
+        [str(command)],
         env=environment,
         capture_output=True,
         text=True,
@@ -102,7 +102,7 @@ def main() -> None:
         command = root / "bin" / f"bora{suffix}"
         if not command.is_file():
             raise RuntimeError(f"uv did not create the bora-workbench command: {command}")
-        _verify_tui_entry(command, environment)
+        _verify_bare_tui_entry(command, environment)
         _run([str(command), "uninstall"], environment, input_text="y\n")
         _wait_until_absent(root / "uv-tools" / "bora-workbench")
         _wait_until_absent(command)

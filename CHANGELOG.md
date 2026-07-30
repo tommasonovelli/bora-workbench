@@ -3,6 +3,42 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
+## [0.4.3] - 2026-07-30
+
+### Changed
+
+- Bare `bora` is now the sole terminal-workbench entry and `bora tui` has been removed (D-092).
+  `bora --plain` retains the complete reduced monochrome presentation; explicit subcommands remain
+  the scriptable and redirectable CLI path, and using root `--plain` beside one is rejected instead
+  of being ignored.
+- Every workbench page retains one close-set, entirely blue `Bora Workbench` title and the Unicode
+  wind/sea identity. Home continues at 6 fps; sections freeze the graphic with no timer, and
+  `BORA_TUI_MOTION=off` retains a deterministic static frame. Existing plain, encoding, size,
+  focus, and unmount capability switches remain.
+- Sections use a centred responsive measure wider than home, with separate blue-bordered action,
+  command, and detail panels. Each marked action gains concise guidance; headings, fact labels,
+  borders, markers, and exact commands use blue while high-contrast white and selective bolding
+  structure explanations. Shared Rich CLI tables and status helpers follow the same blue/white
+  palette while warnings and errors remain explicitly labelled.
+
+### Fixed
+
+- A successful returning action no longer lets a freshly opened alternate screen immediately hide
+  report-only output. The restored terminal waits for Enter, then Textual reopens, recollects, and
+  reports snapshot differences. Terminal actions and exit 1, 2, or 130 still never reopen.
+
+### Verification limits
+
+- Automated tests cover bare entry and removed-command parsing, root-only plain mode, terminal
+  acknowledgement order, shared title/graphics on every section, wider detail geometry,
+  blue/white semantic styles, static no-timer frames, recursive command parsing, and all previous
+  handoff and snapshot contracts. The complete frozen suite, validation, build, isolated wheel, and
+  complete uv-tool uninstall checks are release requirements under D-092.
+- Manual visual/CPU, real foreground, and Windows terminal observations were not performed and are
+  not called passed or a Gate. The engine, model, calibration protocol, record format, command
+  contract, reserves, and candidate lifecycle are unchanged; no candidate is activated and
+  coverage remains `GATE-PARTIAL`.
+
 ## [0.4.2] - 2026-07-30
 
 ### Added

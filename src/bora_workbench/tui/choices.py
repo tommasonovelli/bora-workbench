@@ -23,11 +23,12 @@ class Flag:
 
 @dataclass(frozen=True, slots=True)
 class Choice:
-    """One selectable action row and the exact command its enabled flags compose."""
+    """One action row, its exact command, optional flags, and concise guidance."""
 
     label: str
     compose: Callable[[frozenset[str]], CommandSpec]
     flags: tuple[Flag, ...] = field(default_factory=tuple)
+    description: str = ""
 
 
 def _switched(enabled: frozenset[str], flag: Flag) -> frozenset[str]:
@@ -82,6 +83,10 @@ class ChoiceList:
     def command(self) -> CommandSpec:
         """Compose the exact command already visible beside the marker."""
         return self.selected.compose(self.enabled())
+
+    def description(self) -> str:
+        """Return the marked action's short guidance without deriving CLI behavior."""
+        return self.selected.description
 
     def rows(self) -> tuple[tuple[str, bool], ...]:
         """Return each action label with whether it currently carries the marker."""

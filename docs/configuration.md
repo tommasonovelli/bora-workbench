@@ -59,11 +59,13 @@ exactly `auto` (the default) or `off`; an empty, differently cased, or unknown v
 invalid-input status 2. `off` removes every animation timer while leaving the complete static TUI
 and all commands available.
 
-Automatic motion is decorative and carries no unique information. Three multicolour Unicode wind
-rows and a layered fractional-block sea update at 6 frames per second while the focused central menu
-remains visible at 80x24 or larger, below the 12 fps ceiling. Opening a section, losing detectable
-focus, shrinking the terminal, selecting `--plain`, setting `NO_COLOR`, using `TERM=dumb` or limited
-output encoding, setting `BORA_TUI_MOTION=off`, or unmounting the app removes the timer immediately.
+Automatic motion is decorative and carries no unique information. Three blue-to-white Unicode wind
+rows and a layered blue sea update at 6 frames per second while focused home remains visible at
+80x24 or larger, below the 12 fps ceiling. Opening a section or setting `BORA_TUI_MOTION=off` removes
+the timer but retains a static frame around the shared `Bora Workbench` title. Losing detectable
+focus, shrinking the terminal, selecting root `--plain`, setting `NO_COLOR`, using `TERM=dumb` or
+limited encoding, or unmounting removes the timer immediately; capability switches also hide the
+bands.
 
 The existing observation in
 [`evidence/tui/ubuntu-motion.json`](../evidence/tui/ubuntu-motion.json) measured the superseded

@@ -32,6 +32,7 @@ def render_settings(snapshot: WorkbenchSnapshot) -> str:
     config = resolution.config
     sources = resolution.sources
     lines = (
+        "Resolved configuration",
         f"{'setting [environment]'.ljust(34)}{'source'.ljust(14)}value",
         "",
         _setting("model [BORA_MODEL]", config.model, sources.model),
@@ -40,8 +41,12 @@ def render_settings(snapshot: WorkbenchSnapshot) -> str:
         _setting("engine_path [BORA_ENGINE_PATH]", config.engine_path, sources.engine_path),
         _setting("open_browser [BORA_OPEN_BROWSER]", config.open_browser, sources.open_browser),
         "",
+        "Source",
         f"file          {resolution.path}",
-        "precedence    environment > config.toml > defaults; this screen never writes.",
+        "precedence    environment > config.toml > defaults",
+        "",
+        "Boundary",
+        "- This section is read-only and never writes `config.toml`.",
     )
     return "\n".join(lines)
 

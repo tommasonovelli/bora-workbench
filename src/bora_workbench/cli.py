@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import sys
 from importlib.metadata import PackageNotFoundError, version
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
 import typer
 from typer.main import get_command
@@ -33,13 +34,17 @@ from bora_workbench._cli_services import (
     run_vstudio,
     show_status,
 )
-from bora_workbench._cli_theme import create_console
+from bora_workbench._cli_theme import create_console, print_note
 from bora_workbench._cli_update import UpdateOptions, run_update
+
+if TYPE_CHECKING:
+    from bora_workbench.tui.terminal import TerminalMode
 
 app = typer.Typer(
     name="bora-workbench",
-    help="Launch and manage the calibrated local Qwen distribution.",
-    no_args_is_help=True,
+    help="Open the workbench, or launch and manage the calibrated local Qwen distribution.",
+    invoke_without_command=True,
+    no_args_is_help=False,
 )
 engine_app = typer.Typer(help="Install and inspect the pinned managed llama.cpp engine.")
 app.add_typer(engine_app, name="engine")
@@ -61,7 +66,7 @@ def package_version() -> str:
     try:
         return version("bora-workbench")
     except PackageNotFoundError:
-        return "0.4.2"
+        return "0.4.3"
 
 
 def _dispatch_tui_arguments(arguments: tuple[str, ...]) -> int:
@@ -83,6 +88,7 @@ def _version_callback(value: bool) -> None:
 
 @app.callback()
 def main(
+    context: typer.Context,
     version_requested: bool = typer.Option(
         False,
         "--version",
@@ -90,9 +96,17 @@ def main(
         is_eager=True,
         help="Show the installed package version and exit.",
     ),
+    plain: bool = typer.Option(
+        False, "--plain", help="Use the reduced monochrome workbench presentation."
+    ),
 ) -> None:
-    """bora-workbench command group."""
+    """Open the workbench when no explicit CLI command was selected."""
     del version_requested
+    if context.invoked_subcommand is None:
+        _run_workbench(plain)
+        return
+    if plain:
+        raise typer.BadParameter("--plain is available only when opening bare bora")
 
 
 @app.command("validate")
@@ -107,25 +121,35 @@ def doctor() -> None:
     run_doctor(package_version(), _stdout, _stderr)
 
 
-@app.command()
-def tui(
-    plain: bool = typer.Option(
-        False, "--plain", help="Use the reduced monochrome terminal presentation."
-    ),
-) -> None:
-    """Open the read-only terminal workbench in an interactive terminal."""
+def _inspect_workbench_terminal(is_plain: bool) -> TerminalMode:
+    """Validate workbench presentation capabilities before importing Textual."""
     from bora_workbench.tui.motion import MotionConfigurationError
     from bora_workbench.tui.terminal import inspect_terminal
 
     try:
-        terminal_mode = inspect_terminal(plain)
+        terminal_mode = inspect_terminal(is_plain)
     except MotionConfigurationError as error:
         typer.echo(str(error), err=True)
         raise typer.Exit(2) from None
     if not terminal_mode.is_interactive:
-        typer.echo("bora tui requires interactive stdin and stdout terminals.", err=True)
+        typer.echo("bare bora requires interactive stdin and stdout terminals.", err=True)
         raise typer.Exit(2)
+    return terminal_mode
 
+
+def _pause_before_workbench_return() -> None:
+    """Keep successful command output visible until an interactive user presses Enter."""
+    if not sys.stdin.isatty() or not sys.stdout.isatty():
+        return
+    try:
+        input("Press Enter to return to Bora Workbench. ")
+    except (EOFError, KeyboardInterrupt) as error:
+        raise typer.Exit(130) from error
+
+
+def _run_workbench(is_plain: bool) -> None:
+    """Run TUI lifetimes and dispatch selected callbacks after each complete teardown."""
+    terminal_mode = _inspect_workbench_terminal(is_plain)
     # Textual stays outside non-TTY and ordinary CLI startup paths by design (D-086).
     from bora_workbench.tui.app import run_tui
 
@@ -134,10 +158,11 @@ def tui(
         result = run_tui(package_version(), terminal_mode, comparison_snapshot)
         if result.command is None:
             return
-        typer.echo(f"Selected command: {result.command.display}")
+        print_note(_stdout, "Command", result.command.display)
         exit_code = _dispatch_tui_arguments(result.command.cli_arguments)
         if exit_code != 0 or result.command.disposition == "terminal":
             raise typer.Exit(exit_code)
+        _pause_before_workbench_return()
         comparison_snapshot = result.snapshot
 
 

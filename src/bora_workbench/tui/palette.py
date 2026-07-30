@@ -1,17 +1,17 @@
-"""Define foreground-only palettes that keep the terminal's own background visible."""
+"""Define a blue-and-white foreground palette over the terminal's own background."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
-# Every surface asks for the terminal's default background instead of painting one, so the
-# workbench sits inside the user's own theme (D-083 presentation boundary).
+# Every surface requests the terminal's default background, so bora never paints a window over the
+# operator's chosen terminal theme (D-089, refined by D-092).
 TERMINAL_BACKGROUND = "ansi_default"
 
 
 @dataclass(frozen=True, slots=True)
 class Palette:
-    """Name the CSS colours of the chrome beside the Rich styles used for inline marking."""
+    """Name CSS colours and Rich styles shared by every workbench surface."""
 
     is_plain: bool
     text: str
@@ -25,21 +25,25 @@ class Palette:
     selected_style: str
     muted_style: str
     accent_style: str
+    body_style: str
+    command_style: str
 
 
 COLOR_PALETTE = Palette(
     is_plain=False,
-    text=TERMINAL_BACKGROUND,
-    muted="#7f8ea3",
-    accent="#5fd7a7",
-    wind="#a6c8e0",
-    sea="#4d9fc9",
-    border="#3c5a72",
+    text="#eef6ff",
+    muted="#9bb3d1",
+    accent="#58a9ff",
+    wind="#8bc8ff",
+    sea="#368bd6",
+    border="#356da6",
     marker="▸",
     divider="·",
-    selected_style="bold #5fd7a7",
-    muted_style="#7f8ea3",
-    accent_style="#5fd7a7",
+    selected_style="bold #78bcff",
+    muted_style="#9bb3d1",
+    accent_style="bold #58a9ff",
+    body_style="#eef6ff",
+    command_style="bold #73b9ff",
 )
 PLAIN_PALETTE = Palette(
     is_plain=True,
@@ -54,6 +58,8 @@ PLAIN_PALETTE = Palette(
     selected_style="bold",
     muted_style="none",
     accent_style="bold",
+    body_style="none",
+    command_style="bold",
 )
 
 
@@ -63,45 +69,54 @@ def palette_for(is_plain: bool) -> Palette:
 
 
 def _rules(palette: Palette, selector: str, border: str) -> str:
-    """Build one complete colour block for either normal or reduced presentation."""
+    """Build one complete colour block for normal or reduced presentation."""
     return f"""
 {selector} {{ color: {palette.text}; }}
 {selector} #brand {{ color: {palette.accent}; }}
 {selector} #tagline {{ color: {palette.muted}; }}
 {selector} #verdict {{ color: {palette.text}; }}
-{selector} #hint {{ color: {palette.muted}; }}
+{selector} #hint {{ color: {palette.accent}; }}
 {selector} #menu {{ border: {border} {palette.border}; }}
 {selector} #wind {{ color: {palette.wind}; }}
 {selector} #sea {{ color: {palette.sea}; }}
 {selector} .section-title {{ color: {palette.accent}; }}
-{selector} .section-preview {{ color: {palette.accent}; }}
+{selector} .section-actions {{ border: {border} {palette.border}; }}
+{selector} .section-preview {{ border: {border} {palette.border}; }}
+{selector} .section-body {{ border: {border} {palette.border}; }}
+{selector} #removal-message {{ color: {palette.muted}; }}
 {selector} #status {{ color: {palette.muted}; }}
 {selector} #keybar {{ color: {palette.muted}; }}
 """
 
 
 def stylesheet() -> str:
-    """Return static layout rules with a class-selected monochrome fallback."""
+    """Return centred responsive layout rules shared by home and all seven sections."""
     layout = f"""
 Screen {{ overflow: hidden; background: {TERMINAL_BACKGROUND}; }}
 #shell {{ width: 100%; height: 100%; background: {TERMINAL_BACKGROUND}; }}
+#wind {{ width: 100%; height: 3; padding: 0 2; text-align: center; }}
+#brand {{ width: 100%; height: 1; text-align: center; text-style: bold; }}
+#content {{ width: 100%; height: 1fr; }}
 #home {{ width: 100%; height: 1fr; }}
 #home-centre {{ width: 100%; height: 1fr; align: center middle; }}
-#wind {{ dock: top; width: 100%; height: 3; padding: 0 2; text-align: center; }}
-#sea {{ dock: bottom; width: 100%; height: 3; padding: 0 2; text-align: center; }}
-#brand {{ width: 100%; height: 1; text-align: center; text-style: bold; }}
+#sea {{ width: 100%; height: 3; padding: 0 2; text-align: center; }}
 #tagline {{ width: 100%; height: 1; text-align: center; }}
-#verdict {{ width: 100%; height: 1; text-align: center; margin-top: 1; }}
-#hint {{ width: 100%; height: 1; text-align: center; }}
+#verdict {{ width: 100%; height: 1; text-align: center; margin-top: 1; text-style: bold; }}
+#hint {{ width: 100%; height: 1; text-align: center; text-style: bold; }}
 #menu-box {{ width: 100%; height: auto; align-horizontal: center; margin-top: 1; }}
 #menu {{ width: 64; max-width: 100%; height: auto; padding: 0 2; }}
 #menu-rows {{ width: 100%; height: auto; }}
-#sections {{ width: 100%; height: 1fr; padding: 1 2; scrollbar-gutter: stable; }}
-.section-view {{ width: 100%; height: auto; }}
-.section-title {{ width: 100%; height: 2; text-style: bold; }}
-.section-actions {{ width: 100%; height: auto; }}
-.section-preview {{ width: 100%; height: 1; margin: 1 0; }}
-.section-body {{ width: 100%; height: auto; }}
+#sections {{
+    width: 100%; height: 1fr; padding: 1 2;
+    scrollbar-gutter: stable; align-horizontal: center;
+}}
+.section-view {{ width: 112; max-width: 100%; height: auto; }}
+.section-title {{ width: 100%; height: 1; margin-bottom: 1; text-align: center; text-style: bold; }}
+.section-actions {{ width: 100%; height: auto; padding: 1 2; }}
+.section-preview {{ width: 100%; height: auto; min-height: 3; margin-top: 1; padding: 0 2; }}
+.section-body {{ width: 100%; height: auto; margin-top: 1; padding: 1 2; }}
+#removal-message {{ width: 100%; height: auto; margin-top: 1; text-align: center; }}
+#removal-phrase {{ width: 60; max-width: 100%; margin: 1 0; }}
 #status {{ width: 100%; height: 1; padding: 0 2; }}
 #keybar {{ width: 100%; height: 1; padding: 0 2; }}
 """

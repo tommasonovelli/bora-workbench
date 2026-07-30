@@ -22,7 +22,7 @@ from bora_workbench.snapshot import (
     collect_workbench_snapshot,
 )
 from bora_workbench.tui.actions import TuiResult, snapshot_changes
-from bora_workbench.tui.home import HomeView
+from bora_workbench.tui.home import HomeView, brand_text
 from bora_workbench.tui.motion import (
     FRAME_INTERVAL_SECONDS,
     MotionDimensions,
@@ -99,7 +99,7 @@ def _collect(collector: SnapshotCollector, version: str) -> _CollectionResult:
 
 
 class WorkbenchApp(App[TuiResult]):
-    """Present one central menu and seven full-window sections over a shared snapshot."""
+    """Present one shared identity around a central menu and seven centred sections."""
 
     CSS = stylesheet()
     BINDINGS: ClassVar[list[Binding]] = [
@@ -140,11 +140,19 @@ class WorkbenchApp(App[TuiResult]):
         self._has_app_focus = True
 
     def compose(self) -> ComposeResult:
-        """Paint complete static chrome and every surface before collection starts."""
+        """Paint shared wind, title, content, and sea before collection starts."""
         display_class = "plain" if self._terminal_mode.is_plain else "normal"
         yield Vertical(
-            HomeView(self._palette),
-            VerticalScroll(*(view_type(self._palette) for view_type in _VIEW_TYPES), id="sections"),
+            Static("", id="wind", markup=False),
+            Static(brand_text(self._palette), id="brand", markup=False),
+            Vertical(
+                HomeView(self._palette),
+                VerticalScroll(
+                    *(view_type(self._palette) for view_type in _VIEW_TYPES), id="sections"
+                ),
+                id="content",
+            ),
+            Static("", id="sea", markup=False),
             Static(self._status_text, id="status", markup=False),
             Static(self._keybar_text(), id="keybar", markup=False),
             id="shell",
@@ -189,14 +197,20 @@ class WorkbenchApp(App[TuiResult]):
         """Return current terminal cells for pure motion rendering and size gating."""
         return MotionDimensions(self.size.width, self.size.height)
 
-    def _can_run_motion(self) -> bool:
-        """Require every runtime capability before scheduling a decorative frame."""
+    def _can_show_decoration(self) -> bool:
+        """Require colour, focus, and enough cells before either static band is visible."""
         return (
-            self._terminal_mode.is_motion_enabled
-            and not self._terminal_mode.is_plain
-            and self._open_index is None
+            not self._terminal_mode.is_plain
             and self._has_app_focus
             and supports_motion_size(self._motion_dimensions())
+        )
+
+    def _can_run_motion(self) -> bool:
+        """Animate only on home while keeping the same graphic static in sections."""
+        return (
+            self._can_show_decoration()
+            and self._terminal_mode.is_motion_enabled
+            and self._open_index is None
         )
 
     def _current_motion_elapsed(self) -> float:
@@ -211,8 +225,15 @@ class WorkbenchApp(App[TuiResult]):
             self._motion_timer.stop()
             self._motion_timer = None
 
-    def _pause_motion(self) -> None:
-        """Retain active elapsed time, stop its timer, and hide the decorative bands."""
+    def _freeze_motion(self) -> None:
+        """Retain elapsed time and stop periodic work while preserving one visible frame."""
+        self._motion_elapsed = self._current_motion_elapsed()
+        self._motion_started_at = None
+        self._stop_motion_timer()
+        self._render_motion(self._motion_elapsed)
+
+    def _hide_decoration(self) -> None:
+        """Stop periodic work and collapse both bands under a hard capability switch."""
         self._motion_elapsed = self._current_motion_elapsed()
         self._motion_started_at = None
         self._stop_motion_timer()
@@ -228,9 +249,12 @@ class WorkbenchApp(App[TuiResult]):
             widget.display = True
 
     def _sync_motion(self) -> None:
-        """Start or stop the sole optional presentation timer with the home surface."""
+        """Animate home or retain the shared static frame without unnecessary wakeups."""
+        if not self._can_show_decoration():
+            self._hide_decoration()
+            return
         if not self._can_run_motion():
-            self._pause_motion()
+            self._freeze_motion()
             return
         if self._motion_started_at is None:
             self._motion_started_at = monotonic()
@@ -243,7 +267,7 @@ class WorkbenchApp(App[TuiResult]):
     def _advance_motion(self) -> None:
         """Render one scheduled frame while every presentation capability remains true."""
         if not self._can_run_motion():
-            self._pause_motion()
+            self._sync_motion()
             return
         self._render_motion(self._current_motion_elapsed())
 

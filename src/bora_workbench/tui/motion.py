@@ -18,11 +18,11 @@ _MINIMUM_HEIGHT = 24
 _MAXIMUM_BAND_WIDTH = 160
 _MOTION_VALUES = frozenset(("auto", "off"))
 _WIND_GLYPHS = (" ", "·", "╌", "╍", "━")
-_WIND_COLOURS = ("#5b8fa8", "#77b7cf", "#a8dcea", "#d5f3f7")
+_WIND_COLOURS = ("#3f79ad", "#64a8e8", "#9fd3ff", "#edf8ff")
 _LOWER_BLOCKS = (" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█")
-_SEA_SURFACE_COLOURS = ("#5bd5d0", "#73e2dc", "#b9f5e9")
-_SEA_DEPTH_COLOURS = (("#268faf", "#35acc1"), ("#155b87", "#1d7297"))
-_FOAM_COLOUR = "bold #e8fff9"
+_SEA_SURFACE_COLOURS = ("#4a9fe3", "#72baff", "#c8e7ff")
+_SEA_DEPTH_COLOURS = (("#256ca8", "#368bd6"), ("#174b7d", "#23639d"))
+_FOAM_COLOUR = "bold #f4f9ff"
 
 Cell = tuple[str, str | None]
 Row = tuple[Cell, ...]

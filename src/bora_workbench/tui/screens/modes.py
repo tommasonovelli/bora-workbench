@@ -12,9 +12,14 @@ from bora_workbench.tui.section import Section
 _FORCE = "force"
 _MODES: tuple[ModeId, ...] = ("coding", "studio", "vstudio")
 _NOTE = (
-    "force bypasses only the default-model memory gate.",
-    "The selected mode owns this terminal after the workbench closes.",
+    "- `--force` bypasses only the default-model memory gate.",
+    "- The selected mode owns this terminal after the workbench closes.",
 )
+_MODE_GUIDANCE = {
+    "coding": "API-first development with browser UI and vision disabled.",
+    "studio": "Text chat through the integrated llama.cpp browser interface.",
+    "vstudio": "Multimodal chat with the pinned vision projector enabled.",
+}
 
 
 def _mode_choice(mode: ModeId) -> Choice:
@@ -23,6 +28,7 @@ def _mode_choice(mode: ModeId) -> Choice:
         mode,
         lambda flags: compose_mode(mode, _FORCE in flags),
         (Flag("f", _FORCE),),
+        _MODE_GUIDANCE[mode],
     )
 
 
@@ -44,8 +50,8 @@ def render_modes(snapshot: WorkbenchSnapshot) -> str:
     records = snapshot.doctor.records
     if not records:
         return "No trusted packaged record was collected, so no launch cell can be shown."
-    lines = [f"{record.mode_id.ljust(10)}{_cell(record)}" for record in records]
-    return "\n".join((*lines, "", *_NOTE))
+    lines = [f"{record.mode_id.ljust(12)}{_cell(record)}" for record in records]
+    return "\n".join(("Launch cells", *lines, "", "Before launch", *_NOTE))
 
 
 class ModesView(Section):

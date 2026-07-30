@@ -1,7 +1,7 @@
 # bora-workbench
 
 [![CI](https://github.com/tommasonovelli/bora-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/tommasonovelli/bora-workbench/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/tommasonovelli/bora-workbench.svg)](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.4.2)
+[![Release](https://img.shields.io/github/v/release/tommasonovelli/bora-workbench.svg)](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.4.3)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-31213/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -9,7 +9,7 @@
 
 | Command | What you get |
 |---|---|
-| `bora tui` | an optional read-only dashboard and exact composer for the same CLI commands |
+| bare `bora` | the read-only dashboard and exact composer for the explicit CLI commands |
 | `bora coding` | a local OpenAI-compatible API for editors, scripts, and agents |
 | `bora studio` | browser-based local chat in the built-in `llama.cpp` UI |
 | `bora vstudio` | the same UI with the pinned vision projector, for multimodal chat |
@@ -49,7 +49,7 @@ If this is your first time opening the project, the simplest path is:
 
 1. check the [requirements](#requirements);
 2. [install the release](#installation);
-3. optionally open `bora tui` to inspect the machine and see the truthful next step;
+3. run bare `bora` to inspect the machine and see the truthful next step;
 4. run `bora engine install`, which installs the engine and downloads the [model](#model);
 5. start `coding`, `studio`, or `vstudio`;
 6. once that works, [calibrate the machine](#calibration-is-the-second-step-not-the-entry-price);
@@ -63,7 +63,7 @@ If this is your first time opening the project, the simplest path is:
 > Do not use it for critical workloads without independent verification and backups of your local
 > data.
 
-Version **`0.4.2`** is distributed exclusively through GitHub Releases. Its distribution is
+Version **`0.4.3`** is distributed exclusively through GitHub Releases. Its distribution is
 `bora-workbench` and its command is `bora`. An installation of the previous `qwen-launcher` series
 is replaced rather than upgraded: its configuration, data, cache, and state directories are not
 read by `bora`.
@@ -86,7 +86,7 @@ If `nvidia-smi` is unavailable or unreliable, the launcher falls back to CPU and
 
 ## Installation
 
-Install the exact `v0.4.2` wheel from the GitHub Release. The commands below download the release
+Install the exact `v0.4.3` wheel from the GitHub Release. The commands below download the release
 manifest, verify the installer and wheel against it, and install the tool with pinned uv `0.11.28`
 and CPython `3.12.13`. You do not need to install uv or Python first, and no administrator
 privileges are used.
@@ -96,7 +96,7 @@ privileges are used.
 Open a terminal in a new directory, copy the entire block, and press Enter:
 
 ```bash
-version="0.4.2"
+version="0.4.3"
 base="https://github.com/tommasonovelli/bora-workbench/releases/download/v${version}"
 wheel="bora_workbench-${version}-py3-none-any.whl"
 
@@ -120,7 +120,7 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 Open PowerShell in a new directory, copy the entire block, and press Enter:
 
 ```powershell
-$Version = "0.4.2"
+$Version = "0.4.3"
 $Base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v$Version"
 $Wheel = "bora_workbench-$Version-py3-none-any.whl"
 
@@ -168,17 +168,17 @@ and removal.
 ### Optional terminal dashboard
 
 ```bash
-bora tui
-bora tui --plain
+bora
+bora --plain
 ```
 
-The TUI opens on a central menu that carries a one-line state summary per entry, the one deterministic
-next step, and seven read-only sections that `Enter` opens as full windows. It draws on the terminal's
-own background and, when capabilities permit, frames the home with continuous multicolour Unicode
-wind and a layered fractional-block sea. Opening and `r` refreshes may run bounded local hardware and
-engine probes, but perform no mutation, model hashing, or network request. Selecting an action closes
-and restores the TUI before the existing CLI callback owns normal terminal I/O, prompts, and exit
-codes. The complete CLI remains the accessible and scriptable path; see
+Bare `bora` is the only TUI entry. Its central menu carries one truthful next step and a state summary
+per entry. Every section retains the blue `Bora Workbench` title and wind/sea frame while using a
+wider centred blue-and-white panel layout to keep explanations clear and reduce wrapping. Home
+animates the graphic; sections and `BORA_TUI_MOTION=off` retain it statically with no timer. Opening
+and `r` refreshes run no mutation, model hash, or network request. A selected action runs only after
+Textual restores the terminal; returning output stays visible until Enter is pressed before the TUI
+reopens. Explicit commands remain the accessible and scriptable path; see
 [Terminal workbench](docs/tui.md) for keys, motion controls, and handoff details.
 
 ### Updating

@@ -1,12 +1,13 @@
 # Commands
 
-The general form is:
+Bare `bora` opens the interactive workbench. Explicit operations use:
 
 ```text
 bora [--version] <command> [options]
 ```
 
-`--help` is available on the main group and on every command. Typer also exposes
+`bora --plain` opens the same workbench in reduced monochrome presentation. `--help` is available
+on the main group and on every command. Typer also exposes
 `--install-completion` and `--show-completion` for the current shell.
 
 ## Summary
@@ -16,7 +17,7 @@ bora [--version] <command> [options]
 | `--version` | shows the installed version | no |
 | `validate` | validates the installed resources | no |
 | `doctor` | describes configuration, hardware, engine, and records | no |
-| `tui` | opens the optional read-only dashboard and exact command composer | no |
+| bare `bora` | opens the read-only dashboard and exact command composer | no |
 | `engine status` | inspects the managed engine | no |
 | `engine install` | installs the engine from the lock and downloads the model | yes |
 | `pull` | downloads and verifies the pinned model | yes |
@@ -73,41 +74,37 @@ for process state; it is not a calibration-record status.
 The command creates no directories and fixes no problem automatically. An invalid configuration
 exits with 2; a hardware or content error with 1; diagnostic warnings with 0.
 
-## `tui`
+## Bare `bora`
 
 ```bash
-bora tui
-bora tui --plain
+bora
+bora --plain
 ```
 
-Opens a central menu for Run, Calibration, Setup, Diagnostics, Pi, Settings, and This installation,
-then shows each section as a full window with exact current commands before they can be selected.
-`--plain` keeps all screens and actions in a reduced monochrome presentation. Interactive stdin and
-stdout are required; redirected invocation exits 2 before Textual is imported.
+Bare `bora` is the only workbench entry; `bora tui` is not a command. It opens Run, Calibration,
+Setup, Diagnostics, Pi, Settings, and This installation from a central menu. Every page retains the
+blue `Bora Workbench` title and wind/sea frame. Sections use a wider centred layout with distinct
+action, exact-command, and styled detail panels; `--plain` keeps all content and actions in reduced
+monochrome presentation. Interactive stdin and stdout are required, while explicit subcommands stay
+available for scripts and redirection.
 
 Opening and `r` refreshes make no network request or mutation. They may read local files, inspect
 process identities, and run bounded hardware and engine probes in one presentation worker; they do
-not hash model payloads, write receipts, repair service state, create directories, start services,
-or poll in the background. A slow probe leaves navigation and quitting responsive, and repeated
-refresh requests are serialized.
+not hash payloads, write receipts, repair state, create directories, start services, or poll.
 
-Arrows or `j`/`k` move the one marker on the visible surface. `Enter` opens a section or accepts its
-marked action, `Esc` returns to the menu, page keys scroll detail, `?` expands help, and `q` or
-`Ctrl-Q` quits. Bracketed letters switch the marked action's flags in place; `Tab` is unbound.
-Settings are presentation-only. The calibration composer creates only valid current option
-combinations, and uninstall requires typing `remove` before selection.
+Arrows or `j`/`k` move one marker. `Enter` opens or selects, `Esc` returns, page keys scroll, `?`
+expands help, and `q` quits. Bracketed letters switch the marked action's flags. Settings are
+read-only, calibration creates only valid combinations, and uninstall requires typing `remove`.
 
-After selection the TUI fully restores the terminal, then invokes the existing Click/Typer callback
-in the same process. That callback retains its real preflight, confirmations, network, writes, and
-exit mapping. Successful diagnostics, setup, pi actions, and `update --check` return to a freshly
-collected TUI; modes, calibration, update, and uninstall are terminal and never reopen. Failures and
-interruptions propagate unchanged.
+Selection fully restores the terminal before invoking the existing Click/Typer callback in the same
+process. Successful returning actions keep their output visible behind a `Press Enter to return`
+acknowledgement, then reopen and refresh. Modes, calibration, update, and uninstall are terminal;
+failures and interruptions never reopen and propagate unchanged.
 
-Optional home motion carries no information. Three multicolour Unicode wind rows and a layered
-fractional-block sea continue at 6 fps while the central menu remains focused, below the 12 fps
-ceiling, and stop immediately under `--plain`, `NO_COLOR`, `TERM=dumb`, terminal-size/focus checks,
-an open section, unmount, or `BORA_TUI_MOTION=off`. Malformed motion values exit 2. Full screen,
-action, accessibility, and handoff details are in [Terminal workbench](tui.md).
+Home motion carries no information. Wind and sea animate at 6 fps under the 12 fps ceiling, then
+freeze without a timer in sections. `BORA_TUI_MOTION=off` retains the static graphic; plain, colour,
+encoding, terminal-size, focus, and unmount switches remain enforced. Full details are in
+[Terminal workbench](tui.md).
 
 ## `engine status`
 

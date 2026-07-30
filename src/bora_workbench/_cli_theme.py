@@ -23,15 +23,15 @@ from bora_workbench._engine_assets import TransferProgress, TransferProgressCall
 from bora_workbench._model_verification import VerifyProgress
 
 # Semantic palette. Built-in Rich style names stay valid on every console, themed or not.
-# Colour never carries meaning alone; a plain-text label survives when colour is stripped
-# (redirected output). No decorative glyphs: they widen status lines enough to wrap and split
-# tokens. A calm, cargo-style label set reads as a serious tool rather than a novelty.
-STYLE_SUCCESS = "bold green"
-STYLE_WARNING = "yellow"
+# Blue and white establish the product identity while warning/error labels retain distinct
+# semantics. Every label survives when redirected output strips colour.
+STYLE_SUCCESS = "bold bright_blue"
+STYLE_WARNING = "bold yellow"
 STYLE_ERROR = "bold red"
-STYLE_HEADING = "bold cyan"
-STYLE_ACCENT = "cyan"
-STYLE_MUTED = "dim"
+STYLE_HEADING = "bold bright_blue"
+STYLE_ACCENT = "bold bright_blue"
+STYLE_BODY = "white"
+STYLE_MUTED = "dim white"
 
 # One calm spinner and one bar geometry back every live task so loading always looks the same.
 _SPINNER_NAME = "dots"
@@ -53,9 +53,10 @@ def status_table(title: str | None = None) -> Table:
         title=title,
         box=ROUNDED,
         title_style=STYLE_HEADING,
-        header_style=STYLE_ACCENT,
-        border_style=STYLE_MUTED,
+        header_style=f"bold {STYLE_BODY}",
+        border_style=STYLE_ACCENT,
         title_justify="left",
+        row_styles=(STYLE_BODY,),
     )
 
 
@@ -201,20 +202,20 @@ def print_success(console: Console, headline: str, detail: str = "") -> None:
     """Print a styled success headline followed by an optional literal detail."""
     line = Text(headline, style=STYLE_SUCCESS)
     if detail:
-        line.append(f" {detail}")
+        line.append(f" {detail}", style=STYLE_BODY)
     console.print(line)
 
 
 def print_warning(console: Console, message: str) -> None:
     """Print a warning label and literal message that remain meaningful without colour."""
-    console.print(Text.assemble(("warning:", STYLE_WARNING), " ", message))
+    console.print(Text.assemble(("warning:", STYLE_WARNING), (f" {message}", STYLE_BODY)))
 
 
 def print_error(console: Console, category: str, detail: str) -> None:
     """Print an actionable error while preserving literal details (specification section 5.11)."""
-    console.print(Text.assemble((f"{category}:", STYLE_ERROR), " ", detail))
+    console.print(Text.assemble((f"{category}:", STYLE_ERROR), (f" {detail}", STYLE_BODY)))
 
 
 def print_note(console: Console, label: str, detail: str) -> None:
-    """Print a styled informational label followed by a literal detail."""
-    console.print(Text.assemble((f"{label}:", STYLE_ACCENT), " ", detail))
+    """Print a blue informational label followed by literal high-contrast detail."""
+    console.print(Text.assemble((f"{label}:", STYLE_ACCENT), (f" {detail}", STYLE_BODY)))

@@ -5,12 +5,22 @@ from io import StringIO
 from rich.console import Console
 
 from bora_workbench._cli_theme import (
+    STYLE_ACCENT,
+    STYLE_BODY,
+    STYLE_HEADING,
+    STYLE_SUCCESS,
     print_error,
     print_heading,
     print_note,
     print_success,
     print_warning,
 )
+
+
+def test_shared_cli_identity_uses_blue_labels_and_white_explanations() -> None:
+    """Keep ordinary command output aligned with the workbench without recolouring errors."""
+    assert all("blue" in style for style in (STYLE_ACCENT, STYLE_HEADING, STYLE_SUCCESS))
+    assert STYLE_BODY == "white"
 
 
 def test_status_helpers_do_not_interpret_dynamic_rich_markup() -> None:

@@ -5,8 +5,10 @@
 > file defines the sequence and cannot authorize a push, tag, release, remote operation, candidate
 > activation, Open WebUI work, or Gate claim.
 >
-> This revision was checked against `bora-workbench 0.3.2`. `TUI.md` is the aligned design record;
-> match implementation references by content rather than by historical line number.
+> This revision was checked against `bora-workbench 0.3.2`. D-092 later removed the explicit
+> `bora tui` entry in favour of bare `bora` and refined the completed presentation; `TUI.md` and
+> `docs/tui.md` describe the current result. Match implementation references here by content rather
+> than by historical line number.
 
 ---
 

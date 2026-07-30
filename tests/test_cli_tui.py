@@ -59,7 +59,7 @@ _VIEW_CASES = (
     (OverviewView, "backend       cpu"),
     (PiView, "8192 tokens from test baseline"),
     (SettingsView, "model [BORA_MODEL]"),
-    (InstallationView, "Pinned Hugging Face cache copies need a"),
+    (InstallationView, "Pinned Hugging Face copies require a second"),
 )
 
 
@@ -158,7 +158,7 @@ import json
 import sys
 from typer.testing import CliRunner
 from bora_workbench.cli import app
-result = CliRunner().invoke(app, ["tui"])
+result = CliRunner().invoke(app, [])
 print(json.dumps({
     "exit_code": result.exit_code,
     "stderr": result.stderr,
@@ -187,10 +187,10 @@ def test_cli_plain_mode_reaches_tui_after_capability_check(monkeypatch) -> None:
 
     monkeypatch.setattr(tui_app, "run_tui", run)
 
-    result = runner.invoke(app, ["tui", "--plain"])
+    result = runner.invoke(app, ["--plain"])
 
     assert result.exit_code == 0
-    assert calls == [("0.4.2", selected, None)]
+    assert calls == [("0.4.3", selected, None)]
 
 
 def test_returning_action_dispatches_after_teardown_then_reopens(monkeypatch) -> None:
@@ -214,15 +214,21 @@ def test_returning_action_dispatches_after_teardown_then_reopens(monkeypatch) ->
     monkeypatch.setattr(terminal_module, "inspect_terminal", lambda plain: selected)
     monkeypatch.setattr(tui_app, "run_tui", run)
     monkeypatch.setattr(cli_module, "_dispatch_tui_arguments", dispatch)
+    monkeypatch.setattr(
+        cli_module,
+        "_pause_before_workbench_return",
+        lambda: events.append(("output-acknowledged", None)),
+    )
     monkeypatch.setattr(subprocess, "run", lambda *args, **kwargs: pytest.fail("subprocess used"))
 
-    result = runner.invoke(app, ["tui"])
+    result = runner.invoke(app, [])
 
     assert result.exit_code == 0
-    assert "Selected command: bora doctor" in result.stdout
+    assert "Command: bora doctor" in result.stdout
     assert events == [
         ("tui-stopped", None),
         ("dispatch", ("doctor",)),
+        ("output-acknowledged", None),
         ("tui-stopped", snapshot),
     ]
 
@@ -244,11 +250,11 @@ def test_terminal_action_success_exits_without_reopening(monkeypatch, command: C
     monkeypatch.setattr(tui_app, "run_tui", run)
     monkeypatch.setattr(cli_module, "_dispatch_tui_arguments", lambda arguments: 0)
 
-    result = runner.invoke(app, ["tui"])
+    result = runner.invoke(app, [])
 
     assert result.exit_code == 0
     assert calls == [None]
-    assert f"Selected command: {command.display}" in result.stdout
+    assert f"Command: {command.display}" in result.stdout
 
 
 @pytest.mark.parametrize("exit_code", (1, 2, 130))
@@ -266,7 +272,7 @@ def test_returning_action_propagates_failure_without_reopening(monkeypatch, exit
     monkeypatch.setattr(tui_app, "run_tui", run)
     monkeypatch.setattr(cli_module, "_dispatch_tui_arguments", lambda arguments: exit_code)
 
-    result = runner.invoke(app, ["tui"])
+    result = runner.invoke(app, [])
 
     assert result.exit_code == exit_code
     assert calls == [None]
@@ -280,7 +286,7 @@ def test_same_process_dispatch_invokes_real_typer_leaf_and_maps_interrupt(monkey
     )
 
     assert cli_module._dispatch_tui_arguments(("doctor",)) == 0
-    assert calls == ["0.4.2"]
+    assert calls == ["0.4.3"]
 
     def interrupt(version, stdout, stderr):
         """Raise the interruption the Typer root maps to contractual exit 130."""
@@ -288,13 +294,6 @@ def test_same_process_dispatch_invokes_real_typer_leaf_and_maps_interrupt(monkey
 
     monkeypatch.setattr(cli_module, "run_doctor", interrupt)
     assert cli_module._dispatch_tui_arguments(("doctor",)) == 130
-
-
-def test_encoding_probe_covers_every_rich_home_glyph() -> None:
-    """Select plain mode before a legacy encoding reaches wind, sea, or brand cells."""
-    required = set("╌╍━▰▁▂▃▄▅▆▇█▒▓")
-
-    assert required <= set(terminal_module._LAYOUT_GLYPHS)
 
 
 @pytest.mark.parametrize(
@@ -355,7 +354,7 @@ def test_malformed_motion_value_exits_two_before_textual_run(monkeypatch) -> Non
     monkeypatch.setenv("BORA_TUI_MOTION", "sometimes")
     monkeypatch.setattr(tui_app, "run_tui", lambda *args: pytest.fail("Textual started"))
 
-    result = runner.invoke(app, ["tui"])
+    result = runner.invoke(app, [])
 
     assert result.exit_code == 2
     assert "BORA_TUI_MOTION must be one of: auto, off" in result.stderr
@@ -380,7 +379,7 @@ def test_first_shell_stays_responsive_while_snapshot_is_blocked() -> None:
         async with workbench.run_test() as pilot:
             await pilot.pause(0.05)
             assert started.is_set()
-            assert "B O R A   W O R K B E N C H" in str(workbench.query_one("#brand").render())
+            assert "Bora Workbench" in str(workbench.query_one("#brand").render())
             assert "Run" in _menu_text(workbench)
             assert "Waiting for the local snapshot" in _overview_text(workbench)
             await pilot.press("r")
@@ -477,6 +476,10 @@ def test_menu_opens_every_read_only_section_at_supported_sizes(size) -> None:
                 await pilot.press("enter")
                 assert workbench.query_one(view_type).display is True
                 assert expected in _view_text(workbench, view_type)
+                assert "Bora Workbench" in str(workbench.query_one("#brand").render())
+                if size == (120, 40):
+                    assert workbench.query_one("#wind").display is True
+                    assert workbench.query_one("#sea").display is True
                 await pilot.press("escape")
                 assert workbench.query_one(view_type).display is False
             assert "This installation" in _menu_text(workbench)

@@ -1,7 +1,7 @@
 # bora TUI — implemented design record
 
-> **Status: implemented current design.** D-083–D-090 in `IMPLEMENTATION_SPEC.md` authorize the
-> reduced interactive-front-end milestone and the current home presentation. `TUI_PLAN.md`
+> **Status: implemented current design.** D-083–D-092 in `IMPLEMENTATION_SPEC.md` authorize the
+> reduced interactive-front-end milestone and the current unified presentation. `TUI_PLAN.md`
 > retains the step-by-step execution and release checks. If this document, that plan, and the
 > specification disagree, the specification wins; user operation is documented in `docs/tui.md`.
 
@@ -9,8 +9,9 @@
 
 ## 1. Product statement
 
-`bora tui` is an optional, read-mostly terminal dashboard, exact command composer, and teaching
-surface for the current bora CLI. It is not a second launcher runtime.
+Bare `bora` is a read-mostly terminal dashboard, exact command composer, and teaching surface for
+the current explicit-command CLI. The old `bora tui` entry no longer exists, and the workbench is
+not a second launcher runtime.
 
 The front end exists to answer three questions quickly:
 
@@ -18,7 +19,8 @@ The front end exists to answer three questions quickly:
 2. What is the one truthful next step?
 3. Which exact `bora ...` command performs the selected action?
 
-Bare `bora` continues to show help. Scripts and redirected use remain CLI-first, and no operation is
+Bare `bora` requires an interactive terminal and opens the workbench; `bora --plain` selects its
+reduced presentation. Scripts and redirected use call explicit subcommands, and no operation is
 available only through the TUI.
 
 ### 1.1 Included
@@ -29,7 +31,8 @@ available only through the TUI.
 - exact composition of current commands, with per-action flag toggles;
 - a calibration wizard that can produce only valid option combinations;
 - post-UI command dispatch with normal terminal I/O and existing confirmations;
-- continuous multicolour Unicode wind/sea motion with static and accessibility kill switches.
+- one blue/white visual identity, wider centred sections, and motion-free static section graphics;
+- continuous multicolour Unicode wind/sea motion on home with accessibility kill switches.
 
 ### 1.2 Excluded
 
@@ -87,10 +90,16 @@ The snapshot distinguishes facts that the earlier proposal conflated:
 
 ## 3. Information architecture
 
-The workbench opens on one home surface: the identity, the verdict, and a central menu of seven
-user-facing entries. They are not CLI help groups and do not rename commands. `Enter` opens the
-marked entry as a full window; `Esc` returns. Only one surface is navigable at a time, so the
-keyboard never carries two simultaneous axes of movement.
+The workbench opens on one home surface: the verdict and a central menu of seven user-facing
+entries. A close-set, entirely blue `Bora Workbench` title and the wind/sea graphics are shared
+chrome around home and every section. They are not CLI help groups and do not rename commands.
+`Enter` opens the marked entry as a full window; `Esc` returns. Only one surface is navigable at a
+time, so the keyboard never carries two simultaneous axes of movement.
+
+Home retains a compact menu. Each section uses a centred responsive measure wider than home, so
+facts and paths wrap less often, and separates actions, exact command, and local details into blue
+bordered panels. Blue headings and labels structure high-contrast white explanation text; the marked
+action also carries one concise description. Selection and meaning remain explicit in text.
 
 | Entry | Purpose |
 |---|---|
@@ -184,8 +193,9 @@ There is no `subprocess.run([sys.executable, "-m", ...])` parent waiting in the 
 That matters on Windows: deferred `update` and `uninstall` must observe the one process that will
 actually exit.
 
-A returning action reopens and re-collects only after exit 0. Exit 1, 2, or 130 ends `bora tui` with
-that exact result. A terminal action never reopens.
+A returning action waits in the restored terminal after exit 0, keeping its output visible until
+the operator presses Enter; only then does it reopen and re-collect. Exit 1, 2, or 130 ends the bare
+`bora` invocation with that exact result. A terminal action never reopens.
 
 ### 5.1 Action matrix
 
@@ -324,34 +334,33 @@ instead of being intercepted, so the confirmation behaves like an ordinary text 
 Destructive actions are never root single-letter shortcuts. Confirmation defaults to no. Small
 terminals scroll or simplify instead of hiding an operation.
 
-A non-TTY invocation prints one actionable line and exits 2 before importing Textual. `--plain`,
-`NO_COLOR`, `TERM=dumb`, and unsupported output encoding select deterministic plain rendering.
-`BORA_TUI_MOTION=off` retains normal static styling when every other capability is available.
-Automatic legacy raster-font detection is not promised.
+A non-TTY bare invocation prints one actionable line and exits 2 before importing Textual. The
+root-only `--plain` option, `NO_COLOR`, `TERM=dumb`, and unsupported output encoding select
+deterministic plain rendering. `BORA_TUI_MOTION=off` retains the normal static title and graphics
+when every other capability is available. Automatic legacy raster-font detection is not promised.
 
 ---
 
 ## 10. Bora identity and optional motion
 
-The workbench asks for the terminal's default background rather than painting one, so it inherits the
-surrounding shell's colours and the text sits directly on the user's own theme. Colour marks the
-brand, marker, composed command, and decorative wind/sea depth; body text keeps the terminal's
-foreground, and decoration carries no state.
+The workbench asks for the terminal's default background rather than painting one. D-092 gives every
+screen one close-set `Bora Workbench` title in blue and a blue/white hierarchy: blue title, borders,
+headings, labels, marker, and exact commands; high-contrast white body prose; and muted blue
+secondary facts. Shared Rich CLI helpers use the same identity while retaining explicit warning and
+error labels. Colour and decoration carry no state.
 
-The static identity remains complete without motion. D-090 supersedes only D-087's finite visual
-effect:
+D-092 refines D-090's visual effect without changing its home animation rate:
 
-- three wind rows move sparse `·`, `╌`, `╍`, and `━` ribbons through several sky colours;
-- a fractional-block wave surface sits over two rows of shaded/full-cell water and moving currents;
+- three wind rows use sparse `·`, `╌`, `╍`, and `━` ribbons through blue-to-white sky colours;
+- a fractional-block wave surface sits over two blue shaded/full-cell water rows;
 - gust and sea remain pure functions of time, dimensions, and seed;
-- motion continues only on the focused central menu, at 6 fps under a 12 fps ceiling;
-- it stops on small terminals, an open section, lost focus where detectable, `--plain`, `NO_COLOR`,
-  `TERM=dumb`, or `BORA_TUI_MOTION=off`;
-- it also stops when Textual unmounts the tree, so no frame can outlive the widgets it draws into;
-- malformed motion configuration is invalid CLI input;
-- static text contains the full meaning and every action;
-- `BORA_TUI_MOTION` accepts exactly `auto` or `off`; every other value exits 2;
-- disabled or hidden motion has no periodic wakeup.
+- motion continues only on focused home, at 6 fps under a 12 fps ceiling;
+- an open section freezes and retains the current frame while removing the timer;
+- `BORA_TUI_MOTION=off` renders a deterministic static frame with no timer;
+- small terminals, lost focus, `bora --plain`, `NO_COLOR`, `TERM=dumb`, and limited encoding hide
+  both bands and own no timer;
+- unmount always releases the timer, malformed motion configuration exits 2, and static text retains
+  the full meaning and every action.
 
 The raw observation in `evidence/tui/ubuntu-motion.json` measured the superseded finite 8 fps effect.
 It remains historical evidence and is not a CPU result for the continuous implementation. A new

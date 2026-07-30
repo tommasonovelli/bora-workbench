@@ -227,7 +227,7 @@ class EngineInstallProgress:
 
 def _print_status(status: EngineStatus, stdout: Console, stderr: Console) -> None:
     """Render one already inspected managed-engine status."""
-    table = status_table("managed llama.cpp engine")
+    table = status_table("Managed engine")
     table.add_column("Item")
     table.add_column("Value")
     table.add_row("Active", "yes" if status.is_active else "no")
@@ -402,21 +402,27 @@ def _record_line(mode_id: str, evaluation: RecordEvaluation) -> str:
         parameters = _calibrated_parameters(evaluation.ctx, evaluation.n_cpu_moe)
         preference = evaluation.preference or "unknown"
         return (
-            f"[green]Calibration[/green] {mode_id}: active {preference} cell "
+            f"[bright_blue]Calibration[/bright_blue] {mode_id}: active {preference} cell "
             f"valid{parameters}.{suffix}"
         )
     if evaluation.status == "missing":
         return (
-            f"[yellow]Calibration[/yellow] {mode_id}: active record is {label}; "
+            f"[bright_blue]Calibration[/bright_blue] {mode_id}: active record is {label}; "
             f"baseline not optimized.{suffix}"
         )
     if evaluation.status == "candidate":
-        return f"[yellow]Calibration[/yellow] {mode_id}: {label} awaits activation."
+        return f"[bright_blue]Calibration[/bright_blue] {mode_id}: {label} awaits activation."
     if evaluation.status == "superseded":
-        return f"[yellow]Calibration[/yellow] {mode_id}: record schema {label}: {detail}.{suffix}"
+        return (
+            f"[bright_blue]Calibration[/bright_blue] {mode_id}: "
+            f"record schema {label}: {detail}.{suffix}"
+        )
     if evaluation.status == "insufficient-headroom":
-        return f"[yellow]Calibration[/yellow] {mode_id}: {label}: {detail}{suffix}"
-    return f"[yellow]Calibration[/yellow] {mode_id}: active record is {label}: {detail}{suffix}"
+        return f"[bright_blue]Calibration[/bright_blue] {mode_id}: {label}: {detail}{suffix}"
+    return (
+        f"[bright_blue]Calibration[/bright_blue] {mode_id}: "
+        f"active record is {label}: {detail}{suffix}"
+    )
 
 
 def _collect_doctor(version: str, stderr: Console) -> DoctorSnapshot:

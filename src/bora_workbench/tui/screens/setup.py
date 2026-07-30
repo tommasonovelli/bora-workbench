@@ -19,23 +19,33 @@ _NO_MODEL = "no-model"
 _KEEP_CACHE = "keep-cache"
 _DRY_RUN = "dry-run"
 _NOTE = (
-    "Opening this screen never downloads or hashes model payloads.",
-    "keep-cache leaves shared Hugging Face copies; dry-run deletes nothing.",
-    "Downloads, verification, and confirmations begin only after the workbench closes.",
+    "- Opening this screen never downloads or hashes model payloads.",
+    "- `keep-cache` leaves shared Hugging Face copies; `dry-run` deletes nothing.",
+    "- Downloads, verification, and confirmations begin after the workbench closes.",
 )
 CHOICES: tuple[Choice, ...] = (
     Choice(
-        "install engine",
+        "install or repair engine",
         lambda flags: compose_engine_install(_FORCE in flags, _NO_MODEL in flags),
         (Flag("f", _FORCE), Flag("n", _NO_MODEL)),
+        "Install the locked llama.cpp build and, by default, the pinned model.",
     ),
-    Choice("download pinned model", lambda flags: compose_pull()),
+    Choice(
+        "download pinned model",
+        lambda flags: compose_pull(),
+        description="Acquire and verify the one locked weights and projector set.",
+    ),
     Choice(
         "remove pinned model",
         lambda flags: compose_remove_model(_KEEP_CACHE in flags, _DRY_RUN in flags),
         (Flag("c", _KEEP_CACHE), Flag("d", _DRY_RUN)),
+        "Review managed and shared-cache copies before any confirmed deletion.",
     ),
-    Choice("engine status", lambda flags: compose_engine_status()),
+    Choice(
+        "inspect engine compatibility",
+        lambda flags: compose_engine_status(),
+        description="Compare the active executable and manifest with engine.lock.",
+    ),
 )
 
 
@@ -74,7 +84,7 @@ def _model_lines(snapshot: WorkbenchSnapshot) -> tuple[str, ...]:
 
 def render_setup(snapshot: WorkbenchSnapshot) -> str:
     """Render setup facts while keeping acquisition and digest work in existing CLI owners."""
-    return "\n".join((*_engine_lines(snapshot), *_model_lines(snapshot), "", *_NOTE))
+    return "\n".join((*_engine_lines(snapshot), *_model_lines(snapshot), "", "Safety", *_NOTE))
 
 
 class SetupView(Section):
