@@ -117,6 +117,7 @@ Every selectable command is displayed before `Enter` can choose it:
 | Calibration | `bora calibrate --mode ...` with only valid current options | terminal; do not reopen |
 | Setup | `bora engine status`, `bora engine install [--force] [--no-model]`, `bora pull`, `bora rm [--keep-hf] [--dry-run]` | return and refresh |
 | Diagnostics | `bora doctor`, `bora validate`, `bora status`, `bora engine status`, `bora stop` | return and refresh |
+| Pi | `bora pi launch` | terminal; do not reopen |
 | Pi | `bora pi [--print]`, `bora pi --install`, `bora pi remove`, `bora pi uninstall` | return and refresh |
 | This installation | `bora update --check` | return and refresh |
 | This installation | `bora update`, `bora uninstall` | terminal; do not reopen |
@@ -153,11 +154,11 @@ confined Hugging Face cache offer remains a second, separate question and still 
 
 ## Optional motion
 
-Normal presentation frames the central menu with deterministic decoration: two wind gusts anchored to
-the top-left and top-right corners, whose long side alternates between the rows so they complete each
-other without mirroring, and two sea rows under the menu whose crests flatten as they settle. It runs
-on the focused menu only, updates at 8 fps, below the 12 fps ceiling, and removes its timer after
-about three active seconds. It carries no status or action information.
+Normal presentation frames the central menu with deterministic, continuously moving decoration.
+Three wind rows carry sparse `·`, `╌`, `╍`, and `━` ribbons through several sky colours. Beneath the
+menu, one fractional-block wave surface (`▁` through `█`) sits over two shaded/full-cell water layers
+with independently travelling currents and occasional bright foam. The effect runs at 6 fps while
+the home remains focused, below the 12 fps ceiling. It carries no status or action information.
 
 `BORA_TUI_MOTION` accepts exactly:
 
@@ -168,11 +169,13 @@ about three active seconds. It carries no status or action information.
 
 An empty, differently cased, or unknown value exits 2. Motion is also disabled by `--plain`,
 `NO_COLOR`, `TERM=dumb`, limited output encoding, a terminal smaller than 80x24, an open section, or
-detectable terminal focus loss.
+detectable terminal focus loss. Any of those runtime switches removes the timer and both bands; the
+timer is also released on unmount.
 
-The accepted Ubuntu 120x40 pseudo-terminal observation is stored in
-[`evidence/tui/ubuntu-motion.json`](../evidence/tui/ubuntu-motion.json). It is one local observation,
-not a portable performance claim. The Windows motion CPU observation was not performed.
+[`evidence/tui/ubuntu-motion.json`](../evidence/tui/ubuntu-motion.json) measured the superseded
+finite 8 fps effect and remains historical evidence for that implementation only. It is not a CPU
+measurement of the current continuous 6 fps decoration. A new Ubuntu observation and the Windows
+visual/CPU checks have not been performed.
 
 ## Complete CLI path
 

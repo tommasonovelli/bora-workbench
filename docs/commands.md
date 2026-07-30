@@ -21,7 +21,7 @@ bora [--version] <command> [options]
 | `engine install` | installs the engine from the lock and downloads the model | yes |
 | `pull` | downloads and verifies the pinned model | yes |
 | `rm` | deletes the pinned model after confirmation | yes |
-| `pi` | connects the pi coding agent to the local service | pi's config |
+| `pi` | connects or launches the pi coding agent against the local service | pi's config or none |
 | `coding` | starts the text API | state and logs |
 | `studio` | starts the built-in text UI | state and logs |
 | `vstudio` | starts the UI with vision | state and logs |
@@ -80,10 +80,10 @@ bora tui
 bora tui --plain
 ```
 
-Opens seven read-only screens—Overview, Modes, Calibration, Setup, Pi, Settings, and This
-installation—and shows exact current commands before they can be selected. `--plain` keeps all
-screens and actions in a reduced monochrome presentation. Interactive stdin and stdout are required;
-redirected invocation exits 2 before Textual is imported.
+Opens a central menu for Run, Calibration, Setup, Diagnostics, Pi, Settings, and This installation,
+then shows each section as a full window with exact current commands before they can be selected.
+`--plain` keeps all screens and actions in a reduced monochrome presentation. Interactive stdin and
+stdout are required; redirected invocation exits 2 before Textual is imported.
 
 Opening and `r` refreshes make no network request or mutation. They may read local files, inspect
 process identities, and run bounded hardware and engine probes in one presentation worker; they do
@@ -91,10 +91,11 @@ not hash model payloads, write receipts, repair service state, create directorie
 or poll in the background. A slow probe leaves navigation and quitting responsive, and repeated
 refresh requests are serialized.
 
-Arrows or `j`/`k` move screens, `Tab` changes the visible action, `Enter` accepts it, page keys
-scroll detail, `?` expands help, and `q`, `Ctrl-Q`, or `Esc` quits. Settings are presentation-only.
-The calibration composer creates only valid current option combinations, and uninstall requires
-typing `remove` before selection.
+Arrows or `j`/`k` move the one marker on the visible surface. `Enter` opens a section or accepts its
+marked action, `Esc` returns to the menu, page keys scroll detail, `?` expands help, and `q` or
+`Ctrl-Q` quits. Bracketed letters switch the marked action's flags in place; `Tab` is unbound.
+Settings are presentation-only. The calibration composer creates only valid current option
+combinations, and uninstall requires typing `remove` before selection.
 
 After selection the TUI fully restores the terminal, then invokes the existing Click/Typer callback
 in the same process. That callback retains its real preflight, confirmations, network, writes, and
@@ -102,10 +103,11 @@ exit mapping. Successful diagnostics, setup, pi actions, and `update --check` re
 collected TUI; modes, calibration, update, and uninstall are terminal and never reopen. Failures and
 interruptions propagate unchanged.
 
-Optional Overview motion carries no information, settles after about three seconds, and obeys
-`--plain`, `NO_COLOR`, `TERM=dumb`, terminal-size/focus checks, and `BORA_TUI_MOTION=auto|off`.
-Malformed motion values exit 2. Full screen, action, accessibility, and handoff details are in
-[Terminal workbench](tui.md).
+Optional home motion carries no information. Three multicolour Unicode wind rows and a layered
+fractional-block sea continue at 6 fps while the central menu remains focused, below the 12 fps
+ceiling, and stop immediately under `--plain`, `NO_COLOR`, `TERM=dumb`, terminal-size/focus checks,
+an open section, unmount, or `BORA_TUI_MOTION=off`. Malformed motion values exit 2. Full screen,
+action, accessibility, and handoff details are in [Terminal workbench](tui.md).
 
 ## `engine status`
 
@@ -240,6 +242,7 @@ ever written into that cache.
 bora pi
 bora pi --print
 bora pi --install
+bora pi launch
 bora pi remove
 bora pi uninstall
 ```
@@ -261,11 +264,20 @@ absent pi is reported with the vendor's instructions for Ubuntu and Windows. `--
 mutation. Neither group option can accompany `pi remove` or `pi uninstall`; such combinations are
 input errors rather than silently ignored flags.
 
-Afterwards, with `bora coding` running:
+Afterwards, with `bora coding` running, use the direct shortcut:
+
+```bash
+bora pi launch
+```
+
+It launches pi with inherited terminal I/O and the exact documented selection:
 
 ```bash
 pi --provider bora --model "Qwen 3.6"
 ```
+
+The shortcut starts no local service, installs nothing, and does not rewrite pi's configuration.
+Run `bora pi` first whenever the provider entry has not been connected yet.
 
 ### Which context window pi is given
 

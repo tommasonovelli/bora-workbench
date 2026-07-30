@@ -36,6 +36,7 @@ from bora_workbench.tui.actions import (
     TuiResult,
     compose_doctor,
     compose_mode,
+    compose_pi_launch,
     compose_uninstall,
     compose_update,
 )
@@ -226,7 +227,9 @@ def test_returning_action_dispatches_after_teardown_then_reopens(monkeypatch) ->
     ]
 
 
-@pytest.mark.parametrize("command", (compose_mode("coding"), compose_update(), compose_uninstall()))
+@pytest.mark.parametrize(
+    "command", (compose_mode("coding"), compose_pi_launch(), compose_update(), compose_uninstall())
+)
 def test_terminal_action_success_exits_without_reopening(monkeypatch, command: CommandSpec) -> None:
     """Keep foreground, replacement, and removal actions terminal after callback success."""
     selected = TerminalMode(True, False)
@@ -285,6 +288,13 @@ def test_same_process_dispatch_invokes_real_typer_leaf_and_maps_interrupt(monkey
 
     monkeypatch.setattr(cli_module, "run_doctor", interrupt)
     assert cli_module._dispatch_tui_arguments(("doctor",)) == 130
+
+
+def test_encoding_probe_covers_every_rich_home_glyph() -> None:
+    """Select plain mode before a legacy encoding reaches wind, sea, or brand cells."""
+    required = set("╌╍━▰▁▂▃▄▅▆▇█▒▓")
+
+    assert required <= set(terminal_module._LAYOUT_GLYPHS)
 
 
 @pytest.mark.parametrize(

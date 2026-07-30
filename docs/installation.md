@@ -199,8 +199,8 @@ bora status
 bora stop
 ```
 
-To drive the API from the [pi](https://pi.dev/) coding agent, start `bora coding` and run
-`bora pi` once; see [Commands](commands.md#bora-pi).
+To drive the API from the [pi](https://pi.dev/) coding agent, start `bora coding`, run `bora pi`
+once to connect its provider, then use `bora pi launch`; see [Commands](commands.md#bora-pi).
 
 ## 7. Updating
 

@@ -378,7 +378,9 @@ changed identity, or too little free memory right now. Re-run `bora pi` after ca
 in `models.json` is a copy, and nothing rewrites it when a new record is activated.
 
 A number that is right in the launcher but wrong in pi is almost always an entry written before the
-record existed. `bora pi` overwrites it, showing the old and the new entry first.
+record existed. `bora pi` overwrites it, showing the old and the new entry first. Once the entry is
+current and `bora coding` is running, `bora pi launch` executes
+`pi --provider bora --model "Qwen 3.6"` without starting another service or changing configuration.
 
 ### Every probe fails
 

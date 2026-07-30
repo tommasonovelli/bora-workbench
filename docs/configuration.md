@@ -59,17 +59,17 @@ exactly `auto` (the default) or `off`; an empty, differently cased, or unknown v
 invalid-input status 2. `off` removes every animation timer while leaving the complete static TUI
 and all commands available.
 
-Automatic motion is decorative and carries no unique information. It runs only on the focused
-Overview at 80x24 or larger, updates at no more than 12 frames per second, settles after about three
-seconds, and then removes its timer. It is also disabled by `--plain`, `NO_COLOR`, `TERM=dumb`, a
-limited output encoding, a smaller terminal, another screen, or detectable terminal focus loss.
+Automatic motion is decorative and carries no unique information. Three multicolour Unicode wind
+rows and a layered fractional-block sea update at 6 frames per second while the focused central menu
+remains visible at 80x24 or larger, below the 12 fps ceiling. Opening a section, losing detectable
+focus, shrinking the terminal, selecting `--plain`, setting `NO_COLOR`, using `TERM=dumb` or limited
+output encoding, setting `BORA_TUI_MOTION=off`, or unmounting the app removes the timer immediately.
 
-The accepted Ubuntu pseudo-terminal observation is recorded in
-[`evidence/tui/ubuntu-motion.json`](../evidence/tui/ubuntu-motion.json): at 120x40 the final 8 fps
-animation added 2.666 percentage points
-of median one-core CPU during its three-second active window, and both automatic and disabled modes
-measured 0.0% median in the two-second settled window. This is one local observation, not a portable
-performance claim; the Windows motion measurement was not performed.
+The existing observation in
+[`evidence/tui/ubuntu-motion.json`](../evidence/tui/ubuntu-motion.json) measured the superseded
+finite 8 fps implementation. Its 2.666 percentage-point active-window result and static settled
+window are retained as history, not claimed for the current continuous effect. A new Ubuntu
+observation and the Windows visual/CPU checks have not been performed.
 
 ## Model identity and path
 

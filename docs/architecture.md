@@ -54,8 +54,8 @@ no network request, payload hash, receipt write, state cleanup, directory creati
 start. There is no background snapshot poll: only opening and a serialized explicit refresh collect
 again.
 
-Textual owns only its presentation event loop, an optional finite motion timer, and one thread worker
-for the synchronous collector. No core module gains an async API, scheduler, executor, or knowledge
+Textual owns only its presentation event loop, the optional focused-home motion timer, and one thread
+worker for the synchronous collector. No core module gains an async API, scheduler, executor, or knowledge
 of the UI. A selected command returns from Textual first; using the existing parser afterwards keeps
 all validation, confirmation, lifecycle, and exit-code ownership in the real callback and leaves no
 TUI parent around update or uninstall.

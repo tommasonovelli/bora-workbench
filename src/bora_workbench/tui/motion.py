@@ -1,4 +1,4 @@
-"""Generate the bounded decorative wind and sea bands without owning an event loop."""
+"""Generate continuous multicolour wind and sea bands without owning an event loop."""
 
 from __future__ import annotations
 
@@ -6,18 +6,26 @@ import math
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from rich.text import Text
+
 MAX_FRAMES_PER_SECOND = 12.0
-FRAME_INTERVAL_SECONDS = 1.0 / 8.0
-SETTLE_SECONDS = 3.0
-SEA_ROWS = 2
+MOTION_FRAMES_PER_SECOND = 6.0
+FRAME_INTERVAL_SECONDS = 1.0 / MOTION_FRAMES_PER_SECOND
+SEA_ROWS = 3
+WIND_ROWS = 3
 _MINIMUM_WIDTH = 80
 _MINIMUM_HEIGHT = 24
 _MAXIMUM_BAND_WIDTH = 160
 _MOTION_VALUES = frozenset(("auto", "off"))
-# Each row anchors a long streak on one edge and a short one on the other, and the two rows
-# swap which edge is long, so the gusts frame the title without mirroring each other (D-087).
-_WIND_SHARES = ((0.34, 0.14), (0.15, 0.29))
-WIND_ROWS = len(_WIND_SHARES)
+_WIND_GLYPHS = (" ", "·", "╌", "╍", "━")
+_WIND_COLOURS = ("#5b8fa8", "#77b7cf", "#a8dcea", "#d5f3f7")
+_LOWER_BLOCKS = (" ", "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█")
+_SEA_SURFACE_COLOURS = ("#5bd5d0", "#73e2dc", "#b9f5e9")
+_SEA_DEPTH_COLOURS = (("#268faf", "#35acc1"), ("#155b87", "#1d7297"))
+_FOAM_COLOUR = "bold #e8fff9"
+
+Cell = tuple[str, str | None]
+Row = tuple[Cell, ...]
 
 
 class MotionConfigurationError(ValueError):
@@ -38,6 +46,15 @@ class MotionDecision:
 
     is_enabled: bool
     reason: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class _BandFrame:
+    """Carry shared frame values through helpers without broad parameter lists."""
+
+    width: int
+    elapsed: float
+    seed: int
 
 
 def read_motion_value(environment: Mapping[str, str]) -> str:
@@ -66,67 +83,119 @@ def supports_motion_size(dimensions: MotionDimensions) -> bool:
     return dimensions.width >= _MINIMUM_WIDTH and dimensions.height >= _MINIMUM_HEIGHT
 
 
-def _bounded_elapsed(elapsed_seconds: float) -> float:
-    """Clamp time to the finite animation window so settled frames never drift."""
-    return min(max(elapsed_seconds, 0.0), SETTLE_SECONDS)
-
-
 def _band_width(dimensions: MotionDimensions) -> int:
-    """Return the drawable width inside the decorative widget's horizontal padding."""
+    """Return the bounded drawable width inside each band's horizontal padding."""
     return max(1, min(dimensions.width - 4, _MAXIMUM_BAND_WIDTH))
 
 
-def _streak(length: int, phase: float) -> str:
-    """Return one gust that is dense at its anchored edge and thins toward the centre."""
-    glyphs = []
-    for index in range(length):
-        density = 1.0 - index / length
-        wave = math.sin(index * 0.8 - phase)
-        if wave > 1.0 - density * 1.7:
-            glyphs.append("~")
-        elif wave > 1.0 - density * 2.2:
-            glyphs.append("·")
-        else:
-            glyphs.append(" ")
-    return "".join(glyphs)
+def _styled_row(cells: Row) -> Text:
+    """Coalesce adjacent cell styles so colourful frames remain cheap to render."""
+    line = Text()
+    if not cells:
+        return line
+    current_style = cells[0][1]
+    glyphs: list[str] = []
+    for glyph, style in cells:
+        if style != current_style:
+            line.append("".join(glyphs), style=current_style)
+            glyphs = []
+            current_style = style
+        glyphs.append(glyph)
+    line.append("".join(glyphs), style=current_style)
+    return line
 
 
-def gust(elapsed_seconds: float, dimensions: MotionDimensions, seed: int) -> str:
-    """Return the wind rows whose left and right gusts complete each other asymmetrically."""
-    width = _band_width(dimensions)
-    elapsed = _bounded_elapsed(elapsed_seconds)
-    rows = []
-    for row, (left_share, right_share) in enumerate(_WIND_SHARES):
-        phase = elapsed * 2.6 + row * 1.4 + seed * 0.07
-        left = _streak(max(1, int(width * left_share)), phase)
-        right = _streak(max(1, int(width * right_share)), phase + 2.1)[::-1]
-        gap = max(1, width - len(left) - len(right))
-        rows.append(f"{left}{' ' * gap}{right}".rstrip())
-    return "\n".join(rows)
+def _styled_band(rows: tuple[Row, ...]) -> Text:
+    """Join styled rows while preserving terminal-cell colour spans."""
+    band = Text()
+    for index, row in enumerate(rows):
+        band.append_text(_styled_row(row))
+        if index < len(rows) - 1:
+            band.append("\n")
+    return band
 
 
-def _wave_row(width: int, phase: float, swell: float) -> str:
-    """Return one sea row whose crests flatten as the finite animation settles."""
-    glyphs = []
-    for column in range(width):
-        wave = (
-            math.sin(column / 3.4 + phase)
-            + 0.5 * math.sin(column / 1.7 - phase * 1.6)
-            + 0.35 * math.sin(column / 9.0 + phase * 0.5)
-        )
-        height = wave * swell
-        glyphs.append("~" if height >= 0.6 else ("-" if height >= -0.55 else "_"))
-    return "".join(glyphs)
+def _trail_strength(distance: float, trail: float, ripple: float) -> float:
+    """Fade one moving wind trail while leaving rhythmic openings in it."""
+    if distance > trail:
+        return 0.0
+    fade = 1.0 - distance / trail
+    return max(0.0, fade * (0.68 + 0.32 * ripple) - 0.12)
 
 
-def sea(elapsed_seconds: float, dimensions: MotionDimensions, seed: int) -> str:
-    """Return the sea rows drawn under the central menu for one bounded moment."""
-    width = _band_width(dimensions)
-    elapsed = _bounded_elapsed(elapsed_seconds)
-    swell = 1.0 - 0.4 * elapsed / SETTLE_SECONDS
-    # A per-row column drift keeps the second row from reading as a shifted copy of the first.
-    rows = [
-        _wave_row(width + row * 11, seed * 0.13 + elapsed * 2.4 + row * 2.3, swell)[row * 11 :]
-        for row in range(SEA_ROWS)
-    ]
-    return "\n".join(rows)
+def _wind_strength(frame: _BandFrame, row: int, column: int) -> float:
+    """Return the strongest of two horizontally travelling ribbons at one cell."""
+    cycle = frame.width * 1.32
+    speed = 7.0 + row * 1.15
+    head = (frame.elapsed * speed + frame.seed * 0.83 + row * cycle * 0.29) % cycle
+    trail = frame.width * (0.24 + row * 0.035)
+    ripple = 0.5 + 0.5 * math.sin(column * 0.57 - frame.elapsed * 2.2 + row)
+    first = _trail_strength((head - column) % cycle, trail, ripple)
+    second_head = (head + cycle * (0.47 + row * 0.03)) % cycle
+    second = _trail_strength((second_head - column) % cycle, trail * 0.62, 1.0 - ripple)
+    return max(first, second * 0.82)
+
+
+def _wind_cell(strength: float) -> Cell:
+    """Map wind intensity to a Unicode stroke and a lightening sky colour."""
+    if strength < 0.14:
+        return (" ", None)
+    glyph_index = min(len(_WIND_GLYPHS) - 1, 1 + int(strength * 3.7))
+    colour_index = min(len(_WIND_COLOURS) - 1, int(strength * len(_WIND_COLOURS)))
+    return (_WIND_GLYPHS[glyph_index], _WIND_COLOURS[colour_index])
+
+
+def _wind_row(frame: _BandFrame, row: int) -> Row:
+    """Render one sparse wind ribbon row across the available band width."""
+    return tuple(_wind_cell(_wind_strength(frame, row, column)) for column in range(frame.width))
+
+
+def gust(elapsed_seconds: float, dimensions: MotionDimensions, seed: int) -> Text:
+    """Return three continuously travelling Unicode wind ribbons with colour depth."""
+    frame = _BandFrame(_band_width(dimensions), max(0.0, elapsed_seconds), seed)
+    return _styled_band(tuple(_wind_row(frame, row) for row in range(WIND_ROWS)))
+
+
+def _surface_height(frame: _BandFrame, column: int) -> float:
+    """Place the sea surface within the eight vertical slices of its first cell row."""
+    phase = frame.elapsed * 1.55 + frame.seed * 0.09
+    wave = (
+        math.sin(column / 4.7 + phase)
+        + 0.48 * math.sin(column / 2.15 - phase * 1.35)
+        + 0.28 * math.sin(column / 10.5 + phase * 0.58)
+    )
+    return min(7.2, max(0.8, 4.1 - wave * 1.65))
+
+
+def _surface_cell(frame: _BandFrame, column: int) -> Cell:
+    """Render one fractional wave cell, brightening occasional moving crests as foam."""
+    height = _surface_height(frame, column)
+    filled_slices = min(8, max(1, round(8.0 - height)))
+    foam = math.sin(column * 0.73 - frame.elapsed * 2.4 + frame.seed) > 0.63
+    if height < 2.55 and foam:
+        return (_LOWER_BLOCKS[filled_slices], _FOAM_COLOUR)
+    colour_index = min(2, max(0, filled_slices // 3))
+    return (_LOWER_BLOCKS[filled_slices], _SEA_SURFACE_COLOURS[colour_index])
+
+
+def _depth_cell(frame: _BandFrame, row: int, column: int) -> Cell:
+    """Render one full or shaded water cell with a slowly travelling subsurface current."""
+    current = math.sin(column * (0.19 + row * 0.025) - frame.elapsed * (0.7 + row * 0.12))
+    crossing = math.sin(column * 0.47 + frame.elapsed * 0.42 + frame.seed * 0.17)
+    light = current + crossing * 0.35
+    glyph = "▒" if light > 0.92 else ("▓" if light > -0.3 else "█")
+    colours = _SEA_DEPTH_COLOURS[row - 1]
+    return (glyph, colours[1 if light > 0.25 else 0])
+
+
+def _sea_row(frame: _BandFrame, row: int) -> Row:
+    """Render the fractional surface or one denser water row beneath it."""
+    if row == 0:
+        return tuple(_surface_cell(frame, column) for column in range(frame.width))
+    return tuple(_depth_cell(frame, row, column) for column in range(frame.width))
+
+
+def sea(elapsed_seconds: float, dimensions: MotionDimensions, seed: int) -> Text:
+    """Return a layered fractional-block sea that keeps moving while the home is focused."""
+    frame = _BandFrame(_band_width(dimensions), max(0.0, elapsed_seconds), seed)
+    return _styled_band(tuple(_sea_row(frame, row) for row in range(SEA_ROWS)))

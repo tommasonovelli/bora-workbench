@@ -161,6 +161,11 @@ def compose_pi(is_printed: bool = False, is_installed: bool = False) -> CommandS
     return _command(*arguments)
 
 
+def compose_pi_launch() -> CommandSpec:
+    """Compose the foreground pi session with bora's provider and model selected."""
+    return _terminal_command("pi", "launch")
+
+
 def compose_pi_remove() -> CommandSpec:
     """Compose removal of only bora's pi provider entry."""
     return _command("pi", "remove")

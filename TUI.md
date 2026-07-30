@@ -1,7 +1,7 @@
 # bora TUI — implemented design record
 
-> **Status: implemented current design.** D-083–D-087 in `IMPLEMENTATION_SPEC.md` authorize the
-> reduced interactive-front-end milestone and its Ubuntu-only motion acceptance. `TUI_PLAN.md`
+> **Status: implemented current design.** D-083–D-090 in `IMPLEMENTATION_SPEC.md` authorize the
+> reduced interactive-front-end milestone and the current home presentation. `TUI_PLAN.md`
 > retains the step-by-step execution and release checks. If this document, that plan, and the
 > specification disagree, the specification wins; user operation is documented in `docs/tui.md`.
 
@@ -29,7 +29,7 @@ available only through the TUI.
 - exact composition of current commands, with per-action flag toggles;
 - a calibration wizard that can produce only valid option combinations;
 - post-UI command dispatch with normal terminal I/O and existing confirmations;
-- bounded bora wind/sea motion with static and accessibility kill switches.
+- continuous multicolour Unicode wind/sea motion with static and accessibility kill switches.
 
 ### 1.2 Excluded
 
@@ -205,6 +205,7 @@ that exact result. A terminal action never reopens.
 | Diagnostics | `bora status` | returning |
 | Diagnostics | `bora engine status` | returning |
 | Diagnostics | `bora stop` | returning |
+| Pi | `bora pi launch` | terminal |
 | Pi | `bora pi [--print] [--install]` | returning on success |
 | Pi | `bora pi remove` | returning on success |
 | Pi | `bora pi uninstall` | returning on success |
@@ -270,11 +271,10 @@ The TUI adds friction without replacing those prompts. Selecting uninstall requi
 
 ## 8. Pi
 
-The Pi screen reflects D-081/D-082 only. It shows:
+The Pi screen reflects D-081/D-082/D-090. It shows:
 
-- whether pi is available;
-- whether `models.json` has the `bora` provider;
-- the loopback endpoint and model alias;
+- whether pi is available and its executable path;
+- the `models.json` path without inferring or changing its provider contents;
 - whether context came from the live service, active `coding` record, or verified baseline;
 - the diagnostic attached to baseline fallback.
 
@@ -284,6 +284,7 @@ It composes only the existing forms:
 bora pi
 bora pi --print
 bora pi --install
+bora pi launch
 bora pi remove
 bora pi uninstall
 ```
@@ -296,7 +297,7 @@ agent, editor, or provider appears.
 ## 9. Interaction and terminal behavior
 
 The interaction stack is the accepted Textual `8.2.8` dependency from D-086. Textual owns only the
-presentation event loop, one snapshot thread worker, and the finite motion timer; core APIs remain
+presentation event loop, one snapshot thread worker, and the optional home motion timer; core APIs remain
 synchronous. The implementation contains no parallel Rich raw-input loop or handwritten
 `termios`/`msvcrt` behavior.
 
@@ -333,29 +334,28 @@ Automatic legacy raster-font detection is not promised.
 ## 10. Bora identity and optional motion
 
 The workbench asks for the terminal's default background rather than painting one, so it inherits the
-surrounding shell's colours and the text sits directly on the user's own theme. Colour is used only
-for the brand, the marker, and the composed command; the body text keeps the terminal's foreground.
+surrounding shell's colours and the text sits directly on the user's own theme. Colour marks the
+brand, marker, composed command, and decorative wind/sea depth; body text keeps the terminal's
+foreground, and decoration carries no state.
 
-The static identity remains complete without motion. The optional enhancement ships under D-087:
+The static identity remains complete without motion. D-090 supersedes only D-087's finite visual
+effect:
 
-- two wind gusts anchor the top-left and top-right corners, and the long side alternates between
-  their two rows so they complete each other without mirroring;
-- two sea rows sit under the central menu and flatten as they settle;
-- gust and sea are pure functions of time, dimensions, and seed;
-- motion runs only on the focused central menu, at 8 fps under a 12 fps ceiling;
-- it settles after about three seconds and does not loop forever;
+- three wind rows move sparse `·`, `╌`, `╍`, and `━` ribbons through several sky colours;
+- a fractional-block wave surface sits over two rows of shaded/full-cell water and moving currents;
+- gust and sea remain pure functions of time, dimensions, and seed;
+- motion continues only on the focused central menu, at 6 fps under a 12 fps ceiling;
 - it stops on small terminals, an open section, lost focus where detectable, `--plain`, `NO_COLOR`,
   `TERM=dumb`, or `BORA_TUI_MOTION=off`;
 - it also stops when Textual unmounts the tree, so no frame can outlive the widgets it draws into;
 - malformed motion configuration is invalid CLI input;
 - static text contains the full meaning and every action;
 - `BORA_TUI_MOTION` accepts exactly `auto` or `off`; every other value exits 2;
-- the timer is absent after settlement, so static mode has no periodic wakeup.
+- disabled or hidden motion has no periodic wakeup.
 
-The accepted local Ubuntu 120x40 pseudo-terminal observation measured a 2.666 percentage-point
-median one-core CPU delta during the three-second active window and 0.0% median for both modes in
-the settled window. Its raw values and limitations are in `evidence/tui/ubuntu-motion.json`. The
-Windows motion measurement was not performed and is not called passed.
+The raw observation in `evidence/tui/ubuntu-motion.json` measured the superseded finite 8 fps effect.
+It remains historical evidence and is not a CPU result for the continuous implementation. A new
+Ubuntu observation and the Windows visual/CPU checks have not been performed.
 
 No animation appears in normal CLI commands, launch, calibration, setup, update, or uninstall.
 

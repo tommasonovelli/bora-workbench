@@ -13,6 +13,7 @@ TERMINAL_BACKGROUND = "ansi_default"
 class Palette:
     """Name the CSS colours of the chrome beside the Rich styles used for inline marking."""
 
+    is_plain: bool
     text: str
     muted: str
     accent: str
@@ -27,6 +28,7 @@ class Palette:
 
 
 COLOR_PALETTE = Palette(
+    is_plain=False,
     text=TERMINAL_BACKGROUND,
     muted="#7f8ea3",
     accent="#5fd7a7",
@@ -40,6 +42,7 @@ COLOR_PALETTE = Palette(
     accent_style="#5fd7a7",
 )
 PLAIN_PALETTE = Palette(
+    is_plain=True,
     text=TERMINAL_BACKGROUND,
     muted=TERMINAL_BACKGROUND,
     accent=TERMINAL_BACKGROUND,
@@ -84,8 +87,8 @@ Screen {{ overflow: hidden; background: {TERMINAL_BACKGROUND}; }}
 #shell {{ width: 100%; height: 100%; background: {TERMINAL_BACKGROUND}; }}
 #home {{ width: 100%; height: 1fr; }}
 #home-centre {{ width: 100%; height: 1fr; align: center middle; }}
-#wind {{ dock: top; width: 100%; height: 2; padding: 0 2; }}
-#sea {{ dock: bottom; width: 100%; height: 2; padding: 0 2; }}
+#wind {{ dock: top; width: 100%; height: 3; padding: 0 2; text-align: center; }}
+#sea {{ dock: bottom; width: 100%; height: 3; padding: 0 2; text-align: center; }}
 #brand {{ width: 100%; height: 1; text-align: center; text-style: bold; }}
 #tagline {{ width: 100%; height: 1; text-align: center; }}
 #verdict {{ width: 100%; height: 1; text-align: center; margin-top: 1; }}

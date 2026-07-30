@@ -25,7 +25,6 @@ from bora_workbench.tui.actions import TuiResult, snapshot_changes
 from bora_workbench.tui.home import HomeView
 from bora_workbench.tui.motion import (
     FRAME_INTERVAL_SECONDS,
-    SETTLE_SECONDS,
     MotionDimensions,
     gust,
     sea,
@@ -204,7 +203,7 @@ class WorkbenchApp(App[TuiResult]):
         """Return active animation time without counting periods where it was stopped."""
         if self._motion_started_at is None:
             return self._motion_elapsed
-        return min(SETTLE_SECONDS, self._motion_elapsed + monotonic() - self._motion_started_at)
+        return self._motion_elapsed + monotonic() - self._motion_started_at
 
     def _stop_motion_timer(self) -> None:
         """Remove periodic wakeups immediately when motion cannot continue."""
@@ -229,12 +228,9 @@ class WorkbenchApp(App[TuiResult]):
             widget.display = True
 
     def _sync_motion(self) -> None:
-        """Start, settle, or stop the sole optional presentation timer."""
+        """Start or stop the sole optional presentation timer with the home surface."""
         if not self._can_run_motion():
             self._pause_motion()
-            return
-        if self._motion_elapsed >= SETTLE_SECONDS:
-            self._render_motion(SETTLE_SECONDS)
             return
         if self._motion_started_at is None:
             self._motion_started_at = monotonic()
@@ -245,16 +241,11 @@ class WorkbenchApp(App[TuiResult]):
             )
 
     def _advance_motion(self) -> None:
-        """Render at most one scheduled frame and remove the timer after settlement."""
+        """Render one scheduled frame while every presentation capability remains true."""
         if not self._can_run_motion():
             self._pause_motion()
             return
-        elapsed = self._current_motion_elapsed()
-        self._render_motion(elapsed)
-        if elapsed >= SETTLE_SECONDS:
-            self._motion_elapsed = SETTLE_SECONDS
-            self._motion_started_at = None
-            self._stop_motion_timer()
+        self._render_motion(self._current_motion_elapsed())
 
     def on_app_blur(self, event: events.AppBlur) -> None:
         """Stop animation when Textual reports that its terminal lost focus."""

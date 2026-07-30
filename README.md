@@ -174,11 +174,12 @@ bora tui --plain
 
 The TUI opens on a central menu that carries a one-line state summary per entry, the one deterministic
 next step, and seven read-only sections that `Enter` opens as full windows. It draws on the terminal's
-own background. Opening and `r` refreshes may run bounded local hardware and engine probes, but
-perform no mutation, model hashing, or network request. Selecting an action closes and restores the
-TUI before the existing CLI callback owns normal terminal I/O, prompts, and exit codes. The complete
-CLI remains the accessible and scriptable path; see [Terminal workbench](docs/tui.md) for keys,
-motion controls, and handoff details.
+own background and, when capabilities permit, frames the home with continuous multicolour Unicode
+wind and a layered fractional-block sea. Opening and `r` refreshes may run bounded local hardware and
+engine probes, but perform no mutation, model hashing, or network request. Selecting an action closes
+and restores the TUI before the existing CLI callback owns normal terminal I/O, prompts, and exit
+codes. The complete CLI remains the accessible and scriptable path; see
+[Terminal workbench](docs/tui.md) for keys, motion controls, and handoff details.
 
 ### Updating
 
@@ -263,11 +264,13 @@ With `bora coding` running, the API is a plain OpenAI-compatible endpoint at
 bora pi            # write a provider named "bora" into pi's models.json
 bora pi --print    # print that entry instead, and change nothing
 bora pi --install  # install pi with npm first, when it is missing
+bora pi launch     # launch pi with bora and Qwen 3.6 already selected
 bora pi remove     # delete that provider entry again
 bora pi uninstall  # remove pi itself, then ask about the entry separately
 ```
 
-It shows the entry, asks once, keeps a backup, and leaves every other provider alone. Afterwards:
+It shows the entry, asks once, keeps a backup, and leaves every other provider alone. Afterwards,
+`bora pi launch` is the shell-free shortcut for the exact documented pi command:
 
 ```bash
 pi --provider bora --model "Qwen 3.6"

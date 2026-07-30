@@ -9,7 +9,7 @@ from typing import TextIO
 
 from bora_workbench.tui.motion import decide_motion
 
-_LAYOUT_GLYPHS = "bora ─ ╭ ▸ · ~ overview"
+_LAYOUT_GLYPHS = "bora ─ ╭ ▸ · ╌ ╍ ━ ▰ ▁ ▂ ▃ ▄ ▅ ▆ ▇ █ ▒ ▓ overview"
 
 
 @dataclass(frozen=True, slots=True)

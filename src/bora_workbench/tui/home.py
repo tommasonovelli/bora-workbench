@@ -13,6 +13,7 @@ from bora_workbench.tui.menu import ENTRIES, PENDING_SUMMARY, summaries
 from bora_workbench.tui.palette import Palette
 
 _BRAND = "B O R A   W O R K B E N C H"
+_BRAND_CAP = "▰"
 _LABEL_WIDTH = 20
 
 
@@ -42,7 +43,7 @@ class HomeView(Vertical):
         """Yield the wind band, the centred identity and menu, and the sea band."""
         yield Static("", id="wind", markup=False)
         yield Vertical(
-            Static(_BRAND, id="brand", markup=False),
+            Static(self._brand_text(), id="brand", markup=False),
             Static("inspecting this machine...", id="tagline", markup=False),
             Static("Waiting to inspect this machine.", id="verdict", markup=False),
             Static("", id="hint", markup=False),
@@ -52,6 +53,18 @@ class HomeView(Vertical):
             id="home-centre",
         )
         yield Static("", id="sea", markup=False)
+
+    def _brand_text(self) -> Text:
+        """Render a multitone Unicode identity while keeping plain mode strictly ASCII."""
+        if self._palette.is_plain:
+            return Text(_BRAND, style="bold")
+        brand = Text()
+        brand.append(f"{_BRAND_CAP}  ", style="#35acc1")
+        brand.append("B O R A", style="bold #5fd7a7")
+        brand.append("   ", style=self._palette.muted_style)
+        brand.append("W O R K B E N C H", style="bold #77b7cf")
+        brand.append(f"  {_BRAND_CAP}", style="#35acc1")
+        return brand
 
     @property
     def selected_index(self) -> int:
@@ -77,9 +90,12 @@ class HomeView(Vertical):
         self.query_one("#menu-rows", Static).update(self._menu_text())
 
     def _show_advice(self, headline: str, hint: str) -> None:
-        """Replace the two-line verdict with the current deterministic diagnosis."""
-        self.query_one("#verdict", Static).update(headline)
-        self.query_one("#hint", Static).update(hint)
+        """Replace the two-line verdict and accent an exact suggested command."""
+        self.query_one("#verdict", Static).update(Text(headline, style="bold"))
+        style = (
+            self._palette.accent_style if hint.startswith("bora ") else self._palette.muted_style
+        )
+        self.query_one("#hint", Static).update(Text(hint, style=style))
 
     def show_snapshot(self, snapshot: WorkbenchSnapshot) -> None:
         """Replace the facts, the verdict, and every menu summary from one snapshot."""

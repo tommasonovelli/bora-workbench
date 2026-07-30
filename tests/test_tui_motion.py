@@ -1,10 +1,11 @@
-"""Tests for deterministic, bounded, and optional TUI motion."""
+"""Tests for deterministic, continuous, colourful, and optional TUI motion."""
 
 from __future__ import annotations
 
 import asyncio
 
 import pytest
+from rich.text import Text
 from textual import events
 
 import bora_workbench.tui.app as app_module
@@ -12,8 +13,8 @@ from bora_workbench.tui.app import WorkbenchApp
 from bora_workbench.tui.motion import (
     FRAME_INTERVAL_SECONDS,
     MAX_FRAMES_PER_SECOND,
+    MOTION_FRAMES_PER_SECOND,
     SEA_ROWS,
-    SETTLE_SECONDS,
     WIND_ROWS,
     MotionConfigurationError,
     MotionDimensions,
@@ -35,31 +36,34 @@ def _motion_terminal() -> TerminalMode:
     return TerminalMode(True, False, None, True, None)
 
 
-def test_gust_and_sea_are_deterministic_pure_functions() -> None:
-    """Bind decorative output only to elapsed time, dimensions, and seed."""
+def test_gust_and_sea_are_deterministic_continuous_pure_functions() -> None:
+    """Bind ongoing decorative output only to elapsed time, dimensions, and seed."""
     dimensions = MotionDimensions(120, 40)
 
     for band in (gust, sea):
-        assert band(0.75, dimensions, 41) == band(0.75, dimensions, 41)
-        assert band(0.75, dimensions, 41) != band(1.75, dimensions, 41)
-        assert band(SETTLE_SECONDS, dimensions, 41) == band(SETTLE_SECONDS + 100.0, dimensions, 41)
-        assert band(0.75, dimensions, 41) != band(0.75, MotionDimensions(100, 30), 42)
+        first = band(0.75, dimensions, 41)
+        assert isinstance(first, Text)
+        assert first == band(0.75, dimensions, 41)
+        assert first != band(1.75, dimensions, 41)
+        assert band(3.0, dimensions, 41) != band(103.0, dimensions, 41)
+        assert first != band(0.75, MotionDimensions(100, 30), 42)
 
 
-def test_wind_rows_anchor_opposite_edges_without_mirroring() -> None:
-    """Frame the title with two gusts whose long side alternates between the rows."""
+def test_wind_and_sea_use_full_width_unicode_layers_and_multiple_colours() -> None:
+    """Render richer cells than ASCII strokes and retain more than one colour per band."""
     dimensions = MotionDimensions(120, 40)
+    wind = gust(0.75, dimensions, 41)
+    water = sea(0.75, dimensions, 41)
+    expected_width = dimensions.width - 4
 
-    rows = gust(0.75, dimensions, 41).split("\n")
-
-    assert len(rows) == WIND_ROWS
-    assert len(sea(0.75, dimensions, 41).split("\n")) == SEA_ROWS
-    width = max(len(row) for row in rows)
-    padded = [row.ljust(width) for row in rows]
-    left = tuple(sum(glyph != " " for glyph in row[: width // 2]) for row in padded)
-    right = tuple(sum(glyph != " " for glyph in row[width // 2 :]) for row in padded)
-    assert left[0] > left[1] and right[1] > right[0]
-    assert all(row.strip() for row in rows)
+    assert len(wind.plain.split("\n")) == WIND_ROWS
+    assert len(water.plain.split("\n")) == SEA_ROWS
+    assert all(len(row) == expected_width for row in wind.plain.split("\n"))
+    assert all(len(row) == expected_width for row in water.plain.split("\n"))
+    assert set(wind.plain) & set("·╌╍━")
+    assert set(water.plain) & set("▁▂▃▄▅▆▇█▒▓")
+    assert len({str(span.style) for span in wind.spans}) >= 3
+    assert len({str(span.style) for span in water.spans}) >= 3
 
 
 @pytest.mark.parametrize(
@@ -93,11 +97,11 @@ def test_motion_size_boundary_keeps_small_layout_static() -> None:
 
 
 def test_motion_timer_is_capped_and_stops_on_navigation_and_focus_loss() -> None:
-    """Stay below 12 fps on the central menu and stop immediately on two runtime switches."""
+    """Stay below 12 fps on the central menu and stop immediately on runtime switches."""
     intervals: list[float] = []
 
     async def exercise() -> None:
-        """Capture timer requests while driving Overview, navigation, and focus events."""
+        """Capture timer requests while driving home navigation and focus events."""
         workbench = WorkbenchApp("0.test", _motion_terminal(), _failed_collection)
         original = workbench.set_interval
 
@@ -110,6 +114,7 @@ def test_motion_timer_is_capped_and_stops_on_navigation_and_focus_loss() -> None
         async with workbench.run_test(size=(120, 40)) as pilot:
             await pilot.pause(0.05)
             assert intervals == [FRAME_INTERVAL_SECONDS]
+            assert MOTION_FRAMES_PER_SECOND <= MAX_FRAMES_PER_SECOND
             assert intervals[0] >= 1.0 / MAX_FRAMES_PER_SECOND
             assert workbench.query_one("#wind").display is True
             assert workbench.query_one("#sea").display is True
@@ -128,25 +133,26 @@ def test_motion_timer_is_capped_and_stops_on_navigation_and_focus_loss() -> None
     asyncio.run(exercise())
 
 
-def test_motion_settles_once_without_periodic_wakeups(monkeypatch) -> None:
-    """Freeze time beyond three seconds and require Textual's interval to be removed."""
+def test_motion_continues_while_the_home_remains_focused(monkeypatch) -> None:
+    """Keep changing frames beyond the former three-second settlement boundary."""
     clock = {"now": 0.0}
     monkeypatch.setattr(app_module, "monotonic", lambda: clock["now"])
 
     async def exercise() -> None:
-        """Advance the fake clock once and verify the settled frame remains static."""
+        """Advance the fake clock twice and require the same active timer to survive."""
         workbench = WorkbenchApp("0.test", _motion_terminal(), _failed_collection)
         async with workbench.run_test(size=(120, 40)) as pilot:
             await pilot.pause(0.05)
-            assert workbench._motion_timer is not None
-            clock["now"] = SETTLE_SECONDS + 0.1
+            initial = str(workbench.query_one("#sea").render())
+            clock["now"] = 4.0
             workbench._advance_motion()
-            settled = str(workbench.query_one("#sea").render())
-            assert workbench._motion_timer is None
-            clock["now"] = 100.0
-            await pilot.pause(0.15)
-            assert workbench._motion_timer is None
-            assert str(workbench.query_one("#sea").render()) == settled
+            later = str(workbench.query_one("#sea").render())
+            assert workbench._motion_timer is not None
+            assert later != initial
+            clock["now"] = 104.0
+            workbench._advance_motion()
+            assert workbench._motion_timer is not None
+            assert str(workbench.query_one("#sea").render()) != later
             await pilot.press("q")
 
     asyncio.run(exercise())

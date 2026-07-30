@@ -20,6 +20,7 @@ from bora_workbench._cli_models import RemoveOptions, run_pull, run_remove_model
 from bora_workbench._cli_pi import (
     PiOptions,
     run_pi,
+    run_pi_launch,
     run_pi_removal,
     run_pi_uninstall,
     validate_pi_options,
@@ -45,7 +46,7 @@ app.add_typer(engine_app, name="engine")
 # `bora pi` keeps connecting when it is called with no subcommand, so the two ways of undoing that
 # connection can be commands of their own instead of a fifth flag on one overloaded command.
 pi_app = typer.Typer(
-    help="Connect the pi coding agent to this machine's bora service, or take it back.",
+    help="Connect or launch pi with this machine's bora service, or take it back.",
     invoke_without_command=True,
 )
 app.add_typer(pi_app, name="pi")
@@ -186,6 +187,12 @@ def pi(
     validate_pi_options(options, context.invoked_subcommand)
     if context.invoked_subcommand is None:
         run_pi(options, _stdout, _stderr)
+
+
+@pi_app.command("launch")
+def pi_launch_command() -> None:
+    """Launch pi with the bora provider and the exact model alias selected."""
+    run_pi_launch(_stdout, _stderr)
 
 
 @pi_app.command("remove")

@@ -5,10 +5,11 @@ asks once, and hands the merge and the atomic write to `pi_link.py` (specificati
 Installing pi is never implicit: without `--install` an absent pi is reported with the vendor's own
 instructions for the two supported platforms.
 
-`pi remove` and `pi uninstall` are the inverses of those two writes, and they stay separate
-questions: the provider entry lives in a file that belongs to pi, while the package belongs to npm,
-so consenting to one is not consenting to the other (D-082, applying the rule D-079 established for
-the shared model cache).
+`pi launch` delegates to pi's documented provider/model flags with inherited terminal I/O; it starts
+neither the local service nor another integration. `pi remove` and `pi uninstall` are the inverses
+of the two writes, and they stay separate questions: the provider entry lives in a file that belongs
+to pi, while the package belongs to npm, so consenting to one is not consenting to the other
+(D-082/D-090, applying the rule D-079 established for the shared model cache).
 
 The context window handed over is the one this machine actually serves, and the output always says
 where the number came from. A managed service already listening on the configured port knows its
@@ -49,6 +50,7 @@ from bora_workbench.pi_link import (
     document_without_provider,
     inspect_pi,
     install_command,
+    launch_command,
     merged_document,
     provider_entry,
     read_document,
@@ -182,6 +184,26 @@ def _connect(options: PiOptions, stdout: Console) -> None:
     print_note(stdout, "Use", usage)
 
 
+def _launch_pi(stdout: Console) -> None:
+    """Run pi with bora's provider and locked model alias through inherited terminal I/O."""
+    installation = inspect_pi()
+    if installation.executable is None:
+        raise EngineError("pi is not on PATH; run bora pi --install first")
+    lock = load_engine_lock()
+    command = launch_command(installation.executable, lock)
+    display = f'pi --provider {PROVIDER_NAME} --model "{display_name(lock)}"'
+    print_note(stdout, "Launch command", display)
+    try:
+        completed = subprocess.run(command, check=False, shell=False)
+    except OSError as error:
+        raise EngineError(f"cannot launch pi: {error}") from error
+    if completed.returncode == 0:
+        return
+    if completed.returncode in (-2, 130):
+        raise KeyboardInterrupt
+    raise EngineError(f"pi exited with code {completed.returncode}")
+
+
 def _remove_provider(stdout: Console) -> None:
     """Delete only this project's provider from pi's model store, after showing what goes.
 
@@ -263,6 +285,11 @@ def _run_action(action: Callable[[Console], None], stdout: Console, stderr: Cons
 def run_pi(options: PiOptions, stdout: Console, stderr: Console) -> None:
     """Connect pi to the local service and map expected failures to exit code 1."""
     _run_action(lambda console: _connect(options, console), stdout, stderr)
+
+
+def run_pi_launch(stdout: Console, stderr: Console) -> None:
+    """Launch pi with bora selected and map child failure through the CLI contract."""
+    _run_action(_launch_pi, stdout, stderr)
 
 
 def run_pi_removal(stdout: Console, stderr: Console) -> None:

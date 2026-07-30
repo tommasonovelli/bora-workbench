@@ -24,6 +24,7 @@ from bora_workbench.tui.actions import (
     compose_engine_status,
     compose_mode,
     compose_pi,
+    compose_pi_launch,
     compose_pi_uninstall,
     compose_status,
     compose_stop,
@@ -152,13 +153,18 @@ def test_setup_toggles_reach_every_engine_and_removal_option_state() -> None:
 
 def test_pi_toggles_reach_every_valid_form_and_no_contradiction() -> None:
     """Keep print-only and installation mutually exclusive through their own toggles."""
-    assert tuple(command.cli_arguments for command in _reachable(pi_screen.CHOICES)) == (
+    commands = _reachable(pi_screen.CHOICES)
+
+    assert tuple(command.cli_arguments for command in commands) == (
+        ("pi", "launch"),
         ("pi",),
         ("pi", "--print"),
         ("pi", "--install"),
         ("pi", "remove"),
         ("pi", "uninstall"),
     )
+    assert commands[0] == compose_pi_launch()
+    assert commands[0].disposition == "terminal"
     with pytest.raises(ValueError, match="cannot be selected together"):
         compose_pi(is_printed=True, is_installed=True)
 
@@ -298,7 +304,7 @@ def test_opened_section_enter_returns_the_exact_visible_action_after_collection(
         (OverviewView, 3, 4, (), compose_stop()),
         (ModesView, 0, 2, ("f",), compose_mode("vstudio", True)),
         (SetupView, 2, 0, ("f", "n"), compose_engine_install(True, True)),
-        (PiView, 4, 2, (), compose_pi_uninstall()),
+        (PiView, 4, 3, (), compose_pi_uninstall()),
         (InstallationView, 6, 1, (), compose_update()),
     ),
 )

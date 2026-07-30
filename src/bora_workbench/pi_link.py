@@ -114,6 +114,17 @@ def uninstall_command() -> tuple[str, ...]:
     return ("npm", "uninstall", "-g", PACKAGE_NAME)
 
 
+def launch_command(executable: Path, lock: JsonObject) -> tuple[str, ...]:
+    """Select bora's provider and exact locked alias through pi's documented CLI flags."""
+    return (
+        str(executable),
+        "--provider",
+        PROVIDER_NAME,
+        "--model",
+        display_name(lock),
+    )
+
+
 def provider_entry(lock: JsonObject, port: int, context_window: int) -> JsonObject:
     """Build the single provider entry that points pi at this machine's bora service.
 

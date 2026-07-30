@@ -96,6 +96,15 @@ def test_provider_entry_points_at_the_loopback_service_with_the_model_alias() ->
     ]
 
 
+def test_launch_command_selects_the_documented_provider_and_locked_alias() -> None:
+    """Use pi's provider/model flags with the same alias the local API reports."""
+    executable = Path("pi-test")
+
+    command = pi_link.launch_command(executable, load_engine_lock())
+
+    assert command == ("pi-test", "--provider", "bora", "--model", "Qwen 3.6")
+
+
 def test_merging_replaces_only_the_bora_provider() -> None:
     """Somebody else's providers, and every unrelated key, survive the write untouched."""
     document = {
@@ -306,6 +315,66 @@ def test_confirmed_connection_writes_the_provider(tmp_path, monkeypatch) -> None
     assert stored["models"][0]["contextWindow"] == 65536
     assert "65536 tokens, from the test source" in result.stdout
     assert "pi --provider bora" in result.stdout
+
+
+def test_launch_runs_pi_with_inherited_io_and_the_exact_locked_selection(
+    tmp_path, monkeypatch
+) -> None:
+    """Make `bora pi launch` the shell-free shortcut for the documented pi invocation."""
+    executable = tmp_path / "pi"
+    calls: list[tuple[tuple[str, ...], bool, bool]] = []
+    monkeypatch.setattr(
+        pi_cli, "inspect_pi", lambda: pi_link.PiInstallation(executable, tmp_path / "models.json")
+    )
+
+    def fake_run(command, check, shell):
+        """Record default inherited-I/O invocation arguments and report normal exit."""
+        calls.append((tuple(command), check, shell))
+        return SimpleNamespace(returncode=0)
+
+    monkeypatch.setattr(pi_cli.subprocess, "run", fake_run)
+
+    result = runner.invoke(app, ["pi", "launch"])
+
+    assert result.exit_code == 0
+    assert calls == [((str(executable), "--provider", "bora", "--model", "Qwen 3.6"), False, False)]
+    assert 'pi --provider bora --model "Qwen 3.6"' in result.stdout
+
+
+def test_launch_requires_pi_on_path_before_starting_a_child(tmp_path, monkeypatch) -> None:
+    """Point an absent installation at the existing explicit install-and-connect command."""
+    monkeypatch.setattr(
+        pi_cli, "inspect_pi", lambda: pi_link.PiInstallation(None, tmp_path / "models.json")
+    )
+    monkeypatch.setattr(
+        pi_cli.subprocess, "run", lambda *args, **kwargs: pytest.fail("child process started")
+    )
+
+    result = runner.invoke(app, ["pi", "launch"])
+
+    assert result.exit_code == 1
+    assert "bora pi --install" in result.stderr
+
+
+@pytest.mark.parametrize(("returncode", "expected"), ((7, 1), (130, 130), (-2, 130)))
+def test_launch_maps_pi_failure_and_interruption(
+    returncode, expected, tmp_path, monkeypatch
+) -> None:
+    """Retain bora's operational and interruption exit contract around the pi child."""
+    executable = tmp_path / "pi"
+    monkeypatch.setattr(
+        pi_cli, "inspect_pi", lambda: pi_link.PiInstallation(executable, tmp_path / "models.json")
+    )
+    monkeypatch.setattr(
+        pi_cli.subprocess,
+        "run",
+        lambda command, check, shell: SimpleNamespace(returncode=returncode),
+    )
+
+    result = runner.invoke(app, ["pi", "launch"])
+
+    assert result.exit_code == expected
+    assert "Traceback" not in result.stderr
 
 
 def test_removing_without_an_entry_changes_nothing(tmp_path, monkeypatch) -> None:
