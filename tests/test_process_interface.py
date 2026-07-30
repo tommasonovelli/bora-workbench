@@ -23,8 +23,28 @@ from tests.test_process_lifecycle import fast_health, free_port, request
 _FAKE_SERVER = Path(__file__).parent / "fakes" / "fake_server.py"
 
 
+# A shortened deadline is an upper bound, not a wait: a fake server that answers reaches READY in
+# well under a second and the loop returns immediately, so this only bounds a genuine hang. It is
+# generous because a Windows runner spawning a second Python beside a live one is not fast, and a
+# tight bound there fails a test that has nothing wrong with it.
+_TEST_TIMEOUT_SECONDS = 30.0
+_NEVER_READY_TIMEOUT_SECONDS = 0.2
+
+
+@pytest.fixture(autouse=True)
+def stop_managed_services(tmp_path):
+    """Stop whatever the test started, including a start that spawned and then failed.
+
+    A start that raises after spawning is cleaned up by the process layer, but a start that
+    succeeded earlier in the same test is not, so without this a failing assertion would leave a
+    live fake server behind and the next test would inherit it.
+    """
+    yield
+    lifecycle.stop_services(tmp_path)
+
+
 def interface_request(
-    port: int, mode: str = "ready", timeout: float = 1.0
+    port: int, mode: str = "ready", timeout: float = _TEST_TIMEOUT_SECONDS
 ) -> lifecycle.InterfaceRequest:
     """Build one fake interface launch carrying the real Open WebUI readiness contract.
 
@@ -39,36 +59,30 @@ def interface_request(
 def test_the_engine_and_the_interface_run_beside_each_other(tmp_path, monkeypatch) -> None:
     """Admit one managed service per role, because a UI mode needs both at once."""
     fast_health(monkeypatch)
-    engine = lifecycle.start_service(request(free_port()), tmp_path)
-    try:
-        lifecycle.start_interface(interface_request(free_port()), tmp_path)
-        report = lifecycle.status_services(tmp_path)
-        assert sorted(service.role for service in report.services) == [ENGINE_ROLE, INTERFACE_ROLE]
-    finally:
-        lifecycle.stop_services(tmp_path)
-    assert engine.process.poll() is not None
+    lifecycle.start_service(request(free_port()), tmp_path)
+    lifecycle.start_interface(interface_request(free_port()), tmp_path)
+
+    report = lifecycle.status_services(tmp_path)
+
+    assert sorted(service.role for service in report.services) == [ENGINE_ROLE, INTERFACE_ROLE]
 
 
 def test_a_second_interface_is_refused_while_one_lives(tmp_path, monkeypatch) -> None:
     """Keep the single-service rule per role rather than dropping it to admit the pair."""
     fast_health(monkeypatch)
     lifecycle.start_interface(interface_request(free_port()), tmp_path)
-    try:
-        with pytest.raises(lifecycle.ProcessError, match="interface is already running"):
-            lifecycle.start_interface(interface_request(free_port()), tmp_path)
-    finally:
-        lifecycle.stop_services(tmp_path)
+
+    with pytest.raises(lifecycle.ProcessError, match="interface is already running"):
+        lifecycle.start_interface(interface_request(free_port()), tmp_path)
 
 
 def test_an_engine_still_refuses_a_second_engine(tmp_path, monkeypatch) -> None:
     """Leave the engine's own invariant exactly as strict as it was before the second role."""
     fast_health(monkeypatch)
     lifecycle.start_service(request(free_port()), tmp_path)
-    try:
-        with pytest.raises(lifecycle.ProcessError, match="engine is already running"):
-            lifecycle.start_service(request(free_port()), tmp_path)
-    finally:
-        lifecycle.stop_services(tmp_path)
+
+    with pytest.raises(lifecycle.ProcessError, match="engine is already running"):
+        lifecycle.start_service(request(free_port()), tmp_path)
 
 
 def test_liveness_alone_is_never_read_as_readiness(tmp_path, monkeypatch) -> None:
@@ -76,7 +90,9 @@ def test_liveness_alone_is_never_read_as_readiness(tmp_path, monkeypatch) -> Non
     fast_health(monkeypatch)
 
     with pytest.raises(lifecycle.ProcessError, match="did not become ready"):
-        lifecycle.start_interface(interface_request(free_port(), "startup", 0.2), tmp_path)
+        lifecycle.start_interface(
+            interface_request(free_port(), "startup", _NEVER_READY_TIMEOUT_SECONDS), tmp_path
+        )
 
     assert lifecycle.status_services(tmp_path).services == ()
 
@@ -122,25 +138,22 @@ def test_stopping_the_interface_leaves_the_engine_running(tmp_path, monkeypatch)
     fast_health(monkeypatch)
     engine = lifecycle.start_service(request(free_port()), tmp_path)
     interface = lifecycle.start_interface(interface_request(free_port()), tmp_path)
-    try:
-        lifecycle.stop_interface(interface, tmp_path)
-        report = lifecycle.status_services(tmp_path)
-        assert [service.role for service in report.services] == [ENGINE_ROLE]
-        assert engine.process.poll() is None
-    finally:
-        lifecycle.stop_services(tmp_path)
+
+    lifecycle.stop_interface(interface, tmp_path)
+
+    report = lifecycle.status_services(tmp_path)
+    assert [service.role for service in report.services] == [ENGINE_ROLE]
+    assert engine.process.poll() is None
 
 
 def test_the_interface_record_claims_no_engine_envelope(tmp_path, monkeypatch) -> None:
     """Store no context window or backend for a process that serves no model."""
     fast_health(monkeypatch)
     running = lifecycle.start_interface(interface_request(free_port()), tmp_path)
-    try:
-        state = running.state
-        assert state.role == INTERFACE_ROLE
-        assert state.ctx is None
-        assert state.backend is None
-        assert state.model is None
-        assert state.mode == "studio"
-    finally:
-        lifecycle.stop_services(tmp_path)
+
+    state = running.state
+    assert state.role == INTERFACE_ROLE
+    assert state.ctx is None
+    assert state.backend is None
+    assert state.model is None
+    assert state.mode == "studio"
