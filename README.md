@@ -1,7 +1,7 @@
 # bora-workbench
 
 [![CI](https://github.com/tommasonovelli/bora-workbench/actions/workflows/ci.yml/badge.svg)](https://github.com/tommasonovelli/bora-workbench/actions/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/release/tommasonovelli/bora-workbench.svg)](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.4.4)
+[![Release](https://img.shields.io/github/v/release/tommasonovelli/bora-workbench.svg)](https://github.com/tommasonovelli/bora-workbench/releases/tag/v0.5.0)
 [![Python 3.12](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/downloads/release/python-31213/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -11,8 +11,8 @@
 |---|---|
 | bare `bora` | the read-only dashboard and exact composer for the explicit CLI commands |
 | `bora coding` | a local OpenAI-compatible API for editors, scripts, and agents |
-| `bora studio` | browser-based local chat in the built-in `llama.cpp` UI |
-| `bora vstudio` | the same UI with the pinned vision projector, for multimodal chat |
+| `bora studio` | browser-based local chat, in Open WebUI when it is installed |
+| `bora vstudio` | the same interface with the pinned vision projector, for multimodal chat |
 
 `bora-workbench` is a ready-to-use local Qwen environment. It installs the verified `llama.cpp`
 engine for the hardware it detects, resolves and checks the model, and manages the complete service
@@ -51,9 +51,10 @@ If this is your first time opening the project, the simplest path is:
 2. [install the release](#installation);
 3. run bare `bora` to inspect the machine and see the truthful next step;
 4. run `bora engine install`, which installs the engine and downloads the [model](#model);
-5. start `coding`, `studio`, or `vstudio`;
-6. once that works, [calibrate the machine](#calibration-is-the-second-step-not-the-entry-price);
-7. use the [full documentation](docs/README.md) when you want configuration and details.
+5. optionally run `bora webui install` for the [Open WebUI interface](#the-browser-interface);
+6. start `coding`, `studio`, or `vstudio`;
+7. once that works, [calibrate the machine](#calibration-is-the-second-step-not-the-entry-price);
+8. use the [full documentation](docs/README.md) when you want configuration and details.
 
 ## Project status
 
@@ -63,7 +64,7 @@ If this is your first time opening the project, the simplest path is:
 > Do not use it for critical workloads without independent verification and backups of your local
 > data.
 
-Version **`0.4.4`** is distributed exclusively through GitHub Releases. Its distribution is
+Version **`0.5.0`** is distributed exclusively through GitHub Releases. Its distribution is
 `bora-workbench` and its command is `bora`. An installation of the previous `qwen-launcher` series
 is replaced rather than upgraded: its configuration, data, cache, and state directories are not
 read by `bora`.
@@ -86,7 +87,7 @@ If `nvidia-smi` is unavailable or unreliable, the launcher falls back to CPU and
 
 ## Installation
 
-Install the exact `v0.4.4` wheel from the GitHub Release. The commands below download the release
+Install the exact `v0.5.0` wheel from the GitHub Release. The commands below download the release
 manifest, verify the installer and wheel against it, and install the tool with pinned uv `0.11.28`
 and CPython `3.12.13`. You do not need to install uv or Python first, and no administrator
 privileges are used.
@@ -96,7 +97,7 @@ privileges are used.
 Open a terminal in a new directory, copy the entire block, and press Enter:
 
 ```bash
-version="0.4.4"
+version="0.5.0"
 base="https://github.com/tommasonovelli/bora-workbench/releases/download/v${version}"
 wheel="bora_workbench-${version}-py3-none-any.whl"
 
@@ -120,7 +121,7 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 Open PowerShell in a new directory, copy the entire block, and press Enter:
 
 ```powershell
-$Version = "0.4.4"
+$Version = "0.5.0"
 $Base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v$Version"
 $Wheel = "bora_workbench-$Version-py3-none-any.whl"
 
@@ -245,8 +246,28 @@ bora coding
 
 After READY the CLI shows the API/UI URLs and the log path. All three modes serve the API at
 `http://127.0.0.1:<llama_port>/v1`; `coding` keeps UI and vision disabled, while `studio` and
-`vstudio` also serve the built-in UI and open the browser only when `open_browser=true`. The process
-stays in the foreground, and `Ctrl-C` stops it and cleans up the state.
+`vstudio` also open a browser interface when `open_browser=true`. The process stays in the
+foreground, and `Ctrl-C` stops it and cleans up the state.
+
+### The browser interface
+
+By default `studio` and `vstudio` open the interface built into `llama.cpp`, which is essential but
+works with no extra install. For the fuller one:
+
+```bash
+bora webui install
+```
+
+That installs a pinned [Open WebUI](https://github.com/open-webui/open-webui) into its own managed
+environment — several gigabytes, because its dependencies pin torch — and from then on both modes
+start it as a second managed service and open it instead. The browser opens only once the engine and
+the interface have each reported ready.
+
+Open WebUI is a separate program. bora starts it, configures it through its process environment, and
+never modifies it, writes into its database, or calls its API. The model simply appears in its picker
+as `Qwen 3.6`, the alias the engine already reports. Skills, a system prompt, and web search are
+yours to add through its own screens; chat-title, tag, and follow-up generation are left off, because
+each one spends an extra completion on the single engine you are waiting on.
 
 Control it from another terminal:
 

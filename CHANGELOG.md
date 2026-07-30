@@ -3,6 +3,65 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
+## [0.5.0] - 2026-07-30
+
+### Added
+
+- `bora webui install` and `bora webui status` manage an optional Open WebUI, pinned to `0.11.0`,
+  in its own `uv`-created environment under the data root (D-095). It is a separate command because
+  its dependency closure pins torch and costs several gigabytes; nothing installs it implicitly.
+- With it installed, `studio` and `vstudio` start it as a second managed service and open it in the
+  browser instead of the integrated `llama.cpp` interface. The browser opens only once **both**
+  services have answered their own readiness check, and Open WebUI's is `GET /ready`, never
+  `GET /health`, which answers 200 before startup has finished.
+- `webui_port` and `BORA_WEBUI_PORT`, default `8081`, validated 1–65535 and refused when equal to
+  `llama_port` while configuration is resolved. Upstream's own default is `8080`, which is
+  `llama_port`, so copying it would collide on a first launch.
+- The Open WebUI licence ships in `resources/notices/`, beside the `llama.cpp` and NVIDIA notices.
+
+### Changed
+
+- Managed state now records a service **role**. One `engine` and one `interface` may run together,
+  a second service in either role is still refused by name, and `stop` takes the interface down
+  before the engine so a live page never talks to a server that is already terminating. A record
+  written by an earlier version decodes unchanged and reads as the engine role.
+- `bora status` shows the role, and leaves backend empty for the interface, which serves no model.
+  `bora doctor` reports whether Open WebUI is installed and on which port it would listen.
+- bora configures Open WebUI entirely through its child process environment and never calls its API:
+  no credential, no database write, no packaged content. The model picker already names the model,
+  because `/v1/models` reports the `Qwen 3.6` alias of D-080.
+- The environment disables the frontmatter `pip install` and every stored function, so no
+  third-party Python runs inside a bora-started process and nothing mutates the managed environment;
+  it disables chat-title, tag and follow-up generation, which each spend an extra completion per turn
+  on the single calibrated slot; and it configures no embedding model, so a first start downloads
+  nothing. Values seed the first boot only — from the second, every setting belongs to the user.
+- `WEBUI_NAME` is never set, and an inherited one is removed from the child environment. The
+  interface keeps its own name everywhere, so the branding clause of its licence is never engaged
+  and no user-count exemption is invoked.
+- The session key is generated once, stored owner-readable in the state root, passed only in the
+  child environment, and printed nowhere. Upstream would otherwise write it into whatever directory
+  the shell happened to be in, and a key that moves logs the browser out at every launch.
+
+### Verification limits
+
+- The whole suite stays offline: no Open WebUI is installed, downloaded, or started by a test. The
+  interface lifecycle is exercised against the existing fake HTTP server, and the installer against
+  a recorder that stands in for `uv`. What is asserted is the loopback host on every constructed
+  command, the port-collision refusal, `/ready` against `/health`, the session key's absence from
+  every output, the browser gated on both roles, the fallback, the stop order, and the two-role
+  state.
+- The interface was additionally started for real once, on Ubuntu, through the production code path:
+  `serve --host 127.0.0.1` reached `/ready` with `{"status": true}`, `/api/config` reported the name
+  `Open WebUI` and authentication off, no `.webui_secret_key` appeared in the working directory, and
+  the stop was clean. The resolved environment measured **6.4 GB on that machine**. That is one
+  observation on one host, not a Gate.
+- Nothing equivalent was run on Windows, the first-start duration and the resident memory beside a
+  loaded model were not measured, and no figure for them is stated anywhere. Open WebUI's image
+  requests were not exercised against llama-server with the pinned mmproj, which is what `vstudio`
+  depends on; that check stays open. The engine, model, calibration protocol, record format, command
+  contract, and reserves are unchanged; no candidate is activated and coverage remains
+  `GATE-PARTIAL`.
+
 ## [0.4.4] - 2026-07-30
 
 ### Changed

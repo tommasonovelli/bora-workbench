@@ -23,12 +23,13 @@ def _resource_probe() -> str:
         "from importlib.metadata import version; "
         "from bora_workbench.profiles import load_catalog; "
         "from bora_workbench.resources import read_json, read_text, resource; "
-        "assert version('bora-workbench') == '0.4.4'; "
+        "assert version('bora-workbench') == '0.5.0'; "
         "assert 'Spike 0' in read_text('README.txt'); "
         "lock = read_json('engine.lock'); "
         "assert lock['release'] == 'b10011' and lock['assets_complete']; "
         "assert 'ggml authors' in read_text('notices/llama.cpp-LICENSE'); "
         "assert 'NVIDIA' in read_text('notices/NVIDIA-CUDA-EULA.html'); "
+        "assert 'Open WebUI License' in read_text('notices/open-webui-LICENSE'); "
         "assert hashlib.sha256(resource('benchmark-v1/prompt.txt').read_bytes()).hexdigest() == "
         "'1c7182235411da2d4fe6fca130e3effb0b0d965569c52abd8fd45327103ddb2e'; "
         "assert hashlib.sha256(resource('benchmark-v1/request.json').read_bytes()).hexdigest() == "
@@ -154,8 +155,6 @@ _REQUIRED_SDIST_PATHS = (
     "CHANGELOG.md",
     "CONTRIBUTING.md",
     "IMPLEMENTATION_SPEC.md",
-    "TUI.md",
-    "TUI_PLAN.md",
     "WEBUI_PLAN.md",
     "docs/README.md",
     "docs/architecture.md",

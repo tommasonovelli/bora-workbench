@@ -168,7 +168,7 @@ def test_loading_timeout_stops_child_and_cleans_state(tmp_path, monkeypatch) -> 
     """Bound perpetual 503 polling and leave no managed child or live state behind."""
     fast_health(monkeypatch, timeout=0.05)
 
-    with pytest.raises(lifecycle.ProcessError, match="15 minutes"):
+    with pytest.raises(lifecycle.ProcessError, match="did not become ready"):
         lifecycle.start_service(request(free_port(), "loading"), tmp_path)
 
     assert lifecycle.status_services(tmp_path).services == ()
@@ -219,6 +219,7 @@ def test_ctrl_c_uses_stop_cleanup_and_preserves_exit_signal(tmp_path) -> None:
         "2026-07-16T00:00:00Z",
         str(tmp_path / "server.log"),
         "coding",
+        "engine",
         "owner/model:file",
         "b10011",
         None,
@@ -271,7 +272,7 @@ def test_a_transport_reset_is_read_as_not_ready_not_leaked(tmp_path, monkeypatch
 
     monkeypatch.setattr(lifecycle.httpx, "get", reset)
 
-    with pytest.raises(lifecycle.ProcessError, match="15 minutes"):
+    with pytest.raises(lifecycle.ProcessError, match="did not become ready"):
         lifecycle.start_service(request(free_port(), "loading"), tmp_path)
 
     assert lifecycle.status_services(tmp_path).services == ()
@@ -321,6 +322,7 @@ def _cleanup_state(current: lifecycle.StartRequest, root: Path) -> ServiceState:
         "2026-07-26T00:00:00Z",
         str(root / "server.log"),
         "coding",
+        "engine",
         current.plan.model,
         "b10011",
         None,
@@ -374,4 +376,6 @@ def test_log_paths_are_unique_even_at_the_same_timestamp(tmp_path, monkeypatch) 
 
     monkeypatch.setattr(lifecycle, "datetime", _FixedDateTime)
 
-    assert lifecycle._log_path(tmp_path) != lifecycle._log_path(tmp_path)
+    assert lifecycle._log_path(tmp_path, "llama-server") != lifecycle._log_path(
+        tmp_path, "llama-server"
+    )

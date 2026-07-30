@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import fields
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -47,7 +48,7 @@ def _hardware() -> HardwareInfo:
 
 def _configuration(config: Config | None = None) -> ConfigResolution:
     """Return one all-default configuration resolution."""
-    sources = ConfigSources("default", "default", "default", "default", "default")
+    sources = ConfigSources(*(("default",) * len(fields(ConfigSources))))
     return ConfigResolution(config or Config(), Path("config.toml"), sources)
 
 
@@ -200,6 +201,7 @@ def _service() -> ServiceState:
         "2026-07-29T00:00:00Z",
         "server.log",
         "coding",
+        "engine",
         "qwen",
         "b10011",
         None,

@@ -33,7 +33,7 @@ from bora_workbench._tool_handoff import (
     inspect_tool_installation,
 )
 from bora_workbench.calibration import service_roots
-from bora_workbench.config import ConfigError, load_config
+from bora_workbench.config import Config, ConfigError, load_config
 from bora_workbench.engine import (
     EngineError,
     JsonObject,
@@ -45,13 +45,16 @@ from bora_workbench.engine import (
 )
 from bora_workbench.hardware import HardwareError, detect_hardware, ensure_launch_supported
 from bora_workbench.process import (
+    InterfaceRequest,
     ProcessError,
     RunningService,
     ServiceReport,
     ServiceState,
     StartRequest,
+    start_interface,
     start_service,
     status_services,
+    stop_interface,
     stop_services,
     wait_foreground,
 )
@@ -72,17 +75,36 @@ from bora_workbench.uninstall import (
     remove_managed_roots,
     schedule_tool_removal,
 )
+from bora_workbench.webui import (
+    LOOPBACK_HOST,
+    WebuiError,
+    WebuiLaunch,
+    WebuiStatus,
+    inspect_webui,
+    interface_data_dir,
+    launch_environment,
+    readiness_contract,
+    resolve_secret_key,
+    serve_command,
+)
 
 
 @dataclass(frozen=True, slots=True)
 class PreparedMode:
-    """Hold one ready managed mode and its user-facing local endpoints."""
+    """Hold one ready managed mode, its local endpoints, and the interface that fronts it."""
 
     running: RunningService
     plan: LaunchPlan
     api_url: str
     ui_url: str | None
     is_browser_enabled: bool
+    interface: RunningService | None = None
+    notes: tuple[str, ...] = ()
+
+    @property
+    def interface_name(self) -> str:
+        """Name the program whose page is about to open, before it opens."""
+        return "Open WebUI" if self.interface is not None else "the integrated llama.cpp interface"
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,6 +128,80 @@ def _mode_urls(plan: LaunchPlan, lock: JsonObject) -> tuple[str, str | None]:
     return api_url, f"{base}{ui_path}"
 
 
+def _webui_launch(config: Config, status: WebuiStatus) -> WebuiLaunch:
+    """Resolve everything the interface process needs, including its stable session key."""
+    assert status.executable is not None
+    return WebuiLaunch(
+        status.executable,
+        config.webui_port,
+        config.llama_port,
+        interface_data_dir(status.root),
+        resolve_secret_key(),
+    )
+
+
+def _start_managed_interface(config: Config, mode_id: str) -> tuple[RunningService | None, str]:
+    """Start Open WebUI when it is installed, or explain which interface is used instead.
+
+    A failure here never takes the engine down with it: the model is already serving, and the
+    integrated llama.cpp interface is the reduced fallback the mode can still open (D-095).
+    """
+    status = inspect_webui()
+    if not status.is_installed:
+        return None, (
+            "Open WebUI is not installed, so the integrated llama.cpp interface opens instead. "
+            "Run `bora webui install` to use Open WebUI."
+        )
+    try:
+        launch = _webui_launch(config, status)
+        request = InterfaceRequest(
+            serve_command(launch),
+            launch_environment(launch),
+            launch.port,
+            mode_id,
+            readiness_contract(launch.port),
+        )
+        return start_interface(request), ""
+    except (ProcessError, WebuiError) as error:
+        return None, f"Open WebUI did not start: {error}. The integrated interface opens instead."
+
+
+@dataclass(frozen=True, slots=True)
+class _StartedMode:
+    """Group the already ready engine with everything resolved for the mode that started it."""
+
+    config: Config
+    plan: LaunchPlan
+    running: RunningService
+    api_url: str
+    integrated_url: str | None
+
+
+def _prepared(started: _StartedMode) -> PreparedMode:
+    """Start the interface a UI mode asks for, and settle which URL the browser will open.
+
+    Both services are ready by the time this returns, because each start call polls its own
+    readiness contract before it comes back. That is what lets the caller open one browser tab
+    knowing the page behind it can already answer (D-095).
+    """
+    config, plan = started.config, started.plan
+    if started.integrated_url is None:
+        return PreparedMode(started.running, plan, started.api_url, None, config.open_browser)
+    interface, note = _start_managed_interface(config, plan.mode.id)
+    ui_url = started.integrated_url
+    if interface is not None:
+        ui_url = f"http://{LOOPBACK_HOST}:{config.webui_port}"
+    return PreparedMode(
+        started.running,
+        plan,
+        started.api_url,
+        ui_url,
+        config.open_browser,
+        interface,
+        (note,) if note else (),
+    )
+
+
 def _prepare_mode(mode_id: str, force: bool, stderr: Console) -> PreparedMode:
     """Prepare and start one packaged mode, including its required model artifacts."""
     try:
@@ -125,9 +221,9 @@ def _prepare_mode(mode_id: str, force: bool, stderr: Console) -> PreparedMode:
         plan = build_launch_plan(request, catalog, hardware)
         executable = locate(config, hardware.backend, lock)
         command = build_command(executable, plan, lock)
-        api_url, ui_url = _mode_urls(plan, lock)
+        api_url, integrated_url = _mode_urls(plan, lock)
         running = start_service(StartRequest(command, plan, lock))
-        return PreparedMode(running, plan, api_url, ui_url, config.open_browser)
+        return _prepared(_StartedMode(config, plan, running, api_url, integrated_url))
     except ConfigError as error:
         print_error(stderr, "Configuration error", str(error))
         raise typer.Exit(code=2) from error
@@ -145,8 +241,12 @@ def _show_ready(session: PreparedMode, stdout: Console) -> None:
     print_note(stdout, "API endpoint", session.api_url)
     if session.ui_url is not None:
         print_note(stdout, "UI", session.ui_url)
-        stdout.print("Interface: essential integrated llama.cpp UI; Open WebUI is not included.")
+        stdout.print(f"Interface: {session.interface_name}.")
     print_note(stdout, "Log", str(session.running.state.log_path))
+    if session.interface is not None:
+        print_note(stdout, "Open WebUI log", str(session.interface.state.log_path))
+    for note in session.notes:
+        print_note(stdout, "Interface", note)
     for warning in (*session.running.warnings, *plan.warnings):
         print_warning(stdout, warning)
 
@@ -176,12 +276,25 @@ def _wait_for_mode(session: PreparedMode, output: ServiceOutput) -> None:
         raise typer.Exit(code=1) from error
 
 
+def _release_interface(session: PreparedMode, stdout: Console) -> None:
+    """Take the interface down first, and never let that hide why the mode is exiting."""
+    if session.interface is None:
+        return
+    try:
+        stop_interface(session.interface)
+    except (OSError, ProcessError) as error:
+        print_warning(stdout, f"Could not stop Open WebUI: {error}")
+
+
 def _run_mode(mode_id: str, force: bool, output: ServiceOutput) -> None:
     """Prepare, present, optionally open, and foreground one packaged mode."""
     session = _prepare_mode(mode_id, force, output.stderr)
-    _show_ready(session, output.stdout)
-    _open_ui(session, output.stdout)
-    _wait_for_mode(session, output)
+    try:
+        _show_ready(session, output.stdout)
+        _open_ui(session, output.stdout)
+        _wait_for_mode(session, output)
+    finally:
+        _release_interface(session, output.stdout)
 
 
 def run_coding(force: bool, stdout: Console, stderr: Console) -> None:
@@ -190,12 +303,12 @@ def run_coding(force: bool, stdout: Console, stderr: Console) -> None:
 
 
 def run_studio(force: bool, stdout: Console, stderr: Console) -> None:
-    """Run text studio mode with the integrated UI enabled after readiness."""
+    """Run text studio mode, opening Open WebUI when it is installed, after both are ready."""
     _run_mode("studio", force, ServiceOutput(stdout, stderr))
 
 
 def run_vstudio(force: bool, stdout: Console, stderr: Console) -> None:
-    """Run multimodal studio mode with the pinned mmproj and integrated UI enabled."""
+    """Run multimodal studio mode with the pinned mmproj and the same interface as studio."""
     _run_mode("vstudio", force, ServiceOutput(stdout, stderr))
 
 
@@ -236,14 +349,16 @@ def show_status(stdout: Console, stderr: Console) -> None:
         stdout.print("No managed services are running.")
         return
     table = status_table()
-    for header in ("Service", "PID", "Mode", "Backend", "Port", "Log"):
+    for header in ("Service", "Role", "PID", "Mode", "Backend", "Port", "Log"):
         table.add_column(header)
     for service in report.services:
         table.add_row(
             Text(service.label),
+            Text(service.role),
             str(service.pid),
             Text(service.mode),
-            Text(service.backend),
+            # The interface runs no model, so it has no backend of its own to report.
+            Text(service.backend or "not applicable"),
             str(service.port),
             Text(service.log_path),
         )

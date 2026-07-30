@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import fields
 from pathlib import Path
 
 import pytest
@@ -65,6 +66,7 @@ def _service(mode: str = "coding") -> ServiceState:
         "2026-07-29T00:00:00Z",
         "server.log",
         mode,
+        "engine",
         "qwen",
         "b10011",
         None,
@@ -84,7 +86,7 @@ def _doctor(
     configuration = ConfigResolution(
         Config(),
         Path("config.toml"),
-        ConfigSources("default", "default", "default", "default", "default"),
+        ConfigSources(*(("default",) * len(fields(ConfigSources)))),
     )
     hardware = HardwareInfo(
         "linux", "test", "Test CPU", 12, 32.0, 24.0, "cpu", 0, None, None, None, None

@@ -19,16 +19,28 @@ from bora_workbench.paths import config_dir
 
 DEFAULT_MODEL = "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M"
 DEFAULT_LLAMA_PORT = 8080
+# Open WebUI's own default is 8080, which is `llama_port`, so the two managed services would
+# collide on a first launch if this default were copied from upstream (D-095).
+DEFAULT_WEBUI_PORT = 8081
 DEFAULT_OPEN_BROWSER = True
 
-_ALLOWED_KEYS = {"model", "model_path", "llama_port", "engine_path", "open_browser"}
+_ALLOWED_KEYS = {
+    "model",
+    "model_path",
+    "llama_port",
+    "webui_port",
+    "engine_path",
+    "open_browser",
+}
 _ENVIRONMENT_KEYS = {
     "model": "BORA_MODEL",
     "model_path": "BORA_MODEL_PATH",
     "llama_port": "BORA_LLAMA_PORT",
+    "webui_port": "BORA_WEBUI_PORT",
     "engine_path": "BORA_ENGINE_PATH",
     "open_browser": "BORA_OPEN_BROWSER",
 }
+_PORT_KEYS = ("llama_port", "webui_port")
 _TRUE_VALUES = {"true", "1", "yes", "on"}
 _FALSE_VALUES = {"false", "0", "no", "off"}
 
@@ -44,8 +56,20 @@ class Config:
     model: str = DEFAULT_MODEL
     model_path: Path | None = None
     llama_port: int = DEFAULT_LLAMA_PORT
+    webui_port: int = DEFAULT_WEBUI_PORT
     engine_path: Path | None = None
     open_browser: bool = DEFAULT_OPEN_BROWSER
+
+    def __post_init__(self) -> None:
+        """Reject two managed services configured onto one port before either can be started.
+
+        The check lives on the resolved object rather than on either layer, because the collision
+        only exists once precedence has picked a winner for both keys (specification section 5.2).
+        """
+        if self.llama_port == self.webui_port:
+            raise ConfigError(
+                f"'llama_port' and 'webui_port' must differ; both resolved to {self.llama_port}"
+            )
 
 
 ConfigSource = Literal["environment", "config.toml", "default"]
@@ -58,6 +82,7 @@ class ConfigSources:
     model: ConfigSource
     model_path: ConfigSource
     llama_port: ConfigSource
+    webui_port: ConfigSource
     engine_path: ConfigSource
     open_browser: ConfigSource
 
@@ -78,12 +103,12 @@ def _validate_model(value: Any, *, source: str) -> str:
     return value.strip()
 
 
-def _validate_port(value: Any, *, source: str) -> int:
+def _validate_port(value: Any, key: str, source: str) -> int:
     """Return a port in the 1-65535 range, rejecting any other value."""
     # `bool` subclasses `int` in Python, so `llama_port = true` would otherwise be accepted and
     # silently bind the engine to port 1.
     if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 65535:
-        raise ConfigError(f"{source}: 'llama_port' must be an integer between 1 and 65535")
+        raise ConfigError(f"{source}: {key!r} must be an integer between 1 and 65535")
     return value
 
 
@@ -134,8 +159,9 @@ def _validate_file_values(values: Mapping[str, Any], *, source: str) -> dict[str
         validated["model"] = _validate_model(values["model"], source=source)
     if "model_path" in values:
         validated["model_path"] = _validate_file_path(values["model_path"], "model_path", source)
-    if "llama_port" in values:
-        validated["llama_port"] = _validate_port(values["llama_port"], source=source)
+    for key in _PORT_KEYS:
+        if key in values:
+            validated[key] = _validate_port(values[key], key, source)
     if "engine_path" in values:
         validated["engine_path"] = _validate_file_path(values["engine_path"], "engine_path", source)
     if "open_browser" in values:
@@ -143,13 +169,13 @@ def _validate_file_values(values: Mapping[str, Any], *, source: str) -> dict[str
     return validated
 
 
-def _parse_environment_port(value: str, *, variable: str) -> int:
+def _parse_environment_port(value: str, key: str, variable: str) -> int:
     """Parse a port from an environment string, which carries no TOML type information."""
     # `int()` also accepts a sign, digit separators such as "8_080", and non-ASCII digits, so the
     # string is screened down to plain decimal digits before it is converted.
     if not value or not value.isascii() or not value.isdecimal():
         raise ConfigError(f"environment variable {variable} must be an integer between 1 and 65535")
-    return _validate_port(int(value), source=f"environment variable {variable}")
+    return _validate_port(int(value), key, f"environment variable {variable}")
 
 
 def _parse_environment_boolean(value: str, *, variable: str) -> bool:
@@ -179,8 +205,8 @@ def _environment_value(key: str, variable: str, value: str) -> Any:
         return _validate_model(value, source=f"environment variable {variable}")
     if key in ("model_path", "engine_path"):
         return _environment_path_override(value)
-    if key == "llama_port":
-        return _parse_environment_port(value, variable=variable)
+    if key in _PORT_KEYS:
+        return _parse_environment_port(value, key, variable)
     return _parse_environment_boolean(value, variable=variable)
 
 
@@ -213,6 +239,7 @@ def _config_sources(file_values: Mapping[str, Any], overrides: Mapping[str, Any]
         model=_config_source("model", file_values, overrides),
         model_path=_config_source("model_path", file_values, overrides),
         llama_port=_config_source("llama_port", file_values, overrides),
+        webui_port=_config_source("webui_port", file_values, overrides),
         engine_path=_config_source("engine_path", file_values, overrides),
         open_browser=_config_source("open_browser", file_values, overrides),
     )

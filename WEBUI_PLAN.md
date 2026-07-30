@@ -1,29 +1,24 @@
-# bora — managed Open WebUI: what upstream actually gives you, and the plan that follows
+# bora — managed Open WebUI: what upstream actually gives you, and why the code looks like this
 
-> **Status: decision input, explicitly deferred.** `IMPLEMENTATION_SPEC.md` remains the only
-> normative plan. Backlog B in its section 8 is the entry this file expands; it is postponed by
-> D-068 and carries no `D-0xx` of its own. **Step B1 is what would authorize everything else**:
-> until the specification records the answers of Appendix A, nothing below is approved, scheduled,
-> or implemented. Following the precedent of D-077, this file deliberately assigns itself no
-> decision number.
+> **Status: shipped in `0.5.0`. This is a design record, not a plan.** `IMPLEMENTATION_SPEC.md`
+> remains the only normative document; where it and this file disagree, it wins. D-094 answered the
+> ten questions of Appendix A, and D-095 then dropped four things this file specified — the spike
+> and its evidence chain, `resources/open-webui.lock` and its schema, immutable versioned
+> installations, and the mode-document field naming the interface — as disproportionate for a
+> single-operator desktop tool. What was built is `src/bora_workbench/webui.py`; what a user needs
+> to know is in [`docs/operations.md`](docs/operations.md).
 >
-> On 29 July 2026 the maintainer selected the TUI plan as the only active new milestone and deferred
-> Open WebUI until a later request. This machine may be used for the future real spike, but that
-> availability is neither an instruction to run it now nor evidence that a check passed. The TUI
-> does not add Open WebUI placeholders, service roles, status rows, or actions in anticipation.
+> **The parts that no longer have a subject have been removed** rather than left to rot: Part C's
+> plane-3 writes, the lock, the staged installation, provisioning, the packaged content, the spike
+> deliverables, the step list, and the test list. Nothing is provisioned, so nothing needed them.
+> What is kept is the part that still explains the code: the four upstream facts, the account, why
+> the three configuration planes make provisioning unnecessary, the environment table with a reason
+> per row, the fallback, and what this must never become.
 >
-> Two label sets, deliberately distinct: **`W1`–`W10` are the open questions** of Appendix A, and
-> **`B1`–`B9` are the steps** of Part F.
->
-> Written against `bora-workbench 0.3.2` after TUI-plan commit `50a0bb1`, and against **Open WebUI
-> `0.11.0`** — the newest release on PyPI on 29 July 2026, read at git tag `v0.11.0`. Every upstream
-> `file:line` below was read at that tag. **Match by content, not by number**: a citation whose quoted
-> code still matches is still correct wherever it moved; one that no longer matches means this plan
-> is stale, not the code.
->
-> Nothing here is a measurement. Section E lists what only a real spike can produce, and no step may
-> assume a value for any of it.
-
+> Read against **Open WebUI `0.11.0`** at git tag `v0.11.0`. Every upstream `file:line` below was
+> read there. **Match by content, not by number**: a citation whose quoted code still matches is
+> still correct wherever it moved; one that no longer matches means this record is stale, not that
+> the code is wrong.
 ---
 
 ## 0. The verdict in six lines
@@ -34,30 +29,31 @@
 2. **"Already prepared" is possible, but it is three different mechanisms, not one.** Environment,
    config keys, and database rows. The interesting half — model name, system prompt, skills — is
    database rows, reachable only through the authenticated API. Part C.
-3. **That reverses one sentence of Backlog B.** "No API writes in this step" would delete the feature
-   it is trying to ship. C.5.
+3. **Nothing needs to be provisioned after all.** The only plane-3 item worth writing was the
+   model's display name, and D-080 already makes `/v1/models` report `Qwen 3.6`, so the picker names
+   it with no write at all. That is why bora holds no credential into Open WebUI. C.3.
 4. **Open WebUI 0.11.0 has a native skills feature**, with the same progressive-disclosure shape
    Backlog A was going to build. C.6.
 5. **The cost is a second multi-gigabyte install**, because `sentence-transformers`, `transformers`
-   and `accelerate` are hard runtime dependencies and pull torch. A.1. This is the fact the maintainer
-   should decide on before any of the rest.
-6. **The current Backlog B is not detailed enough to execute**, but it is not wrong in shape. It is
-   short in five specific places, listed in Appendix B, and every one of them is a decision rather
-   than an omission.
+   and `accelerate` are hard runtime dependencies and pull torch. A.1. That is why installing it is
+   an explicit command and not a step of `bora studio`.
+6. **What was built is narrower than what was proposed**, on purpose (D-095). No lock, no staged
+   installation, no evidence chain, no provisioning: one pinned version, one environment, one
+   process, one readiness poll.
 
 ---
 
 ## 1. What this document is standing on
 
-No `resources/open-webui.lock` exists, so source-hierarchy rule 6 applies (specification 2:
-"current official documentation for tools not pinned yet"). Reading the tagged source is stronger
-than reading the documentation site and is what this file did.
+There is a pinned version but no digest lock (D-095), so source-hierarchy rule 6 applies
+(specification 2: "current official documentation for tools not pinned yet"). Reading the tagged
+source is stronger than reading the documentation site and is what this file did.
 
 | Marked | Meaning |
 |---|---|
 | *(read)* | read at `open-webui` tag `v0.11.0` or from the PyPI metadata of `0.11.0`. A fact about the code, not about this machine. |
-| *(spike)* | a number or behavior only a real run produces. **Not knowable from source.** Listed in Part E. |
-| *(decision)* | neither: something the maintainer chooses. Collected as `W2`–`W10` in Appendix A. |
+| *(spike)* | a number or behavior only a real run produces. **Not knowable from source**, and D-095 chose not to measure it; no figure for any of these is claimed anywhere. |
+| *(decision)* | neither: something the maintainer chose. Answered as `W1`–`W10` in Appendix A. |
 
 Two of upstream's own words are worth keeping straight, because both appear below and they are not
 the same thing: **onboarding** is the browser screen that appears while no user exists, and
@@ -91,13 +87,16 @@ resolved environment, on Ubuntu and on Windows, is the single number that decide
 feature is proportionate — and it is the number nobody should guess. For scale, the thing it is being
 added next to is a 22 GiB weights download (D-078) that this project already asks for once.
 
-Two consequences the current Backlog B does not carry:
+Two consequences, and the first one was argued and then deliberately not acted on:
 
-- **A lock that pins `open-webui==0.11.0` verifies nothing.** The 119 pins are upstream's, in
-  upstream's metadata; the artifacts that land on disk are the resolved closure, hundreds of wheels
-  deep. `resources/open-webui.lock` has to pin **that closure, with digests**, or it is a version
-  string pretending to be a lock. `uv export`/`uv pip compile --generate-hashes` produces it; that
-  is a spike deliverable (E4), not an assumption.
+- **A pin of `open-webui==0.11.0` is not a lock, and that is what shipped anyway.** The 119 pins are
+  upstream's, in upstream's metadata; the artifacts that land on disk are the resolved closure,
+  hundreds of wheels deep. A real lock would pin **that closure, with digests**, which
+  `uv pip compile --generate-hashes` can produce. D-095 declined it: the engine's binary is built and
+  shipped by this project and earns that treatment, while a Python package installed from PyPI into
+  a private environment on one desktop does not earn regenerating 119 hashes on every bump. The
+  version is reproducible; the closure is not verified. That is a known, accepted weakness, not an
+  oversight.
 - **The environment is not immutable in practice unless it is made so.** *(read)* At every startup,
   `install_tool_and_function_dependencies` (`main.py:360`, `utils/plugin.py`) reads the
   `requirements:` frontmatter of every installed Tool and Function and runs
@@ -264,26 +263,6 @@ user's head instead of in bora's state root, and it costs one screen the user se
 the worst of the three here — it has all of Route A's automation with a secret to manage and none of
 Route C's honesty. `W2`.
 
-## B.3 What bora's TUI does instead
-
-The authorized TUI scope has no automatic onboarding flow. Its read-only `Setup` screen is defined by
-`TUI_PLAN.md` E3 and reflects only behavior shipped in the current launcher. It therefore gains no
-Open WebUI row, account action, or second-service placeholder now.
-
-If this backlog is authorized later, the WebUI implementation step also extends the shared snapshot
-and `Setup` screen from the then-current TUI. Under Route A they say only that the browser UI opens
-without a bora-managed account step. Under Route C they may state:
-
-```
-  Create your account in the browser on first open.
-  Open WebUI asks once; bora does not create the account.
-```
-
-The TUI still never creates, stores, or resets an Open WebUI account. That rule belongs to the future
-WebUI decision and is not anticipated in the `0.4.0` front end.
-
----
-
 # Part C — Preprovisioning (the second question, answered)
 
 Short answer: **yes, almost everything can arrive already configured — but through three different
@@ -298,7 +277,7 @@ needs an authenticated API call.**
 | 2 | **Registered config keys** — roughly 300 dotted keys in `DEFAULT_CONFIG` (`config.py:2788-3184`) | connections, `ui.*`, `task.*`, `rag.*`, `user.permissions`, banners, prompt suggestions | environment, `${DATA_DIR}/config.json`, `POST /api/v1/configs/import` | yes — and whether the edit survives is C.2 |
 | 3 | **Database rows** | **workspace models (display name, system prompt, parameters), skills, prompts, tools, functions, knowledge, users** | **API or UI only** | yes; this is user content |
 
-## C.2 Plane 2 has two opposite modes, and Backlog B currently picks the surprising one
+## C.2 Plane 2 has two opposite modes, and the surprising one is easy to pick by accident
 
 *(read)* `ENABLE_PERSISTENT_CONFIG` (`config.py:3186`, default `True`) is passed to
 `Config.configure(...)`, and every read goes through `Config.persistent_enabled_for(key)`
@@ -379,43 +358,6 @@ disk; it runs *before* `seed_registered_defaults`; and upstream's own name for i
 Building the provisioning path on a deprecated import is how a feature acquires a migration it did
 not need.
 
-## C.5 What this changes in Backlog B
-
-Backlog B currently says:
-
-> `sync` generates the function, prompts, and import instructions under `data_dir()/sync-out/`. A
-> static Python template; rules and content serialized as JSON data, never interpolated as code. No
-> API writes in this step.
-
-Two parts of that should not survive contact with 0.11.0.
-
-**"the function".** An Open WebUI *Function* is a Pipe/Filter/Action: **Python source stored in the
-database and executed inside the Open WebUI process**, with the `requirements:` frontmatter that
-triggers the `pip install` of A.1. That is precisely the plugin surface specification 1.1 says this
-project is not ("not a plugin framework"), and specification 5.12 forbids the shape it takes. Whatever
-bora ships into Open WebUI should be **data — a workspace model, skills, prompts — not code.** The
-one thing a Function would have bought (a deterministic router running inside the chat pipeline) is
-discussed in C.6 and has a better answer now.
-
-**"No API writes in this step."** Its intent was good: do not touch a foreign database, hand the user
-a file and let them decide. But under Route A the launcher already holds an admin session the moment
-the service is up, the write targets a database inside a managed root that bora created, and the
-alternative it buys is a manual import chore per item. "No API writes" here does not protect
-anything — it removes the feature. What should be kept from the intent, and made explicit instead:
-
-- the write happens **only after the service reports ready**, never against a foreign instance;
-- it is **idempotent**: read the current list, compare, create or update, report what changed and
-  what was left alone;
-- it **never deletes** content the user made, and never overwrites a row whose content differs from
-  what bora last wrote unless the user asks (the same "preserve pre-existing user changes" rule
-  `AGENTS.md:14-15` already imposes everywhere else);
-- `--dry-run` prints the exact payloads and writes nothing, reusing the spelling `bora rm` already
-  established rather than inventing a second one;
-- the content itself stays **packaged declarative resources** under
-  `src/bora_workbench/resources/content/webui/`, validated against a new `webui-content/v1` schema
-  (specification 5.3), so it obeys the core-versus-content split that `AGENTS.md:212` requires of
-  every pull request.
-
 ## C.6 Open WebUI has skills now — and that is Backlog A's problem, not this one's
 
 *(read)* `utils/middleware.py:2607-2684`. A request gathers skill ids from three places: the model's
@@ -448,8 +390,8 @@ weights, a threshold, co-activation, no regular expressions (D-011) — that dec
 
 ## D.1 The environment
 
-One table, because this is the part that gets copied into code and every row needs a reason. Values
-marked `Wn` are the open decisions of Appendix A; the rest follow from Part A.
+One table, because this is the part that got copied into code and every row needs a reason. It is
+`_managed_settings` in `webui.py`; if the two ever disagree, the code is what runs.
 
 | | Value | Why |
 |---|---|---|
@@ -457,211 +399,74 @@ marked `Wn` are the open decisions of Appendix A; the rest follow from Part A.
 | `--port` (argument) | `webui_port`, default `8081` | upstream's `8080` is `llama_port`. Validated 1–65535 and `!= llama_port` |
 | `DATA_DIR` | `data_dir()/open-webui/data` | database, uploads and vector store inside a managed root, so `uninstall` (5.10) actually reaches them |
 | `WEBUI_SECRET_KEY` | generated once, held in the state root | A.2. Stable across restarts or every restart logs the browser out |
-| `WEBUI_AUTH` | `false` | `W2` / Part B |
-| `WEBUI_NAME` | `bora` | renders `bora (Open WebUI)`; the branding stays. `W7` |
+| `WEBUI_AUTH` | `false` | `W2` = A / Part B. Upstream creates its own local administrator |
+| `WEBUI_NAME` | **unset** | `W7`. The interface stays `Open WebUI` everywhere, so the branding clause is never engaged and no exemption is invoked. bora names the program in its own output instead |
 | `ENABLE_PERSISTENT_CONFIG` | `true` | first-boot seed, then the user owns their settings. `W3` / C.2 |
 | `ENABLE_OLLAMA_API` | `false` | default is `true` and points at `localhost:11434` (`config.py:227-241`); nothing serves Ollama here |
 | `ENABLE_OPENAI_API` | `true` | the managed llama-server is the one connection |
 | `OPENAI_API_BASE_URL` | `http://127.0.0.1:<llama_port>/v1` | semicolon-separated list upstream (`config.py:331-337`); this deployment has exactly one |
 | `OPENAI_API_KEY` | placeholder | llama-server ignores it, the field is required. Same posture as D-081 |
-| `RAG_EMBEDDING_ENGINE` | `W4` | empty means a SentenceTransformer at every start and a download on the first (A.3) |
-| `OFFLINE_MODE` | `W4` | sets `HF_HUB_OFFLINE=1`, disables the version check, skips the frontmatter `pip install` |
-| `ENABLE_VERSION_UPDATE_CHECK` | `false` | a local distribution does not phone home, independently of `W4` |
+| `RAG_EMBEDDING_ENGINE` | **non-empty**, and `RAG_EMBEDDING_MODEL` empty | `W4`. `get_ef` builds a SentenceTransformer only when the engine is empty **and** a model is named (`routers/retrieval.py:142-148`), so either alone is enough; both are set, because one guard surviving an upstream refactor is not a plan. Nothing downloads and the rest of the app is intact |
+| `OFFLINE_MODE` | **not used** | `W4` chose the narrower switch. It would also kill the frontmatter `pip install`, but `W6` disables that explicitly rather than as a side effect |
+| `ENABLE_VERSION_UPDATE_CHECK` | `false` | a local distribution does not phone home |
 | `ENABLE_PIP_INSTALL_FRONTMATTER_REQUIREMENTS` | `false` | A.1: otherwise an imported Function mutates the managed venv. `W6` |
-| `SAFE_MODE` | `W6` | additionally deactivates all functions at startup |
-| `ENABLE_TITLE_GENERATION`, `ENABLE_TAGS_GENERATION`, `ENABLE_FOLLOW_UP_GENERATION` | `W5` | three extra completions per turn on the one server (A.3) |
+| `SAFE_MODE` | **`true`** | `W6`. Deactivates every stored function, so no third-party Python runs inside the process bora starts |
+| `ENABLE_TITLE_GENERATION`, `ENABLE_TAGS_GENERATION`, `ENABLE_FOLLOW_UP_GENERATION` | **`false`** | `W5`. Three extra completions per turn on the one calibrated slot (A.3) |
 | `WEBUI_URL` | `http://127.0.0.1:<webui_port>` | `config.py:1620`; keeps generated links pointing at the loopback service |
 
 The full set is written once, in one place, and `bora doctor` shows it, because an environment
 assembled in three functions is an environment nobody can audit.
 
-## D.2 The lock
-
-`resources/open-webui.lock`, schema `open-webui-lock/v1`, `additionalProperties: false`, produced by
-the spike and never by hand:
-
-- the release (`0.11.0`) and the source tag it was read at;
-- the **resolved dependency closure with digests** (A.1), per platform where they differ;
-- the interpreter window it was verified against;
-- the command contract: the executable, `serve`, and the two arguments of A.2 — same discipline as
-  `engine.lock`'s `command_contract`, so no flag is ever invented at a call site (5.7);
-- the health contract. *(read)* `GET /health` returns `{"status": true}` **unconditionally, before
-  startup finishes** (`main.py:2768`); `GET /ready` returns 200 only once `app.state.startup_complete`
-  is set and the database ping succeeds, and 503 otherwise (`main.py:2772-2811`). Specification 5.9
-  says "READY = the exact status and JSON from the lock" — so the lock names **`/ready`**. A launcher
-  that polls `/health` reports ready while the first-boot migration is still running;
-- the licence identity, so the packaged notice cannot drift from what was verified (A.4).
-
-`latest` is forbidden (specification 2), and a lock that pins only the top-level version is not a
-lock (A.1).
-
-## D.3 Installation and activation
-
-Unchanged in shape from Backlog B, which is the part of it that is right:
-
-- immutable versioned environments under `data_dir()/open-webui/installations/`;
-- staging on the same filesystem, published by atomic rename;
-- post-install verification: the version, the imports, the executable;
-- `installed.json` inside the installation; an atomic `current.json` whose relative path is confined;
-- a failure leaves the previous manifest and installation intact;
-- cleanup removes only inactive **managed** environments.
-
-Two additions the current text lacks. **The creation tool**: `uv` is already the installation path
-this project uses and defers to (D-056, D-073, `_tool_handoff.py`), so `uv venv` plus a hash-verified
-`uv pip sync` against D.2's closure is the consistent choice — no second package manager, no
-`pip install` reached over the network without digests. **The interpreter**: the managed environment
-uses `3.12.13` (A.1); if the spike finds a resolution that does not hold there, that is a finding to
-report, not a second interpreter to install quietly.
-
 ## D.4 The second managed service
 
-This is the largest under-stated piece of Backlog B, which mentions "multi-service state" once, in
-the test list.
+This was the largest under-stated piece of the original Backlog B, which mentioned "multi-service
+state" once, in a test list. It turned out to be the load-bearing part: "the browser opens only when
+both are ready" cannot be expressed without it.
 
-Specification 5.9 says "a single managed service", and `process.py:262` enforces it:
+Specification 5.9 said "a single managed service", and the process layer enforced it by counting:
 
 ```python
 if snapshot.services:
     raise ProcessError("a managed service is already running; run bora stop")
 ```
 
-The state file already stores a **list** (`_process_state.py:161`), so the format survives; the policy
-does not. Running Open WebUI means:
+The state file already stored a **list**, so the format survived; the policy did not. What shipped:
 
-- a service **role** in the state entry, so the guard becomes "no service of this role" and `status`
-  can name what is running rather than counting;
-- `stop` taking both down in a defined order — the UI first, so it never shows a live chat against a
-  server that is going away;
-- the startup lock covering the pair as one operation, not two racing ones;
-- a health loop per role, with per-role timeouts. *(spike)* Open WebUI's first start migrates the
-  database, runs the plugin installer and constructs an embedding model; the 15-minute total of 5.9
-  was sized for llama-server and has to be re-argued, not reused;
+- a service **role** on the state entry, so the guard is "no service of this role" and `status` names
+  what is running rather than counting it. A record written before the role existed decodes unchanged
+  and reads as the engine role, and only that role carries a model, release, context window and
+  backend — the interface serves no model and claims none;
+- `stop` taking both down in a defined order, the interface first, so it never shows a live chat
+  against a server that is going away;
+- the startup lock covering each spawn, so two starts cannot race;
+- a readiness contract per role, each with its own endpoint and its own timeout. The 15-minute total
+  of 5.9 was sized for llama-server; Open WebUI's first start creates its database and applies every
+  migration, so it declares its own allowance rather than borrowing that one;
 - `Ctrl-C` still cleaning up both and exiting 130.
-
-Every one of those touches code that D-071 has already had to repair once under real conditions. It is
-its own step (`W9`), and arguably its own release. The current TUI must not anticipate the role field:
-when B4 is eventually authorized, that same WebUI step extends read-only service inspection and the
-Setup screen against the then-current snapshot contract.
-
-## D.5 Provisioning
-
-A separate, explicit, idempotent operation — not a side effect of launching:
-
-1. wait for READY on `/ready` (D.2);
-2. obtain a session token (C.3);
-3. reconcile, per resource kind, read-compare-write, in this order: **skills → prompts → workspace
-   models** (models reference skills by id, so skills exist first);
-4. optionally reconcile the plane-2 keys that the environment cannot express, via
-   `POST /api/v1/configs/import` (C.4);
-5. print what was created, what was updated, and what was left alone because the user had changed it.
-
-`--dry-run` prints the payloads and writes nothing. Nothing here deletes.
-
-## D.6 The packaged content
-
-`src/bora_workbench/resources/content/webui/`, schema `webui-content/v1`, `additionalProperties:
-false`, identifiers `^[a-z0-9-]+$` (specification 5.3): the workspace model per mode (display name,
-description, `params.system`, sampling that agrees with the `mode/v2` document it mirrors), the skill
-bodies, the prompts. Declarative content, so it travels in its own pull request (`AGENTS.md:212`).
-
-One consistency rule worth writing into the schema rather than into prose: the sampling in a workspace
-model must not contradict the `mode/v2` content for the same mode, and `validate` checks it. Two
-places to state a temperature is two places to get it wrong.
 
 ## D.7 Failure, fallback, removal
 
-The current text is right and is kept: if llama-server is READY but the UI fails, keep the model
-serving, show the log, and open the built-in llama.cpp interface where the mode allows it; if the mode
-requires a UI and none is available, stop the services and exit 1.
+This is what shipped: if llama-server is READY but the interface fails, keep the model serving,
+show the reason and its log, and open the built-in llama.cpp interface. The mode does not exit,
+because the built-in interface is always there — which is also why the "no UI available, stop and
+exit 1" branch the proposal carried has no way to happen and was not built.
 
-Two additions. **Removal**: the installations root and the data directory are inside `data_dir()`, so
-`uninstall` already reaches them under 5.10 — but the database holds *user content* (chats, notes,
-uploads), which the weights question of D-079 has already established is the kind of thing that gets
-its own separately-asked confirmation rather than being swept up in another one. **The secret key**
-lives in the state root and goes with it.
-
----
-
-# Part E — The spike, and what it must produce
-
-Backlog B already requires this; it does not say what "done" means. It means these artifacts, and no
-approval should be given before they exist.
-
-| | The spike must measure | Why source cannot answer it |
-|---|---|---|
-| **E1** | installed size of the resolved environment, Ubuntu and Windows | A.1. The number that decides proportionality |
-| **E2** | cold first start to `/ready` 200, and warm restart, with the plane-1 environment of D.1 | first start migrates, installs and loads an embedding model (A.3) |
-| **E3** | resident memory of the Open WebUI process while a chat streams | it shares a machine with a model calibrated to fill it. Specification 5.5 reserves 2.0 GiB of RAM for the *engine*; this is a new tenant |
-| **E4** | the resolved closure with digests, per platform | becomes `resources/open-webui.lock` (D.2) |
-| **E5** | the real cost of `W5`: latency of a chat turn with title/tags/follow-up on versus off | three extra completions on one slot is a guess until it is a measurement |
-| **E6** | that Route A behaves as read: no screen, `admin@localhost` created, admin role | Part B's whole recommendation rests on it |
-| **E7** | that the provisioning calls of C.3 work against a real instance, including the second run | idempotency is a claim until the second run |
-| **E8** | whether `Qwen 3.6` resolves as `base_model_id` given the D-080 alias | the alias is bora's; the resolution is upstream's |
-
-Evidence goes under `evidence/` with its own manifest, separate from the calibration chain, and prose
-in English (D-065). A spike that produces prose but no lock has not finished. The maintainer has made
-the current machine available for this future spike; no command is run and no observation is recorded
-until a separate request activates B1/B2.
-
----
-
-# Part F — The steps
-
-Before it is executed, a step declares six fields, and one missing a field is not ready: **goal** (one
-outcome; if it needs an "and", it is two steps), **files** (every file it may touch, and no others),
-**change** (precise enough to require no new design decision), **decision** (the `D-0xx` it records,
-or `—`), **verify** (the check that would fail if it were wrong), **done when** (the observable
-condition that ends it). Decision numbers are **indicative**: take the next free number in the
-specification's table when the step actually lands.
-
-| | Step | Depends on |
-|---|---|---|
-| **B1** | Record the answers of Appendix A in the specification, replace Backlog B with the corrected text of Appendix B, and name this file. **Nothing else may be committed first.** | — |
-| **B2** | The spike (Part E). Produces the lock and the evidence. | B1 |
-| **B3** | `open-webui-lock/v1` schema, the lock, the notice, and `validate` coverage. Declarative-only pull request. | B2 |
-| **B4** | The service role in the state, and `status`/`stop`/lock/`Ctrl-C` over two services (D.4). Core-only, and **testable with a fake second service before Open WebUI exists** — which is why it comes before the installer. | B1 |
-| **B5** | `webui.py`: installation, verification, `installed.json`, atomic `current.json`, cleanup (D.3). | B3, B4 |
-| **B6** | The environment (D.1) and the launch path, including `webui_port` in configuration and the `!= llama_port` validation. | B5 |
-| **B7** | `webui-content/v1` and the packaged content (D.6). Declarative-only pull request. | B3 |
-| **B8** | Provisioning (D.5), idempotent, with `--dry-run`. | B6, B7 |
-| **B9** | Documentation: `docs/operations.md` on the account and the loopback rule (B.2), `docs/commands.md`, `docs/configuration.md`, `docs/installation.md` on the disk cost. | B8 |
-
-B4 before B5 is the one piece of ordering worth defending: the multi-service work is the risky part,
-it is testable with a fake, and discovering it late means discovering it with a 145 MB dependency in
-the way.
-
----
-
-# Part G — Tests
-
-Offline, deterministic, no real network, no real service (`AGENTS.md:176-180`). The current Backlog B
-list is a good start and is kept: valid/partial/failed installation, manifest, port configuration,
-environment, health, fallback, multi-service state, hostile content, reproducible output. What it is
-missing, one line each:
-
-- **the host argument is `127.0.0.1` in every constructed command**, including every failure path. The
-  test that would have caught upstream's default;
-- **the port refuses to equal `llama_port`**, at configuration-validation time, before any process
-  starts;
-- **`/ready`, not `/health`**: a fake that answers `/health` 200 while `/ready` 503 must not be
-  reported as ready;
-- **the secret key** is generated once, reused on the second launch, and appears in no log line, no
-  `doctor` output and no `--dry-run` output;
-- **provisioning is idempotent**: second run creates nothing;
-- **provisioning preserves user edits**: a row whose content differs from what bora last wrote is
-  reported and left alone;
-- **packaged content validates**, and a workspace model contradicting its `mode/v2` sampling fails
-  `validate`;
-- **stop order**: UI down before engine, in both the clean and the failed-startup path.
+**Removal**: the environment and the interface's data directory are inside `data_dir()`, so
+`uninstall` reaches them under 5.10 along with every other managed root. The database holds *user
+content* — chats, notes, uploads — and the weights question of D-079 established that this is the
+kind of thing that deserves its own separately-asked confirmation; it currently does not get one, and
+that is a known gap rather than a decision. **The secret key** lives in the state root and goes
+with it.
 
 ---
 
 # Part H — What this must not become
 
 - **A plugin framework.** No Function, no Pipe, no Filter, no Python executed inside Open WebUI
-  (C.5, specification 1.1).
-- **A second model manager.** The workspace model wraps the one model `engine.lock` pins. Nothing
-  here adds a catalog.
+  (specification 1.1). Both switches that make this true are set, and a user who imports a function
+  is told in the documentation that it will not run.
+- **A second model manager.** The one model `engine.lock` pins is the one the picker shows, under
+  the alias the engine already reports. Nothing here adds a catalog.
 - **A configuration proxy.** bora does not grow settings that mean "an Open WebUI setting". Plane 1
   is what bora sets; plane 2 is seeded once and then belongs to the user (C.2).
 - **A fork.** The branding stays (A.4), and the user is told which program is opening.
@@ -670,41 +475,23 @@ missing, one line each:
 
 ---
 
-# Appendix A — Open questions for the maintainer, to be recorded in B1
+# Appendix A — The ten questions, answered by D-094 on 30 July 2026
 
-Following D-077's rule, these carry no `D-0xx` until they are answered. A recommendation is given for
-each because a question with no recommendation is work handed back.
+The recommendation each question carried is kept, because the difference between it and the answer is
+the part worth remembering. Three answers differ from the recommendation: `W1`, `W7`, and `W10`.
 
-| | Question | Recommendation |
-|---|---|---|
-| **W1** | Is a managed Open WebUI wanted at all, given E1's disk cost and D.4's multi-service work? | **Deferred.** Run E1 only after a later explicit request. It is legitimate to answer "no" after seeing the number; neither B1 nor B4 starts during the TUI milestone. |
-| **W2** | Which user route: A (`WEBUI_AUTH=false`), B (`WEBUI_ADMIN_*`), or C (upstream onboarding)? | **A** — Part B.2. If a password is wanted, **C**, not B. |
-| **W3** | `ENABLE_PERSISTENT_CONFIG` `true` or `false`? | **`true`** — C.2. Seed on first boot; do not accept edits and forget them. |
-| **W4** | Embedding model: `OFFLINE_MODE=true`, a non-empty `RAG_EMBEDDING_ENGINE`, or accept the download? | **Non-empty engine**, so nothing downloads and the rest of the app is intact; retrieval then requires an explicit later decision. Never "accept the download". |
-| **W5** | Title, tags and follow-up generation on or off? | **Off** until E5 measures them. Three extra completions per turn on the one calibrated server, on by default, is a latency regression the user did not ask for. |
-| **W6** | `ENABLE_PIP_INSTALL_FRONTMATTER_REQUIREMENTS=false` alone, or `SAFE_MODE` as well? | **Both.** A.1: the installation is immutable or it is not. |
-| **W7** | `WEBUI_NAME`: unset, or `bora` (rendering `bora (Open WebUI)`)? | **`bora`**, with the upstream licence in `resources/notices/` in the same step. |
-| **W8** | Does the deterministic router of Backlog A survive, now that upstream ships skills? | **Defer.** Ship the skill content through upstream's mechanism, measure it, and decide the router separately — it needs a proxy this project does not have (C.6). |
-| **W9** | Is the multi-service work (D.4) part of this feature or its own release? | **Its own step at minimum** (B4), and defensibly its own release: it changes an invariant that D-071 already had to repair under real conditions. |
-| **W10** | Does `sync` keep its name and its `data_dir()/sync-out/` output, or become a provisioning command? | **Provisioning command.** The file drop was a workaround for "no API writes", and C.5 retires that constraint. |
-
----
-
-# Appendix B — Corrections to Backlog B, applied by B1
-
-| Where | Now says | Should say |
-|---|---|---|
-| precondition | "approves a precise version after a real spike on Python, CPU-only dependencies, command, health, Functions, prompts, and environment variables" | the same, plus the eight deliverables of Part E, and **not** "Functions" — C.5 rules them out |
-| environment | "authentication disabled for the local service only" | which of the three routes, and what it costs (Part B). The current phrasing hides that upstream creates `admin@localhost`/`admin` and that the choice is one-way |
-| environment | "persistent config disabled … UI changes do not persist" | `W3`. And if `false` is kept, say that the UI *accepts and forgets*, which is not the same as read-only |
-| environment | "a dedicated data dir, host `127.0.0.1`, … the local OpenAI endpoint, and a placeholder key" | the full table of D.1, including the port collision with `llama_port`, the secret key, the embedding model and the version check |
-| health | (not stated) | READY is `GET /ready`, not `/health` (D.2). `/health` answers 200 before startup finishes |
-| installation | "immutable venvs" | immutable **unless** the frontmatter `pip install` is disabled (A.1) |
-| `sync` | "generates the function, prompts, and import instructions … No API writes in this step" | idempotent provisioning through the API, of **data not code**, after READY, with `--dry-run` and preservation of user edits (C.5) |
-| multi-service | one word in the test list | its own step, with the 5.9 invariant and `process.py:262` named (D.4) |
-| licence | (not stated) | clause 4 and the `WEBUI_NAME` rewrite (A.4), plus the packaged notice |
-| specification `:857` | "Open WebUI environment: `https://docs.openwebui.com/reference/env-configuration/`" | keep the link — it resolves — and add that the tagged source outranks it while no lock exists (specification 2, rule 6) |
-| D-022 (`:219`) | "versioned environments and an atomic activation manifest" | still correct; unchanged by this file |
+| | Question | Recommendation | **Answer (D-094)** |
+|---|---|---|---|
+| **W1** | Is a managed Open WebUI wanted at all, given its disk cost and D.4's multi-service work? | **Deferred.** It is legitimate to answer "no" after seeing the number. | **Yes**, for `studio` and `vstudio` both. Answered on value before cost: the upstream interface is materially better kept than the integrated one, and that is not a detail. The cost was then handled by making the install an explicit command, not by measuring it (D-095). |
+| **W2** | Which user route: A (`WEBUI_AUTH=false`), B (`WEBUI_ADMIN_*`), or C (upstream onboarding)? | **A** — Part B.2. If a password is wanted, **C**, not B. | **A**, with B.2's costs stated in `docs/operations.md`. |
+| **W3** | `ENABLE_PERSISTENT_CONFIG` `true` or `false`? | **`true`** — C.2. Seed on first boot; do not accept edits and forget them. | **`true`**. |
+| **W4** | Embedding model: `OFFLINE_MODE=true`, a non-empty `RAG_EMBEDDING_ENGINE`, or accept the download? | **Non-empty engine**, so nothing downloads and the rest of the app is intact. | **Non-empty engine.** Web search stays off and is the user's to enable, which is what keeps this answer available. |
+| **W5** | Title, tags and follow-up generation on or off? | **Off** until someone measures them. | **Off**, and unmeasured: three extra completions per turn on one slot is a cost nobody asked for, so the burden of proof sat with turning them on. |
+| **W6** | `ENABLE_PIP_INSTALL_FRONTMATTER_REQUIREMENTS=false` alone, or `SAFE_MODE` as well? | **Both.** A.1: the installation is immutable or it is not. | **Both.** It costs nothing the user was promised: skills, prompts and system prompts are not functions. |
+| **W7** | `WEBUI_NAME`: unset, or `bora` (rendering `bora (Open WebUI)`)? | **`bora`**, with the upstream licence in `resources/notices/` in the same step. | **Unset.** No clause is engaged and no exemption is invoked; bora orchestrates and Open WebUI keeps its name wherever it appears. The notice ships anyway, and bora's own output names the program it opens. |
+| **W8** | Does the deterministic router of Backlog A survive, now that upstream ships skills? | **Defer.** | **Deferred**, and no longer a dependency of this entry. |
+| **W9** | Is the multi-service work (D.4) part of this feature or its own release? | **Its own step at minimum.** | **Its own step, first.** Forced rather than argued: "the browser opens only when both are ready" cannot be expressed without the service role, per-role readiness, and an ordered stop. It shipped in the same release, but it was built first. |
+| **W10** | Does `sync` keep its name and its `data_dir()/sync-out/` output, or become a provisioning command? | **Provisioning command.** | **Neither: it does not exist.** The display name was the only thing worth provisioning, and D-080 already reports `Qwen 3.6` at `/v1/models`, so the picker names the model with no write at all. bora holds no credential into Open WebUI and never calls its API. |
 
 ---
 
@@ -713,10 +500,10 @@ each because a question with no recommendation is work handed back.
 - **`${DATA_DIR}/config.json` as the provisioning channel.** Rejected: upstream calls it legacy, it
   overwrites rather than seeds, and it deletes itself by renaming (C.4).
 - **An Open WebUI Function carrying the router.** Rejected: Python executed inside another process,
-  with an unpinned `pip install` attached, is the plugin surface specification 1.1 excludes (C.5).
+  with an unpinned `pip install` attached, is the plugin surface specification 1.1 excludes.
 - **A proxy between Open WebUI and llama-server so bora can inject skills deterministically.**
   Rejected for now: a third process in the request path, a second upstream contract, and a new failure
-  mode, to replace something upstream already ships (C.6). Reconsiderable with W8 evidence.
+  mode, to replace something upstream already ships (C.6).
 - **Reusing `WEBUI_ADMIN_PASSWORD` with a generated password.** Rejected: it gives bora a secret to
   keep and the user nothing Route A does not already give them (B.2).
 - **Shipping Open WebUI inside the wheel.** Rejected: 145.5 MB before resolution, a foreign licence in
@@ -726,5 +513,14 @@ each because a question with no recommendation is work handed back.
   was deleted is not a fallback.
 - **Letting `webui_port` default to `8080` to match upstream.** Rejected: it is `llama_port`
   (A.2).
-- **A `bora webui` command group before W4 lands.** Rejected: a second service the state model cannot
-  describe is a second service `status` and `stop` will lie about.
+- **A `bora webui` command group before the service role existed.** Rejected: a second service the
+  state model cannot describe is a second service `status` and `stop` will lie about. The role landed
+  first, and the command group after it.
+- **Installing Open WebUI automatically on the first `bora studio`.** Rejected: a closure that pins
+  torch costs gigabytes, and a launcher that spends them without being asked has made a decision that
+  was not its to make. `bora webui install` is one command, and until it is run the integrated
+  interface still works.
+- **A digest-pinned `resources/open-webui.lock`.** Rejected by D-095: pinning the resolved closure of
+  119 packages with hashes is the right answer for the engine, whose binary this project builds and
+  ships, and disproportionate for a Python package installed from PyPI into a private environment on
+  one desktop. The version is pinned; the closure is not. This is knowingly weaker.

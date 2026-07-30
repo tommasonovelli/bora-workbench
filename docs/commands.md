@@ -20,12 +20,14 @@ on the main group and on every command. Typer also exposes
 | bare `bora` | opens the read-only dashboard and exact command composer | no |
 | `engine status` | inspects the managed engine | no |
 | `engine install` | installs the engine from the lock and downloads the model | yes |
+| `webui status` | reports whether the managed Open WebUI is installed | no |
+| `webui install` | installs the pinned Open WebUI into its own environment | yes |
 | `pull` | downloads and verifies the pinned model | yes |
 | `rm` | deletes the pinned model after confirmation | yes |
 | `pi` | connects or launches the pi coding agent against the local service | pi's config or none |
 | `coding` | starts the text API | state and logs |
-| `studio` | starts the built-in text UI | state and logs |
-| `vstudio` | starts the UI with vision | state and logs |
+| `studio` | starts the text UI, Open WebUI when installed | state and logs |
+| `vstudio` | starts the same UI with vision | state and logs |
 | `status` | shows live services and clears stale state | if needed |
 | `stop` | stops verified managed services | yes |
 | `calibrate` | measures the machine and manages local records | yes |
@@ -332,13 +334,32 @@ Once READY, the CLI shows:
 - backend and mode;
 - the local record, or the non-optimized baseline;
 - the API at `http://127.0.0.1:<port>/v1`;
-- for `studio`/`vstudio`, the UI at `http://127.0.0.1:<port>/`;
-- the log path.
+- for `studio`/`vstudio`, the UI, and which interface it is;
+- the log path, and the interface log when Open WebUI is running.
 
 The contract also exposes `/health`, `/v1/models`, `/v1/chat/completions`, and `/metrics`. The
-service listens on `127.0.0.1` only. `studio` and `vstudio` open the browser only after READY and
-only when `open_browser=true`. `/v1/models` reports the model as `Qwen 3.6`, which is the alias the
-engine is launched with; that name is what a client sends back in a request.
+service listens on `127.0.0.1` only. `/v1/models` reports the model as `Qwen 3.6`, which is the
+alias the engine is launched with; that name is what a client sends back in a request, and it is
+also what the Open WebUI model picker shows.
+
+### Which interface `studio` and `vstudio` open
+
+`bora webui install` decides it, and nothing else does:
+
+| Open WebUI | UI URL | What opens |
+|---|---|---|
+| installed | `http://127.0.0.1:<webui_port>` | Open WebUI, started as a second managed service |
+| not installed | `http://127.0.0.1:<llama_port>/` | the integrated llama.cpp interface |
+
+The browser opens only when `open_browser=true`, and only once **both** services have answered their
+own readiness check: the engine its locked health endpoint, Open WebUI its `/ready`. A tab is never
+opened onto a page that cannot yet answer.
+
+If Open WebUI is installed but fails to start, the engine keeps serving, the reason and its log are
+printed, and the integrated interface opens instead. A UI mode never exits because the interface
+failed.
+
+`coding` starts no interface at all and opens no browser.
 
 With `coding` running, a minimal request from another POSIX terminal is:
 
@@ -352,7 +373,39 @@ Replace `8080` if `llama_port` differs. Any client compatible with the local Ope
 endpoint works; the current managed server requires no key.
 
 The command stays attached to the process. `Ctrl-C` terminates the server, removes the state, and
-returns 130. A natural non-zero exit returns 1 and points to the log.
+returns 130. A natural non-zero exit returns 1 and points to the log. When Open WebUI is running it
+is taken down first on every exit path, so a live page never keeps talking to a server that is
+already terminating.
+
+## `webui install`
+
+```bash
+bora webui install [--force]
+```
+
+Installs the pinned `open-webui` release into a managed virtual environment under the data root,
+using `uv`. It is a separate command rather than a step of `bora studio` because its dependency
+closure includes torch and runs to several gigabytes: a launcher should not spend that without being
+asked. uv's own progress is shown as it resolves and downloads.
+
+The version is recorded only after the installation produced a working `open-webui` console script,
+so an interrupted install reports as absent and the next run rebuilds it rather than trusting a
+partial environment. Running it again when the pinned version is already present does nothing;
+`--force` rebuilds anyway. It refuses while any managed service is running, because a live interface
+holds that environment open.
+
+Open WebUI is an upstream program. bora starts it, configures it through its process environment,
+and never modifies it, writes into its database, or calls its API. Its licence ships in
+`resources/notices/open-webui-LICENSE`.
+
+## `webui status`
+
+```bash
+bora webui status
+```
+
+Reports whether the pinned version is installed, where its environment and its data live, and which
+port it would listen on. It never prints the session key.
 
 ## `status`
 

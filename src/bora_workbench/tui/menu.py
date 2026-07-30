@@ -1,7 +1,7 @@
 """Summarize each central-menu entry in one short line derived only from the snapshot.
 
 The dashboard answers "what is on this machine" from the menu itself, so a reader never has to
-open a section to learn whether it needs attention (TUI.md section 3).
+open a section to learn whether it needs attention (`docs/tui.md`).
 """
 
 from __future__ import annotations
@@ -79,6 +79,7 @@ def _settings_summary(snapshot: WorkbenchSnapshot) -> str:
         sources.model,
         sources.model_path,
         sources.llama_port,
+        sources.webui_port,
         sources.engine_path,
         sources.open_browser,
     )

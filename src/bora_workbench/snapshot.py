@@ -40,6 +40,7 @@ from bora_workbench.pi_link import (
 from bora_workbench.process import ServiceInspection, ServiceState, inspect_services
 from bora_workbench.profiles import Catalog, ContentError, load_catalog
 from bora_workbench.validation import ValidationResult, validate_resources
+from bora_workbench.webui import WebuiStatus, inspect_webui
 
 
 class SnapshotError(RuntimeError):
@@ -114,6 +115,7 @@ class DoctorSnapshot:
     engine: EngineStatus
     paths: PublicPaths
     lock: JsonObject | None
+    webui: WebuiStatus | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -193,6 +195,7 @@ def collect_doctor_snapshot(version: str) -> DoctorSnapshot:
         managed_engine,
         paths,
         lock,
+        inspect_webui(),
     )
 
 

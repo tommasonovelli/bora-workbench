@@ -38,6 +38,14 @@ class Handler(BaseHTTPRequestHandler):
         if self.path == "/":
             self._send_json(200, {"interface": "fake integrated UI"})
             return
+        if self.path == "/ready":
+            # `startup` is the one shape only the interface has: liveness answers 200 while
+            # readiness still answers 503, which is what separates the two endpoints.
+            if self.server.health_mode == "startup":
+                self._send_json(503, {"detail": "Startup not complete"})
+            else:
+                self._send_json(200, {"status": True})
+            return
         if self.path != "/health":
             self._send_json(404, {"error": "not found"})
             return
@@ -94,7 +102,7 @@ def _arguments() -> argparse.Namespace:
     parser.add_argument("--port", required=True, type=int)
     parser.add_argument(
         "--health-mode",
-        choices=("ready", "delayed", "loading", "incompatible", "crash"),
+        choices=("ready", "delayed", "loading", "incompatible", "crash", "startup"),
         default="ready",
     )
     parser.add_argument("--delayed-requests", type=int, default=1)

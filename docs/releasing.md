@@ -5,7 +5,7 @@ requires explicit human authorization for the push, tag, and GitHub Release.
 
 ## Public status
 
-- release described by this branch: `bora-workbench 0.4.4`;
+- release described by this branch: `bora-workbench 0.5.0`;
 - preceding public version: `bora-workbench 0.4.3` on GitHub Releases;
 - historical versions `0.1.0` through `0.1.6` remain immutable under their original
   `qwen-launcher` artifact identity;
@@ -56,6 +56,54 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.5.0
+
+`0.5.0` distributes D-094 and D-095 and adds an optional, upstream-owned browser interface.
+
+`bora webui install` puts `open-webui==0.11.0` into its own `uv`-created environment under the data
+root. It is a separate command, not a step of `bora studio`, because the dependency closure pins
+torch and costs gigabytes; until it is run, `studio` and `vstudio` keep opening the integrated
+llama.cpp interface, which is also the fallback when the interface fails to start. In that case the
+engine keeps serving and the mode does not exit.
+
+With it installed the two UI modes start it as a second managed service. Section 5.9 therefore now
+admits one managed service *per role*: a second engine, or a second interface, is still refused by
+name, `stop` takes the interface down before the engine, and a state record written by an earlier
+version decodes unchanged as the engine role. The browser opens only once both roles have answered
+their own readiness contract, and Open WebUI's is `GET /ready`, never `GET /health`, which answers
+200 before startup has finished.
+
+bora configures the interface entirely through its child process environment and never calls its
+API: no credential, no database write, no packaged content. D-080's alias already makes `/v1/models`
+report `Qwen 3.6`, so the model picker names the model with no write at all. The environment sets
+both immutability switches, so no third-party Python runs inside the process and nothing mutates the
+managed environment; it turns off title, tag and follow-up generation, which each spend an extra
+completion per turn on the one calibrated slot; and it configures no embedding model, so a first
+start downloads nothing. `WEBUI_NAME` is never set and an inherited one is removed, so the interface
+keeps its own name everywhere, no branding clause is engaged, and the upstream licence ships in
+`resources/notices/open-webui-LICENSE`. The session key is generated once, held owner-readable in the
+state root, and printed nowhere.
+
+`webui_port` and `BORA_WEBUI_PORT` default to `8081`, are validated 1–65535, and are refused when
+equal to `llama_port` — upstream's own default is `8080`, which is `llama_port`.
+
+D-095 deliberately did not build four things D-094 had scoped: the spike and its evidence chain, a
+digest-pinned `resources/open-webui.lock`, immutable versioned installations, and a mode-document
+field naming the interface. The version is pinned; the resolved closure is not digest-verified, which
+is knowingly weaker than the engine's contract and is recorded as such.
+
+Nothing else moves. The engine, model, calibration protocol, record format,
+`command_contract_sha256`, reserves, and candidate lifecycle are unchanged, so existing
+`calibration-record/v6` files remain valid.
+
+Release checks for this version are the complete frozen local suite, packaged-content validation,
+build, isolated wheel verification, complete uv-tool uninstall, diff inspection, and the green tagged
+Ubuntu/Windows workflow. The installed size, the first-start duration, and the resident memory beside
+a loaded model are unmeasured and are claimed as figures nowhere. The manual Windows check of the
+interface, and the confirmation that Open WebUI's image requests reach llama-server with the pinned
+mmproj, remain open follow-up verification rather than passed checks or a Gate. Publication remains
+GitHub Releases only, no candidate is activated, and coverage remains `GATE-PARTIAL`.
 
 ### Release 0.4.4
 

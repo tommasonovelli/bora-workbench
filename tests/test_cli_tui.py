@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 import threading
+from dataclasses import fields
 from pathlib import Path
 
 import pytest
@@ -68,7 +69,7 @@ def _doctor() -> DoctorSnapshot:
     config = ConfigResolution(
         Config(),
         Path("config.toml"),
-        ConfigSources("default", "default", "default", "default", "default"),
+        ConfigSources(*(("default",) * len(fields(ConfigSources)))),
     )
     hardware = HardwareInfo(
         "linux", "test", "Test CPU", 12, 32.0, 24.0, "cpu", 0, None, None, None, None
@@ -190,7 +191,7 @@ def test_cli_plain_mode_reaches_tui_after_capability_check(monkeypatch) -> None:
     result = runner.invoke(app, ["--plain"])
 
     assert result.exit_code == 0
-    assert calls == [("0.4.4", selected, None)]
+    assert calls == [("0.5.0", selected, None)]
 
 
 def test_returning_action_dispatches_after_teardown_then_reopens(monkeypatch) -> None:
@@ -286,7 +287,7 @@ def test_same_process_dispatch_invokes_real_typer_leaf_and_maps_interrupt(monkey
     )
 
     assert cli_module._dispatch_tui_arguments(("doctor",)) == 0
-    assert calls == ["0.4.4"]
+    assert calls == ["0.5.0"]
 
     def interrupt(version, stdout, stderr):
         """Raise the interruption the Typer root maps to contractual exit 130."""

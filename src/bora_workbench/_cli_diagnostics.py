@@ -54,6 +54,7 @@ from bora_workbench.snapshot import (
     record_display_label,
 )
 from bora_workbench.validation import ValidationIssue, ValidationResult, validate_resources
+from bora_workbench.webui import OPEN_WEBUI_VERSION
 
 
 @dataclass(frozen=True, slots=True)
@@ -343,6 +344,13 @@ def _gpu_label(hardware: HardwareInfo) -> str:
     return f"{hardware.gpu_name} (index {hardware.gpu_index}, detected {hardware.gpu_count})"
 
 
+def _webui_label(data: DoctorSnapshot) -> str:
+    """Name the installed interface version, or say plainly that the built-in one is used."""
+    if data.webui is None or not data.webui.is_installed:
+        return "not installed; studio opens the integrated interface"
+    return f"{OPEN_WEBUI_VERSION} installed"
+
+
 def _doctor_table(data: DoctorSnapshot) -> Table:
     """Build the diagnostics table exclusively from one collected snapshot."""
     config, hardware = data.configuration.config, data.hardware
@@ -355,6 +363,8 @@ def _doctor_table(data: DoctorSnapshot) -> Table:
         ("Configuration", "valid"),
         ("Model", config.model),
         ("llama.cpp port", str(config.llama_port)),
+        ("Open WebUI", _webui_label(data)),
+        ("Open WebUI port", str(config.webui_port)),
         ("OS", f"{hardware.os_name} — {hardware.os_version}"),
         ("CPU", f"{hardware.cpu_name} ({hardware.cpu_cores} logical cores)"),
         ("RAM total", _gib(hardware.ram_total_gib)),

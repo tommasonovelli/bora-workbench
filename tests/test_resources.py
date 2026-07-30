@@ -45,6 +45,18 @@ def test_managed_engine_notices_match_spike_evidence():
         assert hashlib.sha256(read_text(name).encode()).hexdigest() == digest
 
 
+def test_the_open_webui_licence_is_shipped_verbatim():
+    """Carry the upstream licence of the interface bora starts, read at tag `v0.11.0`."""
+    notice = read_text("notices/open-webui-LICENSE")
+
+    assert (
+        hashlib.sha256(notice.encode()).hexdigest()
+        == "5f1bd74c48bf13ab0f82e177ad9e637313b92533d20ead2593d49347a47fc232"
+    )
+    # Clause 4 is the reason `WEBUI_NAME` is never set: the interface keeps its own name.
+    assert 'from altering, removing, obscuring, or replacing any "Open WebUI"' in notice
+
+
 @pytest.mark.parametrize("path", ["../README.md", "/tmp/file", r"C:\\tmp\\file"])
 def test_resource_rejects_unsafe_path(path):
     """Refuse absolute, drive-relative, and parent-relative names before joining them."""

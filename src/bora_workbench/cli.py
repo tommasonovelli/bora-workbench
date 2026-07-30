@@ -36,6 +36,7 @@ from bora_workbench._cli_services import (
 )
 from bora_workbench._cli_theme import create_console, print_note
 from bora_workbench._cli_update import UpdateOptions, run_update
+from bora_workbench._cli_webui import run_webui_install, show_webui_status
 
 if TYPE_CHECKING:
     from bora_workbench.tui.terminal import TerminalMode
@@ -48,6 +49,8 @@ app = typer.Typer(
 )
 engine_app = typer.Typer(help="Install and inspect the pinned managed llama.cpp engine.")
 app.add_typer(engine_app, name="engine")
+webui_app = typer.Typer(help="Install and inspect the managed Open WebUI interface.")
+app.add_typer(webui_app, name="webui")
 # `bora pi` keeps connecting when it is called with no subcommand, so the two ways of undoing that
 # connection can be commands of their own instead of a fifth flag on one overloaded command.
 pi_app = typer.Typer(
@@ -66,7 +69,7 @@ def package_version() -> str:
     try:
         return version("bora-workbench")
     except PackageNotFoundError:
-        return "0.4.4"
+        return "0.5.0"
 
 
 def _dispatch_tui_arguments(arguments: tuple[str, ...]) -> int:
@@ -238,6 +241,20 @@ def engine_status_command() -> None:
     show_engine_status(_stdout, _stderr)
 
 
+@webui_app.command("install")
+def webui_install_command(
+    force: bool = typer.Option(False, "--force", help="Rebuild an already installed environment."),
+) -> None:
+    """Install the pinned Open WebUI so studio and vstudio open it instead of the built-in UI."""
+    run_webui_install(force, _stdout, _stderr)
+
+
+@webui_app.command("status")
+def webui_status_command() -> None:
+    """Show whether the managed Open WebUI is installed, and where its data lives."""
+    show_webui_status(_stdout, _stderr)
+
+
 @app.command()
 def coding(
     force: bool = typer.Option(False, "--force", help=_MEMORY_GATE_HELP),
@@ -250,7 +267,7 @@ def coding(
 def studio(
     force: bool = typer.Option(False, "--force", help=_MEMORY_GATE_HELP),
 ) -> None:
-    """Launch text chat mode with the integrated llama.cpp interface enabled."""
+    """Launch text chat mode, opening Open WebUI when installed and the built-in UI otherwise."""
     run_studio(force, _stdout, _stderr)
 
 
@@ -258,7 +275,7 @@ def studio(
 def vstudio(
     force: bool = typer.Option(False, "--force", help=_MEMORY_GATE_HELP),
 ) -> None:
-    """Launch multimodal chat with the integrated interface and pinned vision projector."""
+    """Launch multimodal chat with the pinned vision projector and the same interface as studio."""
     run_vstudio(force, _stdout, _stderr)
 
 

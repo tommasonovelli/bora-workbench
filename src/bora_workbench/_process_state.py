@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import json
 import os
-from dataclasses import asdict, dataclass
+from dataclasses import MISSING, asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
@@ -27,9 +27,23 @@ class StartLockError(RuntimeError):
     """Report a concurrent or unverifiable launcher start lock."""
 
 
+ENGINE_ROLE = "engine"
+INTERFACE_ROLE = "interface"
+# The interface is stopped before the engine, so it never shows a live chat against a server that
+# is already going away (specification section 5.9, D-095).
+STOP_ORDER = (INTERFACE_ROLE, ENGINE_ROLE)
+_ROLES = frozenset(STOP_ORDER)
+
+
 @dataclass(frozen=True, slots=True)
 class ServiceState:
-    """Record the process identity and launch plan needed by status and safe stop."""
+    """Record the process identity and launch plan needed by status and safe stop.
+
+    Two managed roles share this record. Everything above `role` describes any managed process;
+    everything below it is the engine's launch envelope, absent for the interface, which serves no
+    model and has no context window of its own. The optional fields are also what lets a record
+    written by an earlier launcher decode unchanged, as `engine` is the only role it knew.
+    """
 
     label: str
     pid: int
@@ -39,13 +53,14 @@ class ServiceState:
     started_at: str
     log_path: str
     mode: str
-    model: str
-    engine_release: str
-    profile_id: str | None
-    ctx: int
-    n_cpu_moe: int | None
-    backend: str
-    gpu_index: int | None
+    role: str = ENGINE_ROLE
+    model: str | None = None
+    engine_release: str | None = None
+    profile_id: str | None = None
+    ctx: int | None = None
+    n_cpu_moe: int | None = None
+    backend: str | None = None
+    gpu_index: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -96,14 +111,14 @@ def _has_valid_types(service: ServiceState) -> bool:
         service.started_at,
         service.log_path,
         service.mode,
-        service.model,
-        service.engine_release,
-        service.backend,
+        service.role,
     )
-    integers = (service.pid, service.port, service.ctx)
-    optional_integers = (service.n_cpu_moe, service.gpu_index)
+    optional_strings = (service.model, service.engine_release, service.profile_id, service.backend)
+    integers = (service.pid, service.port)
+    optional_integers = (service.ctx, service.n_cpu_moe, service.gpu_index)
     return (
         all(isinstance(item, str) and item for item in strings)
+        and all(item is None or isinstance(item, str) for item in optional_strings)
         and all(isinstance(item, int) and not isinstance(item, bool) for item in integers)
         and all(
             item is None or (isinstance(item, int) and not isinstance(item, bool))
@@ -111,7 +126,20 @@ def _has_valid_types(service: ServiceState) -> bool:
         )
         and isinstance(service.create_time, (int, float))
         and not isinstance(service.create_time, bool)
-        and (service.profile_id is None or isinstance(service.profile_id, str))
+    )
+
+
+def _has_valid_role(service: ServiceState) -> bool:
+    """Require a known role, and the engine's own fields on exactly the engine role."""
+    if service.role not in _ROLES:
+        return False
+    if service.role != ENGINE_ROLE:
+        return True
+    return (
+        bool(service.model)
+        and bool(service.engine_release)
+        and service.ctx is not None
+        and service.backend in {"cpu", "cuda"}
     )
 
 
@@ -120,14 +148,15 @@ def _decode_service(value: object) -> ServiceState:
     if not isinstance(value, dict):
         raise ValueError("service entry must be an object")
     fields = ServiceState.__dataclass_fields__
-    if not set(fields).issubset(value):
+    required = {name for name, field in fields.items() if field.default is MISSING}
+    if not required.issubset(value):
         raise ValueError("service entry is missing required fields")
-    selected = {name: value[name] for name in fields}
+    selected = {name: value[name] for name in fields if name in value}
     service = ServiceState(**selected)  # type: ignore[arg-type]
     if not _has_valid_types(service):
         raise ValueError("service fields have invalid types")
-    if service.pid < 1 or service.create_time < 0 or service.backend not in {"cpu", "cuda"}:
-        raise ValueError("service identity or backend is invalid")
+    if service.pid < 1 or service.create_time < 0 or not _has_valid_role(service):
+        raise ValueError("service identity or role is invalid")
     return service
 
 

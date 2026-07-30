@@ -76,7 +76,8 @@ before another Textual lifetime begins, so their output remains readable.
 | `hardware.py` | CPU/RAM, NVIDIA, GPU processes, and telemetry |
 | `profiles.py` | runtime modes, gates, and `LaunchPlan` |
 | `engine.py`, `_engine_*` | lock, model, assets, download/build, installation, and command |
-| `process.py`, `_process_*` | port, startup lock, process, health, state, status, and stop |
+| `process.py`, `_process_*` | port, startup lock, processes, readiness, state, status, and stop, for both service roles |
+| `webui.py` | the managed Open WebUI: installation, environment, command, and readiness contract |
 | `uninstall.py` | confined removal of the managed roots |
 | `update.py` | published release lookup, checksum-verified wheel, and uv installation |
 | `_tool_handoff.py`, `_tool_helper.py` | identifying the uv installation and running one uv command after this process exits |
@@ -225,19 +226,29 @@ Before startup the launcher:
 
 1. acquires `start.lock` with exclusive creation;
 2. clears dead state or state with a reused PID;
-3. refuses another managed service;
+3. refuses another managed service **of the same role**;
 4. verifies that the configured port is free on loopback;
 5. creates the log;
-6. starts `llama-server` without a shell and records `pid + create_time`;
-7. writes `services.json` atomically;
-8. releases the lock and waits for READY.
+6. starts the child without a shell and records `pid + create_time`;
+7. appends to `services.json` atomically;
+8. releases the lock and waits for that service's own READY.
 
-Health polling uses 2-second requests every second, for up to 15 minutes. Connection refused,
-timeouts, 503, and 5xx are transient. READY requires HTTP 200 and the exact JSON body
-`{"status":"ok"}`; a 4xx, or an incompatible 200 body, fails immediately.
+There are two roles: `engine`, which serves the model, and `interface`, the optional Open WebUI in
+front of it. A UI mode runs one of each, and each start is a separate pass through the sequence
+above under the same lock. The interface record carries no context window, backend, or model,
+because it has none of its own; `status` shows the role and leaves those columns empty for it.
+`stop` orders the pair, taking the interface down first.
+
+Health polling uses 2-second requests every second. Connection refused, timeouts, and 5xx are
+transient. Each role declares its own readiness contract: the engine's comes from `engine.lock` and
+requires HTTP 200 with the exact body `{"status":"ok"}` within 15 minutes; Open WebUI's is
+`GET /ready` with `{"status": true}`, retrying 503, within a longer first-start allowance. A 4xx, or
+an incompatible 200 body, fails immediately. Open WebUI's `GET /health` is never polled: it answers
+200 before startup has finished.
 
 The state is version 1 and is replaced through a temporary file in the same directory, followed by
-flush and `replace`. Malformed JSON is renamed, not overwritten. `status` and `stop` always verify
+flush and `replace`. A record written before the interface existed decodes unchanged and reads as
+the engine role. Malformed JSON is renamed, not overwritten. `status` and `stop` always verify
 `pid + create_time`; they never terminate a process based on the PID alone.
 
 ## Calibration

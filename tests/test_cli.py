@@ -70,7 +70,7 @@ def test_version() -> None:
     """Expose the package version through the eager global option."""
     result = runner.invoke(app, ["--version"])
     assert result.exit_code == 0
-    assert result.stdout.strip() == "0.4.4"
+    assert result.stdout.strip() == "0.5.0"
 
 
 def test_validate_passes_with_complete_engine_assets() -> None:
@@ -203,13 +203,7 @@ def test_coding_ctrl_c_maps_to_exit_130(monkeypatch) -> None:
     plan = SimpleNamespace(mode=mode, backend="cpu", profile_id=None, warnings=())
     state = SimpleNamespace(log_path="server.log")
     running = SimpleNamespace(state=state, warnings=())
-    session = SimpleNamespace(
-        running=running,
-        plan=plan,
-        api_url="http://127.0.0.1:8080/v1",
-        ui_url=None,
-        is_browser_enabled=False,
-    )
+    session = service_cli.PreparedMode(running, plan, "http://127.0.0.1:8080/v1", None, False)
     monkeypatch.setattr(service_cli, "_prepare_mode", lambda mode_id, force, stderr: session)
     interruption = KeyboardInterrupt()
     monkeypatch.setattr(

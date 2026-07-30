@@ -7,6 +7,7 @@ The configuration lives in `config_dir()/config.toml`. The keys sit at the root 
 ```toml
 model = "unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q4_K_M"
 llama_port = 8080
+webui_port = 8081
 open_browser = true
 # model_path = "~/models/custom.gguf"
 # engine_path = "~/bin/llama-server"
@@ -35,6 +36,7 @@ is what cleared the file value.
 | `model` | `BORA_MODEL` | the pinned model | non-empty string |
 | `model_path` | `BORA_MODEL_PATH` | absent | path string |
 | `llama_port` | `BORA_LLAMA_PORT` | `8080` | integer 1–65535 |
+| `webui_port` | `BORA_WEBUI_PORT` | `8081` | integer 1–65535, and never equal to `llama_port` |
 | `engine_path` | `BORA_ENGINE_PATH` | absent | path string |
 | `open_browser` | `BORA_OPEN_BROWSER` | `true` | boolean |
 
@@ -49,8 +51,15 @@ A `BORA_MODEL_PATH` or `BORA_ENGINE_PATH` variable that is present but empty
 clears the path. Other empty variables are errors. Paths expand `~`, but they are not checked
 against the filesystem while the configuration alone is being loaded.
 
-No keys other than these five are accepted; endpoints, bind addresses, mmproj, and arbitrary
-`llama.cpp` flags are not configurable.
+The two ports must differ, and that is checked while the configuration is resolved, before either
+process starts. The default is `8081` rather than Open WebUI's own `8080`, which is already
+`llama_port`: copying upstream's default would make the two managed services collide on a first
+launch.
+
+No keys other than these six are accepted; endpoints, bind addresses, mmproj, arbitrary `llama.cpp`
+flags, and every Open WebUI setting are not configurable here. bora sets the interface's process
+environment itself and grows no key that means "an Open WebUI setting"; everything the interface
+lets you change belongs to the interface, and is yours from its second start onward.
 
 ## Terminal UI motion
 

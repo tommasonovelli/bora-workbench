@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "bora-workbench"
-version = "0.4.4"
+version = "0.5.0"
 description = "Local, reproducible launcher for a calibrated Qwen model and llama.cpp"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
@@ -37,8 +37,6 @@ source-include = [
     "CHANGELOG.md",
     "CONTRIBUTING.md",
     "IMPLEMENTATION_SPEC.md",
-    "TUI.md",
-    "TUI_PLAN.md",
     "WEBUI_PLAN.md",
     "docs/**",
     "evidence/**",

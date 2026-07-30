@@ -26,7 +26,7 @@ Expected errors show no traceback. In general:
 
 ### The installer asks for a source
 
-That is intentional: there is no implicit default. For `0.4.4`, use the wheel from the GitHub
+That is intentional: there is no implicit default. For `0.5.0`, use the wheel from the GitHub
 Release and its manifest digest as described in [Installation](installation.md). A full commit hash
 is also accepted for testing an exact repository revision.
 
@@ -171,10 +171,13 @@ The whole file is validated before the environment overrides. Fix the file print
 only keys are:
 
 ```text
-model, model_path, llama_port, engine_path, open_browser
+model, model_path, llama_port, webui_port, engine_path, open_browser
 ```
 
 Strings such as `open_browser = "false"` are not TOML booleans. Use `open_browser = false`.
+
+`llama_port` and `webui_port` must differ. Setting both to the same number is refused while the
+configuration is resolved, naming the value they collided on.
 
 ### An environment variable seems to override the file, but the command still fails
 
@@ -314,25 +317,90 @@ temporary port automatically; ordinary launches stay strict about the configured
 
 ### A second startup is refused
 
-Only one managed service is allowed. A `start.lock` with a live owner blocks the second command; a
-lock that is definitely stale is removed and acquired exactly once. Use `status` and `stop`.
+One managed service per role is allowed: one engine, and one interface in front of it. A second
+engine, or a second Open WebUI, is refused by name. A `start.lock` with a live owner blocks the
+second command; a lock that is definitely stale is removed and acquired exactly once. Use `status`,
+which now shows the role of each live service, and `stop`, which takes the interface down before the
+engine.
 
 ### Loading times out
 
-The total timeout is 15 minutes. Check the log for OOM, the wrong model, missing libraries, or
-extreme slowness. Do not widen the timeout or change the endpoint without changing and verifying the
-contract.
+The engine's total timeout is 15 minutes. Check the log for OOM, the wrong model, missing libraries,
+or extreme slowness. Open WebUI has its own, longer allowance, because its first start creates the
+database and applies every migration. Do not widen either timeout or change an endpoint without
+changing and verifying the contract.
 
 ### Incompatible health check
 
-READY requires exactly HTTP 200 with `{"status":"ok"}`. A different body indicates an incompatible
-engine or service on the port. Check `engine_path`, the `PATH`, `engine status`, and the process
-that is listening.
+For the engine, READY requires exactly HTTP 200 with `{"status":"ok"}`. A different body indicates
+an incompatible engine or service on the port. Check `engine_path`, the `PATH`, `engine status`, and
+the process that is listening.
+
+For Open WebUI, READY is `GET /ready`, never `GET /health`. The liveness endpoint answers 200
+unconditionally, before startup has finished, so a launcher that polled it would report ready while
+the first-boot migration was still running.
 
 ### The browser does not open
 
 The UI may already be ready. Copy the URL printed by the CLI. Check `open_browser=true`; a browser
-failure does not terminate the server.
+failure does not terminate the server. Note that with Open WebUI installed the browser waits for
+**both** services, so an interface that is slow to start delays the tab; the CLI prints both URLs
+before it opens anything.
+
+## Open WebUI
+
+### Which interface opened
+
+`studio` and `vstudio` print the interface by name. Open WebUI opens when `bora webui install` has
+been run; otherwise the integrated llama.cpp interface does. `bora webui status` and `bora doctor`
+both report which of the two is in place.
+
+### Open WebUI did not start
+
+The engine keeps serving and the integrated interface opens instead, with the reason and the
+interface log printed. Common causes are a port already in use — check `webui_port` — and an
+installation left incomplete by an interrupted download, which `bora webui install` rebuilds.
+
+### The account, and why there is no password
+
+Authentication is disabled, so on the first page load Open WebUI creates its own local account,
+`admin@localhost` with the password `admin`, and makes it an administrator. bora does not create,
+store, or reset that account.
+
+Two consequences are worth stating plainly:
+
+- it is **one-way inside the same data directory**. Once a user exists, that directory cannot be
+  switched between authenticated and unauthenticated use; the honest remedy for "I want real
+  accounts" is a fresh data directory, not a migration. Re-enabling authentication later leaves that
+  known password in place;
+- what keeps an unauthenticated administrator console safe is the loopback rule. Both managed
+  services bind `127.0.0.1` only, and that address is a constant in the code rather than a setting.
+  The inference endpoint beside it has no authentication either. Do not put either port on a network
+  interface or behind a tunnel.
+
+### Imported tools and functions do not run
+
+Open WebUI can store Python "functions" and run them inside its own process, installing their
+declared requirements with `pip` at every startup. Both of those are switched off in a
+bora-started instance: no third-party Python executes inside it, and nothing mutates the managed
+environment behind your back. Skills, prompts, and system prompts are unaffected — they are data,
+not code, and they work normally.
+
+### Titles, tags, follow-ups, and retrieval are off
+
+Chat-title, tag, and follow-up generation each issue an extra completion per turn against the same
+single engine, serialized behind the stream you are waiting on, so all three are off. No embedding
+model is configured either, so nothing is downloaded on a first start; web search and retrieval are
+yours to enable if you want them.
+
+These are seeded on the first boot only. From the second boot onward every setting in the interface
+belongs to you, and bora does not re-impose it.
+
+### Removing it
+
+The environment and the interface's own data — its database, uploads, and vector store — live under
+the data root, so `bora uninstall` deletes them with every other managed root. The session key lives
+in the state root and goes with it.
 
 ### Corrupt state
 

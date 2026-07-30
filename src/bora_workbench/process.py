@@ -24,6 +24,9 @@ import httpx
 import psutil
 
 from bora_workbench._process_state import (
+    ENGINE_ROLE,
+    INTERFACE_ROLE,
+    STOP_ORDER,
     ServiceState,
     StartLockError,
     StateError,
@@ -83,6 +86,34 @@ class StartRequest:
     on_spawn: Callable[[int], None] | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class ReadinessContract:
+    """Describe how one managed service reports that it is ready, and how long that may take.
+
+    The two managed services answer different endpoints with different timeouts, so the polling
+    loop is parameterized rather than duplicated: an interface reported ready by the wrong endpoint
+    would open a browser onto a service that is still migrating its database (D-095).
+    """
+
+    url: str
+    ready_status: int
+    ready_body: object
+    transient_statuses: tuple[int, ...]
+    timeout_seconds: float
+    description: str
+
+
+@dataclass(frozen=True, slots=True)
+class InterfaceRequest:
+    """Group the launch inputs of the managed interface, which serves no model of its own."""
+
+    command: tuple[str, ...]
+    environment: dict[str, str]
+    port: int
+    mode: str
+    readiness: ReadinessContract
+
+
 @dataclass(slots=True)
 class RunningService:
     """Keep the child handle and persisted identity together while in foreground."""
@@ -130,39 +161,57 @@ def port_is_available(port: int) -> bool:
     return True
 
 
-def _ready(response: httpx.Response, contract: JsonObject) -> bool:
-    """Accept only the exact status and JSON body observed in Spike 0."""
-    if response.status_code != contract["ready_status"]:
+def _ready(response: httpx.Response, contract: ReadinessContract) -> bool:
+    """Accept only the exact status and JSON body the service's readiness contract declares."""
+    if response.status_code != contract.ready_status:
         return False
     try:
         body = response.json()
     except ValueError as error:
         raise HealthError("health returned ready status with invalid JSON") from error
-    if body != contract["ready_json"]:
+    if body != contract.ready_body:
         raise HealthError(f"health returned incompatible ready body: {body!r}")
     return True
 
 
-def _is_transient(response: httpx.Response, contract: JsonObject) -> bool:
+def _is_transient(response: httpx.Response, contract: ReadinessContract) -> bool:
     """Retry locked loading statuses and server-side failures, but never 4xx responses."""
-    statuses = cast(list[int], contract["transient_statuses"])
-    return response.status_code in statuses or response.status_code >= 500
+    return response.status_code in contract.transient_statuses or response.status_code >= 500
 
 
-def wait_for_health(process: subprocess.Popen[str], request: StartRequest, log_path: Path) -> None:
-    """Wait up to 15 minutes, failing immediately on death or incompatible responses.
+def _engine_readiness(request: StartRequest) -> ReadinessContract:
+    """Build the engine's readiness contract from the lock and the configured port.
 
-    The health URL is built exclusively from the locked path and the configured port, so no
-    response from an unrelated listener can be mistaken for the managed server.
+    The URL comes exclusively from the locked path and that port, so no response from an unrelated
+    listener can be mistaken for the managed server.
     """
     contract = cast(JsonObject, request.lock["health_contract"])
-    url = f"http://127.0.0.1:{request.plan.port}{contract['path']}"
-    deadline = time.monotonic() + _LOAD_TIMEOUT_SECONDS
+    return ReadinessContract(
+        f"http://127.0.0.1:{request.plan.port}{contract['path']}",
+        cast(int, contract["ready_status"]),
+        contract["ready_json"],
+        tuple(cast(list[int], contract["transient_statuses"])),
+        _LOAD_TIMEOUT_SECONDS,
+        "llama-server",
+    )
+
+
+def _format_timeout(seconds: float) -> str:
+    """Describe a readiness bound as the operator would read it, never rounded down to zero."""
+    return f"{round(seconds / 60)} minutes" if seconds >= 60 else f"{seconds:g} seconds"
+
+
+def await_readiness(
+    process: subprocess.Popen[str], contract: ReadinessContract, log_path: Path
+) -> None:
+    """Poll one contract until it reports ready, failing on death or an incompatible response."""
+    bound = _format_timeout(contract.timeout_seconds)
+    deadline = time.monotonic() + contract.timeout_seconds
     while time.monotonic() < deadline:
         if process.poll() is not None:
-            raise HealthError(f"llama-server exited during startup; inspect {log_path}")
+            raise HealthError(f"{contract.description} exited during startup; inspect {log_path}")
         try:
-            response = httpx.get(url, timeout=_REQUEST_TIMEOUT_SECONDS)
+            response = httpx.get(contract.url, timeout=_REQUEST_TIMEOUT_SECONDS)
         except httpx.TransportError:
             # Every transport failure means "not ready yet", including the connection reset a
             # server produces while it is dying: the loop decides on process death or the
@@ -176,7 +225,14 @@ def wait_for_health(process: subprocess.Popen[str], request: StartRequest, log_p
                     f"health returned incompatible HTTP {response.status_code}; inspect {log_path}"
                 )
         time.sleep(_POLL_INTERVAL_SECONDS)
-    raise HealthError(f"llama-server did not become ready within 15 minutes; inspect {log_path}")
+    raise HealthError(
+        f"{contract.description} did not become ready within {bound}; inspect {log_path}"
+    )
+
+
+def wait_for_health(process: subprocess.Popen[str], request: StartRequest, log_path: Path) -> None:
+    """Wait up to 15 minutes for the engine, failing on death or incompatible responses."""
+    await_readiness(process, _engine_readiness(request), log_path)
 
 
 def terminate_popen(process: subprocess.Popen[str]) -> None:
@@ -230,52 +286,71 @@ def _creation_flags() -> int:
     return getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0) if os.name == "nt" else 0
 
 
-def _log_path(root: Path) -> Path:
-    """Create the managed log directory and return the required timestamped server log path."""
+def _log_path(root: Path, label: str) -> Path:
+    """Create the managed log directory and return the required timestamped service log path."""
     directory = root / "logs"
     directory.mkdir(parents=True, exist_ok=True)
     stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
-    return directory / f"llama-server-{stamp}-{uuid4().hex}.log"
+    return directory / f"{label}-{stamp}-{uuid4().hex}.log"
+
+
+def _process_identity(process: subprocess.Popen[str], label: str, log_path: Path) -> float:
+    """Read the child's creation time, which pins its identity for every later signal."""
+    try:
+        return psutil.Process(process.pid).create_time()
+    except (psutil.NoSuchProcess, psutil.AccessDenied, OSError) as error:
+        message = f"cannot capture {label} process identity; inspect {log_path}: {error}"
+        raise ProcessError(message) from error
+
+
+def _started_at() -> str:
+    """Return the launch instant in the exact UTC spelling the state file stores."""
+    return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _service_state(
     process: subprocess.Popen[str], request: StartRequest, log_path: Path
 ) -> ServiceState:
     """Capture the exact child identity and launch plan for safe later management."""
-    try:
-        create_time = psutil.Process(process.pid).create_time()
-    except (psutil.NoSuchProcess, psutil.AccessDenied, OSError) as error:
-        message = f"cannot capture llama-server process identity; inspect {log_path}: {error}"
-        raise ProcessError(message) from error
     plan = request.plan
     return ServiceState(
-        "llama-server",
-        process.pid,
-        create_time,
-        str(Path(request.command[0]).resolve()),
-        plan.port,
-        datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-        str(log_path.resolve()),
-        plan.mode.id,
-        plan.model,
-        cast(str, request.lock["release"]),
-        plan.profile_id,
-        plan.ctx,
-        plan.n_cpu_moe,
-        plan.backend,
-        plan.gpu_index,
+        label="llama-server",
+        pid=process.pid,
+        create_time=_process_identity(process, "llama-server", log_path),
+        executable=str(Path(request.command[0]).resolve()),
+        port=plan.port,
+        started_at=_started_at(),
+        log_path=str(log_path.resolve()),
+        mode=plan.mode.id,
+        role=ENGINE_ROLE,
+        model=plan.model,
+        engine_release=cast(str, request.lock["release"]),
+        profile_id=plan.profile_id,
+        ctx=plan.ctx,
+        n_cpu_moe=plan.n_cpu_moe,
+        backend=plan.backend,
+        gpu_index=plan.gpu_index,
     )
+
+
+def _require_role_free(services: tuple[ServiceState, ...], role: str) -> None:
+    """Refuse a second process in one role while allowing the other managed role beside it.
+
+    Specification section 5.9 admits one managed service of each role, not one process overall:
+    an engine and the interface in front of it are a pair, and `stop` takes both down (D-095).
+    """
+    if any(service.role == role for service in services):
+        raise ProcessError(f"a managed {role} is already running; run bora stop")
 
 
 def _spawn_service(request: StartRequest, root: Path, attempt: _StartAttempt) -> RunningService:
     """Spawn and register one child while holding the lifecycle serialization lock."""
     with acquire_start_lock(root):
         snapshot = clean_state(root)
-        if snapshot.services:
-            raise ProcessError("a managed service is already running; run bora stop")
+        _require_role_free(snapshot.services, ENGINE_ROLE)
         if not port_is_available(request.plan.port):
             raise PortCollisionError(f"port {request.plan.port} is already occupied")
-        attempt.log_path = _log_path(root)
+        attempt.log_path = _log_path(root, "llama-server")
         with attempt.log_path.open("x", encoding="utf-8") as log:
             attempt.process = subprocess.Popen(
                 request.command,
@@ -289,7 +364,7 @@ def _spawn_service(request: StartRequest, root: Path, attempt: _StartAttempt) ->
         if request.on_spawn is not None:
             request.on_spawn(attempt.process.pid)
         attempt.service = _service_state(attempt.process, request, attempt.log_path)
-        write_state(root, (attempt.service,))
+        write_state(root, (*snapshot.services, attempt.service))
     return RunningService(attempt.process, attempt.service, snapshot.warnings)
 
 
@@ -316,6 +391,54 @@ def start_service(request: StartRequest, root: Path | None = None) -> RunningSer
         running = _spawn_service(request, selected_root, attempt)
         assert attempt.process is not None and attempt.log_path is not None
         wait_for_health(attempt.process, request, attempt.log_path)
+        return running
+    except BaseException as error:
+        _raise_start_failure(selected_root, attempt, error)
+
+
+def _spawn_interface(
+    request: InterfaceRequest, root: Path, attempt: _StartAttempt
+) -> RunningService:
+    """Spawn and register the interface beside an already running engine, under the same lock."""
+    with acquire_start_lock(root):
+        snapshot = clean_state(root)
+        _require_role_free(snapshot.services, INTERFACE_ROLE)
+        if not port_is_available(request.port):
+            raise PortCollisionError(f"port {request.port} is already occupied")
+        attempt.log_path = _log_path(root, INTERFACE_ROLE)
+        with attempt.log_path.open("x", encoding="utf-8") as log:
+            attempt.process = subprocess.Popen(
+                request.command,
+                stdout=log,
+                stderr=subprocess.STDOUT,
+                env=request.environment,
+                text=True,
+                encoding="utf-8",
+                creationflags=_creation_flags(),
+            )
+        attempt.service = ServiceState(
+            label=Path(request.command[0]).stem,
+            pid=attempt.process.pid,
+            create_time=_process_identity(attempt.process, INTERFACE_ROLE, attempt.log_path),
+            executable=str(Path(request.command[0]).resolve()),
+            port=request.port,
+            started_at=_started_at(),
+            log_path=str(attempt.log_path.resolve()),
+            mode=request.mode,
+            role=INTERFACE_ROLE,
+        )
+        write_state(root, (*snapshot.services, attempt.service))
+    return RunningService(attempt.process, attempt.service, snapshot.warnings)
+
+
+def start_interface(request: InterfaceRequest, root: Path | None = None) -> RunningService:
+    """Start the managed interface and wait for its own readiness contract, never the engine's."""
+    selected_root = state_dir() if root is None else root
+    attempt = _StartAttempt()
+    try:
+        running = _spawn_interface(request, selected_root, attempt)
+        assert attempt.process is not None and attempt.log_path is not None
+        await_readiness(attempt.process, request.readiness, attempt.log_path)
         return running
     except BaseException as error:
         _raise_start_failure(selected_root, attempt, error)
@@ -377,13 +500,19 @@ def _terminate_service(service: ServiceState) -> bool:
     return True
 
 
+def _in_stop_order(services: tuple[ServiceState, ...]) -> tuple[ServiceState, ...]:
+    """Order a snapshot so the interface always goes down before the engine it fronts."""
+    ranked = sorted(services, key=lambda service: STOP_ORDER.index(service.role))
+    return tuple(ranked)
+
+
 def _stop_locked(root: Path) -> ServiceReport:
     """Stop and clear the verified snapshot while holding the lifecycle lock."""
     stopped: list[str] = []
     with acquire_start_lock(root):
         snapshot = clean_state(root)
         warnings = list(snapshot.warnings)
-        for service in snapshot.services:
+        for service in _in_stop_order(snapshot.services):
             if _terminate_service(service):
                 stopped.append(service.label)
             else:
@@ -411,6 +540,16 @@ def _remove_foreground_service(root: Path, service: ServiceState) -> None:
             remove_service(root, service)
     except StartLockError:
         return
+
+
+def stop_interface(running: RunningService, root: Path | None = None) -> None:
+    """Stop the managed interface and drop its record, leaving the engine beside it untouched.
+
+    Every foreground exit path calls this before releasing the engine, so an open browser tab never
+    keeps talking to a server that is already terminating (specification section 5.9, D-095).
+    """
+    selected_root = state_dir() if root is None else root
+    abandon_start(selected_root, running.process, running.state)
 
 
 def wait_foreground(running: RunningService, root: Path | None = None) -> None:

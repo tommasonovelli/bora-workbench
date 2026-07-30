@@ -13,13 +13,19 @@ For the default model the preflight requires at least **28 GiB of total RAM** an
 available**. You also need roughly 22.7 GB for the GGUF, roughly 0.9 GB for the vision projector,
 and extra space for the engine, the download cache, and logs.
 
+Open WebUI is optional and installed separately with `bora webui install`. Its dependency closure
+pins torch, so it is large: one Ubuntu x86-64 machine resolved it to **6.4 GB**, on top of the above.
+Treat that as an order of magnitude rather than a promise — the closure differs by platform and was
+measured once. Nothing installs it for you, and without it `studio` and `vstudio` keep using the
+integrated llama.cpp interface.
+
 CUDA on a machine with more than one GPU is detected, but startup is blocked: physical isolation has
 only been verified on single-GPU hosts. If `nvidia-smi` is missing, fails, or produces unreadable
 data, the launcher uses the CPU backend and shows why.
 
-## 2. Installing bora-workbench 0.4.4
+## 2. Installing bora-workbench 0.5.0
 
-`bora-workbench` is distributed through GitHub Releases. These commands download the `v0.4.4`
+`bora-workbench` is distributed through GitHub Releases. These commands download the `v0.5.0`
 manifest, verify the installer and wheel, and install with pinned uv `0.11.28` and CPython
 `3.12.13`. They require no administrator privileges.
 
@@ -28,7 +34,7 @@ manifest, verify the installer and wheel, and install with pinned uv `0.11.28` a
 Open a terminal in a new directory and copy the complete block:
 
 ```bash
-version="0.4.4"
+version="0.5.0"
 base="https://github.com/tommasonovelli/bora-workbench/releases/download/v${version}"
 wheel="bora_workbench-${version}-py3-none-any.whl"
 
@@ -52,7 +58,7 @@ sh ./install.sh --wheel "./$wheel" --sha256 "$wheel_sha256"
 Open PowerShell in a new directory and copy the complete block:
 
 ```powershell
-$Version = "0.4.4"
+$Version = "0.5.0"
 $Base = "https://github.com/tommasonovelli/bora-workbench/releases/download/v$Version"
 $Wheel = "bora_workbench-$Version-py3-none-any.whl"
 
@@ -101,7 +107,7 @@ testing an exact repository revision and never follows a branch or tag implicitl
 
 ## 3. Verifying the tool
 
-For `0.4.4`:
+For `0.5.0`:
 
 ```bash
 bora --version
@@ -187,9 +193,21 @@ The available modes are:
 
 ```bash
 bora coding    # text API, no UI and no vision
-bora studio    # text chat in the built-in UI
-bora vstudio   # built-in UI and image input
+bora studio    # text chat in a browser UI
+bora vstudio   # the same UI, with image input
 ```
+
+`studio` and `vstudio` open the integrated llama.cpp interface. For the fuller Open WebUI interface
+instead, install it once:
+
+```bash
+bora webui install
+```
+
+From then on both modes start it as a second managed service and open it in the browser, once the
+engine and the interface have each reported ready. The model appears in its picker as `Qwen 3.6`,
+which is simply the alias the engine reports; bora writes nothing into Open WebUI. Skills, a system
+prompt, and web search are yours to add through its own screens.
 
 The processes stay in the foreground. `Ctrl-C` performs the cleanup and exits with code 130. From
 another terminal you can use:

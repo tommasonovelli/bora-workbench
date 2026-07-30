@@ -112,6 +112,27 @@ def models_dir() -> Path:
     return data_dir() / "models"
 
 
+def webui_dir() -> Path:
+    """Return the managed Open WebUI root without creating it.
+
+    It sits under the data root so the environment, its database and its uploads are deleted by
+    `uninstall` along with every other managed root (specification section 5.10, D-095).
+    """
+    return data_dir() / "open-webui"
+
+
+def venv_executable(environment: Path, name: str) -> Path:
+    """Return one console script inside a virtual environment, using the platform's own layout.
+
+    Virtual environments put their scripts in `Scripts` with an `.exe` suffix on Windows and in
+    `bin` everywhere else, so the branch belongs here rather than in the module that launches the
+    program (specification section 4.1).
+    """
+    if _system_name() == "windows":
+        return environment / "Scripts" / f"{name}.exe"
+    return environment / "bin" / name
+
+
 def hf_hub_dir(environ: Mapping[str, str] | None = None) -> Path | None:
     """Return the Hugging Face hub root the engine reads, or None when it cannot be determined.
 

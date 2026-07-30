@@ -131,10 +131,19 @@ Updated on 30 July 2026.
   and Windows. D-087 measured the superseded finite 8 fps effect and is not evidence for the
   continuous timer, which D-093 also keeps running while a section is open, so the observation is no
   longer bounded to the central menu.
-- [ ] Router, managed Open WebUI, sync, and standalone benchmark remain deferred post-0.2 backlog.
+- [ ] Router and standalone benchmark remain deferred post-0.2 backlog.
+- [~] The managed Open WebUI was installed and started once for real on Ubuntu, through the
+  production code path: it reached `/ready` with `{"status": true}`, reported the name `Open WebUI`
+  with authentication off, left no key file in the working directory, and stopped cleanly. The
+  resolved environment measured 6.4 GB on that host. Nothing equivalent was run on Windows, and the
+  first-start duration and the resident memory beside a loaded model remain unmeasured, with no
+  figure for either stated anywhere. The installer, the environment, the readiness contract, the
+  two-role state, the browser gate, and the fallback are covered by offline tests on both platforms.
+- [ ] Confirm on a real instance that Open WebUI's image requests reach llama-server with the pinned
+  mmproj, which is what `vstudio` depends on and what no source reading establishes.
 
-No local candidate is activated. Backlog D is complete; Backlogs A–C remain deferred without
-another explicit request. Pushes, tags, releases, uploads, and remote settings always require
+No local candidate is activated. Backlog B and Backlog D are complete; Backlogs A and C remain
+unstarted without another explicit request. Pushes, tags, releases, uploads, and remote settings always require
 authorization in the current session.
 
 ---
@@ -345,6 +354,9 @@ The identifiers stay stable because code, tests, and evidence cite them.
 | D-091 | On 30 July 2026 the maintainer directs release of `0.4.2` for D-090. After the complete frozen local suite, packaged-content validation, build, isolated wheel verification, complete uv-tool uninstall, and diff inspection pass, this authorizes the `0.4.2` finalization commit, push to `main`, and tag `v0.4.2`. The GitHub Release is authorized only after that tag's Ubuntu/Windows release workflow is green and only from its exact `bora-workbench-release-bundle`; GitHub Releases remains the sole distribution channel. A real `bora pi launch`, a new Ubuntu visual/one-core CPU observation for the continuous effect, and all Windows visual/CPU observations are explicitly waived for this release and remain follow-up checks, not passed checks or a Gate. No registry upload, remote-setting change, candidate activation, Open WebUI work, engine/model/calibration/record change, or Gate claim is authorized. |
 | D-092 | On 30 July 2026 the maintainer directs a unified workbench presentation and release as `0.4.3`. Bare `bora` becomes the only TUI entry; the `tui` command is removed, `bora --plain` replaces its presentation flag, and explicit subcommands remain the complete scriptable CLI. Every screen retains the close-set `Bora Workbench` title, entirely blue, and the wind/sea graphic: motion remains 6 fps only on the focused home, while sections and `BORA_TUI_MOTION=off` retain a static frame with no timer; plain, encoding, size, focus, and unmount kill switches remain. Sections are centred at a wider responsive measure than home, with bordered action/command/detail panels, concise action guidance, blue commands and labels, and high-contrast white prose; shared Rich CLI status output follows the same blue/white identity while warnings and errors remain text-labelled. After any successful returning action, the restored terminal waits for Enter before Textual reopens, so print-only output cannot disappear immediately; non-zero results and terminal actions still never reopen. This changes no snapshot, callback, prompt, network, write, service, engine, model, calibration, record, or same-process dispatch contract. After the complete frozen suite, validation, build, isolated wheel/uninstall checks, and diff inspection pass, the maintainer authorizes the `0.4.3` finalization commit, push to `main`, and tag `v0.4.3`; the GitHub Release is authorized only after the tagged Ubuntu/Windows workflow is green and only from its exact bundle. Existing manual visual/CPU, real foreground, and Windows terminal observations remain unavailable follow-up checks, not passed checks or a Gate. GitHub Releases remains the only distribution channel; no registry upload, remote setting, candidate activation, Open WebUI work, or Gate claim is authorized. |
 | D-093 | On 30 July 2026 the maintainer directs the optional wind/sea graphic to keep moving on every workbench page and releases that change as `0.4.4`. `0.4.3` animated only the focused central menu and froze the frame as soon as a section opened, so the identity D-092 gives every page stopped moving on six of its seven pages. One 6 fps timer, still under the 12 fps ceiling, now serves whichever page is visible; opening or leaving a section keeps that same timer instead of freezing, restarting, or duplicating it, and elapsed animation time still excludes every stopped period so the graphic resumes rather than jumping. The frame functions remain pure in time, dimensions, and seed, decoration still carries no state, and the plain, `NO_COLOR`, `TERM=dumb`, encoding, 80x24 size, focus, `BORA_TUI_MOTION=off`, and unmount switches keep their exact behaviour as the only routes to a static frame or no timer. This changes no snapshot, callback, prompt, network, write, service, engine, model, calibration, record, dispatch, or exit-code contract, so existing `calibration-record/v6` files remain valid. Motion now runs while a section is read, so its cost is no longer bounded by staying on the central menu and the manual Ubuntu and Windows visual/one-core CPU observation remains an unavailable follow-up check rather than a passed check or a Gate. After the complete frozen suite, validation, build, isolated wheel/uninstall verification, and diff inspection pass, this authorizes the `0.4.4` finalization commit, push to `main`, and tag `v0.4.4`; the GitHub Release is authorized only after the tagged Ubuntu/Windows workflow is green and only from its exact bundle. GitHub Releases remains the only distribution channel; no registry upload, remote setting, candidate activation, Open WebUI work, or Gate claim is authorized. |
+| D-094 | On 30 July 2026 the maintainer answers the ten open questions of `WEBUI_PLAN.md`, so Backlog B stops being a proposal and becomes a scoped plan. A managed Open WebUI is wanted (`W1`): the upstream interface is judged materially better kept than the integrated llama.cpp one, and both `studio` and `vstudio` open it while `coding` keeps `services.ui` false. That answer is about value, not cost, so the spike still measures the resolved installation size; the number becomes a declared cost in `docs/installation.md` instead of a go/no-go gate, and it is paid partly for a dependency closure that pulls torch for an embedding model this configuration never constructs. Authentication is disabled (`W2`): upstream creates its own fixed local account, which cannot be undone in the same data directory. Environment values seed the first boot and the user owns every setting afterwards (`W3`), rather than being accepted by the interface and discarded at restart. The embedding engine is non-empty (`W4`), so nothing is downloaded on a first start, and web search stays off and is the user's to enable. Title, tag, and follow-up generation are off (`W5`): three extra completions per turn on the single calibrated slot are a latency cost nobody asked for. Both the frontmatter dependency installation and every stored function are disabled (`W6`), because a managed installation is immutable or it is not, and no third-party Python executes inside a process bora starts. `WEBUI_NAME` stays unset (`W7`): the interface remains `Open WebUI` everywhere, no branding clause is engaged and no user-count exemption is invoked, bora's own output names the program it opens, and the upstream licence joins `resources/notices/`. The Backlog A router stays deferred now that upstream ships skills (`W8`). The multi-service work is its own step and comes first (`W9`), because the browser opens only once both services report READY. No provisioning command, no packaged Open WebUI content, and no `sync` survive (`W10`): D-080 already makes `/v1/models` report `model_alias_contract.alias`, so the picker names the model without a database write, and bora therefore holds no credential into Open WebUI and never calls its API. This records the answers and replaces the Backlog B text. It authorizes no installation, spike run, process, measurement, push, tag, release, upload, remote setting, candidate activation, or Gate claim. |
+| D-095 | On 30 July 2026 the maintainer judges the D-094 scope over-engineered for a single-operator desktop tool and directs the feature to be built and released as `0.5.0` without the spike that preceded it. Four pieces of D-094 are therefore dropped rather than postponed. **The spike and its evidence chain**: no `E1`-`E9` deliverables, no `evidence/` manifest; the installed size, the first-start duration and the resident memory stay unmeasured and are stated as figures nowhere, and the open-work list says so. **The lock**: no `resources/open-webui.lock` and no `open-webui-lock/v1` schema. `open-webui==0.11.0` is a pinned constant in `webui.py`, installed with `uv pip install`; two machines running the same bora get the same release, and `latest` stays forbidden, but the resolved closure is not digest-verified. This is weaker than the engine's contract and is accepted knowingly, because the alternative is regenerating a 119-package hash set on every upstream bump. **Immutable versioned installations**: one environment at `data_dir()/open-webui/venv`, whose recorded version is written last, so an interrupted install reports as absent and is rebuilt; no staging, no atomic `current.json`, no cleanup of inactive environments. **The mode-document field naming the interface**: every UI mode opens the same one, so the field would have had a single value across every document and would have been an unused extension point; `services.ui` keeps meaning "this mode opens a chat interface", and which one is decided by whether `bora webui install` has been run. Installation is an explicit command rather than a step of `bora studio`, because a closure that pins torch costs gigabytes and a launcher must not spend them unasked; until it is run, the UI modes keep opening the integrated llama.cpp interface, which is also the fallback when the interface fails. Everything else D-094 settled is built as recorded: the one-place environment with both immutability switches, the generated session key that no output shows, `WEBUI_NAME` never set and an inherited one removed, `/ready` and not `/health`, the service role with an ordered stop, the browser opened only once both roles report READY, and no call into Open WebUI's API. |
+
 
 A new durable decision updates this table in the same step that authorizes it.
 
@@ -364,7 +376,7 @@ A new durable decision updates this table in the same step that authorizes it.
 | `benchmark.py` | the reusable `benchmark/v1` protocol |
 | `calibration.py` / `_calibration_*` | local search, records, bundles, and evidence |
 | `engine.py` / `_engine_*` | lock, model, assets, command, installation, and activation |
-| `process.py` / `_process_*` | process, health, state, lock, status, and stop |
+| `process.py` / `_process_*` | processes, readiness, state, lock, status, and stop, for both service roles |
 | `uninstall.py` | confined removal of the four public roots |
 | `update.py` | published release lookup, verified wheel, and uv installation |
 | `_tool_handoff.py` / `_tool_helper.py` | uv installation identity and one deferred uv command |
@@ -373,7 +385,7 @@ A new durable decision updates this table in the same step that authorizes it.
 | `tui/` (0.4) | terminal presentation, navigation, composition, and post-UI dispatch only |
 | `resources/__init__.py` | `importlib.resources` access |
 | `routing.py` (future) | pure skill normalization and scoring |
-| `webui.py` (future) | Open WebUI lock, environment, installation, and process |
+| `webui.py` (0.5) | the managed Open WebUI: installation, environment, command, and readiness |
 
 Only `paths.py`, `process.py`, `hardware.py`, and `engine.py` may branch on the operating system.
 
@@ -431,10 +443,12 @@ keys and malformed values are errors; the launcher does not modify the file.
 | `model` | `BORA_MODEL` | the pinned model |
 | `model_path` | `BORA_MODEL_PATH` | `None` |
 | `llama_port` | `BORA_LLAMA_PORT` | `8080` |
+| `webui_port` | `BORA_WEBUI_PORT` | `8081` |
 | `engine_path` | `BORA_ENGINE_PATH` | `None` |
 | `open_browser` | `BORA_OPEN_BROWSER` | `true` |
 
-Ports 1–65535. Environment booleans: `true/false`, `1/0`, `yes/no`, `on/off`. Only the two path
+Ports 1–65535, and the two ports must differ, which is checked on the resolved configuration before
+any process starts. Environment booleans: `true/false`, `1/0`, `yes/no`, `on/off`. Only the two path
 variables may be empty to mean `None`.
 
 | Root | Linux | Windows |
@@ -581,14 +595,20 @@ probes complete. Ubuntu CUDA uses the pinned source until the lock verifies a pr
 - atomic writes with a temporary file in the same directory, flush, and `replace`;
 - corrupt state renamed to `services.corrupt-<timestamp>.json`;
 - exclusive startup lock with a `pid + create_time` owner;
-- a single managed service;
+- a single managed service **per role**: one `engine`, and one optional `interface` in front of it
+  (D-095). A record without a role is the engine role, so earlier state decodes unchanged. Only the
+  engine role carries a model, engine release, context window, and backend;
 - the port checked on `127.0.0.1`;
 - `Popen` without a shell and a new Windows process group;
 - stdout/stderr into the same timestamped UTF-8 log;
-- 2 s health requests, 1 s polling, 15-minute total timeout;
-- READY = the exact status and JSON from the lock;
-- stop: terminate 10 s, then kill 5 s;
-- `Ctrl-C` cleans up and exits 130.
+- 2 s health requests, 1 s polling; each role declares its own readiness contract and its own
+  timeout, the engine's being the 15 minutes of the lock;
+- READY = the exact status and JSON the role's contract declares. For the engine that is the lock;
+  for Open WebUI it is `GET /ready` with `{"status": true}`, retrying 503, and never `GET /health`,
+  which answers 200 before startup completes;
+- a browser is opened only once every role a mode started has reported READY;
+- stop: the interface before the engine, then terminate 10 s, then kill 5 s;
+- `Ctrl-C` cleans up both and exits 130.
 
 `status` and `stop` with no services exit 0.
 
@@ -822,72 +842,52 @@ Tests: normalization, accents, case, punctuation, a phrase counted once, ties, t
 co-activations, missing references, positives/negatives, hostile frontmatter, and v1/v2
 compatibility.
 
-### Backlog B — Managed Open WebUI and sync
+### Backlog B — Managed Open WebUI (complete)
 
-**Precondition:** the maintainer approves a precise version after a real spike on Python,
-dependencies, command, health, environment variables, user creation, and provisioning. The spike
-produces `resources/open-webui.lock` and separate evidence.
+**Objective:** an optional, upstream-owned browser interface in front of the managed engine, started
+and configured by bora and modified by it in no way.
 
-[`WEBUI_PLAN.md`](WEBUI_PLAN.md) expands this entry against the upstream source at tag `v0.11.0`. It
-is a decision input only, on the terms D-077 set for `TUI.md`: it carries no `D-0xx`, nothing in it
-is approved or scheduled, and its first step is the one that would fold its answers into this
-document. Its open questions are numbered `W1`–`W10` for that reason, and its steps `B1`–`B9`. The
-summary below is what this specification asserts today; where the two disagree, this document wins.
-On 29 July 2026 the maintainer explicitly deferred this backlog while the TUI milestone is active.
-The current machine is available for a later real spike, but no Open WebUI installation, process, or
-measurement starts without that separate request.
+Shipped in `0.5.0`. D-094 answered the ten questions of the design record `WEBUI_PLAN.md`; D-095
+dropped the spike, the digest lock, the immutable versioned installations, and the mode-document
+interface field, and directed the rest to be built. Where that file and this document disagree, this
+document wins.
 
-Installation:
+`bora webui install` puts `open-webui==0.11.0` into `data_dir()/open-webui/venv` with `uv`, recording
+the version last so an interrupted install is rebuilt rather than trusted. With it installed,
+`studio` and `vstudio` start it as a second managed service and open it; without it they keep opening
+the integrated llama.cpp interface, which is also the fallback when the interface fails to start —
+the engine keeps serving in that case, and the mode does not exit.
 
-- immutable venvs in `data_dir()/open-webui/installations/`;
-- staging on the same filesystem;
-- verification of the version, imports, and executable;
-- `installed.json` inside the installation;
-- an atomic `current.json` with a confined relative path;
-- a failure leaves the previous manifest and version intact;
-- cleanup of inactive managed environments only.
+bora configures it entirely through its child process environment and never calls its API: no
+session, no credential, no database write, no packaged content, no `sync`. D-080 already makes the
+engine report `model_alias_contract.alias` at `/v1/models`, so the picker names the model with no
+provisioning step. Skills, the system prompt, and web search are the user's own, added through
+upstream's own screens.
 
-An installation is immutable only while the frontmatter dependency installation is disabled: upstream
-runs `pip install` at startup for the requirements a stored Tool or Function declares, which would
-mutate a managed environment without a digest.
+The environment is assembled in one place and shown by `doctor`: a dedicated data directory under
+`data_dir()`, the loopback host passed as an argument and never read from configuration, a generated
+session key held in the state root with owner-only permissions and printed nowhere, authentication
+disabled, environment values seeding the first boot only, no embedding model, the version check off,
+title/tags/follow-up off, Ollama off, the local OpenAI endpoint and a placeholder key. Both the
+frontmatter `pip install` and every stored function are disabled, so no third-party Python runs
+inside a bora-started process and nothing mutates the managed environment. `WEBUI_NAME` is never set
+and an inherited one is removed: the interface keeps its own name everywhere, no branding clause is
+engaged, no user-count exemption is invoked, and the upstream licence ships in
+`resources/notices/open-webui-LICENSE`.
 
-Future configuration: `webui_port=8081` and `BORA_WEBUI_PORT`; port 1–65535 and different from
-`llama_port`, whose default `8080` is also the upstream service's own default.
+The account is upstream's: with authentication disabled it creates a fixed local administrator on the
+first page load, with a publicly documented password. That is one-way inside the same data directory,
+and re-enabling authentication later leaves that password in place. `docs/operations.md` states both,
+and states that the loopback rule of section 5.12 is what keeps an unauthenticated administrator
+console local.
 
-A minimal environment, only after the lock has been verified: a dedicated data dir, host
-`127.0.0.1` passed explicitly because the upstream default binds every interface, a stable secret
-key held by the launcher, Ollama off, the local OpenAI endpoint, and a placeholder key. Three
-further choices are open rather than settled, because each has a user-visible cost: whether
-authentication is disabled — which makes upstream create a fixed local account by itself and cannot
-be undone in the same data directory — whether environment values override the stored configuration
-forever or seed it once, and whether the default embedding model, the version check, and the title,
-tag and follow-up generation stay on.
+READY is `GET /ready`, never `GET /health`, which answers 200 before startup completes. The browser
+opens only once both roles report READY. Section 5.9 now admits one managed service per role, with an
+ordered stop that takes the interface down first.
 
-READY is the upstream readiness endpoint, which answers only after startup completes, not the
-liveness endpoint, which answers before it.
-
-Running a second managed service contradicts the single-service rule of section 5.9 and the guard
-that enforces it. The state format already holds a list, so the work is a service role, an ordered
-stop, one startup lock over the pair, and a per-role health timeout; it is its own step.
-
-Fallback: if llama-server is READY but the WebUI fails, keep it running, show the log, and open the
-built-in UI when allowed. If the mode requires a UI and none is available, stop the services and
-exit 1.
-
-`sync` provisions the display name, system prompt, skills, and prompts that only the upstream
-database can hold, because no environment variable reaches them. It writes data, never code: no
-Function, Pipe, or Filter, which would be the plugin surface section 1.1 excludes. It runs only
-after READY, against the managed instance, is idempotent, preserves content the user changed, never
-deletes, and has a mode that prints the exact payloads and writes nothing. Its content is packaged
-declarative resources with their own schema.
-
-Upstream now ships its own skills mechanism, so whether the Backlog A router survives, and where it
-would run, is an open question and not a dependency of this entry.
-
-Tests: valid/partial/failed installation, manifest, port configuration, the loopback host on every
-path, the secret key absent from every output, environment, readiness against liveness, fallback,
-stop order, multi-service state, idempotent provisioning, preserved user edits, hostile content, and
-reproducible output.
+What was deliberately not built, and why, is D-095: no evidence chain, no `open-webui.lock`, no
+staged activation, no interface field in the mode document. What remains unmeasured is in the open
+work of section 0 and is claimed as a figure nowhere.
 
 ### Backlog C — Standalone benchmark and final doctor
 
@@ -913,8 +913,9 @@ comparison, no content changes, no real network, and metadata from the state.
 **Objective:** an optional, read-mostly terminal dashboard and exact command composer over the
 existing CLI, never a second launcher runtime.
 
-[`TUI_PLAN.md`](TUI_PLAN.md) is the authorized execution detail. Its A1 decision answers are D-083
-through D-085, and its A2–E9 steps proceed one local commit at a time. The implementation keeps
+The execution plan that carried this milestone (`TUI_PLAN.md`) and its design record (`TUI.md`) were
+completed and then removed from the repository; their decision answers are D-083 through D-085 in
+the table above, and the shipped result is documented in [`docs/tui.md`](docs/tui.md). The implementation keeps
 current command names and the flat package tree; extracts configuration provenance, non-mutating
 service/model inspection, shared pi context selection, and doctor/workbench snapshots; reviews
 Textual before any interaction loop; the completed plan added seven read-only screens,
@@ -924,8 +925,9 @@ after UI teardown. D-092 subsequently makes bare `bora` their only entry and rem
 Opening and refresh perform no network, hashing, writes, cleanup, directory creation, service start,
 or polling. Bounded diagnostic subprocess probes are allowed in one presentation worker. Every real
 prompt and operational rule remains in its existing CLI callback. Motion is optional and must be
-plain-mode-safe and measured before it ships. Open WebUI remains absent from the snapshot, screens,
-actions, and process-state shape until Backlog B receives its own future authorization.
+plain-mode-safe and measured before it ships. Open WebUI was absent from the snapshot, screens,
+actions, and process-state shape throughout this milestone; `0.5.0` added it to the snapshot and the
+state under D-095, and the read-only screens still start no service and open no browser.
 
 Tests are offline and cover side-effect refusal, first-frame responsiveness, serialized refresh,
 canonical record labels, parser acceptance of every reachable argv, terminal restoration, and exact
@@ -1007,7 +1009,8 @@ remote-setting changes, and candidate activation are not authorized.
   manual visual/CPU observation stays open.
 - [~] The `0.4.1` presentation checks are programmatic pseudo-terminal runs at 60x20, 80x24, and
   100x32; manual visual and Windows terminal checks were not performed and are not called passed.
-- [x] Backlog B and its real Open WebUI spike remain deferred until a separate request.
+- [x] Backlog B was deferred throughout this milestone and shipped separately in `0.5.0` under
+  D-094 and D-095, without the spike D-094 had made its precondition.
 
 ---
 
@@ -1022,8 +1025,10 @@ remote-setting changes, and candidate activation are not authorized.
 - Open WebUI environment: <https://docs.openwebui.com/reference/env-configuration/>
 
 For `llama.cpp`, the lock and evidence of the pinned release prevail, not moving links to the
-current branch. For Open WebUI no lock exists yet, so rule 6 of section 2 applies and the tagged
-upstream source outranks that documentation page until `resources/open-webui.lock` exists.
+current branch. For Open WebUI there is a pinned version but no digest lock (D-095), so rule 6 of
+section 2 applies: the source read at the tag that version names outranks that documentation page,
+and a citation whose quoted code no longer matches means the reading is stale, not that the code is
+wrong.
 
 ---
 
