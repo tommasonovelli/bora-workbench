@@ -34,7 +34,7 @@ def test_explicit_tui_command_is_removed() -> None:
 
 def test_plain_is_rejected_beside_an_explicit_command() -> None:
     """Prevent the root-only presentation flag from being silently ignored by CLI commands."""
-    result = runner.invoke(app, ["--plain", "validate"])
+    result = runner.invoke(app, ["--plain", "validate"], color=False)
 
     assert result.exit_code == 2
     assert "--plain is available only when opening bare bora" in result.stderr
