@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
+from rich.text import Text
 from typer.testing import CliRunner
 
 import bora_workbench.cli as cli_module
@@ -34,10 +35,10 @@ def test_explicit_tui_command_is_removed() -> None:
 
 def test_plain_is_rejected_beside_an_explicit_command() -> None:
     """Prevent the root-only presentation flag from being silently ignored by CLI commands."""
-    result = runner.invoke(app, ["--plain", "validate"], color=False)
+    result = runner.invoke(app, ["--plain", "validate"])
 
     assert result.exit_code == 2
-    assert "--plain is available only when opening bare bora" in result.stderr
+    assert "--plain is available only when opening bare bora" in Text.from_ansi(result.stderr).plain
 
 
 def test_output_acknowledgement_waits_for_enter_on_a_real_terminal(monkeypatch) -> None:
