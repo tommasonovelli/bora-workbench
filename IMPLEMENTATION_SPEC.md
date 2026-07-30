@@ -7,7 +7,7 @@ preserve and the activities not implemented yet. The behavior available today is
 
 ## 0. Actual status and tracker
 
-Updated on 29 July 2026.
+Updated on 30 July 2026.
 
 ### Completed baseline
 
@@ -99,6 +99,8 @@ Updated on 29 July 2026.
   engine, model, calibration, or record contracts (D-083–D-087).
 - [x] D-090 adds the exact `bora pi launch` handoff and replaces the home decoration with continuous,
   multicolour Unicode wind and layered fractional-block sea while preserving every TUI kill switch.
+- [x] Version `0.4.2`, tag `v0.4.2`, and its GitHub Release distribute D-090 from the exact green
+  release-workflow bundle under D-091; no registry publication or Gate claim is made.
 
 ### Open work
 
@@ -205,9 +207,10 @@ optional flags of its marked action in place rather than listing every flag comb
 read-only boundary, the non-mutating snapshot, the post-teardown handoff, and the motion budget stay
 exactly as D-084–D-087 fixed them.
 
-D-090 is the maintainer-directed continuation after `0.4.1`: it adds a foreground pi shortcut and
-supersedes only the finite, low-colour home decoration. It changes no snapshot, launch service,
-engine, model, calibration, record, or same-process TUI handoff rule and authorizes no release.
+`0.4.2` distributes D-090's foreground pi shortcut and continuous multicolour home decoration under
+D-091. It changes no snapshot, launch service, engine, model, calibration, record, or same-process
+TUI handoff rule. The manual pi run and replacement motion observation remain follow-up checks, not
+passed Gates.
 
 ---
 
@@ -317,6 +320,7 @@ The identifiers stay stable because code, tests, and evidence cite them.
 
 | D-089 | On 30 July 2026 the maintainer rejects the shipped `0.4.0` presentation and directs its redesign and release as `0.4.1`. The dashboard painted its own background inside the terminal, split movement between arrows for screens and `Tab` for a screen's actions, and enumerated one menu row per flag combination, so `Setup` listed twenty rows for four operations and the explanatory text stopped being read. The workbench therefore requests the terminal's default background and spends colour only on the brand, the marker, and the composed command; it opens on one central menu whose rows each carry a snapshot-derived summary, with `Run` first; `Enter` opens an entry as a full window and `Esc` returns, so one marker moves at a time and `Tab` is unbound; and each section lists its actions once while switching the marked action's flags in place. This is a presentation decision only: the read-only boundary, the non-mutating snapshot, the post-teardown same-process handoff, the dispositions, the calibration wizard's valid-only combinations, and the motion budget of D-084–D-087 are unchanged, and the flag toggles keep every reachable argv available under the same recursive parser check. The TUI composes `bora pull` and `bora rm` without the optional `qwen` handle because this distribution pins one model; the CLI still accepts it. After the complete frozen local suite is green, this decision authorizes the `0.4.1` finalization commit, push to `main`, and tag `v0.4.1`; the GitHub Release is authorized only after that tag's release workflow is green and only from its exact bundle. The local pseudo-terminal runs are programmatic, not manual visual checks, no Windows terminal check was performed, and neither is called passed. GitHub Releases remains the only distribution channel; no registry upload, remote-setting change, candidate activation, Open WebUI work, or Gate claim is authorized. |
 | D-090 | On 30 July 2026 the maintainer requests one direct agent shortcut and a richer home identity. `bora pi launch` invokes the pi executable already on PATH with its documented `--provider bora --model <id>` flags, where `<id>` is always `model_alias_contract.alias` from `engine.lock` (`Qwen 3.6` in the current lock). It uses no shell, inherits the current working directory and terminal I/O, starts no bora service, installs nothing, and changes neither `models.json` nor any managed root; the operator first connects with `bora pi` and runs `bora coding` separately. An absent pi or ordinary child failure is operational exit 1 and interruption is 130. The same request supersedes only D-087/D-089's current finite, low-colour decoration: the focused central menu now carries three continuously travelling Unicode wind rows and a three-row sea made from fractional, shaded, and full block cells, both with multiple foreground colours at 6 fps under the existing 12 fps ceiling. The timer stops and the bands disappear on every existing section, focus, size, plain, colour, environment, and unmount kill switch; colour and motion still carry no status or action information. D-087's Ubuntu evidence measures the superseded finite 8 fps implementation, so it is retained as history and is not claimed as a CPU measurement of this continuous effect; a new Ubuntu observation and every Windows visual/CPU check remain open. This authorizes local implementation only, not a version, commit, push, tag, release, upload, remote change, candidate activation, Open WebUI work, or Gate claim. |
+| D-091 | On 30 July 2026 the maintainer directs release of `0.4.2` for D-090. After the complete frozen local suite, packaged-content validation, build, isolated wheel verification, complete uv-tool uninstall, and diff inspection pass, this authorizes the `0.4.2` finalization commit, push to `main`, and tag `v0.4.2`. The GitHub Release is authorized only after that tag's Ubuntu/Windows release workflow is green and only from its exact `bora-workbench-release-bundle`; GitHub Releases remains the sole distribution channel. A real `bora pi launch`, a new Ubuntu visual/one-core CPU observation for the continuous effect, and all Windows visual/CPU observations are explicitly waived for this release and remain follow-up checks, not passed checks or a Gate. No registry upload, remote-setting change, candidate activation, Open WebUI work, engine/model/calibration/record change, or Gate claim is authorized. |
 
 A new durable decision updates this table in the same step that authorizes it.
 
@@ -964,6 +968,8 @@ remote-setting changes, and candidate activation are not authorized.
   and motion budget of D-084–D-087 unchanged (D-089).
 - [x] D-090 adds `bora pi launch` and the continuous multicolour Unicode home decoration without
   changing service launch, snapshot collection, or core runtime contracts.
+- [x] D-091 authorizes `0.4.2` finalization, tag, and GitHub-only release after green local and tagged
+  automation, while explicitly waiving rather than passing the new manual observations.
 - [~] The `0.4.1` presentation checks are programmatic pseudo-terminal runs at 60x20, 80x24, and
   100x32; manual visual and Windows terminal checks were not performed and are not called passed.
 - [x] Backlog B and its real Open WebUI spike remain deferred until a separate request.

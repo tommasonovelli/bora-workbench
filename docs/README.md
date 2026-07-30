@@ -43,10 +43,10 @@ of the launcher.
 
 ## Current status
 
-This branch defines the `bora-workbench 0.4.1` release, package `bora_workbench`, and command
+This branch defines the `bora-workbench 0.4.2` release, package `bora_workbench`, and command
 `bora`, distributed exclusively through GitHub Releases.
 
-The preceding public release is `bora-workbench 0.3.2`. Historical `qwen-launcher 0.1.6` is now
+The preceding public release is `bora-workbench 0.4.1`. Historical `qwen-launcher 0.1.6` is now
 hosted under the renamed repository URL; its package, command, wheel names, and verified artifacts
 remain unchanged and must not be rebuilt or relabelled.
 

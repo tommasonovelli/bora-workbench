@@ -3,6 +3,39 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
+## [0.4.2] - 2026-07-30
+
+### Added
+
+- `bora pi launch` starts the installed pi executable with `--provider bora --model "Qwen 3.6"`,
+  deriving the model id from the locked API alias instead of duplicating it (D-090). The handoff
+  uses no shell, inherits terminal I/O and the current directory, starts no local service, installs
+  nothing, and changes no configuration. The Pi section exposes it as a terminal action after TUI
+  teardown.
+
+### Changed
+
+- The TUI home now uses a multitone Unicode brand, three continuously travelling wind rows built
+  from `·`, `╌`, `╍`, and `━`, and a three-layer sea built from fractional, shaded, and full block
+  cells. Rich foreground gradients distinguish wind strength, wave height, foam, and water depth
+  without painting over the terminal's own background.
+- Home decoration runs at 6 fps while the central menu remains visible and focused instead of
+  settling after three seconds. The 12 fps ceiling and every plain, colour, encoding, size, section,
+  focus, environment, and unmount kill switch remain enforced; hidden or disabled motion owns no
+  timer and carries no status or action information.
+
+### Verification limits
+
+- Automated tests cover the exact shell-free pi argv, failure and interruption mapping, real
+  recursive parser acceptance, Unicode/colour frame composition, continuous timing, and every
+  existing motion kill switch. The local frozen suite, package validation, build, isolated wheel,
+  and complete uv-tool uninstall checks are release requirements under D-091.
+- The existing Ubuntu CPU evidence measured the superseded finite 8 fps effect. A new manual visual
+  and one-core CPU observation for the continuous effect, a real `bora pi launch`, and all Windows
+  terminal observations were not performed and are not called passed or a Gate. The engine, model,
+  calibration protocol, record format, command contract, reserves, and candidate lifecycle are
+  unchanged; no candidate is activated and coverage remains `GATE-PARTIAL`.
+
 ## [0.4.1] - 2026-07-30
 
 ### Changed

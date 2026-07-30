@@ -5,8 +5,8 @@ requires explicit human authorization for the push, tag, and GitHub Release.
 
 ## Public status
 
-- release described by this branch: `bora-workbench 0.4.1`;
-- preceding public version: `bora-workbench 0.4.0` on GitHub Releases;
+- release described by this branch: `bora-workbench 0.4.2`;
+- preceding public version: `bora-workbench 0.4.1` on GitHub Releases;
 - historical versions `0.1.0` through `0.1.6` remain immutable under their original
   `qwen-launcher` artifact identity;
 - every published bundle comes from its green Ubuntu/Windows release workflow and contains the
@@ -56,6 +56,39 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.4.2
+
+`0.4.2` distributes the direct pi launch and richer home identity requested in D-090 and authorized
+for release by D-091.
+
+`bora pi launch` locates pi on PATH and invokes it without a shell as
+`pi --provider bora --model "Qwen 3.6"`; the id comes from `model_alias_contract.alias` in the
+packaged engine lock. The child inherits the current directory and terminal. The command neither
+starts `bora coding`, nor installs pi, nor writes `models.json`, so connecting the provider and
+starting the local service remain explicit separate steps. An absent executable and ordinary child
+failure map to operational exit 1; interruption maps to 130. The same command is available as a
+terminal Pi action after Textual has restored the terminal.
+
+The central menu keeps the terminal's own background but gains a multitone block-capped brand,
+three rows of continuously travelling Unicode wind, and a three-layer fractional/shaded/full-block
+sea with separate foreground gradients for ribbons, waves, foam, and depth. Motion updates at 6 fps
+while the home remains focused instead of settling after three seconds. It remains below the 12 fps
+ceiling and still stops immediately on an open section, focus loss, a small terminal, plain or
+limited-colour/encoding presentation, `BORA_TUI_MOTION=off`, or unmount. Hidden and disabled motion
+has no timer, and decoration carries no status or action meaning.
+
+Release checks for this version are the complete frozen local suite, packaged-content validation,
+build, isolated wheel verification, complete uv-tool uninstall, and the green tagged Ubuntu/Windows
+workflow. D-087's CPU evidence measured the superseded finite 8 fps effect and is not reused for the
+continuous timer. A new manual Ubuntu visual/CPU observation, every Windows visual/CPU check, and a
+real `bora pi launch` remain follow-up verification; D-091 waives them for publication without
+calling them passed or a Gate. The engine release, model identity, calibration protocol, record
+format, command contract, `command_contract_sha256`, reserves, policy, and schemas are unchanged, so
+existing `calibration-record/v6` files remain valid. No local candidate is activated, calibration
+coverage remains `GATE-PARTIAL`, and publication remains GitHub Releases only. D-091 authorizes the
+finalization commit, push, and `v0.4.2` tag after local checks pass, and the GitHub Release only from
+the exact bundle of the green tag workflow.
 
 ### Release 0.4.1
 
@@ -352,8 +385,10 @@ Limits and checks that were not run must be explicit. `0.1.3` was authorized for
 and GitHub Release before the real spike; this does not amount to a Gate, and PyPI remains excluded.
 For `0.2.2`, `0.2.3`, and `0.2.4`, D-072, D-073, and D-077 carry forward the explicit waiver of
 additional manual Ubuntu/Windows and hardware calibration runs before publication; the real update
-path between two published releases is likewise follow-up verification. The automated release matrix remains required; the
-waiver is not a passed Gate, and the maintainer will perform platform checks after release.
+path between two published releases is likewise follow-up verification. D-091 similarly waives the
+new `0.4.2` manual pi-launch and continuous-motion observations while keeping them open. The
+automated release matrix remains required; no waiver is a passed Gate, and the maintainer will
+perform platform checks after release.
 
 ## Version, tag, and commit
 
