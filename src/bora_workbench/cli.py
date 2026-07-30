@@ -36,7 +36,7 @@ from bora_workbench._cli_services import (
 )
 from bora_workbench._cli_theme import create_console, print_note
 from bora_workbench._cli_update import UpdateOptions, run_update
-from bora_workbench._cli_webui import run_webui_install, show_webui_status
+from bora_workbench._cli_webui import run_webui_install, run_webui_removal, show_webui_status
 
 if TYPE_CHECKING:
     from bora_workbench.tui.terminal import TerminalMode
@@ -69,7 +69,7 @@ def package_version() -> str:
     try:
         return version("bora-workbench")
     except PackageNotFoundError:
-        return "0.5.0"
+        return "0.5.1"
 
 
 def _dispatch_tui_arguments(arguments: tuple[str, ...]) -> int:
@@ -175,9 +175,13 @@ def engine_install_command(
     no_model: bool = typer.Option(
         False, "--no-model", help="Install only the engine, without downloading the weights."
     ),
+    no_webui: bool = typer.Option(
+        False, "--no-webui", help="Skip Open WebUI and keep the integrated llama.cpp interface."
+    ),
 ) -> None:
-    """Install the engine for detected hardware and download the pinned model."""
-    run_engine_install(EngineInstallOptions(force, not no_model), _stdout, _stderr)
+    """Install the engine for detected hardware, the pinned model, and the browser interface."""
+    options = EngineInstallOptions(force, not no_model, not no_webui)
+    run_engine_install(options, _stdout, _stderr)
 
 
 @app.command()
@@ -253,6 +257,12 @@ def webui_install_command(
 def webui_status_command() -> None:
     """Show whether the managed Open WebUI is installed, and where its data lives."""
     show_webui_status(_stdout, _stderr)
+
+
+@webui_app.command("remove")
+def webui_remove_command() -> None:
+    """Remove the managed Open WebUI, asking about its environment and your chats separately."""
+    run_webui_removal(_stdout, _stderr)
 
 
 @app.command()

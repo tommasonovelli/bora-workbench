@@ -3,6 +3,39 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
+## [0.5.1] - 2026-07-30
+
+### Changed
+
+- `bora engine install` now installs the browser interface alongside the engine and the weights
+  (D-096). That step already downloads 22 GB and is where a first setup waits, so putting Open WebUI
+  behind a command the user had yet to discover was the wrong shape. `--no-webui` declines it exactly
+  as `--no-model` declines the weights; neither flag removes anything already present, and
+  `bora webui install` still adds it later.
+- The workbench Setup screen names which interface a UI mode would open, and carries the install and
+  removal actions. `0.5.0` had reached the snapshot and `doctor` but nothing the user could see or
+  act on. The read-only screens still install nothing and start no service.
+- `bora uninstall` says in its preview that the data root takes the managed Open WebUI and the user's
+  own chats, notes and uploads with it, instead of leaving that to be inferred.
+
+### Added
+
+- `bora webui remove` frees the interface environment and reports how much space that reclaimed,
+  then asks **separately** about the interface data — chats, notes, uploads and settings — because
+  that is content the user made and is not backed up anywhere. Both questions default to no, and
+  declining the second keeps the content for a later install. It refuses while a managed service is
+  running, and neither removal follows a symlink out of the managed root.
+
+### Verification limits
+
+- The removal paths, the two confirmations, the symlink refusal, the reported size, `--no-webui`,
+  and the Setup screen in both interface states are covered by offline tests. No real interface is
+  installed, removed, or started by a test.
+- The Windows behaviour of the new removal, and the `vstudio` image path against the pinned mmproj,
+  remain open follow-up checks. The engine, model, calibration protocol, record format, command
+  contract, and reserves are unchanged; no candidate is activated and coverage remains
+  `GATE-PARTIAL`.
+
 ## [0.5.0] - 2026-07-30
 
 ### Added

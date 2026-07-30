@@ -174,6 +174,60 @@ def install_webui(root: Path | None = None, *, force: bool = False) -> WebuiStat
     return inspect_webui(selected)
 
 
+def directory_size(path: Path) -> int:
+    """Sum the bytes of one managed directory, so a removal can report what it frees.
+
+    Entries that vanish or cannot be read while walking are skipped rather than failing the
+    report: the number exists to inform a decision, not to be an audit.
+    """
+    if not path.is_dir():
+        return 0
+    total = 0
+    for item in path.rglob("*"):
+        try:
+            if item.is_file() and not item.is_symlink():
+                total += item.stat().st_size
+        except OSError:
+            continue
+    return total
+
+
+def _remove_confined(path: Path, root: Path) -> bool:
+    """Delete one directory proven to sit inside the managed root, and report whether it existed.
+
+    A symlink is refused rather than followed, so removal can never escape the managed tree
+    (specification sections 5.10 and 5.12).
+    """
+    absolute, managed = path.absolute(), root.absolute()
+    if absolute.parent != managed:
+        raise WebuiError(f"refusing to remove a path outside the managed root: {absolute}")
+    if path.is_symlink():
+        raise WebuiError(f"refusing to remove a symlinked managed path: {absolute}")
+    if not path.exists():
+        return False
+    try:
+        shutil.rmtree(path)
+    except OSError as error:
+        raise WebuiError(f"cannot remove {absolute}: {error}") from error
+    return True
+
+
+def remove_environment(root: Path | None = None) -> bool:
+    """Delete the managed Open WebUI environment, leaving the interface's own data untouched.
+
+    The two are separated because they are different kinds of thing: the environment is bytes bora
+    installed and can reinstall, while the data directory is the user's chats and uploads.
+    """
+    selected = webui_dir() if root is None else root
+    return _remove_confined(environment_dir(selected), selected)
+
+
+def remove_interface_data(root: Path | None = None) -> bool:
+    """Delete the interface's database, uploads, and vector store, which are user content."""
+    selected = webui_dir() if root is None else root
+    return _remove_confined(interface_data_dir(selected), selected)
+
+
 def secret_key_path(state_root: Path | None = None) -> Path:
     """Return the file holding the session-signing key, without creating it."""
     return (state_dir() if state_root is None else state_root) / _SECRET_KEY_NAME

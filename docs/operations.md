@@ -26,7 +26,7 @@ Expected errors show no traceback. In general:
 
 ### The installer asks for a source
 
-That is intentional: there is no implicit default. For `0.5.0`, use the wheel from the GitHub
+That is intentional: there is no implicit default. For `0.5.1`, use the wheel from the GitHub
 Release and its manifest digest as described in [Installation](installation.md). A full commit hash
 is also accepted for testing an exact repository revision.
 
@@ -398,9 +398,16 @@ belongs to you, and bora does not re-impose it.
 
 ### Removing it
 
-The environment and the interface's own data — its database, uploads, and vector store — live under
-the data root, so `bora uninstall` deletes them with every other managed root. The session key lives
-in the state root and goes with it.
+`bora webui remove` asks two separate questions: the environment, which is the several gigabytes bora
+installed and can reinstall, and the interface data, which is your chats, notes, uploads and
+settings. Both default to no. Declining the second leaves your content where it is, so a later
+`bora webui install` finds it again. Removal refuses while a managed service is running.
+
+`bora uninstall` deletes both without asking separately, because it deletes the whole data root; its
+preview says so before the confirmation. The session key lives in the state root and goes with it.
+
+To reclaim the space but keep using bora, use `bora webui remove` and answer no to the second
+question.
 
 ### Corrupt state
 

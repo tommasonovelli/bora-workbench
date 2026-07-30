@@ -7,6 +7,10 @@ __pycache__/
 .venv/
 dist/
 build/
+# Release assets fetched for verification never belong in the tree.
+/SHA256SUMS
+/bora_workbench-*.whl
+/bora_workbench-*.tar.gz
 
 # Local configuration and tools
 .env

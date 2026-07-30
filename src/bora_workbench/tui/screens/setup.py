@@ -1,4 +1,4 @@
-"""Offer managed-engine and pinned-model setup without installing or verifying anything."""
+"""Offer engine, model, and browser-interface setup without installing or verifying anything."""
 
 from __future__ import annotations
 
@@ -9,26 +9,33 @@ from bora_workbench.tui.actions import (
     compose_engine_status,
     compose_pull,
     compose_remove_model,
+    compose_webui_install,
+    compose_webui_remove,
 )
 from bora_workbench.tui.choices import Choice, ChoiceList, Flag
 from bora_workbench.tui.palette import Palette
 from bora_workbench.tui.section import Section
+from bora_workbench.webui import OPEN_WEBUI_VERSION
 
 _FORCE = "force"
 _NO_MODEL = "no-model"
+_NO_WEBUI = "no-webui"
 _KEEP_CACHE = "keep-cache"
 _DRY_RUN = "dry-run"
 _NOTE = (
     "- Opening this screen never downloads or hashes model payloads.",
     "- `keep-cache` leaves shared Hugging Face copies; `dry-run` deletes nothing.",
+    "- `no-model` and `no-webui` decline a download; neither removes anything already present.",
     "- Downloads, verification, and confirmations begin after the workbench closes.",
 )
 CHOICES: tuple[Choice, ...] = (
     Choice(
         "install or repair engine",
-        lambda flags: compose_engine_install(_FORCE in flags, _NO_MODEL in flags),
-        (Flag("f", _FORCE), Flag("n", _NO_MODEL)),
-        "Install the locked llama.cpp build and, by default, the pinned model.",
+        lambda flags: compose_engine_install(
+            _FORCE in flags, _NO_MODEL in flags, _NO_WEBUI in flags
+        ),
+        (Flag("f", _FORCE), Flag("n", _NO_MODEL), Flag("w", _NO_WEBUI)),
+        "Install the locked llama.cpp build and, by default, the model and the interface.",
     ),
     Choice(
         "download pinned model",
@@ -40,6 +47,17 @@ CHOICES: tuple[Choice, ...] = (
         lambda flags: compose_remove_model(_KEEP_CACHE in flags, _DRY_RUN in flags),
         (Flag("c", _KEEP_CACHE), Flag("d", _DRY_RUN)),
         "Review managed and shared-cache copies before any confirmed deletion.",
+    ),
+    Choice(
+        "install browser interface",
+        lambda flags: compose_webui_install(_FORCE in flags),
+        (Flag("f", _FORCE),),
+        "Acquire the pinned Open WebUI on its own, several gigabytes, once.",
+    ),
+    Choice(
+        "remove browser interface",
+        lambda flags: compose_webui_remove(),
+        description="Free the environment, and answer separately about your own chats.",
     ),
     Choice(
         "inspect engine compatibility",
@@ -82,13 +100,43 @@ def _model_lines(snapshot: WorkbenchSnapshot) -> tuple[str, ...]:
     return (*lines, *(f"diagnostic    {item}" for item in model.diagnostics))
 
 
+def _interface_lines(snapshot: WorkbenchSnapshot) -> tuple[str, ...]:
+    """Describe which interface a UI mode would open, without probing anything."""
+    webui = snapshot.doctor.webui
+    if webui is None:
+        return ("", "Browser interface", "Inspection unavailable.")
+    if not webui.is_installed:
+        return (
+            "",
+            "Browser interface",
+            "state         not installed",
+            "opens         the integrated llama.cpp interface",
+        )
+    return (
+        "",
+        "Browser interface",
+        f"state         Open WebUI {OPEN_WEBUI_VERSION} installed",
+        "opens         Open WebUI, started beside the engine once both are ready",
+        f"environment   {webui.root}",
+    )
+
+
 def render_setup(snapshot: WorkbenchSnapshot) -> str:
     """Render setup facts while keeping acquisition and digest work in existing CLI owners."""
-    return "\n".join((*_engine_lines(snapshot), *_model_lines(snapshot), "", "Safety", *_NOTE))
+    return "\n".join(
+        (
+            *_engine_lines(snapshot),
+            *_model_lines(snapshot),
+            *_interface_lines(snapshot),
+            "",
+            "Safety",
+            *_NOTE,
+        )
+    )
 
 
 class SetupView(Section):
-    """Show engine and model setup facts without exposing an embedded installer."""
+    """Show engine, model, and interface setup facts without exposing an embedded installer."""
 
     def __init__(self, palette: Palette) -> None:
         """Create the hidden-until-opened setup section marked on engine installation."""

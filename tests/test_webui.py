@@ -241,3 +241,61 @@ def test_the_environment_inherits_the_parent_so_the_child_can_start(monkeypatch)
     assert environment["BORA_TEST_INHERITED"] == "kept"
     # `WEBUI_NAME` is the one inherited variable deliberately dropped, for the licence clause.
     assert set(os.environ) - {"WEBUI_NAME"} <= set(environment)
+
+
+def test_removing_the_environment_keeps_the_interface_data(tmp_path) -> None:
+    """Free the reinstallable bytes without touching what the user wrote."""
+    _install_environment(tmp_path)
+    data = tmp_path / "data"
+    data.mkdir()
+    (data / "webui.db").write_text("chats", encoding="utf-8")
+
+    assert webui_module.remove_environment(tmp_path)
+
+    assert not (tmp_path / "venv").exists()
+    assert (data / "webui.db").read_text(encoding="utf-8") == "chats"
+    assert not inspect_webui(tmp_path).is_installed
+
+
+def test_removing_the_interface_data_keeps_the_environment(tmp_path) -> None:
+    """Keep the two removals independent, because they delete different kinds of thing."""
+    _install_environment(tmp_path)
+    (tmp_path / "data").mkdir()
+
+    assert webui_module.remove_interface_data(tmp_path)
+
+    assert not (tmp_path / "data").exists()
+    assert inspect_webui(tmp_path).is_installed
+
+
+def test_removal_is_idempotent_on_an_absent_installation(tmp_path) -> None:
+    """Report nothing removed rather than failing, so a repeated removal stays safe."""
+    assert not webui_module.remove_environment(tmp_path)
+    assert not webui_module.remove_interface_data(tmp_path)
+
+
+@pytest.mark.skipif(os.name == "nt", reason="symlink creation needs a privileged Windows account")
+def test_a_symlinked_managed_path_is_refused_rather_than_followed(tmp_path) -> None:
+    """Never let a removal escape the managed tree by following a link out of it."""
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "precious.txt").write_text("keep", encoding="utf-8")
+    root = tmp_path / "open-webui"
+    root.mkdir()
+    (root / "venv").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(WebuiError, match="symlinked"):
+        webui_module.remove_environment(root)
+
+    assert (outside / "precious.txt").exists()
+
+
+def test_directory_size_reports_what_a_removal_would_free(tmp_path) -> None:
+    """Measure the managed tree so a removal can name the space it reclaims."""
+    nested = tmp_path / "venv" / "lib"
+    nested.mkdir(parents=True)
+    (nested / "a.bin").write_bytes(b"x" * 100)
+    (nested / "b.bin").write_bytes(b"y" * 40)
+
+    assert webui_module.directory_size(tmp_path) == 140
+    assert webui_module.directory_size(tmp_path / "absent") == 0

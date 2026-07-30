@@ -5,7 +5,7 @@ requires explicit human authorization for the push, tag, and GitHub Release.
 
 ## Public status
 
-- release described by this branch: `bora-workbench 0.5.0`;
+- release described by this branch: `bora-workbench 0.5.1`;
 - preceding public version: `bora-workbench 0.4.3` on GitHub Releases;
 - historical versions `0.1.0` through `0.1.6` remain immutable under their original
   `qwen-launcher` artifact identity;
@@ -56,6 +56,43 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.5.1
+
+`0.5.1` distributes D-096 and corrects two things `0.5.0` got wrong about where the browser
+interface lives.
+
+**Where it is acquired.** `bora engine install` now installs it beside the engine and the weights.
+D-095 had made `bora webui install` an explicit command so a launcher would not spend gigabytes
+unasked, but the step that already spends them is `engine install`, which downloads 22 GB and is
+where a first setup waits. `--no-webui` declines it exactly as `--no-model` declines the weights;
+neither flag removes anything already present, and `bora webui install` still adds it later or
+repairs it with `--force`.
+
+**Where it is visible, and how it leaves.** `0.5.0` reached the snapshot and `doctor` but nothing a
+workbench user could see or act on. The Setup screen now names which interface a UI mode would open
+and carries the install and removal actions, and `compose_engine_install` gains its third flag. The
+read-only screens still install nothing and start no service.
+
+`bora webui remove` frees the environment, reporting the space that reclaimed, and then asks
+separately about the interface data — chats, notes, uploads and settings — in the shape D-079
+established for weights. Both questions default to no, declining the second keeps the content for a
+later install, removal refuses while a managed service is running, and neither removal follows a
+symlink out of the managed root. `bora uninstall` still takes both with the data root and now says so
+in its preview instead of leaving it to be inferred.
+
+Nothing else moves. The engine, model, calibration protocol, record format,
+`command_contract_sha256`, reserves, and candidate lifecycle are unchanged, so existing
+`calibration-record/v6` files remain valid.
+
+Release checks for this version are the complete frozen local suite, packaged-content validation,
+build, isolated wheel verification, complete uv-tool uninstall, diff inspection, and the green tagged
+Ubuntu/Windows workflow. `bora webui remove` was additionally exercised for real on Ubuntu against a
+6.4 GiB installation: both questions were declined and nothing changed, then the interface data alone
+was removed and the environment survived. The Windows behaviour of that removal, and the `vstudio`
+image path against the pinned mmproj, remain open follow-up verification rather than passed checks or
+a Gate. Publication remains GitHub Releases only, no candidate is activated, and coverage remains
+`GATE-PARTIAL`.
 
 ### Release 0.5.0
 

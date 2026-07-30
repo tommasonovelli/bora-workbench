@@ -115,11 +115,16 @@ def test_every_composed_command_recursively_parses_to_a_real_leaf(
     assert leaf == arguments[-1]
 
 
+_GROUPS = frozenset({"engine", "pi", "webui"})
+
+
 def _expected_leaf(arguments: tuple[str, ...]) -> str:
-    """Return the nested command name represented by one already composed argv."""
-    if arguments[0] == "engine":
-        return arguments[1]
-    if arguments[0] == "pi" and len(arguments) > 1 and not arguments[1].startswith("--"):
+    """Return the nested command name represented by one already composed argv.
+
+    A group invoked bare, as `pi` is, resolves to the group itself; every other form resolves to
+    the subcommand that follows it.
+    """
+    if arguments[0] in _GROUPS and len(arguments) > 1 and not arguments[1].startswith("--"):
         return arguments[1]
     return arguments[0]
 
@@ -134,19 +139,26 @@ def _candidate_snapshot() -> WorkbenchSnapshot:
 
 
 def test_setup_toggles_reach_every_engine_and_removal_option_state() -> None:
-    """Cover every engine, cache, and dry-run state the four Setup rows can toggle."""
+    """Cover every acquisition and removal state the Setup rows can toggle."""
     commands = _reachable(setup_screen.CHOICES)
 
     assert tuple(command.cli_arguments for command in commands) == (
         ("engine", "install"),
         ("engine", "install", "--force"),
         ("engine", "install", "--no-model"),
+        ("engine", "install", "--no-webui"),
         ("engine", "install", "--force", "--no-model"),
+        ("engine", "install", "--force", "--no-webui"),
+        ("engine", "install", "--no-model", "--no-webui"),
+        ("engine", "install", "--force", "--no-model", "--no-webui"),
         ("pull",),
         ("rm",),
         ("rm", "--keep-hf"),
         ("rm", "--dry-run"),
         ("rm", "--keep-hf", "--dry-run"),
+        ("webui", "install"),
+        ("webui", "install", "--force"),
+        ("webui", "remove"),
         ("engine", "status"),
     )
 

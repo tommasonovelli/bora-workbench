@@ -56,7 +56,7 @@ Home shows the machine identity, one deterministic next step, and seven summary 
 
 ```text
                          ▰  Bora Workbench  ▰
-                   0.4.4 · AMD Ryzen 9 · 64.0 GiB · cuda
+                   0.5.1 · AMD Ryzen 9 · 64.0 GiB · cuda
 
                        The pinned engine is not active.
                              bora engine install
@@ -68,7 +68,7 @@ Home shows the machine identity, one deterministic next step, and seven summary 
      │    Diagnostics         no blocking error                     │
      │    Pi                  not found on PATH                     │
      │    Settings            all defaults                          │
-     │    This installation   version 0.4.4                         │
+     │    This installation   version 0.5.1                         │
      ╰──────────────────────────────────────────────────────────────╯
 ```
 
@@ -79,7 +79,7 @@ same time.
 |---|---|
 | **Run** | the three foreground experiences and the active cell or verified baseline each uses |
 | **Calibration** | active/candidate record states and a staged valid-only command composer |
-| **Setup** | engine compatibility and receipt-aware model state, with install/pull/removal actions |
+| **Setup** | engine compatibility, receipt-aware model state, and which browser interface a UI mode would open, with install/pull/removal actions |
 | **Diagnostics** | memory, engine, model, services, records, pi, validation, and diagnostic actions |
 | **Pi** | availability and context source, with the supported link/launch/removal actions |
 | **Settings** | resolved values, environment names, winning source, and path; no editing |
@@ -128,7 +128,7 @@ Action, flag, and command state remain text-visible without colour.
 |---|---|---|
 | Run | `bora coding|studio|vstudio [--force]` | terminal; do not reopen |
 | Calibration | `bora calibrate --mode ...` with valid current options | terminal; do not reopen |
-| Setup | engine status/install, `pull`, and `rm` forms | wait for Enter, then refresh |
+| Setup | engine status/install, `pull`, `rm`, and `webui install`/`remove` forms | wait for Enter, then refresh |
 | Diagnostics | doctor, validate, status, engine status, and stop | wait for Enter, then refresh |
 | Pi | `bora pi launch` | terminal; do not reopen |
 | Pi | link/print/install/remove/uninstall forms | wait for Enter, then refresh |

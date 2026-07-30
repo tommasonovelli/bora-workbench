@@ -19,9 +19,10 @@ on the main group and on every command. Typer also exposes
 | `doctor` | describes configuration, hardware, engine, and records | no |
 | bare `bora` | opens the read-only dashboard and exact command composer | no |
 | `engine status` | inspects the managed engine | no |
-| `engine install` | installs the engine from the lock and downloads the model | yes |
+| `engine install` | installs the engine, the model, and the browser interface | yes |
 | `webui status` | reports whether the managed Open WebUI is installed | no |
 | `webui install` | installs the pinned Open WebUI into its own environment | yes |
+| `webui remove` | frees the interface environment, and your chats if confirmed | yes |
 | `pull` | downloads and verifies the pinned model | yes |
 | `rm` | deletes the pinned model after confirmation | yes |
 | `pi` | connects or launches the pi coding agent against the local service | pi's config or none |
@@ -125,6 +126,7 @@ every blocking difference is written to stderr as one redirectable list.
 bora engine install
 bora engine install --force
 bora engine install --no-model
+bora engine install --no-webui
 ```
 
 Detects CPU/CUDA, selects the exact asset set from the lock, downloads over HTTPS, verifies SHA-256,
@@ -140,10 +142,17 @@ CUDA, run CMake and a build lasting several minutes: the phase stays visible eve
 not finished yet. The `--version` and `--help` probes are bounded to 60 seconds each. The command
 installs no system prerequisites and never elevates privileges.
 
-Once the engine is active it downloads the pinned model, exactly as `pull` does, so that a first
-setup is one command. `--no-model` installs only the engine. Note that the model is about 22 GB:
-`--no-model` is the option to use on a metered connection, or when the weights are being acquired
-another way.
+Once the engine is active it downloads the pinned model, exactly as `pull` does, and then installs
+the browser interface, exactly as `webui install` does, so that a first setup is one command. After
+it, `bora studio` opens a finished chat interface with the model already in its picker.
+
+Two flags decline a download; neither removes anything already present:
+
+- `--no-model` installs only the engine. The model is about 22 GB, so this is the option for a
+  metered connection, or when the weights are being acquired another way.
+- `--no-webui` skips Open WebUI, whose closure pins torch and costs several gigabytes. Use it on a
+  machine that only wants the API for an editor or an agent; `studio` and `vstudio` then keep opening
+  the integrated llama.cpp interface, and `bora webui install` adds it later.
 
 ## `pull`
 
@@ -384,9 +393,11 @@ bora webui install [--force]
 ```
 
 Installs the pinned `open-webui` release into a managed virtual environment under the data root,
-using `uv`. It is a separate command rather than a step of `bora studio` because its dependency
-closure includes torch and runs to several gigabytes: a launcher should not spend that without being
-asked. uv's own progress is shown as it resolves and downloads.
+using `uv`. **`bora engine install` already does this**, so this command is for adding the interface
+later, or for repairing it with `--force`. uv's own progress is shown as it resolves and downloads.
+
+It is never a step of `bora studio`: by the time you launch a mode, the interface is either there or
+it is not, and a launch does not stop to download gigabytes.
 
 The version is recorded only after the installation produced a working `open-webui` console script,
 so an interrupted install reports as absent and the next run rebuilds it rather than trusting a
@@ -406,6 +417,27 @@ bora webui status
 
 Reports whether the pinned version is installed, where its environment and its data live, and which
 port it would listen on. It never prints the session key.
+
+## `webui remove`
+
+```bash
+bora webui remove
+```
+
+Removes the managed interface and asks **two separate questions**, because they delete different
+kinds of thing:
+
+1. **the environment** — the several gigabytes bora installed. Answering yes frees them and prints
+   how much; `bora webui install` puts it back;
+2. **the interface data** — your chats, notes, uploads and settings. This is content you made, it is
+   not backed up anywhere, and removing it cannot be undone.
+
+Both default to no. Declining the second leaves your chats where they were, so a later install finds
+them again. Removal refuses while any managed service is running, and never follows a symlink out of
+the managed root.
+
+`bora uninstall` deletes both without asking separately, because it deletes the whole data root; its
+preview says so.
 
 ## `status`
 

@@ -50,6 +50,7 @@ from bora_workbench.tui.screens.settings import SettingsView
 from bora_workbench.tui.screens.setup import SetupView
 from bora_workbench.tui.terminal import TerminalMode
 from bora_workbench.validation import ValidationResult
+from bora_workbench.webui import WebuiStatus
 
 runner = CliRunner()
 # One non-colour fact per section, in the order of the central menu.
@@ -79,8 +80,9 @@ def _doctor() -> DoctorSnapshot:
     )
     paths = PublicPaths(Path("config"), Path("data"), Path("cache"), Path("state"))
     engine = EngineStatus(False, None, None, None, False, ("not installed",))
+    interface = WebuiStatus(Path("open-webui"), None, None)
     return DoctorSnapshot(
-        "0.test", config, hardware, ValidationResult(()), 1, (record,), engine, paths, {}
+        "0.test", config, hardware, ValidationResult(()), 1, (record,), engine, paths, {}, interface
     )
 
 
@@ -191,7 +193,7 @@ def test_cli_plain_mode_reaches_tui_after_capability_check(monkeypatch) -> None:
     result = runner.invoke(app, ["--plain"])
 
     assert result.exit_code == 0
-    assert calls == [("0.5.0", selected, None)]
+    assert calls == [("0.5.1", selected, None)]
 
 
 def test_returning_action_dispatches_after_teardown_then_reopens(monkeypatch) -> None:
@@ -287,7 +289,7 @@ def test_same_process_dispatch_invokes_real_typer_leaf_and_maps_interrupt(monkey
     )
 
     assert cli_module._dispatch_tui_arguments(("doctor",)) == 0
-    assert calls == ["0.5.0"]
+    assert calls == ["0.5.1"]
 
     def interrupt(version, stdout, stderr):
         """Raise the interruption the Typer root maps to contractual exit 130."""

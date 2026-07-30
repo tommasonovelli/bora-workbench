@@ -391,6 +391,9 @@ def _show_preview(
     tool_state = "will be removed with uv" if installation.is_managed_by_uv else "not uv-managed"
     stdout.print(f"  Python tool: {installation.environment} ({tool_state})", markup=False)
     stdout.print("The data root contains the model store, so its weights are deleted with it.")
+    stdout.print("It also contains the managed Open WebUI, so its environment and your own chats,")
+    stdout.print("notes and uploads go with it. `bora webui remove` deletes only that, and asks")
+    stdout.print("about the environment and your content as two separate questions.")
     stdout.print("uv itself is never touched. Weights in the Hugging Face cache are asked about")
     stdout.print("separately, after this step.")
 
