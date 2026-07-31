@@ -69,7 +69,7 @@ def package_version() -> str:
     try:
         return version("bora-workbench")
     except PackageNotFoundError:
-        return "0.5.2"
+        return "0.5.3"
 
 
 def _dispatch_tui_arguments(arguments: tuple[str, ...]) -> int:

@@ -4,7 +4,7 @@ build-backend = "uv_build"
 
 [project]
 name = "bora-workbench"
-version = "0.5.2"
+version = "0.5.3"
 description = "Local, reproducible launcher for a calibrated Qwen model and llama.cpp"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"

@@ -3,6 +3,27 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
+## [0.5.3] - 2026-07-31
+
+### Fixed
+
+- A calibrated record no longer refuses the machine that produced it (D-098). Each memory reserve
+  was charged twice against the same bytes. A trial already refuses every candidate that drives free
+  memory below its reserve, so a recorded need leaves that margin behind; reuse then asked for the
+  need *plus* the reserve again, and compared the sum against a free-memory figure that already has
+  whatever other applications are using subtracted from it. The reserve was therefore unusable by
+  construction: the moment other applications took the memory it exists to lend them, the record it
+  protects was voided. On an 8 GiB RTX 2060 SUPER the measured `vstudio` need is 6.628 GiB and the
+  trial itself left 0.765 GiB free, yet reuse demanded 7.128 GiB against 7.010 GiB free, so 0.38 GiB
+  of ordinary desktop drift cost an eightfold context window and a silent fall to the `ctx=8192`
+  baseline. Reuse now asks for the measured RAM need and, on CUDA, the measured VRAM need, and
+  nothing beyond them. A record that clears its need while leaving less free than its own reserve is
+  served with a warning naming the remainder, at launch and in `bora doctor`, and that warning never
+  refuses the cell. The same correction applies to the RAM branch, which had the identical defect.
+- The record format, the pinned 0.5/2.0/0.125 GiB reserves and their exact-equality verification,
+  the trial monitors, the baseline fallback, and the command contract are all unchanged, so every
+  existing record stays valid and **no recalibration is required**.
+
 ## [0.5.2] - 2026-07-31
 
 ### Fixed

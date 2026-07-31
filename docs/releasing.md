@@ -5,8 +5,8 @@ requires explicit human authorization for the push, tag, and GitHub Release.
 
 ## Public status
 
-- release described by this branch: `bora-workbench 0.5.2`;
-- preceding public version: `bora-workbench 0.5.1` on GitHub Releases;
+- release described by this branch: `bora-workbench 0.5.3`;
+- preceding public version: `bora-workbench 0.5.2` on GitHub Releases;
 - historical versions `0.1.0` through `0.1.6` remain immutable under their original
   `qwen-launcher` artifact identity;
 - every published bundle comes from its green Ubuntu/Windows release workflow and contains the
@@ -56,6 +56,38 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.5.3
+
+`0.5.3` distributes D-098, which stops a calibrated record from refusing the machine that produced
+it.
+
+**Each reserve is charged once.** A trial refuses every candidate that drives free memory below its
+reserve, so a recorded need already leaves that margin behind. Reuse then asked for the need *plus*
+the reserve again, and compared the sum against a free-memory figure that already has whatever other
+applications are using subtracted from it. That second charge set aside a margin for a hypothetical
+workload on top of the real one already counted, which made the reserve unusable by construction:
+the moment other applications took the memory the reserve exists to lend them, the record that
+reserve protects was voided. On the maintainer's `vstudio` record the measured VRAM need is `6.628`
+GiB and the trial itself left `0.765` GiB free, yet reuse demanded `7.128` GiB against `7.010` free,
+so `0.38` GiB of ordinary desktop drift cost an eightfold context window and a silent fall to the
+`ctx=8192` baseline. Reuse now asks for the measured RAM need and, on CUDA, the measured VRAM need,
+and nothing beyond them. A record that clears its need while leaving less free than its own reserve
+is served with a warning naming the remainder, which never refuses the cell. The RAM branch changes
+with it, because it is the same defect and because `enforce_memory_gate` already blocks the pinned
+model below 22 GiB available.
+
+The trial monitors, the pinned `0.5`/`2.0`/`0.125` reserves, their exact-equality verification,
+`calibration-record/v6`, its schema, the fallback, and `command_contract_sha256` are unchanged, so
+every existing record stays valid and **no recalibration is required**.
+
+Release checks for this version are the complete frozen local suite, packaged-content validation,
+build, isolated wheel verification, diff inspection, a green `main` CI run before the finalization
+commit, and the green tagged Ubuntu/Windows workflow. This version was also verified on the
+maintainer's Windows CUDA host, where `doctor` reports all three records valid where every one was
+refused before and `bora vstudio` reaches `model loaded` at `n_ctx_slot = 65536` with `0.15` GiB of
+VRAM left free. Publication remains GitHub Releases only, no candidate is activated, and coverage
+remains `GATE-PARTIAL`.
 
 ### Release 0.5.2
 

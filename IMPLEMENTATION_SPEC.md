@@ -109,6 +109,9 @@ Updated on 30 July 2026.
   renames every section's actions, adds the final `Exit` menu entry, moves self-removal back to the
   command line, gives a calibrated profile refused for memory a red alert instead of a silent
   baseline fallback, and repairs every npm handoff plus the pi installation guidance for `0.5.2`.
+- [x] On 31 July 2026 the maintainer reported a record refusing the machine that produced it; D-098
+  charges each memory reserve once, at measurement, so reuse asks for the measured need alone and
+  a cell that leaves less than its reserve is warned about instead of dropped, released as `0.5.3`.
 
 ### Open work
 
@@ -1048,6 +1051,10 @@ remote-setting changes, and candidate activation are not authorized.
   entry, returns self-removal to the command line, gives a calibrated profile refused for memory a
   red alert on all three surfaces, and repairs every npm handoff and the pi installation guidance,
   and authorizes `0.5.2` through the same exact green GitHub-only release path.
+- [x] D-098 charges each memory reserve once, where it is measured, so an existing record is reused
+  against its measured need alone and a cell that leaves less free than its own reserve is served
+  with a warning rather than dropped to the baseline; `0.5.3` distributes it, and no record format,
+  reserve constant, or calibration behaviour changes, so no recalibration is required.
 - [~] The real `bora pi uninstall` against an installed package, `bora pi launch`, and the Windows
   terminal observations remain unavailable follow-up checks and are not called passed.
 
