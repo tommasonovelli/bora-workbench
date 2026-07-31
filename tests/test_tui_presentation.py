@@ -127,7 +127,7 @@ def _blocked_snapshot() -> WorkbenchSnapshot:
         "insufficient-headroom",
         98304,
         12,
-        ("free VRAM 3.30 GiB is below measured need plus the 1.0 GiB reserve (7.40 GiB)",),
+        ("free VRAM 3.30 GiB is below the measured need (7.40 GiB)",),
     )
     record = replace(snapshot.doctor.records[0], evaluation=evaluation)
     return replace(snapshot, doctor=replace(snapshot.doctor, records=(record,)))
@@ -139,7 +139,7 @@ def test_a_cell_short_on_memory_is_named_with_its_reason_and_its_remedy() -> Non
 
     assert "measured cell unavailable now, would launch at ctx 8192" in body
     assert "! Not enough free memory for the measured coding cell(s)." in body
-    assert "! coding: free VRAM 3.30 GiB is below measured need" in body
+    assert "! coding: free VRAM 3.30 GiB is below the measured need" in body
     assert "! Close applications holding RAM or VRAM, then press r to refresh." in body
 
 

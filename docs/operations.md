@@ -439,8 +439,8 @@ ordinary warning:
 ```text
 unavailable: the calibrated coding profile measured at ctx 98304 needs more free memory than
 this machine has now, so coding launches at the baseline ctx 8192 instead
-unavailable: local calibration record not usable now: available RAM 3.95 GiB is below measured
-need plus the 2.0 GiB reserve (22.55 GiB)
+unavailable: local calibration record not usable now: available RAM 3.95 GiB is below the
+measured need (20.55 GiB)
 unavailable: Close applications holding RAM or VRAM, then start this mode again.
 ```
 
@@ -448,6 +448,20 @@ unavailable: Close applications holding RAM or VRAM, then start this mode again.
 The remedy is to close what is holding the memory — another model, a browser, a previous managed
 service left running — and start the mode again. Re-calibrating on a machine that is short on
 memory measures the smaller cell instead of restoring the larger one, so free the memory first.
+
+### The memory fits, but only just
+
+A cell whose measured need fits while leaving less free than its own reserve is still served, as an
+ordinary warning rather than an alert:
+
+```text
+warning: free VRAM 7.01 GiB covers the measured need but leaves 0.38 GiB, below the 0.5 GiB reserve
+```
+
+The reserve was already charged when the cell was measured, so what is free now is free for other
+applications to take; this line reports how little of it is left, not a reason to drop the cell.
+Expect a slower desktop while the mode runs, and close something if that matters more than the
+context window.
 
 ### A valid candidate exists
 

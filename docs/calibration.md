@@ -313,8 +313,16 @@ An active record is revalidated on every launch. All of this must match:
 - the memory available right now.
 
 Recorded total RAM stays exact, but the comparison tolerates up to 1 MiB of difference to absorb
-reporting noise. Reuse additionally requires the measured RAM need plus the recorded RAM reserve
-and, on CUDA, the measured VRAM need plus the recorded VRAM reserve.
+reporting noise. Reuse additionally requires the measured RAM need and, on CUDA, the measured VRAM
+need.
+
+The reserves are not requested a second time here. A trial refuses every candidate that drives free
+memory below its reserve, so a recorded need already leaves that margin behind, and the memory free
+right now already has whatever other applications are using subtracted from it. Asking for the
+reserve again would set aside a second margin for a workload that is already counted, and would let
+the very applications the reserve exists to accommodate void the record by using it. When a record
+clears its need but leaves less free than its own reserve, the launch says so and still serves the
+measured cell.
 
 A candidate, a previous, an invalid, or an unreadable record never drives a launch. A record written
 by an older launcher is diagnosed as superseded rather than misread; the remedy is to re-run

@@ -46,7 +46,7 @@ class ReuseQuery:
 
 @dataclass(frozen=True, slots=True)
 class RecordEvaluation:
-    """Report active reuse and pending-candidate state with actionable diagnostics."""
+    """Report active reuse and pending-candidate state with everything the operator must be told."""
 
     status: RecordStatus
     ctx: int | None
@@ -55,6 +55,9 @@ class RecordEvaluation:
     candidate_status: CandidateStatus = "missing"
     candidate_diagnostics: tuple[str, ...] = ()
     preference: Preference | None = None
+    # Notes never refuse a record: they report a measured cell that fits but leaves less free
+    # memory than its own reserve, which the operator may want to act on and reuse may not.
+    notes: tuple[str, ...] = ()
 
 
 def _ram_identity_mismatch(recorded: object, current: float) -> str | None:
@@ -124,28 +127,71 @@ def _recorded_envelope(record: JsonObject) -> JsonObject:
     return cast(JsonObject, record["envelope"])
 
 
-def _headroom_for(record: JsonObject, vram_free_gib: float | None, ram_gib: float) -> list[str]:
-    """Require the calibrated cell's measured needs plus the record's own reserves."""
+@dataclass(frozen=True, slots=True)
+class _Headroom:
+    """Hold one resource's measured need, the reserve already charged for it, and what is free."""
+
+    label: str
+    needed_gib: float
+    reserve_gib: float
+    free_gib: float
+
+
+def _headroom_items(
+    record: JsonObject, vram_free_gib: float | None, ram_gib: float
+) -> tuple[_Headroom, ...]:
+    """Pair each resource's recorded need and reserve with the memory that is free right now."""
     envelope = _recorded_envelope(record)
     reserves = cast(JsonObject, record["reserves"])
-    ram_reserve_gib = float(cast(float, reserves["ram_gib"]))
-    vram_reserve_gib = float(cast(float, reserves["vram_gib"]))
-    issues: list[str] = []
-    ram_required = float(cast(float, envelope["ram_needed_gib"])) + ram_reserve_gib
-    if ram_gib < ram_required:
-        issues.append(
-            f"available RAM {ram_gib:.2f} GiB is below measured need plus the "
-            f"{ram_reserve_gib} GiB reserve ({ram_required:.2f} GiB)"
-        )
+    ram = _Headroom(
+        "available RAM",
+        float(cast(float, envelope["ram_needed_gib"])),
+        float(cast(float, reserves["ram_gib"])),
+        ram_gib,
+    )
     vram_needed = cast(float | None, envelope["vram_needed_gib"])
-    if vram_needed is not None and vram_free_gib is not None:
-        required = float(vram_needed) + vram_reserve_gib
-        if vram_free_gib < required:
-            issues.append(
-                f"free VRAM {vram_free_gib:.2f} GiB is below measured need plus the "
-                f"{vram_reserve_gib} GiB reserve ({required:.2f} GiB)"
-            )
-    return issues
+    if vram_needed is None or vram_free_gib is None:
+        return (ram,)
+    vram_reserve_gib = float(cast(float, reserves["vram_gib"]))
+    return (ram, _Headroom("free VRAM", float(vram_needed), vram_reserve_gib, vram_free_gib))
+
+
+def _shortfall(item: _Headroom) -> str | None:
+    """Refuse only what the measured cell cannot fit into the memory that is free right now."""
+    if item.free_gib >= item.needed_gib:
+        return None
+    return (
+        f"{item.label} {item.free_gib:.2f} GiB is below the measured need "
+        f"({item.needed_gib:.2f} GiB)"
+    )
+
+
+def _tight_note(item: _Headroom) -> str | None:
+    """Warn when the cell fits but leaves less than the reserve, which never voids a record.
+
+    The reserve is charged once, where it is measured: section 5.6 refuses every trial candidate
+    that drives free memory below it, so the recorded need already leaves that margin behind. What
+    is free now has this machine's current foreign usage subtracted, so charging the reserve again
+    here would set aside a second margin for a workload that is already counted, and any record
+    would be voided by the very applications its reserve exists to accommodate (section 5.5).
+    """
+    remaining_gib = item.free_gib - item.needed_gib
+    if remaining_gib < 0 or remaining_gib >= item.reserve_gib:
+        return None
+    return (
+        f"{item.label} {item.free_gib:.2f} GiB covers the measured need but leaves "
+        f"{remaining_gib:.2f} GiB, below the {item.reserve_gib} GiB reserve"
+    )
+
+
+def _headroom_state(
+    record: JsonObject, vram_free_gib: float | None, ram_gib: float
+) -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """Split the current memory state into what refuses this record and what only warns."""
+    items = _headroom_items(record, vram_free_gib, ram_gib)
+    shortfalls = tuple(text for item in items if (text := _shortfall(item)) is not None)
+    notes = tuple(text for item in items if (text := _tight_note(item)) is not None)
+    return shortfalls, notes
 
 
 def _candidate_state(mode_id: str) -> tuple[CandidateStatus, tuple[str, ...]]:
@@ -211,18 +257,16 @@ def evaluate_record(query: ReuseQuery) -> RecordEvaluation:
             RecordEvaluation("incompatible", ctx, n_cpu_moe, diagnostics, preference=preference),
             mode_id,
         )
-    headroom = _headroom_for(record, vram_free_gib, query.hardware.ram_available_gib)
-    if headroom:
-        diagnostics = tuple(f"local calibration record not usable now: {item}" for item in headroom)
+    shortfalls, notes = _headroom_state(record, vram_free_gib, query.hardware.ram_available_gib)
+    if shortfalls:
+        diagnostics = tuple(
+            f"local calibration record not usable now: {item}" for item in shortfalls
+        )
         return _with_candidate(
             RecordEvaluation(
-                "insufficient-headroom",
-                ctx,
-                n_cpu_moe,
-                diagnostics,
-                preference=preference,
+                "insufficient-headroom", ctx, n_cpu_moe, diagnostics, preference=preference
             ),
             mode_id,
         )
-    valid = RecordEvaluation("valid", ctx, n_cpu_moe, (), preference=preference)
+    valid = RecordEvaluation("valid", ctx, n_cpu_moe, (), preference=preference, notes=notes)
     return _with_candidate(valid, mode_id)

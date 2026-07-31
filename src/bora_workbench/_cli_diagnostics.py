@@ -405,6 +405,17 @@ def _calibrated_parameters(ctx: int | None, n_cpu_moe: int | None) -> str:
     return f" (ctx {ctx}, --n-cpu-moe {n_cpu_moe})"
 
 
+def _valid_record_line(mode_id: str, evaluation: RecordEvaluation, suffix: str) -> str:
+    """Describe an active cell and name a memory margin that is sufficient but tight (D-098)."""
+    parameters = _calibrated_parameters(evaluation.ctx, evaluation.n_cpu_moe)
+    preference = evaluation.preference or "unknown"
+    note = f" {escape(evaluation.notes[0])}." if evaluation.notes else ""
+    return (
+        f"[bright_blue]Calibration[/bright_blue] {mode_id}: active {preference} cell "
+        f"valid{parameters}.{note}{suffix}"
+    )
+
+
 def _record_line(mode_id: str, evaluation: RecordEvaluation) -> str:
     """Describe every record state with the shared canonical display label."""
     detail = escape(evaluation.diagnostics[0]) if evaluation.diagnostics else ""
@@ -416,12 +427,7 @@ def _record_line(mode_id: str, evaluation: RecordEvaluation) -> str:
         candidate_detail = escape(evaluation.candidate_diagnostics[0])
         suffix = f" Pending candidate is {evaluation.candidate_status}: {candidate_detail}"
     if evaluation.status == "valid":
-        parameters = _calibrated_parameters(evaluation.ctx, evaluation.n_cpu_moe)
-        preference = evaluation.preference or "unknown"
-        return (
-            f"[bright_blue]Calibration[/bright_blue] {mode_id}: active {preference} cell "
-            f"valid{parameters}.{suffix}"
-        )
+        return _valid_record_line(mode_id, evaluation, suffix)
     if evaluation.status == "missing":
         return (
             f"[bright_blue]Calibration[/bright_blue] {mode_id}: active record is {label}; "

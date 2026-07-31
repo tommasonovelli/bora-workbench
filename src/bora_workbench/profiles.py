@@ -419,7 +419,9 @@ def _resolve_envelope(
     Shared seeds never become the envelope because D-034 forbids treating them as locally
     calibrated; only a supported active local calibration record may steer the plan, so a matched
     seed only contributes a warning. A record refused for memory reports through the alert channel
-    alone, because the generic "no record matched" warning would then be untrue (D-097).
+    alone, because the generic "no record matched" warning would then be untrue (D-097). A record
+    that fits but leaves less free memory than its own reserve is served and warned about, because
+    the reserve was already charged when the cell was measured (D-098).
     """
     mode = catalog.mode(request.mode_id)
     assert mode is not None
@@ -427,7 +429,7 @@ def _resolve_envelope(
     seed, warnings = _select_seed_profile(request, catalog, hardware)
     if evaluation.status == "valid":
         envelope = Envelope(cast(int, evaluation.ctx), evaluation.n_cpu_moe, None)
-        return EnvelopeChoice("local-calibration-record", envelope)
+        return EnvelopeChoice("local-calibration-record", envelope, evaluation.notes)
     envelope, fallback_warnings = _fallback(request, hardware)
     alerts = _shortage_alerts(mode.id, evaluation)
     if not alerts:

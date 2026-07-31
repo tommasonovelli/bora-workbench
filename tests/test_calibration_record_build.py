@@ -80,11 +80,26 @@ def test_record_rejects_tampered_reserves(tmp_path) -> None:
 
 
 def test_reuse_reads_recorded_envelope_and_headroom() -> None:
-    """Select the one recorded cell and apply its own reserves at reuse time."""
-    from bora_workbench._calibration_reuse import _headroom_for, _recorded_envelope
+    """Select the one recorded cell and weigh it against the memory that is free right now."""
+    from bora_workbench._calibration_reuse import _headroom_state, _recorded_envelope
 
     document = build_record(RecordContext(_target(), "run-abc123", "test-driver"), _mode_result())
     assert _recorded_envelope(document)["ctx"] == 65536
-    assert _headroom_for(document, vram_free_gib=10.0, ram_gib=10.0) == []
-    assert _headroom_for(document, vram_free_gib=10.0, ram_gib=3.0) != []
-    assert _headroom_for(document, vram_free_gib=1.0, ram_gib=10.0) != []
+    assert _headroom_state(document, vram_free_gib=10.0, ram_gib=10.0) == ((), ())
+    assert _headroom_state(document, vram_free_gib=10.0, ram_gib=3.0)[0] != ()
+    assert _headroom_state(document, vram_free_gib=1.0, ram_gib=10.0)[0] != ()
+
+
+def test_memory_left_below_the_reserve_warns_instead_of_refusing() -> None:
+    """Keep a cell that fits inside its own reserve usable, because the reserve is already spent."""
+    from bora_workbench._calibration_reuse import _headroom_state
+
+    document = build_record(RecordContext(_target(), "run-abc123", "test-driver"), _mode_result())
+
+    shortfalls, notes = _headroom_state(document, vram_free_gib=6.4, ram_gib=10.0)
+
+    assert shortfalls == ()
+    assert notes == (
+        "free VRAM 6.40 GiB covers the measured need but leaves 0.40 GiB, "
+        "below the 0.5 GiB reserve",
+    )

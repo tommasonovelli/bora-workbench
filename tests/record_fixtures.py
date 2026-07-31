@@ -18,8 +18,8 @@ from tests.sample_fixtures import sample
 RUN_ID = "a" * 32
 DRIVER = "test-driver"
 
-# One possible cell per preference. The recorded needs (4.0 GiB RAM, 6.0 GiB VRAM) plus the pinned
-# reserves fit the fixture hardware and fall outside the reduced-headroom variants of the tests.
+# One possible cell per preference. The recorded needs (4.0 GiB RAM, 6.0 GiB VRAM) clear the fixture
+# hardware with a reserve to spare and fall outside the reduced-headroom variants of the tests.
 _CUDA_CELLS: dict[Preference, tuple[int, int | None]] = {
     "fast": (32768, 41),
     "balanced": (131072, 38),

@@ -143,14 +143,17 @@ def test_driver_change_invalidates_the_record(tmp_path, monkeypatch) -> None:
 
 
 def test_insufficient_vram_headroom_defers_reuse(tmp_path, monkeypatch) -> None:
-    """Refuse the envelope when free VRAM cannot cover the measured need plus reserve."""
+    """Refuse the envelope when free VRAM cannot cover the measured need itself."""
     install_record(tmp_path, monkeypatch, cuda_hardware())
     monkeypatch.setattr(reuse_module, "query_gpu_snapshot", lambda index: snapshot(free=5.0))
 
     evaluation = evaluate_record(query(cuda_hardware()))
 
     assert evaluation.status == "insufficient-headroom"
-    assert any("free VRAM" in message for message in evaluation.diagnostics)
+    assert evaluation.diagnostics == (
+        "local calibration record not usable now: free VRAM 5.00 GiB is below "
+        "the measured need (6.00 GiB)",
+    )
 
 
 def test_insufficient_ram_headroom_defers_reuse(tmp_path, monkeypatch) -> None:
@@ -165,14 +168,49 @@ def test_insufficient_ram_headroom_defers_reuse(tmp_path, monkeypatch) -> None:
 
 
 def test_exact_reuse_headroom_boundaries_remain_usable(tmp_path, monkeypatch) -> None:
-    """Treat equality with the measured need plus each pinned reserve as sufficient."""
+    """Treat equality with each measured need as sufficient and note both spent reserves."""
     install_record(tmp_path, monkeypatch, cuda_hardware())
-    hardware = replace(cuda_hardware(), ram_available_gib=6.0)
-    monkeypatch.setattr(reuse_module, "query_gpu_snapshot", lambda index: snapshot(free=6.5))
+    hardware = replace(cuda_hardware(), ram_available_gib=4.0)
+    monkeypatch.setattr(reuse_module, "query_gpu_snapshot", lambda index: snapshot(free=6.0))
 
     evaluation = evaluate_record(query(hardware))
 
     assert evaluation.status == "valid"
+    assert any(note.startswith("available RAM 4.00 GiB covers") for note in evaluation.notes)
+    assert any(note.startswith("free VRAM 6.00 GiB covers") for note in evaluation.notes)
+
+
+def test_a_spent_reserve_warns_without_voiding_the_measured_cell(tmp_path, monkeypatch) -> None:
+    """Serve a cell that fits while eating into the reserve, charged once at measurement (D-098).
+
+    The search already refused every trial candidate that drove free memory below the reserve, and
+    what is free now has this machine's own foreign usage subtracted. Requiring the reserve a second
+    time here dropped a fully measured cell to the 8192 baseline over exactly the memory that
+    reserve exists to lend to other applications.
+    """
+    install_record(tmp_path, monkeypatch, cuda_hardware())
+    monkeypatch.setattr(reuse_module, "query_gpu_snapshot", lambda index: snapshot(free=6.2))
+
+    evaluation = evaluate_record(query(cuda_hardware()))
+
+    assert evaluation.status == "valid"
+    assert (evaluation.ctx, evaluation.n_cpu_moe) == (131072, 38)
+    assert evaluation.diagnostics == ()
+    assert evaluation.notes == (
+        "free VRAM 6.20 GiB covers the measured need but leaves 0.20 GiB, "
+        "below the 0.5 GiB reserve",
+    )
+
+
+def test_ample_headroom_reports_no_notes(tmp_path, monkeypatch) -> None:
+    """Keep the advisory channel silent while both resources clear their reserve."""
+    install_record(tmp_path, monkeypatch, cuda_hardware())
+    monkeypatch.setattr(reuse_module, "query_gpu_snapshot", lambda index: snapshot(free=7.0))
+
+    evaluation = evaluate_record(query(cuda_hardware()))
+
+    assert evaluation.status == "valid"
+    assert evaluation.notes == ()
 
 
 def test_exact_one_mib_ram_identity_difference_remains_compatible(tmp_path, monkeypatch) -> None:

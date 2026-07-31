@@ -140,7 +140,8 @@ A mode contains behavior, not performance:
 The plan uses a record only when it is the active record for that mode, semantically valid, and
 compatible with the model, digest, engine release/commit/contract, OS, backend, components, driver,
 and current memory. A maximum drift of 1 MiB is tolerated when comparing total RAM; RAM and VRAM
-headroom use the reserves measured with that single calibrated cell.
+headroom ask for the needs measured with that single calibrated cell, whose reserves were already
+charged while measuring them.
 
 If the record is missing or not reusable, the baseline is `ctx=8192` and, on CUDA, `n_cpu_moe=48`.
 It is always presented as not optimized. Old hardware classes and shared reports produce no
