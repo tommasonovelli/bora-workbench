@@ -5,8 +5,8 @@ requires explicit human authorization for the push, tag, and GitHub Release.
 
 ## Public status
 
-- release described by this branch: `bora-workbench 0.5.1`;
-- preceding public version: `bora-workbench 0.4.3` on GitHub Releases;
+- release described by this branch: `bora-workbench 0.5.2`;
+- preceding public version: `bora-workbench 0.5.1` on GitHub Releases;
 - historical versions `0.1.0` through `0.1.6` remain immutable under their original
   `qwen-launcher` artifact identity;
 - every published bundle comes from its green Ubuntu/Windows release workflow and contains the
@@ -56,6 +56,47 @@ Check:
 
 Any change made after the build invalidates the artifacts: remove `dist/`, repeat every check, and
 rebuild.
+
+### Release 0.5.2
+
+`0.5.2` distributes D-097 and corrects four things the shipped workbench got wrong.
+
+**Order and names.** Every section listed its actions in the order they had been written, which put
+`remove pinned model` third in Setup, between two installs. Each section now follows the order a
+machine needs, with anything that deletes last, and the labels say what an action does rather than
+naming its flag. The central menu gains a final `Exit` entry, which opens no section and leaves
+without running anything.
+
+**Self-removal leaves the workbench.** `bora uninstall` refuses while a managed service is running,
+and it hands its own environment to a helper that must observe this process exit. Both of those
+belong in a terminal the TUI has not just torn down: selecting it from the workbench produced a
+refusal on a screen that had already closed. The action, `compose_uninstall`, and the typed `remove`
+friction are removed. `This installation` still shows the four managed roots and the exact removal
+boundary, and names the command line as the only route. The CLI command is unchanged.
+
+**A calibrated profile the machine cannot afford.** `insufficient-headroom` fell back to the
+verified `ctx=8192` baseline behind a yellow warning that also said no record had matched — untrue,
+since one had matched and been refused — and a connected browser interface then reported 8192 as its
+own limit with nothing explaining why. The launch plan carries `alerts` beside `warnings`, the untrue
+fallback warning is suppressed when an alert is truer, and the state is red in `doctor`, red as an
+`unavailable:` line above the running service, and a `!`-marked alert on the Run screen. The marker
+survives `--plain`, `NO_COLOR`, and a screen reader. No reserve, threshold, record format, or reuse
+rule changes: the same records stay valid and the same freed memory restores them.
+
+**pi.** `subprocess` starts children through `CreateProcess` on Windows, which appends only `.exe`
+while it searches `PATH`, so every npm handoff failed there under the bare name `npm` against the
+`npm.cmd` shim Node.js installs. npm is resolved through `PATH` now, still without a shell. pi.dev
+documents `install.sh`, `install.ps1`, and the global npm package as three routes to one package with
+one documented removal, so the absent-pi message names all of them, installation is its own workbench
+row instead of a flag, and `pi uninstall` states what it undoes and that `~/.pi/agent` survives by
+pi's design.
+
+Release checks for this version are the complete frozen local suite, packaged-content validation,
+build, isolated wheel verification, complete uv-tool uninstall, diff inspection, a green `main` CI
+run before the finalization commit, and the green tagged Ubuntu/Windows workflow. The real
+`bora pi uninstall` against an installed package, `bora pi launch`, and the Windows terminal
+observations remain open follow-up checks rather than passed ones. Publication remains GitHub
+Releases only, no candidate is activated, and coverage remains `GATE-PARTIAL`.
 
 ### Release 0.5.1
 

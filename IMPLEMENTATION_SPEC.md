@@ -1032,6 +1032,18 @@ remote-setting changes, and candidate activation are not authorized.
 - [x] Backlog B was deferred throughout this milestone and shipped separately in `0.5.0` under
   D-094 and D-095, without the spike D-094 had made its precondition.
 
+### Milestone 0.5
+
+- [x] D-094 and D-095 answer the Open WebUI design questions and ship the managed interface as
+  `0.5.0`; D-096 moves its acquisition into `bora engine install`, gives the Setup screen its facts
+  and actions, and ships `0.5.1`.
+- [x] D-097 reorders and renames every workbench section's actions, adds the final `Exit` menu
+  entry, returns self-removal to the command line, gives a calibrated profile refused for memory a
+  red alert on all three surfaces, and repairs every npm handoff and the pi installation guidance,
+  and authorizes `0.5.2` through the same exact green GitHub-only release path.
+- [~] The real `bora pi uninstall` against an installed package, `bora pi launch`, and the Windows
+  terminal observations remain unavailable follow-up checks and are not called passed.
+
 ---
 
 ## 10. Process references

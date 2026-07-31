@@ -3,6 +3,61 @@
 Relevant changes are recorded here by version. Future plans do not belong in the changelog: they
 live in `IMPLEMENTATION_SPEC.md`.
 
+## [0.5.2] - 2026-07-31
+
+### Fixed
+
+- A calibrated profile that no longer fits the free memory is now reported in red instead of being
+  dropped quietly (D-097). `insufficient-headroom` fell back to the verified `ctx=8192` baseline
+  behind an ordinary warning that also claimed no record had matched, and a connected browser
+  interface or agent then reported 8192 as its own limit with nothing on screen explaining why. The
+  launch plan carries alerts beside warnings, the untrue fallback warning is suppressed when an
+  alert is truer, and the state appears red in `bora doctor`, as an `unavailable:` line directly
+  above the running service, and as a `!`-marked alert on the workbench Run screen. Each one names
+  the measured cell, the exact reserve that was not met, and the remedy: close what is holding RAM
+  or VRAM, then start the mode again.
+- Every npm handoff works on Windows. `subprocess` starts children through `CreateProcess`, which
+  appends only `.exe` while it searches `PATH`, so `bora pi --install` and `bora pi uninstall`
+  failed under the bare name `npm` against the `npm.cmd` shim Node.js installs. npm is resolved
+  through `PATH` and started by its resolved executable, still with no shell.
+- `bora pi uninstall` no longer describes the vendor's own installers as something npm cannot
+  remove. `install.sh` and `install.ps1` install the same global npm package, so the documented
+  removal undoes any of the three routes; the command says so, names `~/.pi/agent` as what survives
+  by pi's design, and points a pnpm, Yarn, or Bun installation at that tool's own remove command.
+
+### Changed
+
+- Every workbench section lists its actions in the order a machine needs them, with anything that
+  deletes last: Setup installs, then checks, then removes; Diagnostics reports four times before
+  offering to stop a service; the Pi agent installs, connects, launches, then takes both back.
+  Labels say what an action does rather than naming its flag.
+- The central menu ends with an `Exit` entry. It opens no section and leaves without running
+  anything, exactly as `q` and `Esc` on home already did.
+- Installing pi is its own row on the Pi agent screen instead of a toggle on the connect row, and
+  while pi is missing the screen lists every route pi.dev documents — the Ubuntu script, the Windows
+  script, and the global npm package — together with the one removal command. `bora pi` prints the
+  same list when it reports an absent pi.
+
+### Removed
+
+- The workbench no longer offers to uninstall itself, and the typed `remove` friction that guarded
+  that action is gone. `bora uninstall` refuses while a managed service is running and hands its own
+  environment to a helper that must observe this process exit, so both its refusals and its progress
+  belong in a terminal that has not just been torn down. `This installation` still shows the four
+  managed roots and the exact removal boundary, and names `bora uninstall` as a command line
+  operation. The command itself is unchanged.
+
+### Verification limits
+
+- The reordered rows, the `Exit` entry, the absence of every self-removal form, the alert text and
+  its style in both palettes, the resolved npm executable, and the installation guidance are covered
+  by the offline suite. No test runs npm, installs pi, or starts a service.
+- The real `bora pi uninstall` against an installed package, `bora pi launch`, and the Windows
+  terminal observations remain open follow-up checks rather than passed ones. The engine, model,
+  calibration protocol, record format, command contract, reserves, and candidate lifecycle are
+  unchanged, so existing `calibration-record/v6` files remain valid; no candidate is activated and
+  coverage remains `GATE-PARTIAL`.
+
 ## [0.5.1] - 2026-07-30
 
 ### Changed
