@@ -52,38 +52,45 @@ sizes the same content scrolls rather than disappearing.
 
 ## The central menu
 
-Home shows the machine identity, one deterministic next step, and seven summary rows:
+Home shows the machine identity, one deterministic next step, seven section rows, and the way out:
 
 ```text
                          ▰  Bora Workbench  ▰
-                   0.5.1 · AMD Ryzen 9 · 64.0 GiB · cuda
+                   0.5.2 · AMD Ryzen 9 · 64.0 GiB · cuda
 
                        The pinned engine is not active.
                              bora engine install
 
      ╭──────────────────────────────────────────────────────────────╮
-     │  ▸ Run                 verified baseline                     │
+     │  ▸ Run a mode          verified baseline                     │
      │    Calibration         no active record                      │
      │    Setup               engine not active                     │
      │    Diagnostics         no blocking error                     │
-     │    Pi                  not found on PATH                     │
+     │    Pi agent            not found on PATH                     │
      │    Settings            all defaults                          │
-     │    This installation   version 0.5.1                         │
+     │    This installation   version 0.5.2                         │
+     │    Exit                leave the workbench                   │
      ╰──────────────────────────────────────────────────────────────╯
 ```
 
 `Enter` opens the marked entry and `Esc` returns, so the section and menu never own movement at the
-same time.
+same time. `Exit` is the one entry that opens no section: it ends the workbench without running
+anything, exactly as `q` and `Esc` on home already did.
 
 | Entry | Read-only information and choices |
 |---|---|
-| **Run** | the three foreground experiences and the active cell or verified baseline each uses |
+| **Run a mode** | the three foreground experiences and the active cell or verified baseline each uses |
 | **Calibration** | active/candidate record states and a staged valid-only command composer |
 | **Setup** | engine compatibility, receipt-aware model state, and which browser interface a UI mode would open, with install/pull/removal actions |
 | **Diagnostics** | memory, engine, model, services, records, pi, validation, and diagnostic actions |
-| **Pi** | availability and context source, with the supported link/launch/removal actions |
+| **Pi agent** | availability, every documented installation route while pi is missing, and context source |
 | **Settings** | resolved values, environment names, winning source, and path; no editing |
-| **This installation** | version, managed roots, update choices, and exact removal boundary |
+| **This installation** | version, managed roots, update choices, and the removal boundary |
+| **Exit** | leave without selecting a command |
+
+Inside a section the rows follow the order a machine needs them, and anything that deletes comes
+last: Setup installs, then checks, then removes; Diagnostics reports four times before it offers to
+stop a service; the Pi agent installs, connects, launches, then takes both back.
 
 The published version is not fetched on opening. Select `bora update --check` when that network
 request is wanted. Presence alone is not model verification, and no active calibration record means
@@ -94,7 +101,7 @@ a working non-optimized baseline rather than a launch failure.
 | Key | Action |
 |---|---|
 | arrows or `j` / `k` | move the marker on the visible surface |
-| `Enter` or `Right` | open, accept a wizard answer, or select the shown command |
+| `Enter` or `Right` | open, leave on `Exit`, accept a wizard answer, or select the shown command |
 | `Esc` or `Left` | return to home; on home, quit |
 | a bracketed letter | switch that flag on the marked action |
 | `PageUp` / `PageDown` | scroll long details |
@@ -107,13 +114,15 @@ panel always shows exactly what `Enter` would select:
 
 ```text
 ╭──────────────────────────────────────────────────────────────────╮
-│ ▸ install or repair engine                                      │
-│   download pinned model                                         │
-│   remove pinned model                                           │
-│   inspect engine compatibility                                  │
+│ ▸ install or repair the engine                                   │
+│   download the pinned model                                      │
+│   install the browser interface                                  │
+│   check the engine against engine.lock                           │
+│   remove the pinned model                                        │
+│   remove the browser interface                                   │
 │                                                                  │
 │ About  Install the locked build and, by default, the model.      │
-│ Flags  [f] force on   [n] no-model off                           │
+│ Flags  [f] force on   [n] no-model off   [w] no-webui off        │
 ╰──────────────────────────────────────────────────────────────────╯
 ╭──────────────────────────────────────────────────────────────────╮
 │ Command  bora engine install --force                             │
@@ -122,18 +131,40 @@ panel always shows exactly what `Enter` would select:
 
 Action, flag, and command state remain text-visible without colour.
 
+### A calibrated profile this machine cannot afford
+
+A measured cell is reused only while the free memory it was measured with is still free. When it is
+not, the mode still launches, at the verified baseline, and the difference is large enough that a
+connected chat interface reports the baseline as its own limit. Run a mode therefore states it
+rather than falling back quietly:
+
+```text
+Launch cells
+coding      measured cell unavailable now, would launch at ctx 8192
+
+! Not enough free memory for the measured coding cell(s).
+! coding: local calibration record not usable now: available RAM 3.95 GiB is below
+  measured need plus the 2.0 GiB reserve (22.55 GiB)
+! Close applications holding RAM or VRAM, then press r to refresh.
+```
+
+Those lines are the only red on an otherwise blue and white screen, and they keep their leading `!`
+so the same warning survives `--plain`, `NO_COLOR`, and a screen reader. `bora doctor` marks the
+same record red, and `bora coding|studio|vstudio` prints it as an `unavailable:` line directly above
+the running service.
+
 ## Commands and handoff
 
 | Section | Composed command | After success |
 |---|---|---|
-| Run | `bora coding|studio|vstudio [--force]` | terminal; do not reopen |
+| Run a mode | `bora coding|studio|vstudio [--force]` | terminal; do not reopen |
 | Calibration | `bora calibrate --mode ...` with valid current options | terminal; do not reopen |
 | Setup | engine status/install, `pull`, `rm`, and `webui install`/`remove` forms | wait for Enter, then refresh |
-| Diagnostics | doctor, validate, status, engine status, and stop | wait for Enter, then refresh |
-| Pi | `bora pi launch` | terminal; do not reopen |
-| Pi | link/print/install/remove/uninstall forms | wait for Enter, then refresh |
+| Diagnostics | doctor, status, engine status, validate, and stop | wait for Enter, then refresh |
+| Pi agent | `bora pi launch` | terminal; do not reopen |
+| Pi agent | install/link/print/remove/uninstall forms | wait for Enter, then refresh |
 | This installation | `bora update --check` | wait for Enter, then refresh |
-| This installation | `bora update` and `bora uninstall` | terminal; do not reopen |
+| This installation | `bora update` | terminal; do not reopen |
 
 The workbench omits the optional `qwen` handle from `pull` and `rm`, because this distribution pins
 one model and the bare forms do the same work. The handle remains valid on the explicit CLI.
@@ -145,8 +176,8 @@ callback owns every preflight, prompt, subprocess, network request, write, and e
 After a successful returning callback, the restored terminal displays
 `Press Enter to return to Bora Workbench.` The output stays readable until acknowledgement; only
 then does Textual reopen and recollect. Diagnostics lists concise before/after changes. Exit 1, 2,
-or 130 propagates without reopening. Foreground modes, calibration, update, and uninstall remain
-terminal, so no TUI parent can hold the uv environment during deferred replacement or removal.
+or 130 propagates without reopening. Foreground modes, calibration, and update remain terminal, so
+no TUI parent can hold the uv environment during deferred replacement.
 
 ### Calibration review
 
@@ -155,12 +186,19 @@ context before showing the exact command. A valid pending candidate instead offe
 `bora calibrate --mode <id> --activate`, with no preference, target, or `--no-activate`. The
 workbench answers none of the real preflight or confirmation questions.
 
-### Uninstall review
+### Removing bora
 
-Selecting uninstall first requires typing `remove` exactly. While that field has focus, printable
-keys go into it instead of triggering shortcuts. This is only workbench friction: the restored CLI
-still shows scope and asks its independent managed-root question, then separately offers confined
-Hugging Face cache removal with a default of no.
+The workbench composes no removal of itself. `bora uninstall` refuses while a managed service is
+running and hands its own environment to a helper that must observe this process exit, so its
+refusals and its progress belong in a terminal that has not just been torn down. Run it directly:
+
+```bash
+bora stop
+bora uninstall
+```
+
+This installation still shows the four managed roots the command deletes and the exact boundary
+around them, so the scope is readable before you leave the workbench.
 
 ## Optional motion
 

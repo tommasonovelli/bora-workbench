@@ -12,12 +12,27 @@ from bora_workbench.pi_link import PiInstallation
 from bora_workbench.process import ServiceInspection
 from bora_workbench.snapshot import ModeRecordSnapshot, ServiceRootSnapshot, WorkbenchSnapshot
 from bora_workbench.tui.home import tagline
-from bora_workbench.tui.menu import ENTRIES, summaries
+from bora_workbench.tui.menu import (
+    ENTRIES,
+    EXIT_INDEX,
+    SECTION_COUNT,
+    failure_summaries,
+    summaries,
+)
 from bora_workbench.validation import ValidationIssue, ValidationResult
 from tests.test_cli_tui import _snapshot
 from tests.test_tui_advice import _engine, _model, _service
 
-_RUN, _CALIBRATION, _SETUP, _DIAGNOSTICS, _PI, _SETTINGS, _INSTALLATION = range(len(ENTRIES))
+(
+    _RUN,
+    _CALIBRATION,
+    _SETUP,
+    _DIAGNOSTICS,
+    _PI,
+    _SETTINGS,
+    _INSTALLATION,
+    _EXIT,
+) = range(len(ENTRIES))
 
 
 def _with_records(evaluations: tuple[RecordEvaluation, ...]) -> WorkbenchSnapshot:
@@ -42,7 +57,23 @@ def test_every_entry_summarizes_a_freshly_installed_machine() -> None:
     assert result[_PI] == "not found on PATH"
     assert result[_SETTINGS] == "all defaults"
     assert result[_INSTALLATION] == "version 0.test"
+    assert result[_EXIT] == "leave the workbench"
     assert all(len(item) <= 34 for item in result)
+
+
+def test_exit_closes_the_menu_and_owns_no_section() -> None:
+    """Keep the way out at the bottom and outside the section order the app mirrors."""
+    assert ENTRIES[EXIT_INDEX].label == "Exit"
+    assert EXIT_INDEX == len(ENTRIES) - 1 == SECTION_COUNT
+    assert failure_summaries() == ("unavailable",) * SECTION_COUNT + ("leave the workbench",)
+
+
+def test_a_cell_this_machine_cannot_afford_outranks_the_tuned_count() -> None:
+    """Report the one calibrated state a reader can still act on by freeing memory (D-097)."""
+    active = RecordEvaluation("valid", 65536, 12, (), "missing", (), "balanced")
+    blocked = RecordEvaluation("insufficient-headroom", 98304, 12, ("free VRAM low",))
+
+    assert summaries(_with_records((active, blocked)))[_RUN] == "1 of 2 short on memory"
 
 
 def _service_roots() -> tuple[ServiceRootSnapshot, ...]:

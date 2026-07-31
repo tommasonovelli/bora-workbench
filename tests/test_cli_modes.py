@@ -85,6 +85,7 @@ def ready_session(
         backend="cpu",
         profile_id=None,
         warnings=("fallback warning",),
+        alerts=("measured cell needs more free memory",),
     )
     running = SimpleNamespace(state=SimpleNamespace(log_path="server.log"), warnings=())
     ui_url = "http://127.0.0.1:8080/" if interface is None else "http://127.0.0.1:8081"
@@ -115,6 +116,8 @@ def test_ui_commands_open_browser_after_ready(mode_id, monkeypatch) -> None:
     assert "UI: http://127.0.0.1:8080/" in result.stdout
     assert "Interface: the integrated llama.cpp interface." in result.stdout
     assert "fallback warning" in result.stdout
+    assert "unavailable: measured cell needs more free memory" in result.stdout
+    assert result.stdout.index("fallback warning") < result.stdout.index("unavailable:")
     open_browser.assert_called_once_with("http://127.0.0.1:8080/", new=2)
 
 

@@ -7,8 +7,10 @@ from rich.console import Console
 from bora_workbench._cli_theme import (
     STYLE_ACCENT,
     STYLE_BODY,
+    STYLE_ERROR,
     STYLE_HEADING,
     STYLE_SUCCESS,
+    print_alert,
     print_error,
     print_heading,
     print_note,
@@ -32,6 +34,7 @@ def test_status_helpers_do_not_interpret_dynamic_rich_markup() -> None:
     print_success(console, "Ready [local]", "path [/red]")
     print_warning(console, "warning detail [yellow]")
     print_error(console, "Launch error", "model [/red]")
+    print_alert(console, "profile [blocked]")
     print_note(console, "Path", "records/[draft]")
 
     rendered = stream.getvalue()
@@ -40,6 +43,20 @@ def test_status_helpers_do_not_interpret_dynamic_rich_markup() -> None:
         "Ready [local] path [/red]",
         "warning: warning detail [yellow]",
         "Launch error: model [/red]",
+        "unavailable: profile [blocked]",
         "Path: records/[draft]",
     ):
         assert literal in rendered
+
+
+def test_an_alert_is_red_and_stays_distinct_from_a_warning() -> None:
+    """Give the one state this machine cannot satisfy the weight a warning does not carry."""
+    stream = StringIO()
+    console = Console(file=stream, color_system="truecolor", width=120)
+
+    print_alert(console, "the calibrated coding profile needs more free memory")
+
+    rendered = stream.getvalue()
+    assert STYLE_ERROR == "bold red"
+    assert "[1;31m" in rendered
+    assert "unavailable:" in rendered and "warning:" not in rendered

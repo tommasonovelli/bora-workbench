@@ -9,7 +9,7 @@ from textual.widgets import Static
 
 from bora_workbench.snapshot import SnapshotFailure, WorkbenchSnapshot
 from bora_workbench.tui.advice import next_step
-from bora_workbench.tui.menu import ENTRIES, PENDING_SUMMARY, summaries
+from bora_workbench.tui.menu import ENTRIES, PENDING_SUMMARY, failure_summaries, summaries
 from bora_workbench.tui.palette import Palette
 
 _BRAND = "Bora Workbench"
@@ -105,5 +105,5 @@ class HomeView(Vertical):
         else:
             suggestion = next_step(failure)
             self._show_advice(suggestion.headline, suggestion.command or failure.detail)
-        self._summaries = ("unavailable",) * len(ENTRIES)
+        self._summaries = failure_summaries()
         self.query_one("#menu-rows", Static).update(self._menu_text())

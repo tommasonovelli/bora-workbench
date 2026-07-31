@@ -19,7 +19,7 @@ from bora_workbench.profiles import (
     load_catalog,
 )
 from tests.content_fixtures import build_valid_content, copy_resource_root, read_json, write_json
-from tests.record_fixtures import calibration_document, cuda_hardware
+from tests.record_fixtures import DRIVER, calibration_document, cuda_hardware
 
 
 def hardware(backend: str = "cuda", *, ram: float = 32, available: float = 24) -> HardwareInfo:
@@ -152,6 +152,26 @@ def test_stale_local_record_falls_back_with_diagnostics(tmp_path, monkeypatch) -
     assert (plan.ctx, plan.n_cpu_moe) == (8192, 48)
     assert "non-optimized" in plan.warnings[0]
     assert any("GPU driver changed" in warning for warning in plan.warnings)
+
+
+def test_a_record_refused_for_memory_alerts_instead_of_warning_about_a_missing_one(
+    tmp_path, monkeypatch
+) -> None:
+    """Name the calibrated profile this machine cannot afford, and how to make it usable."""
+    install_cuda_record(tmp_path, monkeypatch)
+    monkeypatch.setattr(
+        reuse_module, "query_gpu_snapshot", lambda index: GpuSnapshot(8, 7, DRIVER, ())
+    )
+    starved = replace(cuda_hardware(), ram_available_gib=2.0)
+
+    plan = build_launch_plan(request(DEFAULT_MODEL), load_catalog(), starved)
+
+    assert plan.profile_id is None and plan.ctx == 8192
+    assert "needs more free memory" in plan.alerts[0]
+    assert "baseline ctx 8192" in plan.alerts[0]
+    assert any("available RAM" in alert for alert in plan.alerts)
+    assert plan.alerts[-1] == "Close applications holding RAM or VRAM, then start this mode again."
+    assert not any("non-optimized" in warning for warning in plan.warnings)
 
 
 def test_empty_catalog_uses_declared_default_baseline() -> None:

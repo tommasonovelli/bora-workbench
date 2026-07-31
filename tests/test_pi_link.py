@@ -74,8 +74,14 @@ def _npm_calls(monkeypatch) -> list[tuple[str, ...]]:
         calls.append(tuple(command))
         return SimpleNamespace(returncode=0)
 
+    _resolved_npm(monkeypatch)
     monkeypatch.setattr(pi_cli.subprocess, "run", fake_run)
     return calls
+
+
+def _resolved_npm(monkeypatch, executable: str = "npm") -> None:
+    """Pin the npm executable so the assertions stay independent of this host's PATH."""
+    monkeypatch.setattr(pi_cli, "npm_executable", lambda: Path(executable))
 
 
 def test_provider_entry_points_at_the_loopback_service_with_the_model_alias() -> None:
@@ -282,7 +288,9 @@ def test_absent_pi_is_reported_with_both_platform_instructions(tmp_path, monkeyp
 
     assert result.exit_code == 1
     assert "npm install -g --ignore-scripts" in result.stdout
+    assert "https://pi.dev/install.sh | sh" in result.stdout
     assert "install.ps1" in result.stdout
+    assert "bora pi --install" in result.stdout
     assert result.stdout.isascii()
 
 
@@ -443,6 +451,8 @@ def test_uninstall_runs_the_vendor_removal_and_asks_about_the_entry(tmp_path, mo
 
     assert result.exit_code == 0
     assert calls == [("npm", "uninstall", "-g", "@earendil-works/pi-coding-agent")]
+    assert "install.ps1 install too" in result.stdout
+    assert str(pi_link.agent_dir()) in result.stdout
     assert "still on PATH" in result.stdout
     assert json.loads(path.read_text(encoding="utf-8"))["providers"]["bora"] == {"b": 2}
 
@@ -464,6 +474,7 @@ def test_a_failing_npm_removal_is_reported_operationally(tmp_path, monkeypatch) 
     """npm's own failure is an operational error, without a traceback (section 5.11)."""
     path = tmp_path / "models.json"
     monkeypatch.setattr(pi_cli, "inspect_pi", lambda: pi_link.PiInstallation(tmp_path / "pi", path))
+    _resolved_npm(monkeypatch)
     monkeypatch.setattr(
         pi_cli.subprocess, "run", lambda command, check, shell: SimpleNamespace(returncode=1)
     )
@@ -472,6 +483,28 @@ def test_a_failing_npm_removal_is_reported_operationally(tmp_path, monkeypatch) 
 
     assert result.exit_code == 1
     assert "npm exited with code 1" in result.stderr
+
+
+def test_npm_is_started_through_its_resolved_executable(tmp_path, monkeypatch) -> None:
+    """Start the shim PATH actually holds, because a bare name is unstartable on Windows."""
+    path = tmp_path / "models.json"
+    monkeypatch.setattr(pi_cli, "inspect_pi", lambda: pi_link.PiInstallation(tmp_path / "pi", path))
+    calls = _npm_calls(monkeypatch)
+    _resolved_npm(monkeypatch, str(tmp_path / "npm.cmd"))
+
+    result = runner.invoke(app, ["pi", "uninstall"], input="y\nn\n")
+
+    assert result.exit_code == 0
+    assert calls == [(str(tmp_path / "npm.cmd"), "uninstall", "-g", pi_link.PACKAGE_NAME)]
+    assert "npm uninstall -g @earendil-works/pi-coding-agent" in result.stdout
+
+
+def test_an_absent_npm_is_an_actionable_failure(monkeypatch) -> None:
+    """Name the missing dependency rather than reporting an operating-system errno."""
+    monkeypatch.setattr(pi_link.shutil, "which", lambda name: None)
+
+    with pytest.raises(EngineError, match="npm is not on PATH"):
+        pi_link.npm_executable()
 
 
 def test_the_calibration_hint_offers_to_install_an_absent_pi(monkeypatch) -> None:

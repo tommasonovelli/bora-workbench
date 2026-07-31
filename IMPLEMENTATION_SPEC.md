@@ -105,6 +105,10 @@ Updated on 30 July 2026.
   entry, readable post-command acknowledgement, and `0.4.3` release boundary in D-092.
 - [x] On 30 July 2026 the maintainer directed the shared wind/sea graphic to keep animating on every
   workbench page instead of freezing in a section, and selected `0.4.4` as its release (D-093).
+- [x] On 31 July 2026 the maintainer reported four shipped workbench defects; D-097 reorders and
+  renames every section's actions, adds the final `Exit` menu entry, moves self-removal back to the
+  command line, gives a calibrated profile refused for memory a red alert instead of a silent
+  baseline fallback, and repairs every npm handoff plus the pi installation guidance for `0.5.2`.
 
 ### Open work
 
@@ -126,7 +130,10 @@ Updated on 30 July 2026.
 - [~] `bora pi` was exercised on Windows on 28 July 2026 against an isolated home and an isolated
   state root: the window came from a registered `coding` service, from the baseline with its
   diagnostic when no record existed, and `pi remove` deleted only the `bora` provider while keeping
-  the backup. The npm removal and `bora pi launch` were never run for real, on either platform.
+  the backup. The npm removal and `bora pi launch` were never run for real, on either platform. The
+  bare-name `npm` start that made every npm handoff fail on Windows was reproduced and fixed under
+  D-097 on 31 July 2026, and the resolved executable was confirmed startable there; the removal
+  itself still has not been run against a real installation.
 - [ ] Repeat the visual and one-core CPU observation for the continuous 6 fps decoration on Ubuntu
   and Windows. D-087 measured the superseded finite 8 fps effect and is not evidence for the
   continuous timer, which D-093 also keeps running while a section is open, so the observation is no
@@ -359,6 +366,8 @@ The identifiers stay stable because code, tests, and evidence cite them.
 
 | D-096 | On 30 July 2026 the maintainer reads the shipped `0.5.0` and makes two corrections. **Where the interface is acquired**: D-095 made `bora webui install` an explicit command so a launcher would not spend gigabytes unasked, but the step that already spends them is `bora engine install`, which downloads 22 GB of weights and is where a first setup waits. The interface therefore installs there by default, with `--no-webui` declining it exactly as `--no-model` declines the weights; neither flag removes anything already present. After a setup, `bora studio` opens a finished chat interface rather than an interface the user has yet to discover a command for. **Where it is visible and how it is removed**: `0.5.0` reached the snapshot and `doctor` but nothing in the workbench, so the Setup screen now names which interface a UI mode would open and carries the install and removal actions, and `compose_engine_install` gains the third flag. `bora webui remove` asks two separate questions in the shape D-079 established: the environment, which is reinstallable bytes and whose freed size is reported, and the interface data, which is the user's chats, notes, uploads and settings and is not backed up anywhere. Both default to no, declining the second keeps the content for a later install, removal refuses while a managed service is running, and neither removal follows a symlink out of the managed root. `bora uninstall` deletes both without a third question, because it deletes the whole data root; its preview now says so before the confirmation instead of leaving the user to infer it. No engine, model, calibration protocol, record format, command contract, reserve, or candidate is touched. |
 
+
+| D-097 | On 31 July 2026 the maintainer reports four defects in the shipped workbench and directs their correction as `0.5.2`. **Menu and section order**: every section lists its actions in the order a machine needs them with anything destructive last, the labels say what the action does rather than naming its flag, and the central menu gains a final `Exit` entry that opens no section and leaves exactly as `q` already did. **Self-removal leaves the workbench**: `bora uninstall` refuses while a managed service is running and hands its own environment to a helper that must observe this process exit, so its refusals and its progress belong in a terminal the TUI has not just torn down. The action, `compose_uninstall`, and the typed `remove` friction are deleted; This installation keeps the four managed roots and the removal boundary and names the command line as the only route. The CLI command is unchanged. **A calibrated profile the machine cannot afford**: `insufficient-headroom` fell back to the verified `ctx=8192` baseline behind an ordinary yellow warning that also claimed no record had matched, and a connected browser interface then reported 8192 as its own limit. The launch plan carries `alerts` beside `warnings`, the generic fallback warning is suppressed when an alert is truer, and the state is red in `doctor`, red as an `unavailable:` line at launch, and a `!`-marked alert on the workbench Run screen; the marker survives `--plain`, `NO_COLOR`, and a screen reader, so colour still carries nothing alone. No reserve, threshold, record format, or reuse rule changes: the same records stay valid and the same memory frees them. **pi**: `subprocess` starts children through `CreateProcess` on Windows, which appends only `.exe` when it searches PATH, so every npm handoff failed there under the bare name `npm`; it is now resolved through PATH, still without a shell. The vendor documents `install.sh`, `install.ps1`, and the global npm package as three routes to the same package with one documented removal, so the absent-pi message names all of them, installation becomes its own workbench row instead of a flag on the connect row, `pi uninstall` states that it undoes any of the three and that `~/.pi/agent` survives by pi's design, and D-082's claim that another route is "not npm's to remove" is corrected to the package managers that genuinely are not. `Flag.excludes` is removed with its last user; `compose_pi` keeps rejecting the contradictory pair. This changes no engine, model, calibration protocol, record format, command contract, reserve, candidate lifecycle, or same-process dispatch rule. After the complete frozen suite, packaged-content validation, build, isolated wheel verification, complete uv-tool uninstall, diff inspection, and a green `main` CI run, this authorizes the `0.5.2` finalization commit, push to `main`, and tag `v0.5.2`; the GitHub Release is authorized only after that tag's Ubuntu/Windows workflow is green and only from its exact bundle. GitHub Releases remains the only distribution channel; no registry upload, remote setting, candidate activation, or Gate claim is authorized. |
 
 A new durable decision updates this table in the same step that authorizes it.
 
@@ -624,7 +633,9 @@ Extraction rejects absolute paths, drive letters, `..`, special files, and escap
 are limited to the managed data/cache after verification.
 
 `uninstall` shows config/data/cache/state and the current Python installation, asks for a single
-confirmation, refuses live services and symlinks, and does not remove uv. The model store lives
+confirmation, refuses live services and symlinks, and does not remove uv. It is reachable only from
+the command line: the workbench composes no removal of itself, because both the live-service refusal
+and the deferred helper need a terminal the TUI has not just torn down (D-097). The model store lives
 inside the data root, so the weights it holds are deleted with it. Weights that also exist in the
 Hugging Face cache outlive that deletion and are offered afterwards as their own question, whose
 refusal is the default and whose failure never turns a completed uninstall into an error (D-079). When the running command matches `uv tool dir/bora-workbench` exactly and owns the uv

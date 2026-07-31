@@ -200,7 +200,7 @@ def test_coding_maps_invalid_configuration_to_exit_2(monkeypatch) -> None:
 def test_coding_ctrl_c_maps_to_exit_130(monkeypatch) -> None:
     """Map foreground interruption after lifecycle cleanup to exit code 130."""
     mode = SimpleNamespace(id="coding")
-    plan = SimpleNamespace(mode=mode, backend="cpu", profile_id=None, warnings=())
+    plan = SimpleNamespace(mode=mode, backend="cpu", profile_id=None, warnings=(), alerts=())
     state = SimpleNamespace(log_path="server.log")
     running = SimpleNamespace(state=state, warnings=())
     session = service_cli.PreparedMode(running, plan, "http://127.0.0.1:8080/v1", None, False)

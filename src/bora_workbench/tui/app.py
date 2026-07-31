@@ -23,6 +23,7 @@ from bora_workbench.snapshot import (
 )
 from bora_workbench.tui.actions import TuiResult, snapshot_changes
 from bora_workbench.tui.home import HomeView, brand_text
+from bora_workbench.tui.menu import EXIT_INDEX
 from bora_workbench.tui.motion import (
     FRAME_INTERVAL_SECONDS,
     MotionDimensions,
@@ -45,7 +46,8 @@ from bora_workbench.tui.section import Section
 from bora_workbench.tui.terminal import TerminalMode
 
 SnapshotCollector = Callable[[str], WorkbenchSnapshot]
-# The section order matches the central menu in bora_workbench.tui.menu.
+# The section order matches the central menu in bora_workbench.tui.menu, whose final Exit entry
+# opens no section and therefore has no view here.
 _VIEW_TYPES: tuple[type[Section], ...] = (
     ModesView,
     CalibrationView,
@@ -61,7 +63,6 @@ _FLAGGED_CHOICES = (*modes_screen.CHOICES, *setup_screen.CHOICES, *pi_screen.CHO
 _TOGGLE_KEYS = tuple(
     dict.fromkeys(flag.key for choice in _FLAGGED_CHOICES for flag in choice.flags)
 )
-_LETTER_ACTIONS = frozenset(("refresh_snapshot", "toggle_help", "quit_workbench", "toggle_flag"))
 _HOME_KEYS = "up/down move  enter open  r refresh  ? help  q quit"
 _SECTION_KEYS = "up/down move  enter select  esc menu  r refresh  q quit"
 _HELP_TEXT = (
@@ -348,12 +349,6 @@ class WorkbenchApp(App[TuiResult]):
             self._is_refresh_pending = False
             self.call_after_refresh(self._request_snapshot)
 
-    def check_action(self, action: str, parameters: tuple[object, ...]) -> bool | None:
-        """Release single-letter bindings while the typed removal phrase owns the keyboard."""
-        view = self._open_view()
-        is_typing = isinstance(view, InstallationView) and view.is_confirming_removal()
-        return not (is_typing and action in _LETTER_ACTIONS)
-
     def action_move(self, offset: int) -> None:
         """Move the marker of whichever surface is currently visible."""
         view = self._open_view()
@@ -363,12 +358,16 @@ class WorkbenchApp(App[TuiResult]):
         view.move(offset)
 
     def action_activate(self) -> None:
-        """Open the marked menu entry, or select the command the open section shows."""
-        if self._open_index is None:
-            self._open_index = self._home().selected_index
-            self._show_surface()
+        """Open the marked menu entry, leave on Exit, or select the open section's command."""
+        if self._open_index is not None:
+            self._select_command()
             return
-        self._select_command()
+        selected = self._home().selected_index
+        if selected == EXIT_INDEX:
+            self.action_quit_workbench()
+            return
+        self._open_index = selected
+        self._show_surface()
 
     def _select_command(self) -> None:
         """Stop Textual with a visible action only after a complete current snapshot."""
@@ -385,12 +384,9 @@ class WorkbenchApp(App[TuiResult]):
 
     def action_leave_section(self) -> None:
         """Return to the central menu, or quit when the menu is already visible."""
-        view = self._open_view()
-        if view is None:
+        if self._open_view() is None:
             self.action_quit_workbench()
             return
-        if isinstance(view, InstallationView):
-            view.cancel_confirmation()
         self._open_index = None
         self._show_surface()
 

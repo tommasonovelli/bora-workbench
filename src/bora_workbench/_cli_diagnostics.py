@@ -23,6 +23,7 @@ from rich.text import Text
 from bora_workbench._calibration_reuse import RecordEvaluation
 from bora_workbench._cli_models import pull_model
 from bora_workbench._cli_theme import (
+    STYLE_ERROR,
     format_bytes,
     format_duration,
     metric_column,
@@ -434,7 +435,12 @@ def _record_line(mode_id: str, evaluation: RecordEvaluation) -> str:
             f"record schema {label}: {detail}.{suffix}"
         )
     if evaluation.status == "insufficient-headroom":
-        return f"[bright_blue]Calibration[/bright_blue] {mode_id}: {label}: {detail}{suffix}"
+        # The one record state the machine itself refuses right now, so it leaves the blue
+        # identity and names what would make the measured cell usable again (D-097).
+        return (
+            f"[{STYLE_ERROR}]Calibration {mode_id}: {label}[/{STYLE_ERROR}]: {detail}"
+            f" Close applications holding RAM or VRAM, then run this again.{suffix}"
+        )
     return (
         f"[bright_blue]Calibration[/bright_blue] {mode_id}: "
         f"active record is {label}: {detail}{suffix}"

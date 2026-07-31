@@ -2,8 +2,9 @@
 
 The command is presentation and consent only. It shows the exact provider entry it would write,
 asks once, and hands the merge and the atomic write to `pi_link.py` (specification section 4.1).
-Installing pi is never implicit: without `--install` an absent pi is reported with the vendor's own
-instructions for the two supported platforms.
+Installing pi is never implicit: without `--install` an absent pi is reported with every documented
+route, the vendor's Ubuntu and Windows scripts and the global npm package they both install, so the
+reader can pick one instead of guessing (D-097).
 
 `pi launch` delegates to pi's documented provider/model flags with inherited terminal I/O; it starts
 neither the local service nor another integration. `pi remove` and `pi uninstall` are the inverses
@@ -43,15 +44,19 @@ from bora_workbench.models import display_name
 from bora_workbench.pi_link import (
     PACKAGE_NAME,
     PROVIDER_NAME,
+    UBUNTU_INSTALLER,
+    WINDOWS_INSTALLER,
     ContextWindow,
     ContextWindowQuery,
     PiInstallation,
+    agent_dir,
     current_entry,
     document_without_provider,
     inspect_pi,
     install_command,
     launch_command,
     merged_document,
+    npm_executable,
     provider_entry,
     read_document,
     render,
@@ -61,11 +66,6 @@ from bora_workbench.pi_link import (
 )
 from bora_workbench.process import ProcessError, status_services
 from bora_workbench.profiles import PlanError, load_catalog
-
-# Both lines stay ASCII and short enough not to wrap: a wrapped install command cannot be copied,
-# and a legacy Windows code page cannot encode the punctuation that would join them (D-071).
-_UBUNTU_HINT = "npm install -g --ignore-scripts @earendil-works/pi-coding-agent"
-_WINDOWS_HINT = 'powershell -c "irm https://pi.dev/install.ps1 | iex"'
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,11 +109,16 @@ def _show_window(window: ContextWindow, stdout: Console) -> None:
 
 
 def _run_npm(command: tuple[str, ...]) -> None:
-    """Run one already shown and confirmed npm command without a shell."""
+    """Run one already shown and confirmed npm command through its resolved executable.
+
+    Only the program name is replaced; every argument the user just read is passed unchanged, and
+    the shell stays out of it (D-097).
+    """
+    resolved = (str(npm_executable()), *command[1:])
     try:
-        completed = subprocess.run(command, check=False, shell=False)
+        completed = subprocess.run(resolved, check=False, shell=False)
     except OSError as error:
-        raise EngineError(f"cannot run npm; install Node.js first: {error}") from error
+        raise EngineError(f"cannot run npm: {error}") from error
     if completed.returncode != 0:
         raise EngineError(f"npm exited with code {completed.returncode}")
 
@@ -128,14 +133,25 @@ def _install_pi(stdout: Console) -> None:
     _run_npm(command)
 
 
+def print_install_instructions(stdout: Console) -> None:
+    """Name every documented way to install pi, and the one this command would run.
+
+    The vendor's two scripts install the same global npm package that `--install` installs, so the
+    three routes are alternatives rather than different products (D-097).
+    """
+    print_note(stdout, "Ubuntu", UBUNTU_INSTALLER)
+    print_note(stdout, "Windows", WINDOWS_INSTALLER)
+    print_note(stdout, "Either", " ".join(install_command()))
+    print_note(stdout, "Or", "run `bora pi --install` to install and connect in one step")
+
+
 def _require_pi(options: PiOptions, stdout: Console) -> PiInstallation:
     """Return a usable pi installation, installing it only when explicitly asked to."""
     installation = inspect_pi()
     if installation.is_installed:
         return installation
     if not options.install:
-        print_note(stdout, "Ubuntu", _UBUNTU_HINT)
-        print_note(stdout, "Windows", _WINDOWS_HINT)
+        print_install_instructions(stdout)
         raise EngineError("pi is not on PATH; install it, or rerun with --install")
     _install_pi(stdout)
     return inspect_pi()
@@ -233,6 +249,8 @@ def _report_removal(stdout: Console) -> None:
         print_success(stdout, "Uninstalled", PACKAGE_NAME)
         return
     print_warning(stdout, f"pi is still on PATH at {remaining.executable}; npm did not own it.")
+    stdout.print("A copy installed with pnpm, Yarn, or Bun is removed with that tool's own global")
+    stdout.print("remove command for the same package name.")
 
 
 def _uninstall_pi(stdout: Console) -> None:
@@ -242,8 +260,9 @@ def _uninstall_pi(stdout: Console) -> None:
         return
     command = uninstall_command()
     print_note(stdout, "Uninstall command", " ".join(command))
-    stdout.print("This removes the global npm package. An installation made another way, such as")
-    stdout.print("the vendor's Windows script, has to be removed the way it was installed.")
+    stdout.print("This removes the global npm package, which is what the vendor's own install.sh")
+    stdout.print("and install.ps1 install too, so it undoes any of those three routes.")
+    print_note(stdout, "Kept", f"pi's settings, credentials and sessions in {agent_dir()}")
     if not typer.confirm("Uninstall pi now?", default=False):
         stdout.print("Skipped; pi is still installed.")
         return

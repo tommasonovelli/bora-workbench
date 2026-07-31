@@ -164,6 +164,9 @@ class LaunchPlan:
     backend: Literal["cuda", "cpu"]
     gpu_index: int | None
     warnings: tuple[str, ...]
+    # Alerts are the subset of launch findings that name something this machine cannot currently
+    # satisfy, so the CLI can give them the one red channel warnings do not have (D-097).
+    alerts: tuple[str, ...] = ()
     speculative: Literal["mtp2", "disabled"] = "mtp2"
 
     def __post_init__(self) -> None:
@@ -366,6 +369,33 @@ def _fallback(request: LaunchRequest, hardware: HardwareInfo) -> tuple[Envelope,
     return Envelope(FALLBACK_CTX, n_cpu_moe, None), (warning,)
 
 
+@dataclass(frozen=True, slots=True)
+class EnvelopeChoice:
+    """Hold the envelope a launch will use together with everything the operator must be told."""
+
+    profile_id: str | None
+    envelope: Envelope
+    warnings: tuple[str, ...] = ()
+    alerts: tuple[str, ...] = ()
+
+
+def _shortage_alerts(mode_id: str, evaluation: RecordEvaluation) -> tuple[str, ...]:
+    """Report a measured cell refused for lack of free memory rather than dropping it quietly.
+
+    The fallback is otherwise indistinguishable from never having calibrated, and the context it
+    imposes is what a connected chat interface then reports as its own limit (D-097).
+    """
+    if evaluation.status != "insufficient-headroom":
+        return ()
+    measured = "" if evaluation.ctx is None else f" measured at ctx {evaluation.ctx}"
+    headline = (
+        f"the calibrated {mode_id} profile{measured} needs more free memory than this machine "
+        f"has now, so {mode_id} launches at the baseline ctx {FALLBACK_CTX} instead"
+    )
+    advice = "Close applications holding RAM or VRAM, then start this mode again."
+    return (headline, *evaluation.diagnostics, advice)
+
+
 def _record_evaluation(
     request: LaunchRequest, mode: Mode, hardware: HardwareInfo
 ) -> RecordEvaluation:
@@ -383,12 +413,13 @@ def _record_evaluation(
 
 def _resolve_envelope(
     request: LaunchRequest, catalog: Catalog, hardware: HardwareInfo
-) -> tuple[str | None, Envelope, tuple[str, ...]]:
+) -> EnvelopeChoice:
     """Prefer a compatible local record, otherwise the verified baseline (section 5.5).
 
     Shared seeds never become the envelope because D-034 forbids treating them as locally
     calibrated; only a supported active local calibration record may steer the plan, so a matched
-    seed only contributes a warning.
+    seed only contributes a warning. A record refused for memory reports through the alert channel
+    alone, because the generic "no record matched" warning would then be untrue (D-097).
     """
     mode = catalog.mode(request.mode_id)
     assert mode is not None
@@ -396,16 +427,18 @@ def _resolve_envelope(
     seed, warnings = _select_seed_profile(request, catalog, hardware)
     if evaluation.status == "valid":
         envelope = Envelope(cast(int, evaluation.ctx), evaluation.n_cpu_moe, None)
-        return "local-calibration-record", envelope, ()
+        return EnvelopeChoice("local-calibration-record", envelope)
     envelope, fallback_warnings = _fallback(request, hardware)
-    warnings += fallback_warnings
-    if evaluation.status != "missing":
-        warnings += evaluation.diagnostics
+    alerts = _shortage_alerts(mode.id, evaluation)
+    if not alerts:
+        warnings += fallback_warnings
+        if evaluation.status != "missing":
+            warnings += evaluation.diagnostics
     if seed is not None:
         warnings += (
             f"Shared profile {seed.id!r} is reference-only; local calibration is required.",
         )
-    return None, envelope, warnings
+    return EnvelopeChoice(None, envelope, warnings, alerts)
 
 
 def build_launch_plan(
@@ -416,18 +449,19 @@ def build_launch_plan(
     if mode is None:
         valid = ", ".join(item.id for item in catalog.modes)
         raise PlanError(f"unknown mode {request.mode_id!r}; valid modes: {valid}")
-    profile_id, envelope, warnings = _resolve_envelope(request, catalog, hardware)
+    choice = _resolve_envelope(request, catalog, hardware)
     return LaunchPlan(
         mode,
         request.config.model,
         request.model_path,
         request.mmproj_path,
         request.config.llama_port,
-        profile_id,
-        envelope.ctx,
-        envelope.n_cpu_moe,
+        choice.profile_id,
+        choice.envelope.ctx,
+        choice.envelope.n_cpu_moe,
         hardware.backend,
         hardware.gpu_index,
-        hardware.warnings + warnings,
+        hardware.warnings + choice.warnings,
+        choice.alerts,
         "disabled" if mode.services.vision else "mtp2",
     )

@@ -428,6 +428,27 @@ bora calibrate --mode <mode>
 
 Do not fix the JSON by hand and do not copy a record from another machine.
 
+### The record is valid but the memory is not free
+
+`insufficient headroom` is the one state where the record is fine and the machine is not: the cell
+was measured with more free RAM or VRAM than is free now, so the mode launches at the verified
+`ctx=8192` baseline instead. That difference is visible from outside — a connected browser
+interface or agent reports 8192 as its own limit — so it is reported in red rather than as an
+ordinary warning:
+
+```text
+unavailable: the calibrated coding profile measured at ctx 98304 needs more free memory than
+this machine has now, so coding launches at the baseline ctx 8192 instead
+unavailable: local calibration record not usable now: available RAM 3.95 GiB is below measured
+need plus the 2.0 GiB reserve (22.55 GiB)
+unavailable: Close applications holding RAM or VRAM, then start this mode again.
+```
+
+`doctor` marks the same record red, and the workbench's Run a mode screen shows it as a `!` alert.
+The remedy is to close what is holding the memory — another model, a browser, a previous managed
+service left running — and start the mode again. Re-calibrating on a machine that is short on
+memory measures the smaller cell instead of restoring the larger one, so free the memory first.
+
 ### A valid candidate exists
 
 Promote it without new trials:
@@ -492,6 +513,15 @@ managed root, so an uninstall leaves it in place. Remove it before or after, as 
 bora pi remove       # the entry only
 bora pi uninstall    # pi itself, then the entry as a separate question
 ```
+
+`bora pi uninstall` runs the removal the vendor documents for every one of its installation routes,
+because `install.sh` and `install.ps1` both install the global npm package. The rest of
+`~/.pi/agent` — pi's settings, credentials and sessions — survives by pi's own design and is yours
+to delete.
+
+Removing bora itself is a command line operation and has no workbench action: `bora uninstall`
+refuses while a managed service is running, and it hands its own environment to a helper that must
+observe this process exit. Run `bora stop` first, then `bora uninstall`, from a terminal.
 
 ## Reporting a problem
 

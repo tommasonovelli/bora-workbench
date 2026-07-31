@@ -14,11 +14,10 @@ from bora_workbench.tui.actions import CommandSpec
 
 @dataclass(frozen=True, slots=True)
 class Flag:
-    """One toggleable CLI flag, the key that switches it, and the flag it cannot accompany."""
+    """One toggleable CLI flag and the single key that switches it."""
 
     key: str
     label: str
-    excludes: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,13 +28,6 @@ class Choice:
     compose: Callable[[frozenset[str]], CommandSpec]
     flags: tuple[Flag, ...] = field(default_factory=tuple)
     description: str = ""
-
-
-def _switched(enabled: frozenset[str], flag: Flag) -> frozenset[str]:
-    """Return the flag set after switching one flag and dropping what it excludes."""
-    if flag.label in enabled:
-        return enabled - {flag.label}
-    return (enabled | {flag.label}) - {flag.excludes}
 
 
 class ChoiceList:
@@ -76,7 +68,7 @@ class ChoiceList:
         if self._choices:
             for flag in self.selected.flags:
                 if flag.key == key:
-                    self._enabled[self._index] = _switched(self.enabled(), flag)
+                    self._enabled[self._index] = self.enabled() ^ {flag.label}
                     return True
         return False
 

@@ -59,7 +59,7 @@ def plan(tmp_path: Path, backend: str = "cpu", mode_id: str = "coding") -> Launc
         backend,  # type: ignore[arg-type]
         0 if backend == "cuda" else None,
         (),
-        "disabled" if mode.services.vision else "mtp2",
+        speculative="disabled" if mode.services.vision else "mtp2",
     )
 
 

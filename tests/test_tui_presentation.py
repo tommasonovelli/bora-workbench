@@ -12,10 +12,16 @@ from typer.testing import CliRunner
 
 import bora_workbench.cli as cli_module
 import bora_workbench.tui.terminal as terminal_module
+from bora_workbench._calibration_reuse import RecordEvaluation
 from bora_workbench.cli import app
+from bora_workbench.pi_link import PiInstallation
+from bora_workbench.snapshot import WorkbenchSnapshot
 from bora_workbench.tui.app import WorkbenchApp
-from bora_workbench.tui.screens.modes import ModesView
+from bora_workbench.tui.palette import COLOR_PALETTE, PLAIN_PALETTE
+from bora_workbench.tui.screens.modes import ModesView, render_modes
+from bora_workbench.tui.screens.pi import render_pi
 from bora_workbench.tui.screens.setup import render_setup
+from bora_workbench.tui.section import styled_details
 from bora_workbench.tui.terminal import TerminalMode
 from bora_workbench.webui import OPEN_WEBUI_VERSION, WebuiStatus
 from tests.test_cli_tui import _snapshot
@@ -112,3 +118,51 @@ def test_setup_names_which_interface_a_ui_mode_would_open(version, expected) -> 
 
     assert "Browser interface" in body
     assert expected in body
+
+
+def _blocked_snapshot() -> WorkbenchSnapshot:
+    """Return the shared fake snapshot with one measured cell the machine cannot afford."""
+    snapshot = _snapshot()
+    evaluation = RecordEvaluation(
+        "insufficient-headroom",
+        98304,
+        12,
+        ("free VRAM 3.30 GiB is below measured need plus the 1.0 GiB reserve (7.40 GiB)",),
+    )
+    record = replace(snapshot.doctor.records[0], evaluation=evaluation)
+    return replace(snapshot, doctor=replace(snapshot.doctor, records=(record,)))
+
+
+def test_a_cell_short_on_memory_is_named_with_its_reason_and_its_remedy() -> None:
+    """Stop the baseline fallback from looking like an ordinary uncalibrated machine (D-097)."""
+    body = render_modes(_blocked_snapshot())
+
+    assert "measured cell unavailable now, would launch at ctx 8192" in body
+    assert "! Not enough free memory for the measured coding cell(s)." in body
+    assert "! coding: free VRAM 3.30 GiB is below measured need" in body
+    assert "! Close applications holding RAM or VRAM, then press r to refresh." in body
+
+
+def test_an_alert_line_is_the_one_red_thing_on_a_blue_and_white_screen() -> None:
+    """Render `!` lines in the alert style while every other line keeps the shared identity."""
+    styled = styled_details("Launch cells\n! Not enough free memory.", COLOR_PALETTE)
+
+    alert = [span for span in styled.spans if str(span.style) == COLOR_PALETTE.alert_style]
+    assert len(alert) == 1
+    assert styled.plain.splitlines()[1] == "! Not enough free memory."
+    assert styled_details("! blocked", PLAIN_PALETTE).spans[0].style == "bold"
+
+
+def test_an_absent_pi_is_shown_every_documented_installation_route() -> None:
+    """Answer "which command installs it" on the screen itself instead of behind a flag."""
+    absent = render_pi(_snapshot())
+    installed = render_pi(
+        replace(_snapshot(), pi_installation=PiInstallation(Path("pi"), Path("models.json")))
+    )
+
+    assert "Installing pi" in absent
+    assert "curl -fsSL https://pi.dev/install.sh | sh" in absent
+    assert 'powershell -c "irm https://pi.dev/install.ps1 | iex"' in absent
+    assert "npm install -g --ignore-scripts @earendil-works/pi-coding-agent" in absent
+    assert "npm uninstall -g @earendil-works/pi-coding-agent" in absent
+    assert "Installing pi" not in installed

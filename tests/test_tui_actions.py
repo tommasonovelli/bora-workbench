@@ -14,6 +14,7 @@ from bora_workbench._calibration_types import MEASURABLE_CONTEXT_SCALE, PREFEREN
 from bora_workbench.cli import app
 from bora_workbench.pi_link import ContextWindow
 from bora_workbench.snapshot import WorkbenchSnapshot
+from bora_workbench.tui import actions as actions_module
 from bora_workbench.tui.actions import (
     CalibrationSelection,
     CommandSpec,
@@ -28,7 +29,6 @@ from bora_workbench.tui.actions import (
     compose_pi_uninstall,
     compose_status,
     compose_stop,
-    compose_uninstall,
     compose_update,
     compose_update_check,
     compose_validate,
@@ -36,13 +36,15 @@ from bora_workbench.tui.actions import (
 )
 from bora_workbench.tui.app import WorkbenchApp
 from bora_workbench.tui.choices import Choice, Flag
+from bora_workbench.tui.home import HomeView
+from bora_workbench.tui.menu import EXIT_INDEX
 from bora_workbench.tui.screens import installation as installation_screen
 from bora_workbench.tui.screens import modes as modes_screen
 from bora_workbench.tui.screens import overview as overview_screen
 from bora_workbench.tui.screens import pi as pi_screen
 from bora_workbench.tui.screens import setup as setup_screen
 from bora_workbench.tui.screens.calibration import CalibrationView
-from bora_workbench.tui.screens.installation import InstallationView
+from bora_workbench.tui.screens.installation import InstallationView, render_installation
 from bora_workbench.tui.screens.modes import ModesView
 from bora_workbench.tui.screens.overview import OverviewView
 from bora_workbench.tui.screens.pi import PiView
@@ -61,14 +63,9 @@ _COMPOSERS = (
 def _flag_sets(flags: tuple[Flag, ...]) -> tuple[frozenset[str], ...]:
     """Return every flag combination one action's toggles can actually reach."""
     labels = [flag.label for flag in flags]
-    excluded = {(flag.label, flag.excludes) for flag in flags if flag.excludes}
-    reachable = []
-    for size in range(len(labels) + 1):
-        for names in combinations(labels, size):
-            chosen = frozenset(names)
-            if not any(first in chosen and second in chosen for first, second in excluded):
-                reachable.append(chosen)
-    return tuple(reachable)
+    return tuple(
+        frozenset(names) for size in range(len(labels) + 1) for names in combinations(labels, size)
+    )
 
 
 def _reachable(choices: tuple[Choice, ...]) -> tuple[CommandSpec, ...]:
@@ -152,31 +149,31 @@ def test_setup_toggles_reach_every_engine_and_removal_option_state() -> None:
         ("engine", "install", "--no-model", "--no-webui"),
         ("engine", "install", "--force", "--no-model", "--no-webui"),
         ("pull",),
+        ("webui", "install"),
+        ("webui", "install", "--force"),
+        ("engine", "status"),
         ("rm",),
         ("rm", "--keep-hf"),
         ("rm", "--dry-run"),
         ("rm", "--keep-hf", "--dry-run"),
-        ("webui", "install"),
-        ("webui", "install", "--force"),
         ("webui", "remove"),
-        ("engine", "status"),
     )
 
 
-def test_pi_toggles_reach_every_valid_form_and_no_contradiction() -> None:
-    """Keep print-only and installation mutually exclusive through their own toggles."""
+def test_pi_rows_follow_installation_order_and_reach_every_valid_form() -> None:
+    """Offer installation as its own first row and keep the contradictory pair unreachable."""
     commands = _reachable(pi_screen.CHOICES)
 
     assert tuple(command.cli_arguments for command in commands) == (
-        ("pi", "launch"),
+        ("pi", "--install"),
         ("pi",),
         ("pi", "--print"),
-        ("pi", "--install"),
+        ("pi", "launch"),
         ("pi", "remove"),
         ("pi", "uninstall"),
     )
-    assert commands[0] == compose_pi_launch()
-    assert commands[0].disposition == "terminal"
+    assert pi_screen.CHOICES[0].label == "install pi"
+    assert compose_pi_launch().disposition == "terminal"
     with pytest.raises(ValueError, match="cannot be selected together"):
         compose_pi(is_printed=True, is_installed=True)
 
@@ -251,18 +248,14 @@ def test_invalid_mode_and_calibration_states_are_unrepresentable(operation) -> N
         operation()
 
 
-def test_installation_actions_preserve_returning_and_terminal_disposition() -> None:
-    """Keep only explicit update checking returnable before replacement and removal."""
+def test_installation_offers_only_the_two_update_actions() -> None:
+    """Keep removal on the command line, where its refusals and prompts belong (D-097)."""
     commands = _reachable(installation_screen.CHOICES)
 
-    assert commands == (compose_update_check(), compose_update(), compose_uninstall())
-    assert tuple(command.disposition for command in commands) == (
-        "returning",
-        "terminal",
-        "terminal",
-    )
+    assert commands == (compose_update_check(), compose_update())
+    assert tuple(command.disposition for command in commands) == ("returning", "terminal")
     for command in commands:
-        assert _parse_leaf(get_command(app), command.cli_arguments) in {"update", "uninstall"}
+        assert _parse_leaf(get_command(app), command.cli_arguments) == "update"
 
 
 def test_command_spec_rejects_display_argument_divergence() -> None:
@@ -300,11 +293,11 @@ def test_opened_section_enter_returns_the_exact_visible_action_after_collection(
             await pilot.pause(0.1)
             await pilot.press("down", "down", "down", "enter")
             actions = workbench.query_one(OverviewView).query_one(".section-actions")
-            assert "full system report" in str(actions.render())
+            assert "full local report" in str(actions.render())
             await pilot.press("down", "down", "enter")
             assert workbench.is_running is False
             assert workbench.return_value is not None
-            assert workbench.return_value.command == compose_status()
+            assert workbench.return_value.command == compose_engine_status()
             assert workbench.return_value.snapshot is snapshot
 
     asyncio.run(exercise())
@@ -316,7 +309,7 @@ def test_opened_section_enter_returns_the_exact_visible_action_after_collection(
         (OverviewView, 3, 4, (), compose_stop()),
         (ModesView, 0, 2, ("f",), compose_mode("vstudio", True)),
         (SetupView, 2, 0, ("f", "n"), compose_engine_install(True, True)),
-        (PiView, 4, 3, (), compose_pi_uninstall()),
+        (PiView, 4, 4, (), compose_pi_uninstall()),
         (InstallationView, 6, 1, (), compose_update()),
     ),
 )
@@ -395,34 +388,41 @@ def test_candidate_activation_skips_preference_and_target_questions() -> None:
     asyncio.run(exercise())
 
 
-def test_uninstall_requires_exact_typed_remove_before_terminal_handoff() -> None:
-    """Apply TUI friction without answering either independent real CLI confirmation."""
-    calls = []
-
-    def collect(version: str) -> WorkbenchSnapshot:
-        """Count snapshots so the bound r in remove cannot masquerade as refresh."""
-        calls.append(version)
-        return _snapshot()
+def test_the_exit_entry_leaves_without_selecting_a_command() -> None:
+    """Give the menu a visible way out that runs nothing, at its last position (D-097)."""
 
     async def exercise() -> None:
-        """Select uninstall, reject a mismatch, correct it, and inspect the terminal result."""
-        workbench = WorkbenchApp("0.test", TerminalMode(True, False), collect)
+        """Mark the final menu entry and confirm Enter ends the lifetime empty-handed."""
+        workbench = WorkbenchApp("0.test", TerminalMode(True, False), lambda version: _snapshot())
         async with workbench.run_test() as pilot:
             await pilot.pause(0.1)
-            await pilot.press(*(["down"] * 6), "enter", "down", "down", "enter")
-            view = workbench.query_one(InstallationView)
-            phrase = view.query_one("#removal-phrase")
-            assert phrase.display is True and phrase.has_focus is True
-            assert workbench.is_running is True
-            await pilot.press("r", "e", "m", "o", "v", "e", "e", "enter")
-            assert workbench.is_running is True
-            assert "does not match" in str(view.query_one("#removal-message").render())
-            await pilot.press("backspace", "enter")
+            await pilot.press(*(["down"] * EXIT_INDEX))
+            assert workbench.query_one(HomeView).selected_index == EXIT_INDEX
+            await pilot.press("enter")
+            assert workbench.is_running is False
             assert workbench.return_value is not None
-            assert workbench.return_value.command == compose_uninstall()
-            assert calls == ["0.test"]
+            assert workbench.return_value.command is None
 
     asyncio.run(exercise())
+
+
+def test_the_workbench_composes_no_removal_of_itself() -> None:
+    """Keep `bora uninstall` off every reachable action while still naming it (D-097)."""
+    reachable = {
+        command.cli_arguments
+        for choices in (
+            installation_screen.CHOICES,
+            modes_screen.CHOICES,
+            overview_screen.CHOICES,
+            pi_screen.CHOICES,
+            setup_screen.CHOICES,
+        )
+        for command in _reachable(choices)
+    }
+
+    assert ("uninstall",) not in reachable
+    assert not hasattr(actions_module, "compose_uninstall")
+    assert "run `bora uninstall` in a terminal" in render_installation(_snapshot())
 
 
 def test_enter_waits_for_active_snapshot_worker() -> None:

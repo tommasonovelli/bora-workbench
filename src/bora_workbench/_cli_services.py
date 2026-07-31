@@ -19,6 +19,7 @@ from rich.text import Text
 
 from bora_workbench._cli_models import offer_cache_removal
 from bora_workbench._cli_theme import (
+    print_alert,
     print_error,
     print_heading,
     print_note,
@@ -233,7 +234,11 @@ def _prepare_mode(mode_id: str, force: bool, stderr: Console) -> PreparedMode:
 
 
 def _show_ready(session: PreparedMode, stdout: Console) -> None:
-    """Present the ready mode, endpoints, active envelope, and operational warnings."""
+    """Present the ready mode, endpoints, active envelope, warnings, and blocking alerts.
+
+    Alerts print last because this command then holds the terminal, so the closest line above the
+    running service is the one saying which context it is actually serving (D-097).
+    """
     plan = session.plan
     profile = plan.profile_id or "verified non-optimized baseline"
     print_success(stdout, "Ready", f"mode={plan.mode.id} backend={plan.backend}")
@@ -249,6 +254,8 @@ def _show_ready(session: PreparedMode, stdout: Console) -> None:
         print_note(stdout, "Interface", note)
     for warning in (*session.running.warnings, *plan.warnings):
         print_warning(stdout, warning)
+    for alert in plan.alerts:
+        print_alert(stdout, alert)
 
 
 def _open_ui(session: PreparedMode, stdout: Console) -> None:

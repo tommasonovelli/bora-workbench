@@ -12,16 +12,27 @@ from dataclasses import dataclass
 from bora_workbench.snapshot import WorkbenchSnapshot
 
 _ACTIVE = "valid"
+_BLOCKED = "insufficient-headroom"
+EXIT_SUMMARY = "leave the workbench"
+PENDING_SUMMARY = "..."
+UNAVAILABLE_SUMMARY = "unavailable"
 
 
 def _run_summary(snapshot: WorkbenchSnapshot) -> str:
-    """Report a live service first, then how many modes have an active measured cell."""
+    """Report a live service, then blocked cells, then how many modes are tuned.
+
+    A cell the machine cannot afford right now outranks the tuned count, because it is the one
+    state the reader can still act on by freeing memory (D-097).
+    """
     services = snapshot.services
     if services:
         return f"{services[0].mode} is serving ctx {services[0].ctx}"
     records = snapshot.doctor.records
     if not records:
         return "modes unavailable"
+    blocked = sum(record.evaluation.status == _BLOCKED for record in records)
+    if blocked:
+        return f"{blocked} of {len(records)} short on memory"
     tuned = sum(record.evaluation.status == _ACTIVE for record in records)
     if not tuned:
         return "verified baseline"
@@ -92,6 +103,12 @@ def _installation_summary(snapshot: WorkbenchSnapshot) -> str:
     return f"version {snapshot.doctor.version}"
 
 
+def _exit_summary(snapshot: WorkbenchSnapshot) -> str:
+    """Describe the one entry that opens no section, whatever the snapshot holds."""
+    del snapshot
+    return EXIT_SUMMARY
+
+
 @dataclass(frozen=True, slots=True)
 class MenuEntry:
     """One central-menu row: its label and how it summarizes current local state."""
@@ -101,19 +118,29 @@ class MenuEntry:
 
 
 # Run comes first because launching a mode is the reason the workbench exists; the rest follow
-# the order in which a new machine needs them.
+# the order in which a new machine needs them, and Exit closes the list because a reader looks for
+# the way out at the bottom (D-097).
 ENTRIES: tuple[MenuEntry, ...] = (
-    MenuEntry("Run", _run_summary),
+    MenuEntry("Run a mode", _run_summary),
     MenuEntry("Calibration", _calibration_summary),
     MenuEntry("Setup", _setup_summary),
     MenuEntry("Diagnostics", _diagnostics_summary),
-    MenuEntry("Pi", _pi_summary),
+    MenuEntry("Pi agent", _pi_summary),
     MenuEntry("Settings", _settings_summary),
     MenuEntry("This installation", _installation_summary),
+    MenuEntry("Exit", _exit_summary),
 )
-PENDING_SUMMARY = "..."
+# Every entry but the last opens the section holding the same position in the application's own
+# view order; Exit leaves instead, so it owns no section.
+EXIT_INDEX = len(ENTRIES) - 1
+SECTION_COUNT = EXIT_INDEX
 
 
 def summaries(snapshot: WorkbenchSnapshot) -> tuple[str, ...]:
     """Summarize every menu entry from one already collected snapshot."""
     return tuple(entry.summarize(snapshot) for entry in ENTRIES)
+
+
+def failure_summaries() -> tuple[str, ...]:
+    """Mark every section unavailable while keeping Exit's own meaning after a failure."""
+    return (UNAVAILABLE_SUMMARY,) * SECTION_COUNT + (EXIT_SUMMARY,)

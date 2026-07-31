@@ -12,6 +12,8 @@ from bora_workbench.tui.choices import ChoiceList
 from bora_workbench.tui.palette import Palette
 
 _WAITING = "Waiting for the local snapshot..."
+# A body line opening with this marker is rendered as an alert instead of ordinary prose.
+_ALERT_MARKER = "! "
 
 
 def _column_parts(line: str) -> tuple[str, str, str] | None:
@@ -43,8 +45,15 @@ def _append_inline(text: Text, value: str, palette: Palette) -> None:
 
 
 def _append_detail_line(text: Text, line: str, palette: Palette) -> None:
-    """Style one heading, bullet, aligned fact, or explanation with explicit contrast."""
+    """Style one alert, heading, bullet, aligned fact, or explanation with explicit contrast.
+
+    The alert marker is tested first, and its `!` is kept, so a screen reader and a colourless
+    terminal read the same warning that colour carries elsewhere (D-097).
+    """
     if not line:
+        return
+    if line.startswith(_ALERT_MARKER):
+        text.append(line, style=palette.alert_style)
         return
     if _is_heading(line):
         text.append(line, style=palette.accent_style)

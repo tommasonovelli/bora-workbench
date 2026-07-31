@@ -12,7 +12,6 @@ from bora_workbench.tui.choices import Choice, ChoiceList, Flag
 _FORCE = "force"
 _NO_MODEL = "no-model"
 _PRINT = "print-only"
-_INSTALL = "install-pi"
 
 
 def _engine_choices() -> tuple[Choice, ...]:
@@ -55,23 +54,23 @@ def test_flags_compose_the_exact_command_and_survive_a_move() -> None:
     assert choices.command() == compose_engine_install(False, True)
 
 
-def test_excluding_flags_can_never_be_enabled_together() -> None:
-    """Keep the contradictory pi pair unreachable through the toggles themselves."""
-    choices = ChoiceList(
+def test_contradictory_pi_forms_are_separate_rows_rather_than_one_flag_pair() -> None:
+    """Keep printing and installing unreachable together by never offering them as one row."""
+    printing = ChoiceList(
         (
             Choice(
-                "link the bora provider",
-                lambda flags: compose_pi(_PRINT in flags, _INSTALL in flags),
-                (Flag("p", _PRINT, _INSTALL), Flag("i", _INSTALL, _PRINT)),
+                "connect pi to bora",
+                lambda flags: compose_pi(_PRINT in flags),
+                (Flag("p", _PRINT),),
             ),
         )
     )
 
-    choices.toggle("p")
-    assert choices.command() == compose_pi(is_printed=True)
-    choices.toggle("i")
-    assert choices.enabled() == frozenset({_INSTALL})
-    assert choices.command() == compose_pi(is_installed=True)
+    printing.toggle("p")
+    assert printing.command() == compose_pi(is_printed=True)
+    assert printing.toggle("i") is False
+    with pytest.raises(ValueError, match="cannot be selected together"):
+        compose_pi(is_printed=True, is_installed=True)
 
 
 def test_flag_row_names_every_key_and_its_current_state() -> None:

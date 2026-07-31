@@ -27,6 +27,7 @@ class Palette:
     accent_style: str
     body_style: str
     command_style: str
+    alert_style: str
 
 
 COLOR_PALETTE = Palette(
@@ -44,6 +45,9 @@ COLOR_PALETTE = Palette(
     accent_style="bold #58a9ff",
     body_style="#eef6ff",
     command_style="bold #73b9ff",
+    # Red is the one colour that leaves the blue identity, because a blocked profile is the only
+    # fact the workbench reports that the machine cannot currently satisfy (D-097).
+    alert_style="bold #ff6b6b",
 )
 PLAIN_PALETTE = Palette(
     is_plain=True,
@@ -60,6 +64,7 @@ PLAIN_PALETTE = Palette(
     accent_style="bold",
     body_style="none",
     command_style="bold",
+    alert_style="bold",
 )
 
 
@@ -83,7 +88,6 @@ def _rules(palette: Palette, selector: str, border: str) -> str:
 {selector} .section-actions {{ border: {border} {palette.border}; }}
 {selector} .section-preview {{ border: {border} {palette.border}; }}
 {selector} .section-body {{ border: {border} {palette.border}; }}
-{selector} #removal-message {{ color: {palette.muted}; }}
 {selector} #status {{ color: {palette.muted}; }}
 {selector} #keybar {{ color: {palette.muted}; }}
 """
@@ -115,8 +119,6 @@ Screen {{ overflow: hidden; background: {TERMINAL_BACKGROUND}; }}
 .section-actions {{ width: 100%; height: auto; padding: 1 2; }}
 .section-preview {{ width: 100%; height: auto; min-height: 3; margin-top: 1; padding: 0 2; }}
 .section-body {{ width: 100%; height: auto; margin-top: 1; padding: 1 2; }}
-#removal-message {{ width: 100%; height: auto; margin-top: 1; text-align: center; }}
-#removal-phrase {{ width: 60; max-width: 100%; margin: 1 0; }}
 #status {{ width: 100%; height: 1; padding: 0 2; }}
 #keybar {{ width: 100%; height: 1; padding: 0 2; }}
 """

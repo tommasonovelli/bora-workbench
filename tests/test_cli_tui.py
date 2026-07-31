@@ -38,7 +38,6 @@ from bora_workbench.tui.actions import (
     compose_doctor,
     compose_mode,
     compose_pi_launch,
-    compose_uninstall,
     compose_update,
 )
 from bora_workbench.tui.screens.calibration import CalibrationView
@@ -236,11 +235,9 @@ def test_returning_action_dispatches_after_teardown_then_reopens(monkeypatch) ->
     ]
 
 
-@pytest.mark.parametrize(
-    "command", (compose_mode("coding"), compose_pi_launch(), compose_update(), compose_uninstall())
-)
+@pytest.mark.parametrize("command", (compose_mode("coding"), compose_pi_launch(), compose_update()))
 def test_terminal_action_success_exits_without_reopening(monkeypatch, command: CommandSpec) -> None:
-    """Keep foreground, replacement, and removal actions terminal after callback success."""
+    """Keep foreground and replacement actions terminal after callback success."""
     selected = TerminalMode(True, False)
     calls = []
 
@@ -486,7 +483,8 @@ def test_menu_opens_every_read_only_section_at_supported_sizes(size) -> None:
                 await pilot.press("escape")
                 assert workbench.query_one(view_type).display is False
             assert "This installation" in _menu_text(workbench)
-            await pilot.press("down")
+            assert "Exit" in _menu_text(workbench)
+            await pilot.press("down", "down")
             await pilot.press("enter")
             assert workbench.query_one(ModesView).display is True
             await pilot.press("q")

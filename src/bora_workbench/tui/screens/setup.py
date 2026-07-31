@@ -28,9 +28,11 @@ _NOTE = (
     "- `no-model` and `no-webui` decline a download; neither removes anything already present.",
     "- Downloads, verification, and confirmations begin after the workbench closes.",
 )
+# Acquisition comes first because that is why this screen is opened, the read-only check sits
+# between the two groups, and both removals stay last so neither is reached by accident (D-097).
 CHOICES: tuple[Choice, ...] = (
     Choice(
-        "install or repair engine",
+        "install or repair the engine",
         lambda flags: compose_engine_install(
             _FORCE in flags, _NO_MODEL in flags, _NO_WEBUI in flags
         ),
@@ -38,31 +40,31 @@ CHOICES: tuple[Choice, ...] = (
         "Install the locked llama.cpp build and, by default, the model and the interface.",
     ),
     Choice(
-        "download pinned model",
+        "download the pinned model",
         lambda flags: compose_pull(),
         description="Acquire and verify the one locked weights and projector set.",
     ),
     Choice(
-        "remove pinned model",
-        lambda flags: compose_remove_model(_KEEP_CACHE in flags, _DRY_RUN in flags),
-        (Flag("c", _KEEP_CACHE), Flag("d", _DRY_RUN)),
-        "Review managed and shared-cache copies before any confirmed deletion.",
-    ),
-    Choice(
-        "install browser interface",
+        "install the browser interface",
         lambda flags: compose_webui_install(_FORCE in flags),
         (Flag("f", _FORCE),),
         "Acquire the pinned Open WebUI on its own, several gigabytes, once.",
     ),
     Choice(
-        "remove browser interface",
-        lambda flags: compose_webui_remove(),
-        description="Free the environment, and answer separately about your own chats.",
-    ),
-    Choice(
-        "inspect engine compatibility",
+        "check the engine against engine.lock",
         lambda flags: compose_engine_status(),
         description="Compare the active executable and manifest with engine.lock.",
+    ),
+    Choice(
+        "remove the pinned model",
+        lambda flags: compose_remove_model(_KEEP_CACHE in flags, _DRY_RUN in flags),
+        (Flag("c", _KEEP_CACHE), Flag("d", _DRY_RUN)),
+        "Review managed and shared-cache copies before any confirmed deletion.",
+    ),
+    Choice(
+        "remove the browser interface",
+        lambda flags: compose_webui_remove(),
+        description="Free the environment, and answer separately about your own chats.",
     ),
 )
 

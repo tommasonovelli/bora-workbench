@@ -211,6 +211,15 @@ def print_warning(console: Console, message: str) -> None:
     console.print(Text.assemble(("warning:", STYLE_WARNING), (f" {message}", STYLE_BODY)))
 
 
+def print_alert(console: Console, message: str) -> None:
+    """Print a red label and literal message for a state this machine cannot satisfy now.
+
+    An alert is not an error: the command continues. It exists because a warning is the wrong
+    weight for "the profile you measured cannot be loaded right now" (D-097).
+    """
+    console.print(Text.assemble(("unavailable:", STYLE_ERROR), (f" {message}", STYLE_BODY)))
+
+
 def print_error(console: Console, category: str, detail: str) -> None:
     """Print an actionable error while preserving literal details (specification section 5.11)."""
     console.print(Text.assemble((f"{category}:", STYLE_ERROR), (f" {detail}", STYLE_BODY)))

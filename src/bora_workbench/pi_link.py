@@ -35,6 +35,14 @@ from bora_workbench.profiles import FALLBACK_CTX
 PROVIDER_NAME = "bora"
 PACKAGE_NAME = "@earendil-works/pi-coding-agent"
 
+# The vendor documents one global npm package plus two convenience installers that install exactly
+# that package, so a single npm removal undoes any of the three routes
+# (https://pi.dev/docs/latest/quickstart). Both script lines stay ASCII and short enough not to
+# wrap: a wrapped install command cannot be copied, and a legacy Windows code page cannot encode
+# the punctuation that would join them (D-071).
+UBUNTU_INSTALLER = "curl -fsSL https://pi.dev/install.sh | sh"
+WINDOWS_INSTALLER = 'powershell -c "irm https://pi.dev/install.ps1 | iex"'
+
 # pi reaches a provider through the OpenAI completions API, which is exactly what the managed
 # llama-server exposes at /v1 (docs/commands.md). The key is a placeholder: the managed server
 # requires none, but pi only offers a provider whose authentication is configured.
@@ -100,6 +108,20 @@ def inspect_pi() -> PiInstallation:
     return PiInstallation(executable, agent_dir() / _MODELS_FILE)
 
 
+def npm_executable() -> Path:
+    """Resolve npm on PATH, because its program name alone is not startable everywhere.
+
+    `subprocess` starts a child through `CreateProcess` on Windows, and that search appends only
+    `.exe`, so the `npm.cmd` shim Node.js installs is never found under the bare name `npm` and
+    every npm handoff failed there with "the system cannot find the file specified". Resolving the
+    name here keeps `shell=True` out of the project (D-097).
+    """
+    found = shutil.which("npm")
+    if found is None:
+        raise EngineError("npm is not on PATH; install Node.js first, then run this command again")
+    return Path(found)
+
+
 def install_command() -> tuple[str, ...]:
     """Return the vendor's installation command, with install scripts disabled."""
     return ("npm", "install", "-g", "--ignore-scripts", PACKAGE_NAME)
@@ -108,8 +130,9 @@ def install_command() -> tuple[str, ...]:
 def uninstall_command() -> tuple[str, ...]:
     """Return the removal command for exactly the package `install_command` adds.
 
-    It undoes an npm installation and nothing else: an installation made another way is not npm's
-    to remove, so the caller reports what is left instead of guessing at it (D-082).
+    The vendor documents this same command for its own `install.sh` and `install.ps1`, because both
+    scripts install this global npm package; what it never removes is the per-user agent directory
+    holding settings, credentials and sessions (D-097 corrects D-082 on that point).
     """
     return ("npm", "uninstall", "-g", PACKAGE_NAME)
 

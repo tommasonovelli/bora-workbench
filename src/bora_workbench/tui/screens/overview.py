@@ -15,26 +15,28 @@ from bora_workbench.tui.choices import Choice, ChoiceList
 from bora_workbench.tui.palette import Palette
 from bora_workbench.tui.section import Section
 
+# The four read-only reports come first, widest first, and the one action that changes this
+# machine stays last (D-097).
 CHOICES: tuple[Choice, ...] = (
     Choice(
-        "full system report",
+        "full local report",
         lambda flags: compose_doctor(),
         description="Print configuration, hardware, engine, records, paths, and validation.",
+    ),
+    Choice(
+        "check managed services",
+        lambda flags: compose_status(),
+        description="Show verified live services and clean stale process state.",
+    ),
+    Choice(
+        "check the managed engine",
+        lambda flags: compose_engine_status(),
+        description="Compare the active engine with the exact packaged lock.",
     ),
     Choice(
         "validate packaged content",
         lambda flags: compose_validate(),
         description="Check schemas, references, digests, and cross-cutting contracts.",
-    ),
-    Choice(
-        "inspect managed services",
-        lambda flags: compose_status(),
-        description="Show verified live services and clean stale process state.",
-    ),
-    Choice(
-        "inspect managed engine",
-        lambda flags: compose_engine_status(),
-        description="Compare the active engine with the exact packaged lock.",
     ),
     Choice(
         "stop managed services",

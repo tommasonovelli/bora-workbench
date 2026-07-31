@@ -96,13 +96,14 @@ process identities, and run bounded hardware and engine probes in one presentati
 not hash payloads, write receipts, repair state, create directories, start services, or poll.
 
 Arrows or `j`/`k` move one marker. `Enter` opens or selects, `Esc` returns, page keys scroll, `?`
-expands help, and `q` quits. Bracketed letters switch the marked action's flags. Settings are
-read-only, calibration creates only valid combinations, and uninstall requires typing `remove`.
+expands help, and `q` quits; the final `Exit` menu entry leaves as well. Bracketed letters switch
+the marked action's flags. Settings are read-only, calibration creates only valid combinations, and
+`bora uninstall` is deliberately absent — removal is a command line operation.
 
 Selection fully restores the terminal before invoking the existing Click/Typer callback in the same
 process. Successful returning actions keep their output visible behind a `Press Enter to return`
-acknowledgement, then reopen and refresh. Modes, calibration, update, and uninstall are terminal;
-failures and interruptions never reopen and propagate unchanged.
+acknowledgement, then reopen and refresh. Modes, calibration, and update are terminal; failures and
+interruptions never reopen and propagate unchanged.
 
 Motion carries no information. Wind and sea animate at 6 fps under the 12 fps ceiling on every page,
 sections included, from one shared timer. `BORA_TUI_MOTION=off` retains the static graphic; plain, colour,
@@ -266,11 +267,27 @@ preserved; a file that cannot be parsed is reported rather than overwritten.
 `--print` shows the entry and writes nothing, which is also the way to configure any other
 OpenAI-compatible client by hand. `--install` runs
 `npm install -g --ignore-scripts @earendil-works/pi-coding-agent` after showing the command and
-asking: this project pins no digest for pi and does not claim to verify it. Without `--install`, an
-absent pi is reported with the vendor's instructions for Ubuntu and Windows. `--print` and
+asking: this project pins no digest for pi and does not claim to verify it. `--print` and
 `--install` are mutually exclusive, because one promises no write while the other requests an npm
 mutation. Neither group option can accompany `pi remove` or `pi uninstall`; such combinations are
 input errors rather than silently ignored flags.
+
+### Installing pi
+
+Without `--install`, an absent pi is reported with every route the vendor documents, so the answer
+to "which command installs it" is on screen rather than behind a flag:
+
+```bash
+curl -fsSL https://pi.dev/install.sh | sh                          # Ubuntu
+powershell -c "irm https://pi.dev/install.ps1 | iex"               # Windows
+npm install -g --ignore-scripts @earendil-works/pi-coding-agent    # either
+bora pi --install                                                  # install, then connect
+```
+
+The two scripts install that same global npm package — they add Node.js first when it is missing —
+so the routes are alternatives, not different products, and one removal undoes any of them. npm is
+started through the executable found on `PATH` rather than by name, because `npm` there is the
+`npm.cmd` shim on Windows and a bare name is not startable.
 
 Afterwards, with `bora coding` running, use the direct shortcut:
 
@@ -312,11 +329,15 @@ provider stays, the backup is written as usual, and pi does not have to be insta
 written earlier outlives the package.
 
 `bora pi uninstall` removes pi itself. It shows `npm uninstall -g @earendil-works/pi-coding-agent`,
-asks, runs it, and then checks PATH again: an installation made another way — the vendor's Windows
-script, for instance — is not npm's to remove, and is reported as still present rather than
-described as removed. Afterwards it asks separately about the provider entry, because the package
-belongs to npm and the entry belongs to a file that belongs to pi. Answering yes to one is not
-answering yes to the other.
+asks, runs it, and then checks PATH again. That command is the documented removal for all three
+installation routes, because the vendor's `install.sh` and `install.ps1` install the same global npm
+package. What it does not remove is `~/.pi/agent`, which keeps pi's settings, credentials and
+sessions; the command names that directory before it asks. A copy installed with pnpm, Yarn, or Bun
+is not npm's to remove and is reported as still present, with that tool's own global remove command,
+rather than described as removed.
+
+Afterwards it asks separately about the provider entry, because the package belongs to npm and the
+entry belongs to a file that belongs to pi. Answering yes to one is not answering yes to the other.
 
 ## Run modes
 

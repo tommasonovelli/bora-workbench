@@ -357,7 +357,7 @@ class TrialRunner:
             target.hardware.backend,
             target.hardware.gpu_index,
             (),
-            "disabled" if self.mode.services.vision else "mtp2",
+            speculative="disabled" if self.mode.services.vision else "mtp2",
         )
 
     def _run(self, point: TrialPoint, workload: Workload) -> Measurement:

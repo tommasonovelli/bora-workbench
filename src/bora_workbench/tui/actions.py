@@ -172,7 +172,11 @@ def compose_stop() -> CommandSpec:
 
 
 def compose_pi(is_printed: bool = False, is_installed: bool = False) -> CommandSpec:
-    """Compose one valid bare pi action and reject the contradictory pair by construction."""
+    """Compose one valid bare pi action and reject the contradictory pair by construction.
+
+    Printing and installing are separate rows in the Pi section, so the pair the CLI rejects is
+    already unreachable; the guard stays because it is what makes that true (D-097).
+    """
     if is_printed and is_installed:
         raise ValueError("pi print-only and installation cannot be selected together")
     arguments = ["pi"]
@@ -206,11 +210,6 @@ def compose_update_check() -> CommandSpec:
 def compose_update() -> CommandSpec:
     """Compose self-update as terminal because its helper must observe this process exit."""
     return _terminal_command("update")
-
-
-def compose_uninstall() -> CommandSpec:
-    """Compose self-removal as terminal while retaining every real CLI confirmation."""
-    return _terminal_command("uninstall")
 
 
 def _model_state(snapshot: WorkbenchSnapshot) -> str:
